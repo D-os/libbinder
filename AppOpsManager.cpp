@@ -22,6 +22,19 @@
 
 namespace android {
 
+namespace {
+
+#if defined(__BRILLO__)
+// Because Brillo has no application model, security policy is managed
+// statically (at build time) with SELinux controls.
+// As a consequence, it also never runs the AppOpsManager service.
+const int APP_OPS_MANAGER_UNAVAILABLE_MODE = AppOpsManager::MODE_ALLOWED;
+#else
+const int APP_OPS_MANAGER_UNAVAILABLE_MODE = AppOpsManager::MODE_IGNORED;
+#endif  // defined(__BRILLO__)
+
+}  // namespace
+
 static String16 _appops("appops");
 static pthread_mutex_t gTokenMutex = PTHREAD_MUTEX_INITIALIZER;
 static sp<IBinder> gToken;
@@ -39,8 +52,13 @@ AppOpsManager::AppOpsManager()
 {
 }
 
+#if defined(__BRILLO__)
+// There is no AppOpsService on Brillo
+sp<IAppOpsService> AppOpsManager::getService() { return NULL; }
+#else
 sp<IAppOpsService> AppOpsManager::getService()
 {
+
     int64_t startTime = 0;
     mLock.lock();
     sp<IAppOpsService> service = mService;
@@ -65,22 +83,28 @@ sp<IAppOpsService> AppOpsManager::getService()
     mLock.unlock();
     return service;
 }
+#endif  // defined(__BRILLO__)
 
 int32_t AppOpsManager::checkOp(int32_t op, int32_t uid, const String16& callingPackage)
 {
     sp<IAppOpsService> service = getService();
-    return service != NULL ? service->checkOperation(op, uid, callingPackage) : MODE_IGNORED;
+    return service != NULL
+            ? service->checkOperation(op, uid, callingPackage)
+            : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 }
 
 int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage) {
     sp<IAppOpsService> service = getService();
-    return service != NULL ? service->noteOperation(op, uid, callingPackage) : MODE_IGNORED;
+    return service != NULL
+            ? service->noteOperation(op, uid, callingPackage)
+            : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 }
 
 int32_t AppOpsManager::startOp(int32_t op, int32_t uid, const String16& callingPackage) {
     sp<IAppOpsService> service = getService();
-    return service != NULL ? service->startOperation(getToken(service), op, uid, callingPackage)
-            : MODE_IGNORED;
+    return service != NULL
+            ? service->startOperation(getToken(service), op, uid, callingPackage)
+            : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 }
 
 void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPackage) {
