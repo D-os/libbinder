@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <mutex>
 #include <binder/AppOpsManager.h>
 #include <binder/Binder.h>
 #include <binder/IServiceManager.h>
@@ -59,8 +60,8 @@ sp<IAppOpsService> AppOpsManager::getService() { return NULL; }
 sp<IAppOpsService> AppOpsManager::getService()
 {
 
+    std::lock_guard<Mutex> scoped_lock(mLock);
     int64_t startTime = 0;
-    mLock.lock();
     sp<IAppOpsService> service = mService;
     while (service == NULL || !IInterface::asBinder(service)->isBinderAlive()) {
         sp<IBinder> binder = defaultServiceManager()->checkService(_appops);
@@ -80,7 +81,6 @@ sp<IAppOpsService> AppOpsManager::getService()
             mService = service;
         }
     }
-    mLock.unlock();
     return service;
 }
 #endif  // defined(__BRILLO__)
