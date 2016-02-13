@@ -53,7 +53,8 @@ sp<IAppOpsService> AppOpsManager::getService()
                 ALOGI("Waiting for app ops service");
             } else if ((uptimeMillis()-startTime) > 10000) {
                 ALOGW("Waiting too long for app ops service, giving up");
-                return NULL;
+                service = NULL;
+                break;
             }
             sleep(1);
         } else {
