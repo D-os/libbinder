@@ -1109,7 +1109,7 @@ status_t Parcel::writeStrongBinderVector(const std::unique_ptr<std::vector<sp<IB
 }
 
 status_t Parcel::readStrongBinderVector(std::unique_ptr<std::vector<sp<IBinder>>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readStrongBinder);
+    return readNullableTypedVector(val, &Parcel::readNullableStrongBinder);
 }
 
 status_t Parcel::readStrongBinderVector(std::vector<sp<IBinder>>* val) const {
@@ -1905,13 +1905,25 @@ const char16_t* Parcel::readString16Inplace(size_t* outLen) const
 
 status_t Parcel::readStrongBinder(sp<IBinder>* val) const
 {
+    status_t status = readNullableStrongBinder(val);
+    if (status == OK && !val->get()) {
+        status = UNEXPECTED_NULL;
+    }
+    return status;
+}
+
+status_t Parcel::readNullableStrongBinder(sp<IBinder>* val) const
+{
     return unflatten_binder(ProcessState::self(), *this, val);
 }
 
 sp<IBinder> Parcel::readStrongBinder() const
 {
     sp<IBinder> val;
-    readStrongBinder(&val);
+    // Note that a lot of code in Android reads binders by hand with this
+    // method, and that code has historically been ok with getting nullptr
+    // back (while ignoring error codes).
+    readNullableStrongBinder(&val);
     return val;
 }
 
