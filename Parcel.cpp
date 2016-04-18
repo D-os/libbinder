@@ -1184,15 +1184,15 @@ status_t Parcel::writeDupFileDescriptor(int fd)
     return err;
 }
 
-status_t Parcel::writeUniqueFileDescriptor(const base::unique_fd& fd) {
+status_t Parcel::writeUniqueFileDescriptor(const ScopedFd& fd) {
     return writeDupFileDescriptor(fd.get());
 }
 
-status_t Parcel::writeUniqueFileDescriptorVector(const std::vector<base::unique_fd>& val) {
+status_t Parcel::writeUniqueFileDescriptorVector(const std::vector<ScopedFd>& val) {
     return writeTypedVector(val, &Parcel::writeUniqueFileDescriptor);
 }
 
-status_t Parcel::writeUniqueFileDescriptorVector(const std::unique_ptr<std::vector<base::unique_fd>>& val) {
+status_t Parcel::writeUniqueFileDescriptorVector(const std::unique_ptr<std::vector<ScopedFd>>& val) {
     return writeNullableTypedVector(val, &Parcel::writeUniqueFileDescriptor);
 }
 
@@ -1992,7 +1992,7 @@ int Parcel::readFileDescriptor() const
     return BAD_TYPE;
 }
 
-status_t Parcel::readUniqueFileDescriptor(base::unique_fd* val) const
+status_t Parcel::readUniqueFileDescriptor(ScopedFd* val) const
 {
     int got = readFileDescriptor();
 
@@ -2010,11 +2010,11 @@ status_t Parcel::readUniqueFileDescriptor(base::unique_fd* val) const
 }
 
 
-status_t Parcel::readUniqueFileDescriptorVector(std::unique_ptr<std::vector<base::unique_fd>>* val) const {
+status_t Parcel::readUniqueFileDescriptorVector(std::unique_ptr<std::vector<ScopedFd>>* val) const {
     return readNullableTypedVector(val, &Parcel::readUniqueFileDescriptor);
 }
 
-status_t Parcel::readUniqueFileDescriptorVector(std::vector<base::unique_fd>* val) const {
+status_t Parcel::readUniqueFileDescriptorVector(std::vector<ScopedFd>* val) const {
     return readTypedVector(val, &Parcel::readUniqueFileDescriptor);
 }
 
