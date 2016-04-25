@@ -34,7 +34,7 @@ namespace android {
 
 struct BufferedTextOutput::BufferState : public RefBase
 {
-    BufferState(int32_t _seq)
+    explicit BufferState(int32_t _seq)
         : seq(_seq)
         , buffer(NULL)
         , bufferPos(0)

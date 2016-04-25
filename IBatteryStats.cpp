@@ -29,7 +29,7 @@ namespace android {
 class BpBatteryStats : public BpInterface<IBatteryStats>
 {
 public:
-    BpBatteryStats(const sp<IBinder>& impl)
+    explicit BpBatteryStats(const sp<IBinder>& impl)
         : BpInterface<IBatteryStats>(impl)
     {
     }
