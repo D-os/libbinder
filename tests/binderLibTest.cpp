@@ -252,14 +252,10 @@ class BinderLibTestEvent
             int ret;
             pthread_mutex_lock(&m_waitMutex);
             if (!m_eventTriggered) {
-#if defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE)
-                pthread_cond_timeout_np(&m_waitCond, &m_waitMutex, timeout_s * 1000);
-#else
                 struct timespec ts;
                 clock_gettime(CLOCK_REALTIME, &ts);
                 ts.tv_sec += timeout_s;
                 pthread_cond_timedwait(&m_waitCond, &m_waitMutex, &ts);
-#endif
             }
             ret = m_eventTriggered ? NO_ERROR : TIMED_OUT;
             pthread_mutex_unlock(&m_waitMutex);
@@ -739,14 +735,10 @@ class BinderLibTestService : public BBinder
                 }
                 if (ret > 0) {
                     if (m_serverStartRequested) {
-#if defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE)
-                        ret = pthread_cond_timeout_np(&m_serverWaitCond, &m_serverWaitMutex, 5000);
-#else
                         struct timespec ts;
                         clock_gettime(CLOCK_REALTIME, &ts);
                         ts.tv_sec += 5;
                         ret = pthread_cond_timedwait(&m_serverWaitCond, &m_serverWaitMutex, &ts);
-#endif
                     }
                     if (m_serverStartRequested) {
                         m_serverStartRequested = false;
