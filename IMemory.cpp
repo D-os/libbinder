@@ -74,7 +74,7 @@ enum {
 class BpMemoryHeap : public BpInterface<IMemoryHeap>
 {
 public:
-    BpMemoryHeap(const sp<IBinder>& impl);
+    explicit BpMemoryHeap(const sp<IBinder>& impl);
     virtual ~BpMemoryHeap();
 
     virtual int getHeapID() const;
@@ -122,7 +122,7 @@ enum {
 class BpMemory : public BpInterface<IMemory>
 {
 public:
-    BpMemory(const sp<IBinder>& impl);
+    explicit BpMemory(const sp<IBinder>& impl);
     virtual ~BpMemory();
     virtual sp<IMemoryHeap> getMemory(ssize_t* offset=0, size_t* size=0) const;
 

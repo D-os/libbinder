@@ -126,7 +126,7 @@ bool checkPermission(const String16& permission, pid_t pid, uid_t uid)
 class BpServiceManager : public BpInterface<IServiceManager>
 {
 public:
-    BpServiceManager(const sp<IBinder>& impl)
+    explicit BpServiceManager(const sp<IBinder>& impl)
         : BpInterface<IServiceManager>(impl)
     {
     }

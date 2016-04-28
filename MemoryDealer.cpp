@@ -126,7 +126,7 @@ class SimpleBestFitAllocator
         PAGE_ALIGNED = 0x00000001
     };
 public:
-    SimpleBestFitAllocator(size_t size);
+    explicit SimpleBestFitAllocator(size_t size);
     ~SimpleBestFitAllocator();
 
     size_t      allocate(size_t size, uint32_t flags = 0);
