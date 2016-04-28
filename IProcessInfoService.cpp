@@ -25,7 +25,7 @@ namespace android {
 
 class BpProcessInfoService : public BpInterface<IProcessInfoService> {
 public:
-    BpProcessInfoService(const sp<IBinder>& impl)
+    explicit BpProcessInfoService(const sp<IBinder>& impl)
         : BpInterface<IProcessInfoService>(impl) {}
 
     virtual status_t getProcessStatesFromPids(size_t length, /*in*/ int32_t* pids,
