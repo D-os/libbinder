@@ -25,7 +25,7 @@ namespace android {
 
 class BpMediaResourceMonitor : public BpInterface<IMediaResourceMonitor> {
 public:
-    BpMediaResourceMonitor(const sp<IBinder>& impl)
+    explicit BpMediaResourceMonitor(const sp<IBinder>& impl)
         : BpInterface<IMediaResourceMonitor>(impl) {}
 
     virtual void notifyResourceGranted(/*in*/ int32_t pid, /*in*/ const int32_t type)

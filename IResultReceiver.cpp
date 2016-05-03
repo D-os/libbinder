@@ -31,7 +31,7 @@ namespace android {
 class BpResultReceiver : public BpInterface<IResultReceiver>
 {
 public:
-    BpResultReceiver(const sp<IBinder>& impl)
+    explicit BpResultReceiver(const sp<IBinder>& impl)
         : BpInterface<IResultReceiver>(impl)
     {
     }
