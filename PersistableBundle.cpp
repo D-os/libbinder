@@ -91,7 +91,7 @@ namespace os {
 
 #define RETURN_IF_ENTRY_ERASED(map, key)                                 \
     {                                                                    \
-        size_t num_erased = map.erase(key);                              \
+        size_t num_erased = (map).erase(key);                            \
         if (num_erased) {                                                \
             ALOGE("Failed at %s:%d (%s)", __FILE__, __LINE__, __func__); \
             return num_erased;                                           \
