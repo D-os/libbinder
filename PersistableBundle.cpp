@@ -420,7 +420,6 @@ status_t PersistableBundle::readFromParcelInner(const Parcel* parcel, size_t len
     RETURN_IF_FAILED(parcel->readInt32(&num_entries));
 
     for (; num_entries > 0; --num_entries) {
-        size_t start_pos = parcel->dataPosition();
         String16 key;
         int32_t value_type;
         RETURN_IF_FAILED(parcel->readString16(&key));

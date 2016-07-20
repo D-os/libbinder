@@ -44,20 +44,21 @@ sources := \
 
 LOCAL_PATH:= $(call my-dir)
 
+binder_cflags := -Wall -Wextra -Werror
+ifneq ($(TARGET_USES_64_BIT_BINDER),true)
+ifneq ($(TARGET_IS_64_BIT),true)
+binder_cflags += -DBINDER_IPC_32BIT=1
+endif
+endif
+
 include $(CLEAR_VARS)
 LOCAL_MODULE := libbinder
 LOCAL_SHARED_LIBRARIES := libbase liblog libcutils libutils
 LOCAL_EXPORT_SHARED_LIBRARY_HEADERS := libbase libutils
 
-LOCAL_CLANG := true
 LOCAL_SANITIZE := integer
 LOCAL_SRC_FILES := $(sources)
-ifneq ($(TARGET_USES_64_BIT_BINDER),true)
-ifneq ($(TARGET_IS_64_BIT),true)
-LOCAL_CFLAGS += -DBINDER_IPC_32BIT=1
-endif
-endif
-LOCAL_CFLAGS += -Werror
+LOCAL_CFLAGS := $(binder_cflags)
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -65,10 +66,5 @@ LOCAL_MODULE := libbinder
 LOCAL_STATIC_LIBRARIES := libbase libutils
 LOCAL_EXPORT_STATIC_LIBRARY_HEADERS := libbase libutils
 LOCAL_SRC_FILES := $(sources)
-ifneq ($(TARGET_USES_64_BIT_BINDER),true)
-ifneq ($(TARGET_IS_64_BIT),true)
-LOCAL_CFLAGS += -DBINDER_IPC_32BIT=1
-endif
-endif
-LOCAL_CFLAGS += -Werror
+LOCAL_CFLAGS := $(binder_cflags)
 include $(BUILD_STATIC_LIBRARY)
