@@ -237,6 +237,10 @@ status_t BBinder::onTransact(
 
             // XXX can't add virtuals until binaries are updated.
             //return shellCommand(in, out, err, args, resultReceiver);
+            (void)in;
+            (void)out;
+            (void)err;
+
             if (resultReceiver != NULL) {
                 resultReceiver->send(INVALID_OPERATION);
             }
