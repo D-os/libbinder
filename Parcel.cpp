@@ -1841,13 +1841,37 @@ const char* Parcel::readCString() const
 
 String8 Parcel::readString8() const
 {
-    int32_t size = readInt32();
-    // watch for potential int overflow adding 1 for trailing NUL
-    if (size > 0 && size < INT32_MAX) {
-        const char* str = (const char*)readInplace(size+1);
-        if (str) return String8(str, size);
+    String8 retString;
+    status_t status = readString8(&retString);
+    if (status != OK) {
+        // We don't care about errors here, so just return an empty string.
+        return String8();
     }
-    return String8();
+    return retString;
+}
+
+status_t Parcel::readString8(String8* pArg) const
+{
+    int32_t size;
+    status_t status = readInt32(&size);
+    if (status != OK) {
+        return status;
+    }
+    // watch for potential int overflow from size+1
+    if (size < 0 || size >= INT32_MAX) {
+        return BAD_VALUE;
+    }
+    // |writeString8| writes nothing for empty string.
+    if (size == 0) {
+        *pArg = String8();
+        return OK;
+    }
+    const char* str = (const char*)readInplace(size + 1);
+    if (str == NULL) {
+        return BAD_VALUE;
+    }
+    pArg->setTo(str, size);
+    return OK;
 }
 
 String16 Parcel::readString16() const
