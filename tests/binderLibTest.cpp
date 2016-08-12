@@ -44,6 +44,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_ADD_SERVER,
     BINDER_LIB_TEST_CALL_BACK,
     BINDER_LIB_TEST_NOP_CALL_BACK,
+    BINDER_LIB_TEST_GET_SELF_TRANSACTION,
     BINDER_LIB_TEST_GET_ID_TRANSACTION,
     BINDER_LIB_TEST_INDIRECT_TRANSACTION,
     BINDER_LIB_TEST_SET_ERROR_TRANSACTION,
@@ -668,6 +669,21 @@ TEST_F(BinderLibTest, PromoteRemote) {
     EXPECT_GE(ret, 0);
 }
 
+TEST_F(BinderLibTest, CheckHandleZeroBinderHighBitsZeroCookie) {
+    status_t ret;
+    Parcel data, reply;
+
+    ret = m_server->transact(BINDER_LIB_TEST_GET_SELF_TRANSACTION, data, &reply);
+    EXPECT_EQ(NO_ERROR, ret);
+
+    const flat_binder_object *fb = reply.readObject(false);
+    ASSERT_TRUE(fb != NULL);
+    EXPECT_EQ(fb->type, BINDER_TYPE_HANDLE);
+    EXPECT_EQ(ProcessState::self()->getStrongProxyForHandle(fb->handle), m_server);
+    EXPECT_EQ(fb->cookie, (binder_uintptr_t)0);
+    EXPECT_EQ(fb->binder >> 32, (binder_uintptr_t)0);
+}
+
 class BinderLibTestService : public BBinder
 {
     public:
@@ -769,6 +785,9 @@ class BinderLibTestService : public BBinder
                 binder->transact(BINDER_LIB_TEST_CALL_BACK, data2, &reply2);
                 return NO_ERROR;
             }
+            case BINDER_LIB_TEST_GET_SELF_TRANSACTION:
+                reply->writeStrongBinder(this);
+                return NO_ERROR;
             case BINDER_LIB_TEST_GET_ID_TRANSACTION:
                 reply->writeInt32(m_id);
                 return NO_ERROR;
