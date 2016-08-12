@@ -387,7 +387,7 @@ TEST_F(BinderLibTest, IndirectGetId2)
 
     ret = reply.readInt32(&count);
     ASSERT_EQ(NO_ERROR, ret);
-    EXPECT_EQ(ARRAY_SIZE(serverId), count);
+    EXPECT_EQ(ARRAY_SIZE(serverId), (size_t)count);
 
     for (size_t i = 0; i < (size_t)count; i++) {
         BinderLibTestBundle replyi(&reply);
@@ -437,7 +437,7 @@ TEST_F(BinderLibTest, IndirectGetId3)
 
     ret = reply.readInt32(&count);
     ASSERT_EQ(NO_ERROR, ret);
-    EXPECT_EQ(ARRAY_SIZE(serverId), count);
+    EXPECT_EQ(ARRAY_SIZE(serverId), (size_t)count);
 
     for (size_t i = 0; i < (size_t)count; i++) {
         int32_t counti;
@@ -629,7 +629,7 @@ TEST_F(BinderLibTest, PassFile) {
     }
 
     ret = read(pipefd[0], buf, sizeof(buf));
-    EXPECT_EQ(sizeof(buf), ret);
+    EXPECT_EQ(sizeof(buf), (size_t)ret);
     EXPECT_EQ(write_value, buf[0]);
 
     waitForReadData(pipefd[0], 5000); /* wait for other proccess to close pipe */
