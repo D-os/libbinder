@@ -100,32 +100,6 @@ enum {
     BLOB_ASHMEM_MUTABLE = 2,
 };
 
-static dev_t ashmem_rdev()
-{
-    static dev_t __ashmem_rdev;
-    static pthread_mutex_t __ashmem_rdev_lock = PTHREAD_MUTEX_INITIALIZER;
-
-    pthread_mutex_lock(&__ashmem_rdev_lock);
-
-    dev_t rdev = __ashmem_rdev;
-    if (!rdev) {
-        int fd = TEMP_FAILURE_RETRY(open("/dev/ashmem", O_RDONLY));
-        if (fd >= 0) {
-            struct stat st;
-
-            int ret = TEMP_FAILURE_RETRY(fstat(fd, &st));
-            close(fd);
-            if ((ret >= 0) && S_ISCHR(st.st_mode)) {
-                rdev = __ashmem_rdev = st.st_rdev;
-            }
-        }
-    }
-
-    pthread_mutex_unlock(&__ashmem_rdev_lock);
-
-    return rdev;
-}
-
 void acquire_object(const sp<ProcessState>& proc,
     const flat_binder_object& obj, const void* who, size_t* outAshmemSize)
 {
@@ -154,15 +128,11 @@ void acquire_object(const sp<ProcessState>& proc,
             return;
         }
         case BINDER_TYPE_FD: {
-            if ((obj.cookie != 0) && (outAshmemSize != NULL)) {
-                struct stat st;
-                int ret = fstat(obj.handle, &st);
-                if (!ret && S_ISCHR(st.st_mode) && (st.st_rdev == ashmem_rdev())) {
-                    // If we own an ashmem fd, keep track of how much memory it refers to.
-                    int size = ashmem_get_size_region(obj.handle);
-                    if (size > 0) {
-                        *outAshmemSize += size;
-                    }
+            if ((obj.cookie != 0) && (outAshmemSize != NULL) && ashmem_valid(obj.handle)) {
+                // If we own an ashmem fd, keep track of how much memory it refers to.
+                int size = ashmem_get_size_region(obj.handle);
+                if (size > 0) {
+                    *outAshmemSize += size;
                 }
             }
             return;
@@ -207,14 +177,10 @@ static void release_object(const sp<ProcessState>& proc,
         }
         case BINDER_TYPE_FD: {
             if (obj.cookie != 0) { // owned
-                if (outAshmemSize != NULL) {
-                    struct stat st;
-                    int ret = fstat(obj.handle, &st);
-                    if (!ret && S_ISCHR(st.st_mode) && (st.st_rdev == ashmem_rdev())) {
-                        int size = ashmem_get_size_region(obj.handle);
-                        if (size > 0) {
-                            *outAshmemSize -= size;
-                        }
+                if ((outAshmemSize != NULL) && ashmem_valid(obj.handle)) {
+                    int size = ashmem_get_size_region(obj.handle);
+                    if (size > 0) {
+                        *outAshmemSize -= size;
                     }
                 }
 
