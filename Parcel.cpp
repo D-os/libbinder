@@ -750,7 +750,7 @@ status_t Parcel::writeUtf8AsUtf16(const std::string& str) {
     const uint8_t* strData = (uint8_t*)str.data();
     const size_t strLen= str.length();
     const ssize_t utf16Len = utf8_to_utf16_length(strData, strLen);
-    if (utf16Len < 0 || utf16Len> std::numeric_limits<int32_t>::max()) {
+    if (utf16Len < 0 || utf16Len > std::numeric_limits<int32_t>::max()) {
         return BAD_VALUE;
     }
 
@@ -765,7 +765,7 @@ status_t Parcel::writeUtf8AsUtf16(const std::string& str) {
         return NO_MEMORY;
     }
 
-    utf8_to_utf16(strData, strLen, (char16_t*)dst);
+    utf8_to_utf16(strData, strLen, (char16_t*)dst, (size_t) utf16Len + 1);
 
     return NO_ERROR;
 }
