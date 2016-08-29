@@ -1153,6 +1153,12 @@ status_t Parcel::writeDupFileDescriptor(int fd)
     return err;
 }
 
+status_t Parcel::writeParcelFileDescriptor(int fd, bool takeOwnership)
+{
+    writeInt32(0);
+    return writeFileDescriptor(fd, takeOwnership);
+}
+
 status_t Parcel::writeUniqueFileDescriptor(const base::unique_fd& fd) {
     return writeDupFileDescriptor(fd.get());
 }
@@ -1984,7 +1990,6 @@ native_handle* Parcel::readNativeHandle() const
     return h;
 }
 
-
 int Parcel::readFileDescriptor() const
 {
     const flat_binder_object* flat = readObject(true);
@@ -1994,6 +1999,17 @@ int Parcel::readFileDescriptor() const
     }
 
     return BAD_TYPE;
+}
+
+int Parcel::readParcelFileDescriptor() const
+{
+    int32_t hasComm = readInt32();
+    int fd = readFileDescriptor();
+    if (hasComm != 0) {
+        // skip
+        readFileDescriptor();
+    }
+    return fd;
 }
 
 status_t Parcel::readUniqueFileDescriptor(base::unique_fd* val) const

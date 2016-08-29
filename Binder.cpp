@@ -21,6 +21,7 @@
 #include <binder/BpBinder.h>
 #include <binder/IInterface.h>
 #include <binder/IResultReceiver.h>
+#include <binder/IShellCallback.h>
 #include <binder/Parcel.h>
 
 #include <stdio.h>
@@ -62,7 +63,8 @@ bool IBinder::checkSubclass(const void* /*subclassID*/) const
 
 
 status_t IBinder::shellCommand(const sp<IBinder>& target, int in, int out, int err,
-    Vector<String16>& args, const sp<IResultReceiver>& resultReceiver)
+    Vector<String16>& args, const sp<IShellCallback>& callback,
+    const sp<IResultReceiver>& resultReceiver)
 {
     Parcel send;
     Parcel reply;
@@ -74,6 +76,7 @@ status_t IBinder::shellCommand(const sp<IBinder>& target, int in, int out, int e
     for (size_t i = 0; i < numArgs; i++) {
         send.writeString16(args[i]);
     }
+    send.writeStrongBinder(callback != NULL ? IInterface::asBinder(callback) : NULL);
     send.writeStrongBinder(resultReceiver != NULL ? IInterface::asBinder(resultReceiver) : NULL);
     return target->transact(SHELL_COMMAND_TRANSACTION, send, &reply);
 }
@@ -232,6 +235,8 @@ status_t BBinder::onTransact(
             for (int i = 0; i < argc && data.dataAvail() > 0; i++) {
                args.add(data.readString16());
             }
+            sp<IShellCallback> shellCallback = IShellCallback::asInterface(
+                    data.readStrongBinder());
             sp<IResultReceiver> resultReceiver = IResultReceiver::asInterface(
                     data.readStrongBinder());
 
