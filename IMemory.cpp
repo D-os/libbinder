@@ -17,21 +17,20 @@
 #define LOG_TAG "IMemory"
 
 #include <atomic>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
+#include <android/log.h>
 #include <binder/IMemory.h>
-#include <cutils/log.h>
-#include <utils/KeyedVector.h>
-#include <utils/threads.h>
 #include <binder/Parcel.h>
 #include <utils/CallStack.h>
+#include <utils/KeyedVector.h>
+#include <utils/threads.h>
 
 #define VERBOSE   0
 
