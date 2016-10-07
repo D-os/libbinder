@@ -46,7 +46,6 @@ cc_test {
         "-g",
         "-Wall",
         "-Werror",
-        "-std=c++11",
         "-Wno-missing-field-initializers",
         "-Wno-sign-compare",
         "-O3",
