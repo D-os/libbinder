@@ -51,3 +51,13 @@ cc_test {
         "-O3",
     ],
 }
+
+cc_test {
+    name: "binderTextOutputTest",
+    srcs: ["binderTextOutputTest.cpp"],
+    shared_libs: [
+        "libbinder",
+        "libutils",
+        "libbase",
+    ],
+}

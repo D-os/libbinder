@@ -229,7 +229,9 @@ TEST_F(BinderDriverInterfaceTest, Transaction) {
             .sender_euid = 0,
             .data_size = 0,
             .offsets_size = 0,
-            .data = {0, 0},
+            .data = {
+                .ptr = {0, 0},
+            },
         },
     };
     struct {
@@ -350,4 +352,3 @@ int main(int argc, char **argv) {
 
     return RUN_ALL_TESTS();
 }
-
