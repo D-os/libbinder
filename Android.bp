@@ -21,6 +21,7 @@ cc_library {
         "BpBinder.cpp",
         "BufferedTextOutput.cpp",
         "Debug.cpp",
+        "IActivityManager.cpp",
         "IAppOpsCallback.cpp",
         "IAppOpsService.cpp",
         "IBatteryStats.cpp",
