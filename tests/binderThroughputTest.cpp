@@ -170,6 +170,8 @@ void worker_fx(
     int num,
     int worker_count,
     int iterations,
+    int payload_size,
+    bool cs_pair,
     Pipe p)
 {
     // Create BinderWorkerService and for go.
@@ -182,22 +184,32 @@ void worker_fx(
     p.signal();
     p.wait();
 
+    // If client/server pairs, then half the workers are
+    // servers and half are clients
+    int server_count = cs_pair ? worker_count / 2 : worker_count;
+
     // Get references to other binder services.
     cout << "Created BinderWorker" << num << endl;
     (void)worker_count;
     vector<sp<IBinder> > workers;
-    for (int i = 0; i < worker_count; i++) {
+    for (int i = 0; i < server_count; i++) {
         if (num == i)
             continue;
         workers.push_back(serviceMgr->getService(generateServiceName(i)));
     }
 
-    // Run the benchmark.
+    // Run the benchmark if client
     ProcResults results;
     chrono::time_point<chrono::high_resolution_clock> start, end;
-    for (int i = 0; i < iterations; i++) {
-        int target = rand() % workers.size();
+    for (int i = 0; (!cs_pair || num >= server_count) && i < iterations; i++) {
         Parcel data, reply;
+        int target = cs_pair ? num % server_count : rand() % workers.size();
+	int sz = payload_size;
+
+	while (sz > sizeof(uint32_t)) {
+		data.writeInt32(0);
+		sz -= sizeof(uint32_t);
+	}
         start = chrono::high_resolution_clock::now();
         status_t ret = workers[target]->transact(BINDER_NOP, data, &reply);
         end = chrono::high_resolution_clock::now();
@@ -210,6 +222,7 @@ void worker_fx(
            exit(EXIT_FAILURE);
         }
     }
+
     // Signal completion to master and wait.
     p.signal();
     p.wait();
@@ -221,7 +234,7 @@ void worker_fx(
     exit(EXIT_SUCCESS);
 }
 
-Pipe make_worker(int num, int iterations, int worker_count)
+Pipe make_worker(int num, int iterations, int worker_count, int payload_size, bool cs_pair)
 {
     auto pipe_pair = Pipe::createPipePair();
     pid_t pid = fork();
@@ -230,7 +243,7 @@ Pipe make_worker(int num, int iterations, int worker_count)
         return move(get<0>(pipe_pair));
     } else {
         /* child */
-        worker_fx(num, worker_count, iterations, move(get<1>(pipe_pair)));
+        worker_fx(num, worker_count, iterations, payload_size, cs_pair, move(get<1>(pipe_pair)));
         /* never get here */
         return move(get<0>(pipe_pair));
     }
@@ -255,6 +268,8 @@ int main(int argc, char *argv[])
 {
     int workers = 2;
     int iterations = 10000;
+    int payload_size = 0;
+    bool cs_pair = false;
     (void)argc;
     (void)argv;
     vector<Pipe> pipes;
@@ -271,11 +286,21 @@ int main(int argc, char *argv[])
             i++;
             continue;
         }
+        if (string(argv[i]) == "-s") {
+            payload_size = atoi(argv[i+1]);
+	    i++;
+	}
+        if (string(argv[i]) == "-p") {
+		// client/server pairs instead of spreading
+		// requests to all workers. If true, half
+		// the workers become clients and half servers
+		cs_pair = true;
+	}
     }
 
     // Create all the workers and wait for them to spawn.
     for (int i = 0; i < workers; i++) {
-        pipes.push_back(make_worker(i, iterations, workers));
+        pipes.push_back(make_worker(i, iterations, workers, payload_size, cs_pair));
     }
     wait_all(pipes);
 
