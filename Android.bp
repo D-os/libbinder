@@ -71,6 +71,10 @@ cc_library {
         "libutils",
     ],
 
+    export_include_dirs: [
+        "include",
+    ],
+
     clang: true,
     sanitize: {
         misc_undefined: ["integer"],
