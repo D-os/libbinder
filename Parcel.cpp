@@ -438,7 +438,8 @@ status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
     if (numObjects > 0) {
         // grow objects
         if (mObjectsCapacity < mObjectsSize + numObjects) {
-            int newSize = ((mObjectsSize + numObjects)*3)/2;
+            size_t newSize = ((mObjectsSize + numObjects)*3)/2;
+            if (newSize*sizeof(binder_size_t) < mObjectsSize) return NO_MEMORY;   // overflow
             binder_size_t *objects =
                 (binder_size_t*)realloc(mObjects, newSize*sizeof(binder_size_t));
             if (objects == (binder_size_t*)0) {
@@ -941,6 +942,7 @@ restart_write:
     }
     if (!enoughObjects) {
         size_t newSize = ((mObjectsSize+2)*3)/2;
+        if (newSize*sizeof(binder_size_t) < mObjectsSize) return NO_MEMORY;   // overflow
         binder_size_t* objects = (binder_size_t*)realloc(mObjects, newSize*sizeof(binder_size_t));
         if (objects == NULL) return NO_MEMORY;
         mObjects = objects;
