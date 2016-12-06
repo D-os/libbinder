@@ -140,10 +140,12 @@ public:
     {
         unsigned n;
         for (n = 0; n < 5; n++){
+            if (n > 0) {
+                ALOGI("Waiting for service %s...", String8(name).string());
+                sleep(1);
+            }
             sp<IBinder> svc = checkService(name);
             if (svc != NULL) return svc;
-            ALOGI("Waiting for service %s...\n", String8(name).string());
-            sleep(1);
         }
         return NULL;
     }
