@@ -288,7 +288,7 @@ void BpMemoryHeap::assertMapped() const
                 mBase   = heap->mBase;
                 mSize   = heap->mSize;
                 mOffset = heap->mOffset;
-                int fd = dup(heap->mHeapId.load(memory_order_relaxed));
+                int fd = fcntl(heap->mHeapId.load(memory_order_relaxed), F_DUPFD_CLOEXEC, 0);
                 ALOGE_IF(fd==-1, "cannot dup fd=%d",
                         heap->mHeapId.load(memory_order_relaxed));
                 mHeapId.store(fd, memory_order_release);
@@ -323,7 +323,7 @@ void BpMemoryHeap::assertReallyMapped() const
 
         Mutex::Autolock _l(mLock);
         if (mHeapId.load(memory_order_relaxed) == -1) {
-            int fd = dup( parcel_fd );
+            int fd = fcntl(parcel_fd, F_DUPFD_CLOEXEC, 0);
             ALOGE_IF(fd==-1, "cannot dup fd=%d, size=%zd, err=%d (%s)",
                     parcel_fd, size, err, strerror(errno));
 

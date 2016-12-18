@@ -16,6 +16,9 @@
 
 #define LOG_TAG "ShellCallback"
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #include <binder/IShellCallback.h>
 
 #include <utils/Log.h>
@@ -44,7 +47,7 @@ public:
         remote()->transact(OP_OPEN_OUTPUT_FILE, data, &reply, 0);
         reply.readExceptionCode();
         int fd = reply.readParcelFileDescriptor();
-        return fd >= 0 ? dup(fd) : fd;
+        return fd >= 0 ? fcntl(fd, F_DUPFD_CLOEXEC, 0) : fd;
 
     }
 };

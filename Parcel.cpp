@@ -539,7 +539,7 @@ status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
                 // If this is a file descriptor, we need to dup it so the
                 // new Parcel now owns its own fd, and can declare that we
                 // officially know we have fds.
-                flat->handle = dup(flat->handle);
+                flat->handle = fcntl(flat->handle, F_DUPFD_CLOEXEC, 0);
                 flat->cookie = 1;
                 mHasFds = mFdsKnown = true;
                 if (!mAllowFds) {
@@ -1142,7 +1142,7 @@ status_t Parcel::writeFileDescriptor(int fd, bool takeOwnership)
 
 status_t Parcel::writeDupFileDescriptor(int fd)
 {
-    int dupFd = dup(fd);
+    int dupFd = fcntl(fd, F_DUPFD_CLOEXEC, 0);
     if (dupFd < 0) {
         return -errno;
     }
@@ -1972,7 +1972,7 @@ native_handle* Parcel::readNativeHandle() const
     }
 
     for (int i=0 ; err==NO_ERROR && i<numFds ; i++) {
-        h->data[i] = dup(readFileDescriptor());
+        h->data[i] = fcntl(readFileDescriptor(), F_DUPFD_CLOEXEC, 0);
         if (h->data[i] < 0) {
             for (int j = 0; j < i; j++) {
                 close(h->data[j]);
@@ -2020,7 +2020,7 @@ status_t Parcel::readUniqueFileDescriptor(base::unique_fd* val) const
         return BAD_TYPE;
     }
 
-    val->reset(dup(got));
+    val->reset(fcntl(got, F_DUPFD_CLOEXEC, 0));
 
     if (val->get() < 0) {
         return BAD_VALUE;
@@ -2095,9 +2095,9 @@ status_t Parcel::read(FlattenableHelperInterface& val) const
     status_t err = NO_ERROR;
     for (size_t i=0 ; i<fd_count && err==NO_ERROR ; i++) {
         int fd = this->readFileDescriptor();
-        if (fd < 0 || ((fds[i] = dup(fd)) < 0)) {
+        if (fd < 0 || ((fds[i] = fcntl(fd, F_DUPFD_CLOEXEC, 0)) < 0)) {
             err = BAD_VALUE;
-            ALOGE("dup() failed in Parcel::read, i is %zu, fds[i] is %d, fd_count is %zu, error: %s",
+            ALOGE("fcntl(F_DUPFD_CLOEXEC) failed in Parcel::read, i is %zu, fds[i] is %d, fd_count is %zu, error: %s",
                   i, fds[i], fd_count, strerror(fd < 0 ? -fd : errno));
             // Close all the file descriptors that were dup-ed.
             for (size_t j=0; j<i ;j++) {

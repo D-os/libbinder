@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #include <binder/IActivityManager.h>
 
 #include <binder/Parcel.h>
@@ -42,7 +45,7 @@ public:
                 // Success is indicated here by a nonzero int followed by the fd;
                 // failure by a zero int with no data following.
                 if (reply.readInt32() != 0) {
-                    fd = dup(reply.readParcelFileDescriptor());
+                    fd = fcntl(reply.readParcelFileDescriptor(), F_DUPFD_CLOEXEC, 0);
                 }
             } else {
                 // An exception was thrown back; fall through to return failure

@@ -83,7 +83,7 @@ MemoryHeapBase::MemoryHeapBase(int fd, size_t size, uint32_t flags, uint32_t off
 {
     const size_t pagesize = getpagesize();
     size = ((size + pagesize-1) & ~(pagesize-1));
-    mapfd(dup(fd), size, offset);
+    mapfd(fcntl(fd, F_DUPFD_CLOEXEC, 0), size, offset);
 }
 
 status_t MemoryHeapBase::init(int fd, void *base, int size, int flags, const char* device)
