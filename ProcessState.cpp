@@ -319,7 +319,8 @@ static int open_driver()
             fd = -1;
         }
         if (result != 0 || vers != BINDER_CURRENT_PROTOCOL_VERSION) {
-            ALOGE("Binder driver protocol does not match user space protocol!");
+          ALOGE("Binder driver protocol(%d) does not match user space protocol(%d)! ioctl() return value: %d",
+                vers, BINDER_CURRENT_PROTOCOL_VERSION, result);
             close(fd);
             fd = -1;
         }
