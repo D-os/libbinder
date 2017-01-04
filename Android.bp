@@ -45,6 +45,8 @@ cc_library {
         "Static.cpp",
         "Status.cpp",
         "TextOutput.cpp",
+        "IpPrefix.cpp",
+        "Value.cpp",
     ],
 
     cflags: [

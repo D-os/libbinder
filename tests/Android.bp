@@ -26,6 +26,15 @@ cc_test {
 }
 
 cc_test {
+    name: "binderValueTypeTest",
+    srcs: ["binderValueTypeTest.cpp"],
+    shared_libs: [
+        "libbinder",
+        "libutils",
+    ],
+}
+
+cc_test {
     name: "binderLibTest",
     srcs: ["binderLibTest.cpp"],
     shared_libs: [
