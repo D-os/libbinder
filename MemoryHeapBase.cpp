@@ -25,11 +25,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <android/log.h>
+#include <binder/MemoryHeapBase.h>
+#include <log/log.h>
 #include <cutils/ashmem.h>
 #include <cutils/atomic.h>
-
-#include <binder/MemoryHeapBase.h>
 
 namespace android {
 
