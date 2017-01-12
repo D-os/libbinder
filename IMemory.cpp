@@ -25,9 +25,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <android/log.h>
 #include <binder/IMemory.h>
 #include <binder/Parcel.h>
+#include <log/log.h>
 #include <utils/CallStack.h>
 #include <utils/KeyedVector.h>
 #include <utils/threads.h>
