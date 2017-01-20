@@ -104,6 +104,16 @@ status_t Status::readFromParcel(const Parcel& parcel) {
 
     if (mException == EX_SERVICE_SPECIFIC) {
         status = parcel.readInt32(&mErrorCode);
+    } else if (mException == EX_PARCELABLE) {
+        // Skip over the blob of Parcelable data
+        const int32_t header_start = parcel.dataPosition();
+        int32_t header_size;
+        status = parcel.readInt32(&header_size);
+        if (status != OK) {
+            setFromStatusT(status);
+            return status;
+        }
+        parcel.setDataPosition(header_start + header_size);
     }
     if (status != OK) {
         setFromStatusT(status);
@@ -127,11 +137,12 @@ status_t Status::writeToParcel(Parcel* parcel) const {
         return status;
     }
     status = parcel->writeString16(String16(mMessage));
-    if (mException != EX_SERVICE_SPECIFIC) {
-        // We have no more information to write.
-        return status;
+    if (mException == EX_SERVICE_SPECIFIC) {
+        status = parcel->writeInt32(mErrorCode);
+    } else if (mException == EX_PARCELABLE) {
+        // Sending Parcelable blobs currently not supported
+        status = parcel->writeInt32(0);
     }
-    status = parcel->writeInt32(mErrorCode);
     return status;
 }
 
