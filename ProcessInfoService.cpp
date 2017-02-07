@@ -57,6 +57,40 @@ status_t ProcessInfoService::getProcessStatesImpl(size_t length, /*in*/ int32_t*
     return TIMED_OUT;
 }
 
+status_t ProcessInfoService::getProcessStatesScoresImpl(size_t length,
+        /*in*/ int32_t* pids, /*out*/ int32_t* states,
+        /*out*/ int32_t *scores) {
+    status_t err = NO_ERROR;
+    sp<IProcessInfoService> pis;
+    mProcessInfoLock.lock();
+    pis = mProcessInfoService;
+    mProcessInfoLock.unlock();
+
+    for (int i = 0; i < BINDER_ATTEMPT_LIMIT; i++) {
+
+        if (pis != NULL) {
+            err = pis->getProcessStatesAndOomScoresFromPids(length,
+                    /*in*/ pids, /*out*/ states, /*out*/ scores);
+            if (err == NO_ERROR) return NO_ERROR; // success
+            if (IInterface::asBinder(pis)->isBinderAlive()) return err;
+        }
+        sleep(1);
+
+        mProcessInfoLock.lock();
+        if (pis == mProcessInfoService) {
+            updateBinderLocked();
+        }
+        pis = mProcessInfoService;
+        mProcessInfoLock.unlock();
+    }
+
+    ALOGW("%s: Could not retrieve process states and scores "
+            "from ProcessInfoService after %d retries.", __FUNCTION__,
+            BINDER_ATTEMPT_LIMIT);
+
+    return TIMED_OUT;
+}
+
 void ProcessInfoService::updateBinderLocked() {
     const sp<IServiceManager> sm(defaultServiceManager());
     if (sm != NULL) {
