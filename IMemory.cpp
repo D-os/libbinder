@@ -17,6 +17,8 @@
 #define LOG_TAG "IMemory"
 
 #include <atomic>
+#include <stdatomic.h>
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,6 +30,7 @@
 #include <binder/IMemory.h>
 #include <binder/Parcel.h>
 #include <log/log.h>
+
 #include <utils/CallStack.h>
 #include <utils/KeyedVector.h>
 #include <utils/threads.h>
