@@ -34,6 +34,7 @@ cc_library {
         "IResultReceiver.cpp",
         "IServiceManager.cpp",
         "IShellCallback.cpp",
+        "HalToken.cpp",
         "MemoryBase.cpp",
         "MemoryDealer.cpp",
         "MemoryHeapBase.cpp",
@@ -65,6 +66,8 @@ cc_library {
         "liblog",
         "libcutils",
         "libutils",
+        "libhidlbase",
+        "android.hidl.token@1.0",
     ],
     export_shared_lib_headers: [
         "libbase",
