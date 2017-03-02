@@ -36,6 +36,7 @@ public:
     virtual int openContentUri(const String16& stringUri)
     {
         Parcel data, reply;
+        data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
         data.writeString16(stringUri);
         status_t ret = remote()->transact(OPEN_CONTENT_URI_TRANSACTION, data, & reply);
         int fd = -1;
