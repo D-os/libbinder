@@ -71,7 +71,17 @@ sp<ProcessState> ProcessState::self()
     if (gProcess != NULL) {
         return gProcess;
     }
-    gProcess = new ProcessState;
+    gProcess = new ProcessState("/dev/binder");
+    return gProcess;
+}
+
+sp<ProcessState> ProcessState::initWithDriver(const char* driver)
+{
+    Mutex::Autolock _l(gProcessMutex);
+    if (gProcess != NULL) {
+        LOG_ALWAYS_FATAL("ProcessState was already initialized.");
+    }
+    gProcess = new ProcessState(driver);
     return gProcess;
 }
 
@@ -307,9 +317,9 @@ void ProcessState::giveThreadPoolName() {
     androidSetThreadName( makeBinderThreadName().string() );
 }
 
-static int open_driver()
+static int open_driver(const char *driver)
 {
-    int fd = open("/dev/binder", O_RDWR | O_CLOEXEC);
+    int fd = open(driver, O_RDWR | O_CLOEXEC);
     if (fd >= 0) {
         int vers = 0;
         status_t result = ioctl(fd, BINDER_VERSION, &vers);
@@ -330,13 +340,13 @@ static int open_driver()
             ALOGE("Binder ioctl to set max threads failed: %s", strerror(errno));
         }
     } else {
-        ALOGW("Opening '/dev/binder' failed: %s\n", strerror(errno));
+        ALOGW("Opening '%s' failed: %s\n", driver, strerror(errno));
     }
     return fd;
 }
 
-ProcessState::ProcessState()
-    : mDriverFD(open_driver())
+ProcessState::ProcessState(const char *driver)
+    : mDriverFD(open_driver(driver))
     , mVMStart(MAP_FAILED)
     , mThreadCountLock(PTHREAD_MUTEX_INITIALIZER)
     , mThreadCountDecrement(PTHREAD_COND_INITIALIZER)
