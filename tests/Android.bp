@@ -70,3 +70,13 @@ cc_test {
         "libbase",
     ],
 }
+
+cc_test {
+    name: "schd-dbg",
+    srcs: ["schd-dbg.cpp"],
+    shared_libs: [
+        "libbinder",
+        "libutils",
+        "libbase",
+    ],
+}
