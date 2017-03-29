@@ -45,6 +45,16 @@ public:
         return callParcel("writeBool", [&]() { return parcel->writeBool(b); });
     }
     template <typename T>
+    typename std::enable_if<std::is_base_of<Flattenable<T>, T>::value, status_t>::type read(
+            const Parcel& parcel, T* t) const {
+        return callParcel("read(Flattenable)", [&]() { return parcel.read(*t); });
+    }
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Flattenable<T>, T>::value, status_t>::type write(
+            Parcel* parcel, const T& t) const {
+        return callParcel("write(Flattenable)", [&]() { return parcel->write(t); });
+    }
+    template <typename T>
     typename std::enable_if<std::is_base_of<LightFlattenable<T>, T>::value, status_t>::type read(
             const Parcel& parcel, T* t) const {
         return callParcel("read(LightFlattenable)", [&]() { return parcel.read(*t); });
