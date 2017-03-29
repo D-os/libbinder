@@ -65,6 +65,25 @@ private:
     uint8_t mPadding[4] = {}; // Avoids a warning from -Wpadded
 };
 
+struct TestFlattenable : Flattenable<TestFlattenable> {
+    TestFlattenable() = default;
+    explicit TestFlattenable(int32_t v) : value(v) {}
+
+    // Flattenable protocol
+    size_t getFlattenedSize() const { return sizeof(value); }
+    size_t getFdCount() const { return 0; }
+    status_t flatten(void*& buffer, size_t& size, int*& /*fds*/, size_t& /*count*/) const {
+        FlattenableUtils::write(buffer, size, value);
+        return NO_ERROR;
+    }
+    status_t unflatten(void const*& buffer, size_t& size, int const*& /*fds*/, size_t& /*count*/) {
+        FlattenableUtils::read(buffer, size, value);
+        return NO_ERROR;
+    }
+
+    int32_t value = 0;
+};
+
 struct TestLightFlattenable : LightFlattenablePod<TestLightFlattenable> {
     TestLightFlattenable() = default;
     explicit TestLightFlattenable(int32_t v) : value(v) {}
@@ -142,6 +161,7 @@ public:
         SetDeathToken = IBinder::FIRST_CALL_TRANSACTION,
         ReturnsNoMemory,
         LogicalNot,
+        IncrementFlattenable,
         IncrementLightFlattenable,
         IncrementNoCopyNoMove,
         ToUpper,
@@ -161,6 +181,7 @@ public:
 
     // These are ordered according to their corresponding methods in SafeInterface::ParcelHandler
     virtual status_t logicalNot(bool a, bool* notA) const = 0;
+    virtual status_t increment(const TestFlattenable& a, TestFlattenable* aPlusOne) const = 0;
     virtual status_t increment(const TestLightFlattenable& a,
                                TestLightFlattenable* aPlusOne) const = 0;
     virtual status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const = 0;
@@ -191,6 +212,12 @@ public:
     status_t logicalNot(bool a, bool* notA) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         return callRemote<decltype(&ISafeInterfaceTest::logicalNot)>(Tag::LogicalNot, a, notA);
+    }
+    status_t increment(const TestFlattenable& a, TestFlattenable* aPlusOne) const override {
+        using Signature =
+                status_t (ISafeInterfaceTest::*)(const TestFlattenable&, TestFlattenable*) const;
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        return callRemote<Signature>(Tag::IncrementFlattenable, a, aPlusOne);
     }
     status_t increment(const TestLightFlattenable& a,
                        TestLightFlattenable* aPlusOne) const override {
@@ -263,6 +290,11 @@ public:
         *notA = !a;
         return NO_ERROR;
     }
+    status_t increment(const TestFlattenable& a, TestFlattenable* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        aPlusOne->value = a.value + 1;
+        return NO_ERROR;
+    }
     status_t increment(const TestLightFlattenable& a,
                        TestLightFlattenable* aPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
@@ -316,6 +348,11 @@ public:
             }
             case ISafeInterfaceTest::Tag::LogicalNot: {
                 return callLocal(data, reply, &ISafeInterfaceTest::logicalNot);
+            }
+            case ISafeInterfaceTest::Tag::IncrementFlattenable: {
+                using Signature = status_t (ISafeInterfaceTest::*)(const TestFlattenable& a,
+                                                                   TestFlattenable* aPlusOne) const;
+                return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
             }
             case ISafeInterfaceTest::Tag::IncrementLightFlattenable: {
                 using Signature =
@@ -426,6 +463,14 @@ TEST_F(SafeInterfaceTest, TestLogicalNot) {
     result = mSafeInterfaceTest->logicalNot(b, &notB);
     ASSERT_EQ(NO_ERROR, result);
     ASSERT_EQ(!b, notB);
+}
+
+TEST_F(SafeInterfaceTest, TestIncrementFlattenable) {
+    const TestFlattenable a{1};
+    TestFlattenable aPlusOne{0};
+    status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
+    ASSERT_EQ(NO_ERROR, result);
+    ASSERT_EQ(a.value + 1, aPlusOne.value);
 }
 
 TEST_F(SafeInterfaceTest, TestIncrementLightFlattenable) {
