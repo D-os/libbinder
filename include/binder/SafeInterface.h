@@ -121,6 +121,24 @@ public:
         }
     };
     template <typename I>
+    struct HandleInt<true, 8, I> {
+        static status_t read(const ParcelHandler& handler, const Parcel& parcel, I* i) {
+            return handler.callParcel("readInt64", [&]() { return parcel.readInt64(i); });
+        }
+        static status_t write(const ParcelHandler& handler, Parcel* parcel, I i) {
+            return handler.callParcel("writeInt64", [&]() { return parcel->writeInt64(i); });
+        }
+    };
+    template <typename I>
+    struct HandleInt<false, 8, I> {
+        static status_t read(const ParcelHandler& handler, const Parcel& parcel, I* i) {
+            return handler.callParcel("readUint64", [&]() { return parcel.readUint64(i); });
+        }
+        static status_t write(const ParcelHandler& handler, Parcel* parcel, I i) {
+            return handler.callParcel("writeUint64", [&]() { return parcel->writeUint64(i); });
+        }
+    };
+    template <typename I>
     typename std::enable_if<std::is_integral<I>::value, status_t>::type read(const Parcel& parcel,
                                                                              I* i) const {
         return HandleInt<std::is_signed<I>::value, sizeof(I), I>::read(*this, parcel, i);

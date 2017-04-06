@@ -168,6 +168,8 @@ public:
         CallMeBack,
         IncrementInt32,
         IncrementUint32,
+        IncrementInt64,
+        IncrementUint64,
         IncrementTwo,
         Last,
     };
@@ -190,6 +192,8 @@ public:
     virtual void callMeBack(const sp<ICallback>& callback, int32_t a) const = 0;
     virtual status_t increment(int32_t a, int32_t* aPlusOne) const = 0;
     virtual status_t increment(uint32_t a, uint32_t* aPlusOne) const = 0;
+    virtual status_t increment(int64_t a, int64_t* aPlusOne) const = 0;
+    virtual status_t increment(uint64_t a, uint64_t* aPlusOne) const = 0;
 
     // This tests that input/output parameter interleaving works correctly
     virtual status_t increment(int32_t a, int32_t* aPlusOne, int32_t b,
@@ -250,6 +254,16 @@ public:
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         using Signature = status_t (ISafeInterfaceTest::*)(uint32_t, uint32_t*) const;
         return callRemote<Signature>(Tag::IncrementUint32, a, aPlusOne);
+    }
+    status_t increment(int64_t a, int64_t* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        using Signature = status_t (ISafeInterfaceTest::*)(int64_t, int64_t*) const;
+        return callRemote<Signature>(Tag::IncrementInt64, a, aPlusOne);
+    }
+    status_t increment(uint64_t a, uint64_t* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        using Signature = status_t (ISafeInterfaceTest::*)(uint64_t, uint64_t*) const;
+        return callRemote<Signature>(Tag::IncrementUint64, a, aPlusOne);
     }
     status_t increment(int32_t a, int32_t* aPlusOne, int32_t b, int32_t* bPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
@@ -326,6 +340,16 @@ public:
         *aPlusOne = a + 1;
         return NO_ERROR;
     }
+    status_t increment(int64_t a, int64_t* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        *aPlusOne = a + 1;
+        return NO_ERROR;
+    }
+    status_t increment(uint64_t a, uint64_t* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        *aPlusOne = a + 1;
+        return NO_ERROR;
+    }
     status_t increment(int32_t a, int32_t* aPlusOne, int32_t b, int32_t* bPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         *aPlusOne = a + 1;
@@ -377,6 +401,14 @@ public:
             }
             case ISafeInterfaceTest::Tag::IncrementUint32: {
                 using Signature = status_t (ISafeInterfaceTest::*)(uint32_t, uint32_t*) const;
+                return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
+            }
+            case ISafeInterfaceTest::Tag::IncrementInt64: {
+                using Signature = status_t (ISafeInterfaceTest::*)(int64_t, int64_t*) const;
+                return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
+            }
+            case ISafeInterfaceTest::Tag::IncrementUint64: {
+                using Signature = status_t (ISafeInterfaceTest::*)(uint64_t, uint64_t*) const;
                 return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
             }
             case ISafeInterfaceTest::Tag::IncrementTwo: {
@@ -539,6 +571,22 @@ TEST_F(SafeInterfaceTest, TestIncrementInt32) {
 TEST_F(SafeInterfaceTest, TestIncrementUint32) {
     const uint32_t a = 1;
     uint32_t aPlusOne = 0;
+    status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
+    ASSERT_EQ(NO_ERROR, result);
+    ASSERT_EQ(a + 1, aPlusOne);
+}
+
+TEST_F(SafeInterfaceTest, TestIncrementInt64) {
+    const int64_t a = 1;
+    int64_t aPlusOne = 0;
+    status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
+    ASSERT_EQ(NO_ERROR, result);
+    ASSERT_EQ(a + 1, aPlusOne);
+}
+
+TEST_F(SafeInterfaceTest, TestIncrementUint64) {
+    const uint64_t a = 1;
+    uint64_t aPlusOne = 0;
     status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
     ASSERT_EQ(NO_ERROR, result);
     ASSERT_EQ(a + 1, aPlusOne);
