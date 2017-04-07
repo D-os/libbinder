@@ -26,6 +26,8 @@
 #include <utils/CallStack.h>
 #endif
 
+#include <utils/NativeHandle.h>
+
 #include <functional>
 #include <type_traits>
 
@@ -87,6 +89,18 @@ public:
     typename std::enable_if<std::is_base_of<LightFlattenable<T>, T>::value, status_t>::type write(
             Parcel* parcel, const T& t) const {
         return callParcel("write(LightFlattenable)", [&]() { return parcel->write(t); });
+    }
+    template <typename NH>
+    typename std::enable_if<std::is_same<NH, sp<NativeHandle>>::value, status_t>::type read(
+            const Parcel& parcel, NH* nh) {
+        *nh = NativeHandle::create(parcel.readNativeHandle(), true);
+        return NO_ERROR;
+    }
+    template <typename NH>
+    typename std::enable_if<std::is_same<NH, sp<NativeHandle>>::value, status_t>::type write(
+            Parcel* parcel, const NH& nh) {
+        return callParcel("write(sp<NativeHandle>)",
+                          [&]() { return parcel->writeNativeHandle(nh->handle()); });
     }
     template <typename T>
     typename std::enable_if<std::is_base_of<Parcelable, T>::value, status_t>::type read(

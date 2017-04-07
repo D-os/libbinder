@@ -29,8 +29,13 @@
 #pragma clang diagnostic pop
 
 #include <utils/LightRefBase.h>
+#include <utils/NativeHandle.h>
+
+#include <cutils/native_handle.h>
 
 #include <optional>
+
+#include <sys/eventfd.h>
 
 using namespace std::chrono_literals; // NOLINT - google-build-using-namespace
 
@@ -197,6 +202,7 @@ public:
         IncrementFlattenable,
         IncrementLightFlattenable,
         IncrementLightRefBaseFlattenable,
+        IncrementNativeHandle,
         IncrementNoCopyNoMove,
         ToUpper,
         CallMeBack,
@@ -223,6 +229,7 @@ public:
                                TestLightFlattenable* aPlusOne) const = 0;
     virtual status_t increment(const sp<TestLightRefBaseFlattenable>& a,
                                sp<TestLightRefBaseFlattenable>* aPlusOne) const = 0;
+    virtual status_t increment(const sp<NativeHandle>& a, sp<NativeHandle>* aPlusOne) const = 0;
     virtual status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const = 0;
     virtual status_t toUpper(const String8& str, String8* upperStr) const = 0;
     // As mentioned above, sp<IBinder> is already tested by setDeathToken
@@ -276,6 +283,12 @@ public:
         using Signature = status_t (ISafeInterfaceTest::*)(const sp<TestLightRefBaseFlattenable>&,
                                                            sp<TestLightRefBaseFlattenable>*) const;
         return callRemote<Signature>(Tag::IncrementLightRefBaseFlattenable, a, aPlusOne);
+    }
+    status_t increment(const sp<NativeHandle>& a, sp<NativeHandle>* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        using Signature =
+                status_t (ISafeInterfaceTest::*)(const sp<NativeHandle>&, sp<NativeHandle>*) const;
+        return callRemote<Signature>(Tag::IncrementNativeHandle, a, aPlusOne);
     }
     status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
@@ -373,6 +386,22 @@ public:
         *aPlusOne = new TestLightRefBaseFlattenable(a->value + 1);
         return NO_ERROR;
     }
+    status_t increment(const sp<NativeHandle>& a, sp<NativeHandle>* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        native_handle* rawHandle = native_handle_create(1 /*numFds*/, 1 /*numInts*/);
+        if (rawHandle == nullptr) return NO_MEMORY;
+
+        // Copy the fd over directly
+        rawHandle->data[0] = dup(a->handle()->data[0]);
+
+        // Increment the int
+        rawHandle->data[1] = a->handle()->data[1] + 1;
+
+        // This cannot fail, as it is just the sp<NativeHandle> taking responsibility for closing
+        // the native_handle when it goes out of scope
+        *aPlusOne = NativeHandle::create(rawHandle, true);
+        return NO_ERROR;
+    }
     status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         aPlusOne->setValue(a.getValue() + 1);
@@ -449,6 +478,11 @@ public:
                 using Signature =
                         status_t (ISafeInterfaceTest::*)(const sp<TestLightRefBaseFlattenable>&,
                                                          sp<TestLightRefBaseFlattenable>*) const;
+                return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
+            }
+            case ISafeInterfaceTest::Tag::IncrementNativeHandle: {
+                using Signature = status_t (ISafeInterfaceTest::*)(const sp<NativeHandle>&,
+                                                                   sp<NativeHandle>*) const;
                 return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
             }
             case ISafeInterfaceTest::Tag::IncrementNoCopyNoMove: {
@@ -595,6 +629,47 @@ TEST_F(SafeInterfaceTest, TestIncrementLightRefBaseFlattenable) {
     ASSERT_EQ(NO_ERROR, result);
     ASSERT_NE(nullptr, aPlusOne.get());
     ASSERT_EQ(a->value + 1, aPlusOne->value);
+}
+
+namespace { // Anonymous namespace
+
+bool fdsAreEquivalent(int a, int b) {
+    struct stat statA {};
+    struct stat statB {};
+    if (fstat(a, &statA) != 0) return false;
+    if (fstat(b, &statB) != 0) return false;
+    return (statA.st_dev == statB.st_dev) && (statA.st_ino == statB.st_ino);
+}
+
+} // Anonymous namespace
+
+TEST_F(SafeInterfaceTest, TestIncrementNativeHandle) {
+    // Create an fd we can use to send and receive from the remote process
+    base::unique_fd eventFd{eventfd(0 /*initval*/, 0 /*flags*/)};
+    ASSERT_NE(-1, eventFd);
+
+    // Determine the maximum number of fds this process can have open
+    struct rlimit limit {};
+    ASSERT_EQ(0, getrlimit(RLIMIT_NOFILE, &limit));
+    uint32_t maxFds = static_cast<uint32_t>(limit.rlim_cur);
+
+    // Perform this test enough times to rule out fd leaks
+    for (uint32_t iter = 0; iter < (2 * maxFds); ++iter) {
+        native_handle* handle = native_handle_create(1 /*numFds*/, 1 /*numInts*/);
+        ASSERT_NE(nullptr, handle);
+        handle->data[0] = dup(eventFd.get());
+        handle->data[1] = 1;
+
+        // This cannot fail, as it is just the sp<NativeHandle> taking responsibility for closing
+        // the native_handle when it goes out of scope
+        sp<NativeHandle> a = NativeHandle::create(handle, true);
+
+        sp<NativeHandle> aPlusOne;
+        status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
+        ASSERT_EQ(NO_ERROR, result);
+        ASSERT_TRUE(fdsAreEquivalent(a->handle()->data[0], aPlusOne->handle()->data[0]));
+        ASSERT_EQ(a->handle()->data[1] + 1, aPlusOne->handle()->data[1]);
+    }
 }
 
 TEST_F(SafeInterfaceTest, TestIncrementNoCopyNoMove) {
