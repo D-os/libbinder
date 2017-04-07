@@ -44,6 +44,19 @@ public:
     status_t write(Parcel* parcel, bool b) const {
         return callParcel("writeBool", [&]() { return parcel->writeBool(b); });
     }
+    template <typename E>
+    typename std::enable_if<std::is_enum<E>::value, status_t>::type read(const Parcel& parcel,
+                                                                         E* e) const {
+        typename std::underlying_type<E>::type u{};
+        status_t result = read(parcel, &u);
+        *e = static_cast<E>(u);
+        return result;
+    }
+    template <typename E>
+    typename std::enable_if<std::is_enum<E>::value, status_t>::type write(Parcel* parcel,
+                                                                          E e) const {
+        return write(parcel, static_cast<typename std::underlying_type<E>::type>(e));
+    }
     template <typename T>
     typename std::enable_if<std::is_base_of<Flattenable<T>, T>::value, status_t>::type read(
             const Parcel& parcel, T* t) const {

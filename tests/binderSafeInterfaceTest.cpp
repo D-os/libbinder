@@ -37,6 +37,12 @@ using namespace std::chrono_literals; // NOLINT - google-build-using-namespace
 namespace android {
 namespace tests {
 
+enum class TestEnum : uint32_t {
+    INVALID = 0,
+    INITIAL = 1,
+    FINAL = 2,
+};
+
 // This class serves two purposes:
 //   1) It ensures that the implementation doesn't require copying or moving the data (for
 //      efficiency purposes)
@@ -187,6 +193,7 @@ public:
         SetDeathToken = IBinder::FIRST_CALL_TRANSACTION,
         ReturnsNoMemory,
         LogicalNot,
+        ModifyEnum,
         IncrementFlattenable,
         IncrementLightFlattenable,
         IncrementLightRefBaseFlattenable,
@@ -210,6 +217,7 @@ public:
 
     // These are ordered according to their corresponding methods in SafeInterface::ParcelHandler
     virtual status_t logicalNot(bool a, bool* notA) const = 0;
+    virtual status_t modifyEnum(TestEnum a, TestEnum* b) const = 0;
     virtual status_t increment(const TestFlattenable& a, TestFlattenable* aPlusOne) const = 0;
     virtual status_t increment(const TestLightFlattenable& a,
                                TestLightFlattenable* aPlusOne) const = 0;
@@ -245,6 +253,10 @@ public:
     status_t logicalNot(bool a, bool* notA) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         return callRemote<decltype(&ISafeInterfaceTest::logicalNot)>(Tag::LogicalNot, a, notA);
+    }
+    status_t modifyEnum(TestEnum a, TestEnum* b) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        return callRemote<decltype(&ISafeInterfaceTest::modifyEnum)>(Tag::ModifyEnum, a, b);
     }
     status_t increment(const TestFlattenable& a, TestFlattenable* aPlusOne) const override {
         using Signature =
@@ -339,6 +351,11 @@ public:
         *notA = !a;
         return NO_ERROR;
     }
+    status_t modifyEnum(TestEnum a, TestEnum* b) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        *b = (a == TestEnum::INITIAL) ? TestEnum::FINAL : TestEnum::INVALID;
+        return NO_ERROR;
+    }
     status_t increment(const TestFlattenable& a, TestFlattenable* aPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         aPlusOne->value = a.value + 1;
@@ -413,6 +430,9 @@ public:
             }
             case ISafeInterfaceTest::Tag::LogicalNot: {
                 return callLocal(data, reply, &ISafeInterfaceTest::logicalNot);
+            }
+            case ISafeInterfaceTest::Tag::ModifyEnum: {
+                return callLocal(data, reply, &ISafeInterfaceTest::modifyEnum);
             }
             case ISafeInterfaceTest::Tag::IncrementFlattenable: {
                 using Signature = status_t (ISafeInterfaceTest::*)(const TestFlattenable& a,
@@ -542,6 +562,14 @@ TEST_F(SafeInterfaceTest, TestLogicalNot) {
     result = mSafeInterfaceTest->logicalNot(b, &notB);
     ASSERT_EQ(NO_ERROR, result);
     ASSERT_EQ(!b, notB);
+}
+
+TEST_F(SafeInterfaceTest, TestModifyEnum) {
+    const TestEnum a = TestEnum::INITIAL;
+    TestEnum b = TestEnum::INVALID;
+    status_t result = mSafeInterfaceTest->modifyEnum(a, &b);
+    ASSERT_EQ(NO_ERROR, result);
+    ASSERT_EQ(TestEnum::FINAL, b);
 }
 
 TEST_F(SafeInterfaceTest, TestIncrementFlattenable) {
