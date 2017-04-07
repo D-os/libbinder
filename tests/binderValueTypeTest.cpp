@@ -106,6 +106,6 @@ TEST(ValueType, HandlesSwap) {
     value_a.swap(value_b);
     ASSERT_FALSE(value_b.empty());
     ASSERT_TRUE(value_a.empty());
-    ASSERT_TRUE(value_a.getInt(&int_x));
+    ASSERT_TRUE(value_b.getInt(&int_x));
     ASSERT_EQ(31337, int_x);
 }
