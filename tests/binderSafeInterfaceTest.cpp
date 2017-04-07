@@ -28,6 +28,8 @@
 #include <gtest/gtest.h>
 #pragma clang diagnostic pop
 
+#include <utils/LightRefBase.h>
+
 #include <optional>
 
 using namespace std::chrono_literals; // NOLINT - google-build-using-namespace
@@ -87,6 +89,30 @@ struct TestFlattenable : Flattenable<TestFlattenable> {
 struct TestLightFlattenable : LightFlattenablePod<TestLightFlattenable> {
     TestLightFlattenable() = default;
     explicit TestLightFlattenable(int32_t v) : value(v) {}
+    int32_t value = 0;
+};
+
+// It seems like this should be able to inherit from TestFlattenable (to avoid duplicating code),
+// but the SafeInterface logic can't easily be extended to find an indirect Flattenable<T>
+// base class
+class TestLightRefBaseFlattenable : public Flattenable<TestLightRefBaseFlattenable>,
+                                    public LightRefBase<TestLightRefBaseFlattenable> {
+public:
+    TestLightRefBaseFlattenable() = default;
+    explicit TestLightRefBaseFlattenable(int32_t v) : value(v) {}
+
+    // Flattenable protocol
+    size_t getFlattenedSize() const { return sizeof(value); }
+    size_t getFdCount() const { return 0; }
+    status_t flatten(void*& buffer, size_t& size, int*& /*fds*/, size_t& /*count*/) const {
+        FlattenableUtils::write(buffer, size, value);
+        return NO_ERROR;
+    }
+    status_t unflatten(void const*& buffer, size_t& size, int const*& /*fds*/, size_t& /*count*/) {
+        FlattenableUtils::read(buffer, size, value);
+        return NO_ERROR;
+    }
+
     int32_t value = 0;
 };
 
@@ -163,6 +189,7 @@ public:
         LogicalNot,
         IncrementFlattenable,
         IncrementLightFlattenable,
+        IncrementLightRefBaseFlattenable,
         IncrementNoCopyNoMove,
         ToUpper,
         CallMeBack,
@@ -186,6 +213,8 @@ public:
     virtual status_t increment(const TestFlattenable& a, TestFlattenable* aPlusOne) const = 0;
     virtual status_t increment(const TestLightFlattenable& a,
                                TestLightFlattenable* aPlusOne) const = 0;
+    virtual status_t increment(const sp<TestLightRefBaseFlattenable>& a,
+                               sp<TestLightRefBaseFlattenable>* aPlusOne) const = 0;
     virtual status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const = 0;
     virtual status_t toUpper(const String8& str, String8* upperStr) const = 0;
     // As mentioned above, sp<IBinder> is already tested by setDeathToken
@@ -229,6 +258,12 @@ public:
                                                            TestLightFlattenable*) const;
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         return callRemote<Signature>(Tag::IncrementLightFlattenable, a, aPlusOne);
+    }
+    status_t increment(const sp<TestLightRefBaseFlattenable>& a,
+                       sp<TestLightRefBaseFlattenable>* aPlusOne) const override {
+        using Signature = status_t (ISafeInterfaceTest::*)(const sp<TestLightRefBaseFlattenable>&,
+                                                           sp<TestLightRefBaseFlattenable>*) const;
+        return callRemote<Signature>(Tag::IncrementLightRefBaseFlattenable, a, aPlusOne);
     }
     status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
@@ -315,6 +350,12 @@ public:
         aPlusOne->value = a.value + 1;
         return NO_ERROR;
     }
+    status_t increment(const sp<TestLightRefBaseFlattenable>& a,
+                       sp<TestLightRefBaseFlattenable>* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        *aPlusOne = new TestLightRefBaseFlattenable(a->value + 1);
+        return NO_ERROR;
+    }
     status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         aPlusOne->setValue(a.getValue() + 1);
@@ -382,6 +423,12 @@ public:
                 using Signature =
                         status_t (ISafeInterfaceTest::*)(const TestLightFlattenable& a,
                                                          TestLightFlattenable* aPlusOne) const;
+                return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
+            }
+            case ISafeInterfaceTest::Tag::IncrementLightRefBaseFlattenable: {
+                using Signature =
+                        status_t (ISafeInterfaceTest::*)(const sp<TestLightRefBaseFlattenable>&,
+                                                         sp<TestLightRefBaseFlattenable>*) const;
                 return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
             }
             case ISafeInterfaceTest::Tag::IncrementNoCopyNoMove: {
@@ -511,6 +558,15 @@ TEST_F(SafeInterfaceTest, TestIncrementLightFlattenable) {
     status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
     ASSERT_EQ(NO_ERROR, result);
     ASSERT_EQ(a.value + 1, aPlusOne.value);
+}
+
+TEST_F(SafeInterfaceTest, TestIncrementLightRefBaseFlattenable) {
+    sp<TestLightRefBaseFlattenable> a = new TestLightRefBaseFlattenable{1};
+    sp<TestLightRefBaseFlattenable> aPlusOne;
+    status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
+    ASSERT_EQ(NO_ERROR, result);
+    ASSERT_NE(nullptr, aPlusOne.get());
+    ASSERT_EQ(a->value + 1, aPlusOne->value);
 }
 
 TEST_F(SafeInterfaceTest, TestIncrementNoCopyNoMove) {

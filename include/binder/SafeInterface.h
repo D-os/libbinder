@@ -55,6 +55,17 @@ public:
         return callParcel("write(Flattenable)", [&]() { return parcel->write(t); });
     }
     template <typename T>
+    typename std::enable_if<std::is_base_of<Flattenable<T>, T>::value, status_t>::type read(
+            const Parcel& parcel, sp<T>* t) const {
+        *t = new T{};
+        return callParcel("read(sp<Flattenable>)", [&]() { return parcel.read(*(t->get())); });
+    }
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Flattenable<T>, T>::value, status_t>::type write(
+            Parcel* parcel, const sp<T>& t) const {
+        return callParcel("write(sp<Flattenable>)", [&]() { return parcel->write(*(t.get())); });
+    }
+    template <typename T>
     typename std::enable_if<std::is_base_of<LightFlattenable<T>, T>::value, status_t>::type read(
             const Parcel& parcel, T* t) const {
         return callParcel("read(LightFlattenable)", [&]() { return parcel.read(*t); });
@@ -81,7 +92,8 @@ public:
         return callParcel("writeString8", [&]() { return parcel->writeString8(str); });
     }
     template <typename T>
-    status_t read(const Parcel& parcel, sp<T>* pointer) const {
+    typename std::enable_if<std::is_same<IBinder, T>::value, status_t>::type read(
+            const Parcel& parcel, sp<T>* pointer) const {
         return callParcel("readNullableStrongBinder",
                           [&]() { return parcel.readNullableStrongBinder(pointer); });
     }
@@ -90,6 +102,12 @@ public:
             Parcel* parcel, const sp<T>& pointer) const {
         return callParcel("writeStrongBinder",
                           [&]() { return parcel->writeStrongBinder(pointer); });
+    }
+    template <typename T>
+    typename std::enable_if<std::is_base_of<IInterface, T>::value, status_t>::type read(
+            const Parcel& parcel, sp<T>* pointer) const {
+        return callParcel("readNullableStrongBinder[IInterface]",
+                          [&]() { return parcel.readNullableStrongBinder(pointer); });
     }
     template <typename T>
     typename std::enable_if<std::is_base_of<IInterface, T>::value, status_t>::type write(
