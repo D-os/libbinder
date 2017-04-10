@@ -127,6 +127,24 @@ public:
     int32_t value = 0;
 };
 
+class TestParcelable : public Parcelable {
+public:
+    TestParcelable() = default;
+    explicit TestParcelable(int32_t value) : mValue(value) {}
+    TestParcelable(const TestParcelable& other) : TestParcelable(other.mValue) {}
+    TestParcelable(TestParcelable&& other) : TestParcelable(other.mValue) {}
+
+    // Parcelable interface
+    status_t writeToParcel(Parcel* parcel) const override { return parcel->writeInt32(mValue); }
+    status_t readFromParcel(const Parcel* parcel) override { return parcel->readInt32(&mValue); }
+
+    int32_t getValue() const { return mValue; }
+    void setValue(int32_t value) { mValue = value; }
+
+private:
+    int32_t mValue = 0;
+};
+
 class ExitOnDeath : public IBinder::DeathRecipient {
 public:
     ~ExitOnDeath() override = default;
@@ -204,6 +222,7 @@ public:
         IncrementLightRefBaseFlattenable,
         IncrementNativeHandle,
         IncrementNoCopyNoMove,
+        IncrementParcelableVector,
         ToUpper,
         CallMeBack,
         IncrementInt32,
@@ -231,6 +250,8 @@ public:
                                sp<TestLightRefBaseFlattenable>* aPlusOne) const = 0;
     virtual status_t increment(const sp<NativeHandle>& a, sp<NativeHandle>* aPlusOne) const = 0;
     virtual status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const = 0;
+    virtual status_t increment(const std::vector<TestParcelable>& a,
+                               std::vector<TestParcelable>* aPlusOne) const = 0;
     virtual status_t toUpper(const String8& str, String8* upperStr) const = 0;
     // As mentioned above, sp<IBinder> is already tested by setDeathToken
     virtual void callMeBack(const sp<ICallback>& callback, int32_t a) const = 0;
@@ -295,6 +316,13 @@ public:
         using Signature = status_t (ISafeInterfaceTest::*)(const NoCopyNoMove& a,
                                                            NoCopyNoMove* aPlusOne) const;
         return callRemote<Signature>(Tag::IncrementNoCopyNoMove, a, aPlusOne);
+    }
+    status_t increment(const std::vector<TestParcelable>& a,
+                       std::vector<TestParcelable>* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        using Signature = status_t (ISafeInterfaceTest::*)(const std::vector<TestParcelable>&,
+                                                           std::vector<TestParcelable>*);
+        return callRemote<Signature>(Tag::IncrementParcelableVector, a, aPlusOne);
     }
     status_t toUpper(const String8& str, String8* upperStr) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
@@ -407,6 +435,15 @@ public:
         aPlusOne->setValue(a.getValue() + 1);
         return NO_ERROR;
     }
+    status_t increment(const std::vector<TestParcelable>& a,
+                       std::vector<TestParcelable>* aPlusOne) const override {
+        ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
+        aPlusOne->resize(a.size());
+        for (size_t i = 0; i < a.size(); ++i) {
+            (*aPlusOne)[i].setValue(a[i].getValue() + 1);
+        }
+        return NO_ERROR;
+    }
     status_t toUpper(const String8& str, String8* upperStr) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
         *upperStr = str;
@@ -488,6 +525,12 @@ public:
             case ISafeInterfaceTest::Tag::IncrementNoCopyNoMove: {
                 using Signature = status_t (ISafeInterfaceTest::*)(const NoCopyNoMove& a,
                                                                    NoCopyNoMove* aPlusOne) const;
+                return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
+            }
+            case ISafeInterfaceTest::Tag::IncrementParcelableVector: {
+                using Signature =
+                        status_t (ISafeInterfaceTest::*)(const std::vector<TestParcelable>&,
+                                                         std::vector<TestParcelable>*) const;
                 return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
             }
             case ISafeInterfaceTest::Tag::ToUpper: {
@@ -678,6 +721,16 @@ TEST_F(SafeInterfaceTest, TestIncrementNoCopyNoMove) {
     status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
     ASSERT_EQ(NO_ERROR, result);
     ASSERT_EQ(a.getValue() + 1, aPlusOne.getValue());
+}
+
+TEST_F(SafeInterfaceTest, TestIncremementParcelableVector) {
+    const std::vector<TestParcelable> a{TestParcelable{1}, TestParcelable{2}};
+    std::vector<TestParcelable> aPlusOne;
+    status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
+    ASSERT_EQ(a.size(), aPlusOne.size());
+    for (size_t i = 0; i < a.size(); ++i) {
+        ASSERT_EQ(a[i].getValue() + 1, aPlusOne[i].getValue());
+    }
 }
 
 TEST_F(SafeInterfaceTest, TestToUpper) {

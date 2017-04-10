@@ -141,6 +141,17 @@ public:
             Parcel* parcel, const sp<T>& interface) const {
         return write(parcel, IInterface::asBinder(interface));
     }
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Parcelable, T>::value, status_t>::type read(
+            const Parcel& parcel, std::vector<T>* v) const {
+        return callParcel("readParcelableVector", [&]() { return parcel.readParcelableVector(v); });
+    }
+    template <typename T>
+    typename std::enable_if<std::is_base_of<Parcelable, T>::value, status_t>::type write(
+            Parcel* parcel, const std::vector<T>& v) const {
+        return callParcel("writeParcelableVector",
+                          [&]() { return parcel->writeParcelableVector(v); });
+    }
 
     // Templates to handle integral types. We use a struct template to require that the called
     // function exactly matches the signedness and size of the argument (e.g., the argument isn't
