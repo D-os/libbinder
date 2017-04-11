@@ -23,6 +23,7 @@
 #include <binder/Parcel.h>
 #include <utils/String8.h>
 #include <utils/SystemClock.h>
+#include <utils/CallStack.h>
 
 #include <private/binder/Static.h>
 
@@ -136,7 +137,12 @@ public:
         unsigned n;
         for (n = 0; n < 5; n++){
             if (n > 0) {
-                ALOGI("Waiting for service %s...", String8(name).string());
+                if (!strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder")) {
+                    ALOGI("Waiting for vendor service %s...", String8(name).string());
+                    CallStack stack(LOG_TAG);
+                } else {
+                    ALOGI("Waiting for service %s...", String8(name).string());
+                }
                 sleep(1);
             }
             sp<IBinder> svc = checkService(name);
