@@ -553,6 +553,14 @@ status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
     return err;
 }
 
+int Parcel::compareData(const Parcel& other) {
+    size_t size = dataSize();
+    if (size != other.dataSize()) {
+        return size < other.dataSize() ? -1 : 1;
+    }
+    return memcmp(data(), other.data(), size);
+}
+
 bool Parcel::allowFds() const
 {
     return mAllowFds;
