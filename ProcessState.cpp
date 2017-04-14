@@ -79,6 +79,11 @@ sp<ProcessState> ProcessState::initWithDriver(const char* driver)
 {
     Mutex::Autolock _l(gProcessMutex);
     if (gProcess != NULL) {
+        // Allow for initWithDriver to be called repeatedly with the same
+        // driver.
+        if (!strcmp(gProcess->getDriverName().c_str(), driver)) {
+            return gProcess;
+        }
         LOG_ALWAYS_FATAL("ProcessState was already initialized.");
     }
     gProcess = new ProcessState(driver);
