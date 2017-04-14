@@ -15,6 +15,9 @@
 cc_library {
     name: "libbinder",
 
+    // for vndbinder
+    vendor_available: true,
+
     srcs: [
         "AppOpsManager.cpp",
         "Binder.cpp",
