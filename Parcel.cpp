@@ -2540,8 +2540,16 @@ status_t Parcel::continueWrite(size_t desired)
             objectsSize = 0;
         } else {
             while (objectsSize > 0) {
-                if (mObjects[objectsSize-1] < desired)
+                if (mObjects[objectsSize-1] < desired) {
+                    // Check for an object being sliced
+                    if (desired < mObjects[objectsSize-1] + sizeof(flat_binder_object)) {
+                        ALOGE("Attempt to shrink Parcel would slice an objects allocated memory");
+                        return UNKNOWN_ERROR + 0xBADF10;
+                    }
                     break;
+                }
+                // STOPSHIP: Above code to be replaced with following commented code:
+                // if (mObjects[objectsSize-1] + sizeof(flat_binder_object) <= desired) break;
                 objectsSize--;
             }
         }
