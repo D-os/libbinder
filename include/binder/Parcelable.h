@@ -36,6 +36,9 @@ class Parcelable {
 public:
     virtual ~Parcelable() = default;
 
+    Parcelable() = default;
+    Parcelable(const Parcelable&) = default;
+
     // Write |this| parcelable to the given |parcel|.  Keep in mind that
     // implementations of writeToParcel must be manually kept in sync
     // with readFromParcel and the Java equivalent versions of these methods.
