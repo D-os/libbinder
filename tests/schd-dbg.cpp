@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <fstream>
 
 using namespace std;
 using namespace android;
@@ -41,6 +42,8 @@ vector<sp<IBinder> > workers;
 
 #define DUMP_PRICISION 3
 
+string trace_path = "/sys/kernel/debug/tracing";
+
 // the default value
 int no_process = 2;
 int iterations = 100;
@@ -48,6 +51,23 @@ int payload_size = 16;
 int no_inherent = 0;
 int no_sync = 0;
 int verbose = 0;
+int trace;
+
+bool traceIsOn() {
+  fstream file;
+  file.open(trace_path + "/tracing_on", ios::in);
+  char on;
+  file >> on;
+  file.close();
+  return on == '1';
+}
+
+void traceStop() {
+  ofstream file;
+  file.open(trace_path + "/tracing_on", ios::out | ios::trunc);
+  file << '0' << endl;
+  file.close();
+}
 
 // the deadline latency that we are interested in
 uint64_t deadline_us = 2500;
@@ -197,13 +217,29 @@ struct Results {
   uint64_t m_transactions = 0;
   uint64_t m_total_time = 0;
   uint64_t m_miss = 0;
-
+  bool tracing;
+  Results(bool _tracing) : tracing(_tracing) {
+  }
+  inline bool miss_deadline(uint64_t nano) {
+    return nano > deadline_us * 1000;
+  }
   void add_time(uint64_t nano) {
     m_best = min(nano, m_best);
     m_worst = max(nano, m_worst);
     m_transactions += 1;
     m_total_time += nano;
-    if (nano > deadline_us * 1000) m_miss++;
+    if (miss_deadline(nano)) m_miss++;
+    if (miss_deadline(nano) && tracing) {
+      // There might be multiple process pair running the test concurrently
+      // each may execute following statements and only the first one actually
+      // stop the trace and any traceStop() afterthen has no effect.
+      traceStop();
+      cout << endl;
+      cout << "deadline triggered: halt & stop trace" << endl;
+      cout << "log:" + trace_path + "/trace" << endl;
+      cout << endl;
+      exit(1);
+    }
   }
   void dump() {
     double best = (double)m_best / 1.0E6;
@@ -212,8 +248,9 @@ struct Results {
     // FIXME: libjson?
     cout << std::setprecision(DUMP_PRICISION) << "{ \"avg\":" << setw(5) << left
          << average << ", \"wst\":" << setw(5) << left << worst
-         << ", \"bst\":" << setw(5) << left << best << ", \"miss\":" << m_miss
-         << "}";
+         << ", \"bst\":" << setw(5) << left << best << ", \"miss\":" << setw(5)
+         << left << m_miss << ", \"meetR\":" << setw(3) << left
+         << (1.0 - (double)m_miss / m_transactions) << "}";
   }
 };
 
@@ -272,7 +309,7 @@ static void thread_transaction(Results* results_fifo) {
 void worker_fx(int num, int no_process, int iterations, int payload_size,
                Pipe p) {
   int dummy;
-  Results results_other, results_fifo;
+  Results results_other(false), results_fifo(trace);
 
   // Create BinderWorkerService and for go.
   ProcessState::self()->startThreadPool();
@@ -389,8 +426,28 @@ int main(int argc, char** argv) {
     }
     if (string(argv[i]) == "-v") {
       verbose = 1;
-      i++;
     }
+    // The -trace argument is used like that:
+    //
+    // First start trace with atrace command as usual
+    // >atrace --async_start sched freq
+    //
+    // then use schd-dbg with -trace arguments
+    //./schd-dbg -trace -deadline_us 2500
+    //
+    // This makes schd-dbg to stop trace once it detects a transaction
+    // duration over the deadline. By writing '0' to
+    // /sys/kernel/debug/tracing and halt the process. The tracelog is
+    // then available on /sys/kernel/debug/trace
+    if (string(argv[i]) == "-trace") {
+      trace = 1;
+    }
+  }
+  if (trace && !traceIsOn()) {
+    cout << "trace is not running" << endl;
+    cout << "check " << trace_path + "/tracing_on" << endl;
+    cout << "use atrace --async_start first" << endl;
+    exit(-1);
   }
   vector<Pipe> pipes;
   thread_dump("main");
