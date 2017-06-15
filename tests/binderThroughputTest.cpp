@@ -101,18 +101,21 @@ public:
 };
 
 static const uint32_t num_buckets = 128;
-static const uint64_t max_time_bucket = 50ull * 1000000;
-static const uint64_t time_per_bucket = max_time_bucket / num_buckets;
-static constexpr float time_per_bucket_ms = time_per_bucket / 1.0E6;
+static uint64_t max_time_bucket = 50ull * 1000000;
+static uint64_t time_per_bucket = max_time_bucket / num_buckets;
 
 struct ProcResults {
-    uint64_t m_best = max_time_bucket;
     uint64_t m_worst = 0;
     uint32_t m_buckets[num_buckets] = {0};
     uint64_t m_transactions = 0;
+    uint64_t m_long_transactions = 0;
     uint64_t m_total_time = 0;
+    uint64_t m_best = max_time_bucket;
 
     void add_time(uint64_t time) {
+        if (time > max_time_bucket) {
+            m_long_transactions++;
+        }
         m_buckets[min(time, max_time_bucket-1) / time_per_bucket] += 1;
         m_best = min(time, m_best);
         m_worst = max(time, m_worst);
@@ -127,16 +130,24 @@ struct ProcResults {
         ret.m_worst = max(a.m_worst, b.m_worst);
         ret.m_best = min(a.m_best, b.m_best);
         ret.m_transactions = a.m_transactions + b.m_transactions;
+        ret.m_long_transactions = a.m_long_transactions + b.m_long_transactions;
         ret.m_total_time = a.m_total_time + b.m_total_time;
         return ret;
     }
     void dump() {
+        if (m_long_transactions > 0) {
+            cout << (double)m_long_transactions / m_transactions << "% of transactions took longer "
+                "than estimated max latency. Consider setting -m to be higher than "
+                 << m_worst / 1000 << " microseconds" << endl;
+        }
+
         double best = (double)m_best / 1.0E6;
         double worst = (double)m_worst / 1.0E6;
         double average = (double)m_total_time / m_transactions / 1.0E6;
         cout << "average:" << average << "ms worst:" << worst << "ms best:" << best << "ms" << endl;
 
         uint64_t cur_total = 0;
+        float time_per_bucket_ms = time_per_bucket / 1.0E6;
         for (int i = 0; i < num_buckets; i++) {
             float cur_time = time_per_bucket_ms * i + 0.5f * time_per_bucket_ms;
             if ((cur_total < 0.5f * m_transactions) && (cur_total + m_buckets[i] >= 0.5f * m_transactions)) {
@@ -154,7 +165,6 @@ struct ProcResults {
             cur_total += m_buckets[i];
         }
         cout << endl;
-
     }
 };
 
@@ -166,13 +176,12 @@ String16 generateServiceName(int num)
     return serviceName;
 }
 
-void worker_fx(
-    int num,
-    int worker_count,
-    int iterations,
-    int payload_size,
-    bool cs_pair,
-    Pipe p)
+void worker_fx(int num,
+               int worker_count,
+               int iterations,
+               int payload_size,
+               bool cs_pair,
+               Pipe p)
 {
     // Create BinderWorkerService and for go.
     ProcessState::self()->startThreadPool();
@@ -204,12 +213,12 @@ void worker_fx(
     for (int i = 0; (!cs_pair || num >= server_count) && i < iterations; i++) {
         Parcel data, reply;
         int target = cs_pair ? num % server_count : rand() % workers.size();
-	int sz = payload_size;
+        int sz = payload_size;
 
-	while (sz > sizeof(uint32_t)) {
-		data.writeInt32(0);
-		sz -= sizeof(uint32_t);
-	}
+        while (sz > sizeof(uint32_t)) {
+            data.writeInt32(0);
+            sz -= sizeof(uint32_t);
+        }
         start = chrono::high_resolution_clock::now();
         status_t ret = workers[target]->transact(BINDER_NOP, data, &reply);
         end = chrono::high_resolution_clock::now();
@@ -264,46 +273,18 @@ void signal_all(vector<Pipe>& v)
     }
 }
 
-int main(int argc, char *argv[])
+void run_main(int iterations,
+              int workers,
+              int payload_size,
+              int cs_pair,
+              bool training_round=false)
 {
-    int workers = 2;
-    int iterations = 10000;
-    int payload_size = 0;
-    bool cs_pair = false;
-    (void)argc;
-    (void)argv;
     vector<Pipe> pipes;
-
-    // Parse arguments.
-    for (int i = 1; i < argc; i++) {
-        if (string(argv[i]) == "-w") {
-            workers = atoi(argv[i+1]);
-            i++;
-            continue;
-        }
-        if (string(argv[i]) == "-i") {
-            iterations = atoi(argv[i+1]);
-            i++;
-            continue;
-        }
-        if (string(argv[i]) == "-s") {
-            payload_size = atoi(argv[i+1]);
-	    i++;
-	}
-        if (string(argv[i]) == "-p") {
-		// client/server pairs instead of spreading
-		// requests to all workers. If true, half
-		// the workers become clients and half servers
-		cs_pair = true;
-	}
-    }
-
     // Create all the workers and wait for them to spawn.
     for (int i = 0; i < workers; i++) {
         pipes.push_back(make_worker(i, iterations, workers, payload_size, cs_pair));
     }
     wait_all(pipes);
-
 
     // Run the workers and wait for completion.
     chrono::time_point<chrono::high_resolution_clock> start, end;
@@ -326,7 +307,6 @@ int main(int argc, char *argv[])
         pipes[i].recv(tmp_results);
         tot_results = ProcResults::combine(tot_results, tmp_results);
     }
-    tot_results.dump();
 
     // Kill all the workers.
     cout << "killing workers" << endl;
@@ -338,5 +318,83 @@ int main(int argc, char *argv[])
             cout << "nonzero child status" << status << endl;
         }
     }
+    if (training_round) {
+        // sets max_time_bucket to 2 * m_worst from the training round.
+        // Also needs to adjust time_per_bucket accordingly.
+        max_time_bucket = 2 * tot_results.m_worst;
+        time_per_bucket = max_time_bucket / num_buckets;
+        cout << "Max latency during training: " << tot_results.m_worst / 1.0E6 << "ms" << endl;
+    } else {
+            tot_results.dump();
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    int workers = 2;
+    int iterations = 10000;
+    int payload_size = 0;
+    bool cs_pair = false;
+    bool training_round = false;
+    (void)argc;
+    (void)argv;
+
+    // Parse arguments.
+    for (int i = 1; i < argc; i++) {
+        if (string(argv[i]) == "--help") {
+            cout << "Usage: binderThroughputTest [OPTIONS]" << endl;
+            cout << "\t-i N    : Specify number of iterations." << endl;
+            cout << "\t-m N    : Specify expected max latency in microseconds." << endl;
+            cout << "\t-p      : Split workers into client/server pairs." << endl;
+            cout << "\t-s N    : Specify payload size." << endl;
+            cout << "\t-t N    : Run training round." << endl;
+            cout << "\t-w N    : Specify total number of workers." << endl;
+            return 0;
+        }
+        if (string(argv[i]) == "-w") {
+            workers = atoi(argv[i+1]);
+            i++;
+            continue;
+        }
+        if (string(argv[i]) == "-i") {
+            iterations = atoi(argv[i+1]);
+            i++;
+            continue;
+        }
+        if (string(argv[i]) == "-s") {
+            payload_size = atoi(argv[i+1]);
+            i++;
+        }
+        if (string(argv[i]) == "-p") {
+            // client/server pairs instead of spreading
+            // requests to all workers. If true, half
+            // the workers become clients and half servers
+            cs_pair = true;
+        }
+        if (string(argv[i]) == "-t") {
+            // Run one training round before actually collecting data
+            // to get an approximation of max latency.
+            training_round = true;
+        }
+        if (string(argv[i]) == "-m") {
+            // Caller specified the max latency in microseconds.
+            // No need to run training round in this case.
+            if (atoi(argv[i+1]) > 0) {
+                max_time_bucket = strtoull(argv[i+1], (char **)NULL, 10) * 1000;
+                i++;
+            } else {
+                cout << "Max latency -m must be positive." << endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    if (training_round) {
+        cout << "Start training round" << endl;
+        run_main(iterations, workers, payload_size, cs_pair, training_round=true);
+        cout << "Completed training round" << endl << endl;
+    }
+
+    run_main(iterations, workers, payload_size, cs_pair);
     return 0;
 }
