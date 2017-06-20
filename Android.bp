@@ -74,13 +74,18 @@ cc_library {
         "libcutils",
         "libutils",
     ],
+
+    header_libs: [
+        "libbinder_headers",
+    ],
+
     export_shared_lib_headers: [
         "libbase",
         "libutils",
     ],
 
-    export_include_dirs: [
-        "include",
+    export_header_lib_headers: [
+        "libbinder_headers",
     ],
 
     clang: true,
