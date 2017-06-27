@@ -15,6 +15,17 @@
 cc_library_headers {
     name: "libbinder_headers",
     export_include_dirs: ["include"],
+    vendor_available: true,
+    header_libs: [
+        "libbase_headers",
+        "libcutils_headers",
+        "libutils_headers",
+    ],
+    export_header_lib_headers: [
+        "libbase_headers",
+        "libcutils_headers",
+        "libutils_headers",
+    ],
 }
 
 cc_library {
@@ -74,9 +85,13 @@ cc_library {
         "libcutils",
         "libutils",
     ],
-    export_shared_lib_headers: [
-        "libbase",
-        "libutils",
+
+    header_libs: [
+        "libbinder_headers",
+    ],
+
+    export_header_lib_headers: [
+        "libbinder_headers",
     ],
 
     export_include_dirs: [
