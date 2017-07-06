@@ -42,6 +42,23 @@ cc_test {
 }
 
 cc_test {
+    name: "binderLibTest_IPC_32",
+    srcs: ["binderLibTest.cpp"],
+    shared_libs: [
+        "libbinder",
+        "libutils",
+    ],
+    compile_multilib: "32",
+    cflags: ["-DBINDER_IPC_32BIT=1"],
+}
+
+cc_test {
+    product_variables: {
+        binder32bit: {
+            cflags: ["-DBINDER_IPC_32BIT=1"],
+        },
+    },
+
     name: "binderLibTest",
     srcs: ["binderLibTest.cpp"],
     shared_libs: [
