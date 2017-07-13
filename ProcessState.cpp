@@ -90,6 +90,12 @@ sp<ProcessState> ProcessState::initWithDriver(const char* driver)
     return gProcess;
 }
 
+sp<ProcessState> ProcessState::selfOrNull()
+{
+    Mutex::Autolock _l(gProcessMutex);
+    return gProcess;
+}
+
 void ProcessState::setContextObject(const sp<IBinder>& object)
 {
     setContextObject(object, String16("default"));
@@ -174,6 +180,46 @@ bool ProcessState::becomeContextManager(context_check_func checkFunc, void* user
         }
     }
     return mManagesContexts;
+}
+
+// Get references to userspace objects held by the kernel binder driver
+// Writes up to count elements into buf, and returns the total number
+// of references the kernel has, which may be larger than count.
+// buf may be NULL if count is 0.  The pointers returned by this method
+// should only be used for debugging and not dereferenced, they may
+// already be invalid.
+ssize_t ProcessState::getKernelReferences(size_t buf_count, uintptr_t* buf)
+{
+    // TODO: remove these when they are defined by bionic's binder.h
+    struct binder_node_debug_info {
+        binder_uintptr_t ptr;
+        binder_uintptr_t cookie;
+        __u32 has_strong_ref;
+        __u32 has_weak_ref;
+    };
+#define BINDER_GET_NODE_DEBUG_INFO _IOWR('b', 11, struct binder_node_debug_info)
+
+    binder_node_debug_info info = {};
+
+    uintptr_t* end = buf ? buf + buf_count : NULL;
+    size_t count = 0;
+
+    do {
+        status_t result = ioctl(mDriverFD, BINDER_GET_NODE_DEBUG_INFO, &info);
+        if (result < 0) {
+            return -1;
+        }
+        if (info.ptr != 0) {
+            if (buf && buf < end)
+                *buf++ = info.ptr;
+            count++;
+            if (buf && buf < end)
+                *buf++ = info.cookie;
+            count++;
+        }
+    } while (info.ptr != 0);
+
+    return count;
 }
 
 ProcessState::handle_entry* ProcessState::lookupHandleLocked(int32_t handle)
