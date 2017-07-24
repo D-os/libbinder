@@ -32,6 +32,13 @@
 
 using namespace android;
 
+static ::testing::AssertionResult IsPageAligned(void *buf) {
+    if (((unsigned long)buf & ((unsigned long)PAGE_SIZE - 1)) == 0)
+        return ::testing::AssertionSuccess();
+    else
+        return ::testing::AssertionFailure() << buf << " is not page aligned";
+}
+
 static testing::Environment* binder_env;
 static char *binderservername;
 static char *binderserversuffix;
@@ -44,6 +51,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_REGISTER_SERVER,
     BINDER_LIB_TEST_ADD_SERVER,
     BINDER_LIB_TEST_CALL_BACK,
+    BINDER_LIB_TEST_CALL_BACK_VERIFY_BUF,
     BINDER_LIB_TEST_NOP_CALL_BACK,
     BINDER_LIB_TEST_GET_SELF_TRANSACTION,
     BINDER_LIB_TEST_GET_ID_TRANSACTION,
@@ -289,6 +297,7 @@ class BinderLibTestCallBack : public BBinder, public BinderLibTestEvent
     public:
         BinderLibTestCallBack()
             : m_result(NOT_ENOUGH_DATA)
+            , m_prev_end(NULL)
         {
         }
         status_t getResult(void)
@@ -308,12 +317,35 @@ class BinderLibTestCallBack : public BBinder, public BinderLibTestEvent
                 m_result = data.readInt32();
                 triggerEvent();
                 return NO_ERROR;
+            case BINDER_LIB_TEST_CALL_BACK_VERIFY_BUF: {
+                sp<IBinder> server;
+                int ret;
+                const uint8_t *buf = data.data();
+                size_t size = data.dataSize();
+                if (m_prev_end) {
+                    /* 64-bit kernel needs at most 8 bytes to align buffer end */
+                    EXPECT_LE((size_t)(buf - m_prev_end), (size_t)8);
+                } else {
+                    EXPECT_TRUE(IsPageAligned((void *)buf));
+                }
+
+                m_prev_end = buf + size + data.objectsCount() * sizeof(binder_size_t);
+
+                if (size > 0) {
+                    server = static_cast<BinderLibTestEnv *>(binder_env)->getServer();
+                    ret = server->transact(BINDER_LIB_TEST_INDIRECT_TRANSACTION,
+                                           data, reply);
+                    EXPECT_EQ(NO_ERROR, ret);
+                }
+                return NO_ERROR;
+            }
             default:
                 return UNKNOWN_TRANSACTION;
             }
         }
 
         status_t m_result;
+        const uint8_t *m_prev_end;
 };
 
 class TestDeathRecipient : public IBinder::DeathRecipient, public BinderLibTestEvent
@@ -791,6 +823,25 @@ TEST_F(BinderLibTest, FreedBinder) {
          */
         strong->handle = oldHandle;
     }
+}
+
+TEST_F(BinderLibTest, CheckNoHeaderMappedInUser) {
+    status_t ret;
+    Parcel data, reply;
+    sp<BinderLibTestCallBack> callBack = new BinderLibTestCallBack();
+    for (int i = 0; i < 2; i++) {
+        BinderLibTestBundle datai;
+        datai.appendFrom(&data, 0, data.dataSize());
+
+        data.freeData();
+        data.writeInt32(1);
+        data.writeStrongBinder(callBack);
+        data.writeInt32(BINDER_LIB_TEST_CALL_BACK_VERIFY_BUF);
+
+        datai.appendTo(&data);
+    }
+    ret = m_server->transact(BINDER_LIB_TEST_INDIRECT_TRANSACTION, data, &reply);
+    EXPECT_EQ(NO_ERROR, ret);
 }
 
 class BinderLibTestService : public BBinder
