@@ -66,7 +66,12 @@ cc_library {
         "TextOutput.cpp",
         "IpPrefix.cpp",
         "Value.cpp",
+        "aidl/android/content/pm/IPackageManagerNative.aidl",
     ],
+
+    aidl: {
+        export_aidl_headers: true,
+    },
 
     cflags: [
         "-Wall",
