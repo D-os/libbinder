@@ -33,6 +33,9 @@ cc_library {
 
     // for vndbinder
     vendor_available: true,
+    vndk: {
+        enabled: true,
+    },
 
     srcs: [
         "AppOpsManager.cpp",
