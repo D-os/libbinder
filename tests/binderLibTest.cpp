@@ -681,10 +681,10 @@ TEST_F(BinderLibTest, CheckHandleZeroBinderHighBitsZeroCookie) {
 
     const flat_binder_object *fb = reply.readObject(false);
     ASSERT_TRUE(fb != NULL);
-    EXPECT_EQ(fb->type, BINDER_TYPE_HANDLE);
-    EXPECT_EQ(ProcessState::self()->getStrongProxyForHandle(fb->handle), m_server);
-    EXPECT_EQ(fb->cookie, (binder_uintptr_t)0);
-    EXPECT_EQ(fb->binder >> 32, (binder_uintptr_t)0);
+    EXPECT_EQ(BINDER_TYPE_HANDLE, fb->type);
+    EXPECT_EQ(m_server, ProcessState::self()->getStrongProxyForHandle(fb->handle));
+    EXPECT_EQ((binder_uintptr_t)0, fb->cookie);
+    EXPECT_EQ((uint64_t)0, (uint64_t)fb->binder >> 32);
 }
 
 TEST_F(BinderLibTest, FreedBinder) {
