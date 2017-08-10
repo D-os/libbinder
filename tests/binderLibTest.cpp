@@ -265,17 +265,23 @@ class BinderLibTestEvent
             pthread_mutex_unlock(&m_waitMutex);
             return ret;
         }
+        pthread_t getTriggeringThread()
+        {
+            return m_triggeringThread;
+        }
     protected:
         void triggerEvent(void) {
             pthread_mutex_lock(&m_waitMutex);
             pthread_cond_signal(&m_waitCond);
             m_eventTriggered = true;
+            m_triggeringThread = pthread_self();
             pthread_mutex_unlock(&m_waitMutex);
         };
     private:
         pthread_mutex_t m_waitMutex;
         pthread_cond_t m_waitCond;
         bool m_eventTriggered;
+        pthread_t m_triggeringThread;
 };
 
 class BinderLibTestCallBack : public BBinder, public BinderLibTestEvent
@@ -604,6 +610,65 @@ TEST_F(BinderLibTest, DeathNotificationMultiple)
         ret = callBack[i]->getResult();
         EXPECT_EQ(NO_ERROR, ret);
     }
+}
+
+TEST_F(BinderLibTest, DeathNotificationThread)
+{
+    status_t ret;
+    sp<BinderLibTestCallBack> callback;
+    sp<IBinder> target = addServer();
+    ASSERT_TRUE(target != NULL);
+    sp<IBinder> client = addServer();
+    ASSERT_TRUE(client != NULL);
+
+    sp<TestDeathRecipient> testDeathRecipient = new TestDeathRecipient();
+
+    ret = target->linkToDeath(testDeathRecipient);
+    EXPECT_EQ(NO_ERROR, ret);
+
+    {
+        Parcel data, reply;
+        ret = target->transact(BINDER_LIB_TEST_EXIT_TRANSACTION, data, &reply, TF_ONE_WAY);
+        EXPECT_EQ(0, ret);
+    }
+
+    /* Make sure it's dead */
+    testDeathRecipient->waitEvent(5);
+
+    /* Now, pass the ref to another process and ask that process to
+     * call linkToDeath() on it, and wait for a response. This tests
+     * two things:
+     * 1) You still get death notifications when calling linkToDeath()
+     *    on a ref that is already dead when it was passed to you.
+     * 2) That death notifications are not directly pushed to the thread
+     *    registering them, but to the threadpool (proc workqueue) instead.
+     *
+     * 2) is tested because the thread handling BINDER_LIB_TEST_DEATH_TRANSACTION
+     * is blocked on a condition variable waiting for the death notification to be
+     * called; therefore, that thread is not available for handling proc work.
+     * So, if the death notification was pushed to the thread workqueue, the callback
+     * would never be called, and the test would timeout and fail.
+     *
+     * Note that we can't do this part of the test from this thread itself, because
+     * the binder driver would only push death notifications to the thread if
+     * it is a looper thread, which this thread is not.
+     *
+     * See b/23525545 for details.
+     */
+    {
+        Parcel data, reply;
+
+        callback = new BinderLibTestCallBack();
+        data.writeStrongBinder(target);
+        data.writeStrongBinder(callback);
+        ret = client->transact(BINDER_LIB_TEST_LINK_DEATH_TRANSACTION, data, &reply, TF_ONE_WAY);
+        EXPECT_EQ(NO_ERROR, ret);
+    }
+
+    ret = callback->waitEvent(5);
+    EXPECT_EQ(NO_ERROR, ret);
+    ret = callback->getResult();
+    EXPECT_EQ(NO_ERROR, ret);
 }
 
 TEST_F(BinderLibTest, PassFile) {
