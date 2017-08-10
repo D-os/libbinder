@@ -104,7 +104,7 @@ enum {
 void acquire_object(const sp<ProcessState>& proc,
     const flat_binder_object& obj, const void* who, size_t* outAshmemSize)
 {
-    switch (obj.type) {
+    switch (obj.hdr.type) {
         case BINDER_TYPE_BINDER:
             if (obj.binder) {
                 LOG_REFS("Parcel %p acquiring reference on local %p", who, obj.cookie);
@@ -140,7 +140,7 @@ void acquire_object(const sp<ProcessState>& proc,
         }
     }
 
-    ALOGD("Invalid object type 0x%08x", obj.type);
+    ALOGD("Invalid object type 0x%08x", obj.hdr.type);
 }
 
 void acquire_object(const sp<ProcessState>& proc,
@@ -152,7 +152,7 @@ void acquire_object(const sp<ProcessState>& proc,
 static void release_object(const sp<ProcessState>& proc,
     const flat_binder_object& obj, const void* who, size_t* outAshmemSize)
 {
-    switch (obj.type) {
+    switch (obj.hdr.type) {
         case BINDER_TYPE_BINDER:
             if (obj.binder) {
                 LOG_REFS("Parcel %p releasing reference on local %p", who, obj.cookie);
@@ -191,7 +191,7 @@ static void release_object(const sp<ProcessState>& proc,
         }
     }
 
-    ALOGE("Invalid object type 0x%08x", obj.type);
+    ALOGE("Invalid object type 0x%08x", obj.hdr.type);
 }
 
 void release_object(const sp<ProcessState>& proc,
@@ -227,17 +227,17 @@ status_t flatten_binder(const sp<ProcessState>& /*proc*/,
                 ALOGE("null proxy");
             }
             const int32_t handle = proxy ? proxy->handle() : 0;
-            obj.type = BINDER_TYPE_HANDLE;
+            obj.hdr.type = BINDER_TYPE_HANDLE;
             obj.binder = 0; /* Don't pass uninitialized stack data to a remote process */
             obj.handle = handle;
             obj.cookie = 0;
         } else {
-            obj.type = BINDER_TYPE_BINDER;
+            obj.hdr.type = BINDER_TYPE_BINDER;
             obj.binder = reinterpret_cast<uintptr_t>(local->getWeakRefs());
             obj.cookie = reinterpret_cast<uintptr_t>(local);
         }
     } else {
-        obj.type = BINDER_TYPE_BINDER;
+        obj.hdr.type = BINDER_TYPE_BINDER;
         obj.binder = 0;
         obj.cookie = 0;
     }
@@ -261,12 +261,12 @@ status_t flatten_binder(const sp<ProcessState>& /*proc*/,
                     ALOGE("null proxy");
                 }
                 const int32_t handle = proxy ? proxy->handle() : 0;
-                obj.type = BINDER_TYPE_WEAK_HANDLE;
+                obj.hdr.type = BINDER_TYPE_WEAK_HANDLE;
                 obj.binder = 0; /* Don't pass uninitialized stack data to a remote process */
                 obj.handle = handle;
                 obj.cookie = 0;
             } else {
-                obj.type = BINDER_TYPE_WEAK_BINDER;
+                obj.hdr.type = BINDER_TYPE_WEAK_BINDER;
                 obj.binder = reinterpret_cast<uintptr_t>(binder.get_refs());
                 obj.cookie = reinterpret_cast<uintptr_t>(binder.unsafe_get());
             }
@@ -281,13 +281,13 @@ status_t flatten_binder(const sp<ProcessState>& /*proc*/,
         // but we can't do that with the different reference counting
         // implementation we are using.
         ALOGE("Unable to unflatten Binder weak reference!");
-        obj.type = BINDER_TYPE_BINDER;
+        obj.hdr.type = BINDER_TYPE_BINDER;
         obj.binder = 0;
         obj.cookie = 0;
         return finish_flatten_binder(NULL, obj, out);
 
     } else {
-        obj.type = BINDER_TYPE_BINDER;
+        obj.hdr.type = BINDER_TYPE_BINDER;
         obj.binder = 0;
         obj.cookie = 0;
         return finish_flatten_binder(NULL, obj, out);
@@ -307,7 +307,7 @@ status_t unflatten_binder(const sp<ProcessState>& proc,
     const flat_binder_object* flat = in.readObject(false);
 
     if (flat) {
-        switch (flat->type) {
+        switch (flat->hdr.type) {
             case BINDER_TYPE_BINDER:
                 *out = reinterpret_cast<IBinder*>(flat->cookie);
                 return finish_unflatten_binder(NULL, *flat, in);
@@ -326,7 +326,7 @@ status_t unflatten_binder(const sp<ProcessState>& proc,
     const flat_binder_object* flat = in.readObject(false);
 
     if (flat) {
-        switch (flat->type) {
+        switch (flat->hdr.type) {
             case BINDER_TYPE_BINDER:
                 *out = reinterpret_cast<IBinder*>(flat->cookie);
                 return finish_unflatten_binder(NULL, *flat, in);
@@ -543,7 +543,7 @@ status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
                 = reinterpret_cast<flat_binder_object*>(mData + off);
             acquire_object(proc, *flat, this, &mOpenAshmemSize);
 
-            if (flat->type == BINDER_TYPE_FD) {
+            if (flat->hdr.type == BINDER_TYPE_FD) {
                 // If this is a file descriptor, we need to dup it so the
                 // new Parcel now owns its own fd, and can declare that we
                 // officially know we have fds.
@@ -1152,7 +1152,7 @@ status_t Parcel::writeNativeHandle(const native_handle* handle)
 status_t Parcel::writeFileDescriptor(int fd, bool takeOwnership)
 {
     flat_binder_object obj;
-    obj.type = BINDER_TYPE_FD;
+    obj.hdr.type = BINDER_TYPE_FD;
     obj.flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
     obj.binder = 0; /* Don't pass uninitialized stack data to a remote process */
     obj.handle = fd;
@@ -1310,7 +1310,7 @@ restart_write:
         *reinterpret_cast<flat_binder_object*>(mData+mDataPos) = val;
 
         // remember if it's a file descriptor
-        if (val.type == BINDER_TYPE_FD) {
+        if (val.hdr.type == BINDER_TYPE_FD) {
             if (!mAllowFds) {
                 // fail before modifying our object index
                 return FDS_NOT_ALLOWED;
@@ -1851,7 +1851,7 @@ intptr_t Parcel::readIntPtr() const
 
 status_t Parcel::readBool(bool *pArg) const
 {
-    int32_t tmp;
+    int32_t tmp = 0;
     status_t ret = readInt32(&tmp);
     *pArg = (tmp != 0);
     return ret;
@@ -1864,7 +1864,7 @@ bool Parcel::readBool() const
 
 status_t Parcel::readChar(char16_t *pArg) const
 {
-    int32_t tmp;
+    int32_t tmp = 0;
     status_t ret = readInt32(&tmp);
     *pArg = char16_t(tmp);
     return ret;
@@ -1877,7 +1877,7 @@ char16_t Parcel::readChar() const
 
 status_t Parcel::readByte(int8_t *pArg) const
 {
-    int32_t tmp;
+    int32_t tmp = 0;
     status_t ret = readInt32(&tmp);
     *pArg = int8_t(tmp);
     return ret;
@@ -2132,7 +2132,7 @@ int Parcel::readFileDescriptor() const
 {
     const flat_binder_object* flat = readObject(true);
 
-    if (flat && flat->type == BINDER_TYPE_FD) {
+    if (flat && flat->hdr.type == BINDER_TYPE_FD) {
         return flat->handle;
     }
 
@@ -2325,7 +2325,7 @@ void Parcel::closeFileDescriptors()
         i--;
         const flat_binder_object* flat
             = reinterpret_cast<flat_binder_object*>(mData+mObjects[i]);
-        if (flat->type == BINDER_TYPE_FD) {
+        if (flat->hdr.type == BINDER_TYPE_FD) {
             //ALOGI("Closing fd: %ld", flat->handle);
             close(flat->handle);
         }
@@ -2397,7 +2397,7 @@ void Parcel::print(TextOutput& to, uint32_t /*flags*/) const
             const flat_binder_object* flat
                 = reinterpret_cast<const flat_binder_object*>(DATA+OBJS[i]);
             to << endl << "Object #" << i << " @ " << (void*)OBJS[i] << ": "
-                << TypeCode(flat->type & 0x7f7f7f00)
+                << TypeCode(flat->hdr.type & 0x7f7f7f00)
                 << " = " << flat->binder;
         }
     } else {
@@ -2618,7 +2618,7 @@ status_t Parcel::continueWrite(size_t desired)
             for (size_t i=objectsSize; i<mObjectsSize; i++) {
                 const flat_binder_object* flat
                     = reinterpret_cast<flat_binder_object*>(mData+mObjects[i]);
-                if (flat->type == BINDER_TYPE_FD) {
+                if (flat->hdr.type == BINDER_TYPE_FD) {
                     // will need to rescan because we may have lopped off the only FDs
                     mFdsKnown = false;
                 }
@@ -2728,7 +2728,7 @@ void Parcel::scanForFds() const
     for (size_t i=0; i<mObjectsSize; i++) {
         const flat_binder_object* flat
             = reinterpret_cast<const flat_binder_object*>(mData + mObjects[i]);
-        if (flat->type == BINDER_TYPE_FD) {
+        if (flat->hdr.type == BINDER_TYPE_FD) {
             hasFds = true;
             break;
         }
