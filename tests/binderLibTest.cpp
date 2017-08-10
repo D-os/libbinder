@@ -331,10 +331,14 @@ class BinderLibTestCallBack : public BBinder, public BinderLibTestEvent
             (void)reply;
             (void)flags;
             switch(code) {
-            case BINDER_LIB_TEST_CALL_BACK:
-                m_result = data.readInt32();
+            case BINDER_LIB_TEST_CALL_BACK: {
+                status_t status = data.readInt32(&m_result);
+                if (status != NO_ERROR) {
+                    m_result = status;
+                }
                 triggerEvent();
                 return NO_ERROR;
+            }
             case BINDER_LIB_TEST_CALL_BACK_VERIFY_BUF: {
                 sp<IBinder> server;
                 int ret;
@@ -1044,7 +1048,7 @@ class BinderLibTestService : public BBinder
                 if (binder == NULL) {
                     return BAD_VALUE;
                 }
-                reply2.writeInt32(NO_ERROR);
+                data2.writeInt32(NO_ERROR);
                 binder->transact(BINDER_LIB_TEST_CALL_BACK, data2, &reply2);
                 return NO_ERROR;
             }
