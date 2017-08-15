@@ -276,7 +276,7 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
                    return NULL;
             }
 
-            b = new BpBinder(handle); 
+            b = BpBinder::create(handle);
             e->binder = b;
             if (b) e->refs = b->getWeakRefs();
             result = b;
@@ -310,7 +310,7 @@ wp<IBinder> ProcessState::getWeakProxyForHandle(int32_t handle)
         // arriving from the driver.
         IBinder* b = e->binder;
         if (b == NULL || !e->refs->attemptIncWeak(this)) {
-            b = new BpBinder(handle);
+            b = BpBinder::create(handle);
             result = b;
             e->binder = b;
             if (b) e->refs = b->getWeakRefs();
