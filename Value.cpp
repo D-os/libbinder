@@ -182,10 +182,12 @@ Value& Value::swap(Value &rhs)
 
 Value& Value::operator=(const Value& rhs)
 {
-    delete mContent;
-    mContent = rhs.mContent
-        ? rhs.mContent->clone()
-        : NULL;
+    if (this != &rhs) {
+        delete mContent;
+        mContent = rhs.mContent
+            ? rhs.mContent->clone()
+            : NULL;
+    }
     return *this;
 }
 
