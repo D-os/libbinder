@@ -139,6 +139,12 @@ TEST_F(BinderDriverInterfaceTest, Version) {
     ASSERT_EQ(BINDER_CURRENT_PROTOCOL_VERSION, version.protocol_version);
 }
 
+TEST_F(BinderDriverInterfaceTest, OpenNoMmap) {
+    int binderFd = open(BINDER_DEV_NAME, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+    ASSERT_GE(binderFd, 0);
+    close(binderFd);
+}
+
 TEST_F(BinderDriverInterfaceTest, WriteReadNull) {
     binderTestIoctlErr1(BINDER_WRITE_READ, NULL, EFAULT);
 }
