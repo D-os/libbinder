@@ -686,7 +686,7 @@ void IPCThreadState::expungeHandle(int32_t handle, IBinder* binder)
 #if LOG_REFCOUNTS
     ALOGV("IPCThreadState::expungeHandle(%ld)\n", handle);
 #endif
-    self()->mProcess->expungeHandle(handle, binder);
+    self()->mProcess->expungeHandle(handle, binder); // NOLINT
 }
 
 status_t IPCThreadState::requestDeathNotification(int32_t handle, BpBinder* proxy)
