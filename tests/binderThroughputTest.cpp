@@ -215,7 +215,7 @@ void worker_fx(int num,
         int target = cs_pair ? num % server_count : rand() % workers.size();
         int sz = payload_size;
 
-        while (sz > sizeof(uint32_t)) {
+        while (sz >= sizeof(uint32_t)) {
             data.writeInt32(0);
             sz -= sizeof(uint32_t);
         }
