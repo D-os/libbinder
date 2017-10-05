@@ -14,9 +14,20 @@
 // limitations under the License.
 //
 
+cc_defaults {
+    name: "binder_test_defaults",
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wno-unused-private-field",
+        "-Wno-unused-variable",
+    ],
+}
+
 cc_test {
     name: "binderDriverInterfaceTest_IPC_32",
     srcs: ["binderDriverInterfaceTest.cpp"],
+    defaults: ["binder_test_defaults"],
     compile_multilib: "32",
     cflags: ["-DBINDER_IPC_32BIT=1"],
 }
@@ -30,11 +41,13 @@ cc_test {
 
     name: "binderDriverInterfaceTest",
     srcs: ["binderDriverInterfaceTest.cpp"],
+    defaults: ["binder_test_defaults"],
 }
 
 cc_test {
     name: "binderValueTypeTest",
     srcs: ["binderValueTypeTest.cpp"],
+    defaults: ["binder_test_defaults"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -44,6 +57,7 @@ cc_test {
 cc_test {
     name: "binderLibTest_IPC_32",
     srcs: ["binderLibTest.cpp"],
+    defaults: ["binder_test_defaults"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -59,6 +73,7 @@ cc_test {
         },
     },
 
+    defaults: ["binder_test_defaults"],
     name: "binderLibTest",
     srcs: ["binderLibTest.cpp"],
     shared_libs: [
@@ -70,6 +85,7 @@ cc_test {
 cc_test {
     name: "binderThroughputTest",
     srcs: ["binderThroughputTest.cpp"],
+    defaults: ["binder_test_defaults"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -77,8 +93,6 @@ cc_test {
     clang: true,
     cflags: [
         "-g",
-        "-Wall",
-        "-Werror",
         "-Wno-missing-field-initializers",
         "-Wno-sign-compare",
         "-O3",
@@ -88,6 +102,7 @@ cc_test {
 cc_test {
     name: "binderTextOutputTest",
     srcs: ["binderTextOutputTest.cpp"],
+    defaults: ["binder_test_defaults"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -98,6 +113,7 @@ cc_test {
 cc_test {
     name: "schd-dbg",
     srcs: ["schd-dbg.cpp"],
+    defaults: ["binder_test_defaults"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -108,9 +124,9 @@ cc_test {
 cc_test {
     name: "binderSafeInterfaceTest",
     srcs: ["binderSafeInterfaceTest.cpp"],
+    defaults: ["binder_test_defaults"],
 
     cppflags: [
-        "-Werror",
         "-Weverything",
         "-Wno-c++98-compat",
         "-Wno-c++98-compat-pedantic",
