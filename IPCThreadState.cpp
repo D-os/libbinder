@@ -571,7 +571,7 @@ status_t IPCThreadState::transact(int32_t handle,
                                   uint32_t code, const Parcel& data,
                                   Parcel* reply, uint32_t flags)
 {
-    status_t err = data.errorCheck();
+    status_t err;
 
     flags |= TF_ACCEPT_FDS;
 
@@ -582,11 +582,9 @@ status_t IPCThreadState::transact(int32_t handle,
             << indent << data << dedent << endl;
     }
 
-    if (err == NO_ERROR) {
-        LOG_ONEWAY(">>>> SEND from pid %d uid %d %s", getpid(), getuid(),
-            (flags & TF_ONE_WAY) == 0 ? "READ REPLY" : "ONE WAY");
-        err = writeTransactionData(BC_TRANSACTION, flags, handle, code, data, NULL);
-    }
+    LOG_ONEWAY(">>>> SEND from pid %d uid %d %s", getpid(), getuid(),
+        (flags & TF_ONE_WAY) == 0 ? "READ REPLY" : "ONE WAY");
+    err = writeTransactionData(BC_TRANSACTION, flags, handle, code, data, NULL);
 
     if (err != NO_ERROR) {
         if (reply) reply->setError(err);
