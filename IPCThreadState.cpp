@@ -718,6 +718,16 @@ IPCThreadState::~IPCThreadState()
 {
 }
 
+status_t IPCThreadState::sendReply(const Parcel& reply, uint32_t flags)
+{
+    status_t err;
+    status_t statusBuffer;
+    err = writeTransactionData(BC_REPLY, flags, -1, 0, reply, &statusBuffer);
+    if (err < NO_ERROR) return err;
+
+    return waitForResponse(NULL, NULL);
+}
+
 status_t IPCThreadState::waitForResponse(Parcel *reply, status_t *acquireResult)
 {
     uint32_t cmd;
@@ -1040,78 +1050,68 @@ status_t IPCThreadState::executeCommand(int32_t cmd)
                 "Not enough command data for brTRANSACTION");
             if (result != NO_ERROR) break;
 
+            Parcel buffer;
+            buffer.ipcSetDataReference(
+                reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
+                tr.data_size,
+                reinterpret_cast<const binder_size_t*>(tr.data.ptr.offsets),
+                tr.offsets_size/sizeof(binder_size_t), freeBuffer, this);
+
+            const pid_t origPid = mCallingPid;
+            const uid_t origUid = mCallingUid;
+            const int32_t origStrictModePolicy = mStrictModePolicy;
+            const int32_t origTransactionBinderFlags = mLastTransactionBinderFlags;
+
+            mCallingPid = tr.sender_pid;
+            mCallingUid = tr.sender_euid;
+            mLastTransactionBinderFlags = tr.flags;
+
+            //ALOGI(">>>> TRANSACT from pid %d uid %d\n", mCallingPid, mCallingUid);
+
             Parcel reply;
-            {
-                Parcel buffer;
-                const pid_t origPid = mCallingPid;
-                const uid_t origUid = mCallingUid;
-                const int32_t origStrictModePolicy = mStrictModePolicy;
-                const int32_t origTransactionBinderFlags = mLastTransactionBinderFlags;
-
-                buffer.ipcSetDataReference(
-                    reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
-                    tr.data_size,
-                    reinterpret_cast<const binder_size_t*>(tr.data.ptr.offsets),
-                    tr.offsets_size/sizeof(binder_size_t), freeBuffer, this);
-
-                mCallingPid = tr.sender_pid;
-                mCallingUid = tr.sender_euid;
-                mLastTransactionBinderFlags = tr.flags;
-
-                //ALOGI(">>>> TRANSACT from pid %d uid %d\n", mCallingPid, mCallingUid);
-
-                status_t error;
-                IF_LOG_TRANSACTIONS() {
-                    TextOutput::Bundle _b(alog);
-                    alog << "BR_TRANSACTION thr " << (void*)pthread_self()
-                        << " / obj " << tr.target.ptr << " / code "
-                        << TypeCode(tr.code) << ": " << indent << buffer
-                        << dedent << endl
-                        << "Data addr = "
-                        << reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer)
-                        << ", offsets addr="
-                        << reinterpret_cast<const size_t*>(tr.data.ptr.offsets) << endl;
-                }
-                if (tr.target.ptr) {
-                    // We only have a weak reference on the target object, so we must first try to
-                    // safely acquire a strong reference before doing anything else with it.
-                    if (reinterpret_cast<RefBase::weakref_type*>(
-                            tr.target.ptr)->attemptIncStrong(this)) {
-                        error = reinterpret_cast<BBinder*>(tr.cookie)->transact(tr.code, buffer,
-                                &reply, tr.flags);
-                        reinterpret_cast<BBinder*>(tr.cookie)->decStrong(this);
-                    } else {
-                        error = UNKNOWN_TRANSACTION;
-                    }
-
+            status_t error;
+            IF_LOG_TRANSACTIONS() {
+                TextOutput::Bundle _b(alog);
+                alog << "BR_TRANSACTION thr " << (void*)pthread_self()
+                    << " / obj " << tr.target.ptr << " / code "
+                    << TypeCode(tr.code) << ": " << indent << buffer
+                    << dedent << endl
+                    << "Data addr = "
+                    << reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer)
+                    << ", offsets addr="
+                    << reinterpret_cast<const size_t*>(tr.data.ptr.offsets) << endl;
+            }
+            if (tr.target.ptr) {
+                // We only have a weak reference on the target object, so we must first try to
+                // safely acquire a strong reference before doing anything else with it.
+                if (reinterpret_cast<RefBase::weakref_type*>(
+                        tr.target.ptr)->attemptIncStrong(this)) {
+                    error = reinterpret_cast<BBinder*>(tr.cookie)->transact(tr.code, buffer,
+                            &reply, tr.flags);
+                    reinterpret_cast<BBinder*>(tr.cookie)->decStrong(this);
                 } else {
-                    error = the_context_object->transact(tr.code, buffer, &reply, tr.flags);
+                    error = UNKNOWN_TRANSACTION;
                 }
 
-                //ALOGI("<<<< TRANSACT from pid %d restore pid %d uid %d\n",
-                //     mCallingPid, origPid, origUid);
-
-                if ((tr.flags & TF_ONE_WAY) == 0) {
-                    LOG_ONEWAY("Sending reply to %d!", mCallingPid);
-                    if (error < NO_ERROR) reply.setError(error);
-
-                    status_t statusBuffer;
-                    result = writeTransactionData(BC_REPLY, 0, -1, 0, reply, &statusBuffer);
-                } else {
-                    LOG_ONEWAY("NOT sending reply to %d!", mCallingPid);
-                }
-
-                mCallingPid = origPid;
-                mCallingUid = origUid;
-                mStrictModePolicy = origStrictModePolicy;
-                mLastTransactionBinderFlags = origTransactionBinderFlags;
+            } else {
+                error = the_context_object->transact(tr.code, buffer, &reply, tr.flags);
             }
 
-            if (result != NO_ERROR)
-                break;
+            //ALOGI("<<<< TRANSACT from pid %d restore pid %d uid %d\n",
+            //     mCallingPid, origPid, origUid);
 
-            if ((tr.flags & TF_ONE_WAY) == 0)
-                waitForResponse(NULL, NULL);
+            if ((tr.flags & TF_ONE_WAY) == 0) {
+                LOG_ONEWAY("Sending reply to %d!", mCallingPid);
+                if (error < NO_ERROR) reply.setError(error);
+                sendReply(reply, 0);
+            } else {
+                LOG_ONEWAY("NOT sending reply to %d!", mCallingPid);
+            }
+
+            mCallingPid = origPid;
+            mCallingUid = origUid;
+            mStrictModePolicy = origStrictModePolicy;
+            mLastTransactionBinderFlags = origTransactionBinderFlags;
 
             IF_LOG_TRANSACTIONS() {
                 TextOutput::Bundle _b(alog);
