@@ -102,6 +102,15 @@ status_t Status::readFromParcel(const Parcel& parcel) {
     }
     mMessage = String8(message);
 
+    // Skip over the remote stack trace data
+    int32_t remote_stack_trace_header_size;
+    status = parcel.readInt32(&remote_stack_trace_header_size);
+    if (status != OK) {
+        setFromStatusT(status);
+        return status;
+    }
+    parcel.setDataPosition(parcel.dataPosition() + remote_stack_trace_header_size);
+
     if (mException == EX_SERVICE_SPECIFIC) {
         status = parcel.readInt32(&mErrorCode);
     } else if (mException == EX_PARCELABLE) {
@@ -137,6 +146,7 @@ status_t Status::writeToParcel(Parcel* parcel) const {
         return status;
     }
     status = parcel->writeString16(String16(mMessage));
+    status = parcel->writeInt32(0); // Empty remote stack trace header
     if (mException == EX_SERVICE_SPECIFIC) {
         status = parcel->writeInt32(mErrorCode);
     } else if (mException == EX_PARCELABLE) {
