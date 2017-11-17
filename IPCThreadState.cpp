@@ -486,6 +486,19 @@ void IPCThreadState::flushCommands()
     }
 }
 
+bool IPCThreadState::flushIfNeeded()
+{
+    if (mIsLooper || mServingStackPointer != nullptr) {
+        return false;
+    }
+    // In case this thread is not a looper and is not currently serving a binder transaction,
+    // there's no guarantee that this thread will call back into the kernel driver any time
+    // soon. Therefore, flush pending commands such as BC_FREE_BUFFER, to prevent them from getting
+    // stuck in this thread's out buffer.
+    flushCommands();
+    return true;
+}
+
 void IPCThreadState::blockUntilThreadAvailable()
 {
     pthread_mutex_lock(&mProcess->mThreadCountLock);
@@ -597,6 +610,7 @@ void IPCThreadState::joinThreadPool(bool isMain)
 
     mOut.writeInt32(isMain ? BC_ENTER_LOOPER : BC_REGISTER_LOOPER);
 
+    mIsLooper = true;
     status_t result;
     do {
         processPendingDerefs();
@@ -619,6 +633,7 @@ void IPCThreadState::joinThreadPool(bool isMain)
         (void*)pthread_self(), getpid(), result);
 
     mOut.writeInt32(BC_EXIT_LOOPER);
+    mIsLooper = false;
     talkWithDriver(false);
 }
 
@@ -731,9 +746,11 @@ void IPCThreadState::incStrongHandle(int32_t handle, BpBinder *proxy)
     LOG_REMOTEREFS("IPCThreadState::incStrongHandle(%d)\n", handle);
     mOut.writeInt32(BC_ACQUIRE);
     mOut.writeInt32(handle);
-    // Create a temp reference until the driver has handled this command.
-    proxy->incStrong(mProcess.get());
-    mPostWriteStrongDerefs.push(proxy);
+    if (!flushIfNeeded()) {
+        // Create a temp reference until the driver has handled this command.
+        proxy->incStrong(mProcess.get());
+        mPostWriteStrongDerefs.push(proxy);
+    }
 }
 
 void IPCThreadState::decStrongHandle(int32_t handle)
@@ -741,6 +758,7 @@ void IPCThreadState::decStrongHandle(int32_t handle)
     LOG_REMOTEREFS("IPCThreadState::decStrongHandle(%d)\n", handle);
     mOut.writeInt32(BC_RELEASE);
     mOut.writeInt32(handle);
+    flushIfNeeded();
 }
 
 void IPCThreadState::incWeakHandle(int32_t handle, BpBinder *proxy)
@@ -748,9 +766,11 @@ void IPCThreadState::incWeakHandle(int32_t handle, BpBinder *proxy)
     LOG_REMOTEREFS("IPCThreadState::incWeakHandle(%d)\n", handle);
     mOut.writeInt32(BC_INCREFS);
     mOut.writeInt32(handle);
-    // Create a temp reference until the driver has handled this command.
-    proxy->getWeakRefs()->incWeak(mProcess.get());
-    mPostWriteWeakDerefs.push(proxy->getWeakRefs());
+    if (!flushIfNeeded()) {
+        // Create a temp reference until the driver has handled this command.
+        proxy->getWeakRefs()->incWeak(mProcess.get());
+        mPostWriteWeakDerefs.push(proxy->getWeakRefs());
+    }
 }
 
 void IPCThreadState::decWeakHandle(int32_t handle)
@@ -758,6 +778,7 @@ void IPCThreadState::decWeakHandle(int32_t handle)
     LOG_REMOTEREFS("IPCThreadState::decWeakHandle(%d)\n", handle);
     mOut.writeInt32(BC_DECREFS);
     mOut.writeInt32(handle);
+    flushIfNeeded();
 }
 
 status_t IPCThreadState::attemptIncStrongHandle(int32_t handle)
@@ -813,6 +834,7 @@ IPCThreadState::IPCThreadState()
       mServingStackPointer(nullptr),
       mWorkSource(kUnsetWorkSource),
       mPropagateWorkSource(false),
+      mIsLooper(false),
       mStrictModePolicy(0),
       mLastTransactionBinderFlags(0),
       mCallRestriction(mProcess->mCallRestriction)
@@ -1393,6 +1415,7 @@ void IPCThreadState::freeBuffer(Parcel* parcel, const uint8_t* data,
     IPCThreadState* state = self();
     state->mOut.writeInt32(BC_FREE_BUFFER);
     state->mOut.writePointer((uintptr_t)data);
+    state->flushIfNeeded();
 }
 
 } // namespace android
