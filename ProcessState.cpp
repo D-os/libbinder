@@ -86,6 +86,12 @@ sp<ProcessState> ProcessState::initWithDriver(const char* driver)
         }
         LOG_ALWAYS_FATAL("ProcessState was already initialized.");
     }
+
+    if (access(driver, R_OK) == -1) {
+        ALOGE("Binder driver %s is unavailable. Using /dev/binder instead.", driver);
+        driver = "/dev/binder";
+    }
+
     gProcess = new ProcessState(driver);
     return gProcess;
 }
@@ -420,7 +426,7 @@ ProcessState::ProcessState(const char *driver)
         mVMStart = mmap(0, BINDER_VM_SIZE, PROT_READ, MAP_PRIVATE | MAP_NORESERVE, mDriverFD, 0);
         if (mVMStart == MAP_FAILED) {
             // *sigh*
-            ALOGE("Using /dev/binder failed: unable to mmap transaction memory.\n");
+            ALOGE("Using %s failed: unable to mmap transaction memory.\n", mDriverName.c_str());
             close(mDriverFD);
             mDriverFD = -1;
             mDriverName.clear();
