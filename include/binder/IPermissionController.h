@@ -36,10 +36,13 @@ public:
 
     virtual bool isRuntimePermission(const String16& permission) = 0;
 
+    virtual int getPackageUid(const String16& package, int flags) = 0;
+
     enum {
         CHECK_PERMISSION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
         GET_PACKAGES_FOR_UID_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 1,
-        IS_RUNTIME_PERMISSION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 2
+        IS_RUNTIME_PERMISSION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 2,
+        GET_PACKAGE_UID_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 3
     };
 };
 
