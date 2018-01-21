@@ -39,7 +39,7 @@ sp<IActivityManager> ActivityManager::getService()
             if (startTime == 0) {
                 startTime = uptimeMillis();
                 ALOGI("Waiting for activity service");
-            } else if ((uptimeMillis() - startTime) > 10000) {
+            } else if ((uptimeMillis() - startTime) > 1000000) {
                 ALOGW("Waiting too long for activity service, giving up");
                 service = NULL;
                 break;
