@@ -35,7 +35,7 @@ class BinderService
 {
 public:
     static status_t publish(bool allowIsolated = false,
-                            int dumpFlags = IServiceManager::DUMP_FLAG_PRIORITY_NORMAL) {
+                            int dumpFlags = IServiceManager::DUMP_FLAG_PRIORITY_DEFAULT) {
         sp<IServiceManager> sm(defaultServiceManager());
         return sm->addService(String16(SERVICE::getServiceName()), new SERVICE(), allowIsolated,
                               dumpFlags);
@@ -43,7 +43,7 @@ public:
 
     static void publishAndJoinThreadPool(
             bool allowIsolated = false,
-            int dumpFlags = IServiceManager::DUMP_FLAG_PRIORITY_NORMAL) {
+            int dumpFlags = IServiceManager::DUMP_FLAG_PRIORITY_DEFAULT) {
         publish(allowIsolated, dumpFlags);
         joinThreadPool();
     }
