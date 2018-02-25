@@ -15,6 +15,8 @@
  */
 
 #include <mutex>
+#include <unistd.h>
+
 #include <binder/ActivityManager.h>
 #include <binder/Binder.h>
 #include <binder/IServiceManager.h>
@@ -44,7 +46,7 @@ sp<IActivityManager> ActivityManager::getService()
                 service = NULL;
                 break;
             }
-            sleep(1);
+            usleep(25000);
         } else {
             service = interface_cast<IActivityManager>(binder);
             mService = service;
