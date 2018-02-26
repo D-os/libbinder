@@ -18,12 +18,12 @@
 
 #include <binder/ProcessState.h>
 
-#include <utils/Atomic.h>
 #include <binder/BpBinder.h>
 #include <binder/IPCThreadState.h>
+#include <binder/IServiceManager.h>
+#include <cutils/atomic.h>
 #include <utils/Log.h>
 #include <utils/String8.h>
-#include <binder/IServiceManager.h>
 #include <utils/String8.h>
 #include <utils/threads.h>
 
