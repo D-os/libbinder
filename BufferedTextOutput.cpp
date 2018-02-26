@@ -17,11 +17,11 @@
 #include <binder/BufferedTextOutput.h>
 #include <binder/Debug.h>
 
-#include <utils/Atomic.h>
+#include <cutils/atomic.h>
+#include <cutils/threads.h>
 #include <utils/Log.h>
 #include <utils/RefBase.h>
 #include <utils/Vector.h>
-#include <cutils/threads.h>
 
 #include <private/binder/Static.h>
 
