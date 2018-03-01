@@ -99,7 +99,8 @@ public:
 
     int32_t checkOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage);
-    int32_t startOp(int32_t op, int32_t uid, const String16& callingPackage);
+    int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
+            bool startIfModeDefault);
     void finishOp(int32_t op, int32_t uid, const String16& callingPackage);
     void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback);
