@@ -33,7 +33,7 @@ public:
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
     virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName) = 0;
+            const String16& packageName, bool startIfModeDefault) = 0;
     virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
             const String16& packageName) = 0;
     virtual void startWatchingMode(int32_t op, const String16& packageName,
