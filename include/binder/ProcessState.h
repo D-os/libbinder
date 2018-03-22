@@ -36,6 +36,8 @@ class ProcessState : public virtual RefBase
 public:
     static  sp<ProcessState>    self();
     static  sp<ProcessState>    selfOrNull();
+    // Note: don't call self() or selfOrNull() before initWithMmapSize()
+    static  sp<ProcessState>    initWithMmapSize(size_t mmapSize); // size in bytes
 
     /* initWithDriver() can be used to configure libbinder to use
      * a different binder driver dev node. It must be called *before*
@@ -76,6 +78,7 @@ public:
             String8             getDriverName();
 
             ssize_t             getKernelReferences(size_t count, uintptr_t* buf);
+            size_t              getMmapSize();
 
             enum class CallRestriction {
                 // all calls okay
@@ -92,7 +95,7 @@ public:
 private:
     friend class IPCThreadState;
     
-            explicit            ProcessState(const char* driver);
+            explicit            ProcessState(const char* driver, size_t mmap_size);
                                 ~ProcessState();
 
                                 ProcessState(const ProcessState& o);
@@ -135,6 +138,7 @@ private:
             String8             mRootDir;
             bool                mThreadPoolStarted;
     volatile int32_t            mThreadPoolSeq;
+            size_t              mMmapSize;
 
             CallRestriction     mCallRestriction;
 };
