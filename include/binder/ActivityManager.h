@@ -51,6 +51,9 @@ public:
                              const String16& callingPackage);
     void unregisterUidObserver(const sp<IUidObserver>& observer);
 
+    status_t linkToDeath(const sp<IBinder::DeathRecipient>& recipient);
+    status_t unlinkToDeath(const sp<IBinder::DeathRecipient>& recipient);
+
 private:
     Mutex mLock;
     sp<IActivityManager> mService;

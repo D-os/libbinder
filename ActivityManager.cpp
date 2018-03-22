@@ -80,4 +80,20 @@ void ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
     }
 }
 
+status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
+    sp<IActivityManager> service = getService();
+    if (service != NULL) {
+        return IInterface::asBinder(service)->linkToDeath(recipient);
+    }
+    return INVALID_OPERATION;
+}
+
+status_t ActivityManager::unlinkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
+    sp<IActivityManager> service = getService();
+    if (service != NULL) {
+        return IInterface::asBinder(service)->unlinkToDeath(recipient);
+    }
+    return INVALID_OPERATION;
+}
+
 }; // namespace android
