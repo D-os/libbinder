@@ -78,6 +78,18 @@ public:
          data.writeStrongBinder(IInterface::asBinder(observer));
          remote()->transact(UNREGISTER_UID_OBSERVER_TRANSACTION, data, &reply);
     }
+
+    virtual bool isUidActive(const uid_t uid, const String16& callingPackage)
+    {
+         Parcel data, reply;
+         data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
+         data.writeInt32(uid);
+         data.writeString16(callingPackage);
+         remote()->transact(IS_UID_ACTIVE_TRANSACTION, data, &reply);
+         // fail on exception
+         if (reply.readExceptionCode() != 0) return false;
+         return reply.readInt32() == 1;
+    }
 };
 
 // ------------------------------------------------------------------------------------

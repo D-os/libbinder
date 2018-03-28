@@ -35,11 +35,13 @@ public:
                                      const int32_t cutpoint,
                                      const String16& callingPackage) = 0;
     virtual void unregisterUidObserver(const sp<IUidObserver>& observer) = 0;
+    virtual bool isUidActive(const uid_t uid, const String16& callingPackage) = 0;
 
     enum {
         OPEN_CONTENT_URI_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
         REGISTER_UID_OBSERVER_TRANSACTION,
-        UNREGISTER_UID_OBSERVER_TRANSACTION
+        UNREGISTER_UID_OBSERVER_TRANSACTION,
+        IS_UID_ACTIVE_TRANSACTION
     };
 };
 

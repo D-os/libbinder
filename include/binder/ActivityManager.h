@@ -50,6 +50,7 @@ public:
                              const int32_t cutpoint,
                              const String16& callingPackage);
     void unregisterUidObserver(const sp<IUidObserver>& observer);
+    bool isUidActive(const uid_t uid, const String16& callingPackage);
 
     status_t linkToDeath(const sp<IBinder::DeathRecipient>& recipient);
     status_t unlinkToDeath(const sp<IBinder::DeathRecipient>& recipient);
