@@ -80,6 +80,15 @@ void ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
     }
 }
 
+bool ActivityManager::isUidActive(const uid_t uid, const String16& callingPackage)
+{
+    sp<IActivityManager> service = getService();
+    if (service != NULL) {
+        return service->isUidActive(uid, callingPackage);
+    }
+    return false;
+}
+
 status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
     sp<IActivityManager> service = getService();
     if (service != NULL) {
