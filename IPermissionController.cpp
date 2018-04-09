@@ -49,6 +49,19 @@ public:
         return reply.readInt32() != 0;
     }
 
+    virtual int32_t noteOp(const String16& op, int32_t uid, const String16& packageName)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IPermissionController::getInterfaceDescriptor());
+        data.writeString16(op);
+        data.writeInt32(uid);
+        data.writeString16(packageName);
+        remote()->transact(NOTE_OP_TRANSACTION, data, &reply);
+        // fail on exception
+        if (reply.readExceptionCode() != 0) return 2; // MODE_ERRORED
+        return reply.readInt32();
+    }
+
     virtual void getPackagesForUid(const uid_t uid, Vector<String16>& packages)
     {
         Parcel data, reply;
@@ -108,6 +121,17 @@ status_t BnPermissionController::onTransact(
             bool res = checkPermission(permission, pid, uid);
             reply->writeNoException();
             reply->writeInt32(res ? 1 : 0);
+            return NO_ERROR;
+        } break;
+
+        case NOTE_OP_TRANSACTION: {
+            CHECK_INTERFACE(IPermissionController, data, reply);
+            String16 op = data.readString16();
+            int32_t uid = data.readInt32();
+            String16 packageName = data.readString16();
+            int32_t res = noteOp(op, uid, packageName);
+            reply->writeNoException();
+            reply->writeInt32(res);
             return NO_ERROR;
         } break;
 
