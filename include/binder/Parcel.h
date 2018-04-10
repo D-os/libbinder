@@ -417,6 +417,7 @@ private:
     void                freeDataNoInit();
     void                initState();
     void                scanForFds() const;
+    status_t            validateReadData(size_t len) const;
                         
     template<class T>
     status_t            readAligned(T *pArg) const;
@@ -463,6 +464,7 @@ private:
     size_t              mObjectsSize;
     size_t              mObjectsCapacity;
     mutable size_t      mNextObjectHint;
+    mutable bool        mObjectsSorted;
 
     mutable bool        mFdsKnown;
     mutable bool        mHasFds;
