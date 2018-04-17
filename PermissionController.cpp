@@ -59,6 +59,12 @@ bool PermissionController::checkPermission(const String16& permission, int32_t p
     return service != NULL ? service->checkPermission(permission, pid, uid) : false;
 }
 
+int32_t PermissionController::noteOp(const String16& op, int32_t uid, const String16& packageName)
+{
+    sp<IPermissionController> service = getService();
+    return service != NULL ? service->noteOp(op, uid, packageName) : MODE_ERRORED;
+}
+
 void PermissionController::getPackagesForUid(const uid_t uid, Vector<String16> &packages)
 {
     sp<IPermissionController> service = getService();
