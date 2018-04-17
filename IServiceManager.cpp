@@ -20,6 +20,9 @@
 
 #include <utils/Log.h>
 #include <binder/IPCThreadState.h>
+#ifndef __ANDROID_VNDK__
+#include <binder/IPermissionController.h>
+#endif
 #include <binder/Parcel.h>
 #include <utils/String8.h>
 #include <utils/SystemClock.h>
@@ -47,6 +50,9 @@ sp<IServiceManager> defaultServiceManager()
 
     return gDefaultServiceManager;
 }
+
+#ifndef __ANDROID_VNDK__
+// IPermissionController is not accessible to vendors
 
 bool checkCallingPermission(const String16& permission)
 {
@@ -121,6 +127,8 @@ bool checkPermission(const String16& permission, pid_t pid, uid_t uid)
         }
     }
 }
+
+#endif //__ANDROID_VNDK__
 
 // ----------------------------------------------------------------------
 

@@ -17,6 +17,8 @@
 #ifndef BINDER_PERMISSION_H
 #define BINDER_PERMISSION_H
 
+#ifndef __ANDROID_VNDK__
+
 #include <stdint.h>
 #include <unistd.h>
 
@@ -76,5 +78,9 @@ public:
 
 // ---------------------------------------------------------------------------
 }; // namespace android
+
+#else // __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif // __ANDROID_VNDK__
 
 #endif /* BINDER_PERMISSION_H */
