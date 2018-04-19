@@ -17,6 +17,8 @@
 #ifndef ANDROID_IP_PREFIX_H
 #define ANDROID_IP_PREFIX_H
 
+#ifndef __ANDROID_VNDK__
+
 #include <netinet/in.h>
 
 #include <binder/Parcelable.h>
@@ -84,5 +86,9 @@ private:
 }  // namespace net
 
 }  // namespace android
+
+#else // __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif // __ANDROID_VNDK__
 
 #endif  // ANDROID_IP_PREFIX_H

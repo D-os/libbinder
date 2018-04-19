@@ -21,7 +21,9 @@
 
 #include <binder/IBinder.h>
 #include <binder/ProcessState.h>
+#ifndef __ANDROID_VNDK__
 #include <binder/IPermissionController.h>
+#endif
 #include <binder/IServiceManager.h>
 
 namespace android {
@@ -36,6 +38,8 @@ extern sp<ProcessState> gProcess;
 // For IServiceManager.cpp
 extern Mutex gDefaultServiceManagerLock;
 extern sp<IServiceManager> gDefaultServiceManager;
+#ifndef __ANDROID_VNDK__
 extern sp<IPermissionController> gPermissionController;
+#endif
 
 }   // namespace android
