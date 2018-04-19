@@ -94,6 +94,8 @@ static LibBinderIPCtStatics gIPCStatics;
 
 Mutex gDefaultServiceManagerLock;
 sp<IServiceManager> gDefaultServiceManager;
+#ifndef __ANDROID_VNDK__
 sp<IPermissionController> gPermissionController;
+#endif
 
 }   // namespace android
