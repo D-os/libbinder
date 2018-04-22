@@ -18,6 +18,8 @@
 #ifndef ANDROID_IPERMISSION_CONTROLLER_H
 #define ANDROID_IPERMISSION_CONTROLLER_H
 
+#ifndef __ANDROID_VNDK__
+
 #include <binder/IInterface.h>
 #include <stdlib.h>
 
@@ -63,6 +65,10 @@ public:
 // ----------------------------------------------------------------------
 
 }; // namespace android
+
+#else // __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif // __ANDROID_VNDK__
 
 #endif // ANDROID_IPERMISSION_CONTROLLER_H
 
