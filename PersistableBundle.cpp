@@ -39,8 +39,9 @@ using std::vector;
 using namespace ::android::binder;
 
 enum {
-    // Keep in sync with BUNDLE_MAGIC in frameworks/base/core/java/android/os/BaseBundle.java.
+    // Keep them in sync with BUNDLE_MAGIC* in frameworks/base/core/java/android/os/BaseBundle.java.
     BUNDLE_MAGIC = 0x4C444E42,
+    BUNDLE_MAGIC_NATIVE = 0x4C444E44,
 };
 
 namespace {
@@ -99,7 +100,7 @@ status_t PersistableBundle::writeToParcel(Parcel* parcel) const {
 
     size_t length_pos = parcel->dataPosition();
     RETURN_IF_FAILED(parcel->writeInt32(1));  // dummy, will hold length
-    RETURN_IF_FAILED(parcel->writeInt32(BUNDLE_MAGIC));
+    RETURN_IF_FAILED(parcel->writeInt32(BUNDLE_MAGIC_NATIVE));
 
     size_t start_pos = parcel->dataPosition();
     RETURN_IF_FAILED(writeToParcelInner(parcel));
@@ -392,7 +393,7 @@ status_t PersistableBundle::readFromParcelInner(const Parcel* parcel, size_t len
 
     int32_t magic;
     RETURN_IF_FAILED(parcel->readInt32(&magic));
-    if (magic != BUNDLE_MAGIC) {
+    if (magic != BUNDLE_MAGIC && magic != BUNDLE_MAGIC_NATIVE) {
         ALOGE("Bad magic number for PersistableBundle: 0x%08x", magic);
         return BAD_VALUE;
     }
