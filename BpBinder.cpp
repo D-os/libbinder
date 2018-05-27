@@ -46,7 +46,7 @@ uint32_t BpBinder::sBinderProxyCountHighWatermark = 2500;
 uint32_t BpBinder::sBinderProxyCountLowWatermark = 2000;
 
 enum {
-    CALLBACK_TRIGGERED_MASK = 0x80000000,   // A flag denoting that the callback has been called
+    LIMIT_REACHED_MASK = 0x80000000,        // A flag denoting that the limit has been reached
     COUNTING_VALUE_MASK = 0x7FFFFFFF,       // A mask of the remaining bits for the count value
 };
 
@@ -109,35 +109,30 @@ void BpBinder::ObjectManager::kill()
 BpBinder* BpBinder::create(int32_t handle) {
     int32_t trackedUid = -1;
     if (sCountByUidEnabled) {
-        BpBinder* out;
         trackedUid = IPCThreadState::self()->getCallingUid();
         AutoMutex _l(sTrackingLock);
-        if ((sTrackingMap[trackedUid] & COUNTING_VALUE_MASK) >= sBinderProxyCountHighWatermark) {
-            ALOGE("Too many binder proxy objects sent to uid %d from uid %d (over %d proxies held)",
-                   getuid(), trackedUid, sBinderProxyCountHighWatermark);
-
+        uint32_t trackedValue = sTrackingMap[trackedUid];
+        if (CC_UNLIKELY(trackedValue & LIMIT_REACHED_MASK)) {
             if (sBinderProxyThrottleCreate) {
-                ALOGE("Returning Null Binder Proxy Object to uid %d", trackedUid);
-                out = nullptr;
-            } else {
-                // increment and construct here in case callback has an async kill causing a race
-                sTrackingMap[trackedUid]++;
-                out = new BpBinder(handle, trackedUid);
-            }
-
-            if (sLimitCallback && !(sTrackingMap[trackedUid] & CALLBACK_TRIGGERED_MASK)) {
-                sTrackingMap[trackedUid] |= CALLBACK_TRIGGERED_MASK;
-                sLimitCallback(trackedUid);
+                return nullptr;
             }
         } else {
-            sTrackingMap[trackedUid]++;
-            out = new BpBinder(handle, trackedUid);
+            if ((trackedValue & COUNTING_VALUE_MASK) >= sBinderProxyCountHighWatermark) {
+                ALOGE("Too many binder proxy objects sent to uid %d from uid %d (%d proxies held)",
+                      getuid(), trackedUid, trackedValue);
+                sTrackingMap[trackedUid] |= LIMIT_REACHED_MASK;
+                if (sLimitCallback) sLimitCallback(trackedUid);
+                if (sBinderProxyThrottleCreate) {
+                    ALOGI("Throttling binder proxy creates from uid %d in uid %d until binder proxy"
+                          " count drops below %d",
+                          trackedUid, getuid(), sBinderProxyCountLowWatermark);
+                    return nullptr;
+                }
+            }
         }
-
-        return out;
-    } else {
-        return new BpBinder(handle, trackedUid);
+        sTrackingMap[trackedUid]++;
     }
+    return new BpBinder(handle, trackedUid);
 }
 
 BpBinder::BpBinder(int32_t handle, int32_t trackedUid)
@@ -371,15 +366,17 @@ BpBinder::~BpBinder()
 
     if (mTrackedUid >= 0) {
         AutoMutex _l(sTrackingLock);
-        if (CC_UNLIKELY(sTrackingMap[mTrackedUid] == 0)) {
+        uint32_t trackedValue = sTrackingMap[mTrackedUid];
+        if (CC_UNLIKELY((trackedValue & COUNTING_VALUE_MASK) == 0)) {
             ALOGE("Unexpected Binder Proxy tracking decrement in %p handle %d\n", this, mHandle);
         } else {
             if (CC_UNLIKELY(
-                (sTrackingMap[mTrackedUid] & CALLBACK_TRIGGERED_MASK) &&
-                ((sTrackingMap[mTrackedUid] & COUNTING_VALUE_MASK) <= sBinderProxyCountLowWatermark)
+                (trackedValue & LIMIT_REACHED_MASK) &&
+                ((trackedValue & COUNTING_VALUE_MASK) <= sBinderProxyCountLowWatermark)
                 )) {
-                // Clear the Callback Triggered bit when crossing below the low watermark
-                sTrackingMap[mTrackedUid] &= ~CALLBACK_TRIGGERED_MASK;
+                ALOGI("Limit reached bit reset for uid %d (fewer than %d proxies from uid %d held)",
+                                   getuid(), mTrackedUid, sBinderProxyCountLowWatermark);
+                sTrackingMap[mTrackedUid] &= ~LIMIT_REACHED_MASK;
             }
             if (--sTrackingMap[mTrackedUid] == 0) {
                 sTrackingMap.erase(mTrackedUid);
