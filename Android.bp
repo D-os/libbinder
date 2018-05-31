@@ -61,6 +61,7 @@ cc_library {
         "MemoryDealer.cpp",
         "MemoryHeapBase.cpp",
         "Parcel.cpp",
+        "ParcelFileDescriptor.cpp",
         "PermissionCache.cpp",
         "PersistableBundle.cpp",
         "ProcessInfoService.cpp",
