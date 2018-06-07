@@ -36,7 +36,7 @@ struct BufferedTextOutput::BufferState : public RefBase
 {
     explicit BufferState(int32_t _seq)
         : seq(_seq)
-        , buffer(NULL)
+        , buffer(nullptr)
         , bufferPos(0)
         , bufferSize(0)
         , atFront(true)
@@ -266,13 +266,13 @@ BufferedTextOutput::BufferState* BufferedTextOutput::getBuffer() const
     if ((mFlags&MULTITHREADED) != 0) {
         ThreadState* ts = getThreadState();
         if (ts) {
-            while (ts->states.size() <= (size_t)mIndex) ts->states.add(NULL);
+            while (ts->states.size() <= (size_t)mIndex) ts->states.add(nullptr);
             BufferState* bs = ts->states[mIndex].get();
-            if (bs != NULL && bs->seq == mSeq) return bs;
+            if (bs != nullptr && bs->seq == mSeq) return bs;
             
             ts->states.editItemAt(mIndex) = new BufferState(mIndex);
             bs = ts->states[mIndex].get();
-            if (bs != NULL) return bs;
+            if (bs != nullptr) return bs;
         }
     }
     

@@ -36,17 +36,17 @@ namespace android {
 
 MemoryHeapBase::MemoryHeapBase()
     : mFD(-1), mSize(0), mBase(MAP_FAILED),
-      mDevice(NULL), mNeedUnmap(false), mOffset(0)
+      mDevice(nullptr), mNeedUnmap(false), mOffset(0)
 {
 }
 
 MemoryHeapBase::MemoryHeapBase(size_t size, uint32_t flags, char const * name)
     : mFD(-1), mSize(0), mBase(MAP_FAILED), mFlags(flags),
-      mDevice(0), mNeedUnmap(false), mOffset(0)
+      mDevice(nullptr), mNeedUnmap(false), mOffset(0)
 {
     const size_t pagesize = getpagesize();
     size = ((size + pagesize-1) & ~(pagesize-1));
-    int fd = ashmem_create_region(name == NULL ? "MemoryHeapBase" : name, size);
+    int fd = ashmem_create_region(name == nullptr ? "MemoryHeapBase" : name, size);
     ALOGE_IF(fd<0, "error creating ashmem region: %s", strerror(errno));
     if (fd >= 0) {
         if (mapfd(fd, size) == NO_ERROR) {
@@ -59,7 +59,7 @@ MemoryHeapBase::MemoryHeapBase(size_t size, uint32_t flags, char const * name)
 
 MemoryHeapBase::MemoryHeapBase(const char* device, size_t size, uint32_t flags)
     : mFD(-1), mSize(0), mBase(MAP_FAILED), mFlags(flags),
-      mDevice(0), mNeedUnmap(false), mOffset(0)
+      mDevice(nullptr), mNeedUnmap(false), mOffset(0)
 {
     int open_flags = O_RDWR;
     if (flags & NO_CACHING)
@@ -78,7 +78,7 @@ MemoryHeapBase::MemoryHeapBase(const char* device, size_t size, uint32_t flags)
 
 MemoryHeapBase::MemoryHeapBase(int fd, size_t size, uint32_t flags, uint32_t offset)
     : mFD(-1), mSize(0), mBase(MAP_FAILED), mFlags(flags),
-      mDevice(0), mNeedUnmap(false), mOffset(0)
+      mDevice(nullptr), mNeedUnmap(false), mOffset(0)
 {
     const size_t pagesize = getpagesize();
     size = ((size + pagesize-1) & ~(pagesize-1));
@@ -109,7 +109,7 @@ status_t MemoryHeapBase::mapfd(int fd, size_t size, uint32_t offset)
     }
 
     if ((mFlags & DONT_MAP_LOCALLY) == 0) {
-        void* base = (uint8_t*)mmap(0, size,
+        void* base = (uint8_t*)mmap(nullptr, size,
                 PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset);
         if (base == MAP_FAILED) {
             ALOGE("mmap(fd=%d, size=%u) failed (%s)",
@@ -121,7 +121,7 @@ status_t MemoryHeapBase::mapfd(int fd, size_t size, uint32_t offset)
         mBase = base;
         mNeedUnmap = true;
     } else  {
-        mBase = 0; // not MAP_FAILED
+        mBase = nullptr; // not MAP_FAILED
         mNeedUnmap = false;
     }
     mFD = fd;
@@ -143,7 +143,7 @@ void MemoryHeapBase::dispose()
             //ALOGD("munmap(fd=%d, base=%p, size=%lu)", fd, mBase, mSize);
             munmap(mBase, mSize);
         }
-        mBase = 0;
+        mBase = nullptr;
         mSize = 0;
         close(fd);
     }
