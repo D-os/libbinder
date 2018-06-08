@@ -65,7 +65,7 @@ status_t BnShellCallback::onTransact(
             String16 path(data.readString16());
             String16 seLinuxContext(data.readString16());
             int fd = openOutputFile(path, seLinuxContext);
-            if (reply != NULL) {
+            if (reply != nullptr) {
                 reply->writeNoException();
                 if (fd >= 0) {
                     reply->writeInt32(1);

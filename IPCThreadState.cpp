@@ -289,7 +289,7 @@ restart:
 
     if (gShutdown) {
         ALOGW("Calling IPCThreadState::self() during shutdown is dangerous, expect a crash.\n");
-        return NULL;
+        return nullptr;
     }
 
     pthread_mutex_lock(&gTLSMutex);
@@ -299,7 +299,7 @@ restart:
             pthread_mutex_unlock(&gTLSMutex);
             ALOGW("IPCThreadState::self() unable to create TLS key, expect a crash: %s\n",
                     strerror(key_create_value));
-            return NULL;
+            return nullptr;
         }
         gHaveTLS = true;
     }
@@ -314,7 +314,7 @@ IPCThreadState* IPCThreadState::selfOrNull()
         IPCThreadState* st = (IPCThreadState*)pthread_getspecific(k);
         return st;
     }
-    return NULL;
+    return nullptr;
 }
 
 void IPCThreadState::shutdown()
@@ -326,7 +326,7 @@ void IPCThreadState::shutdown()
         IPCThreadState* st = (IPCThreadState*)pthread_getspecific(gTLS);
         if (st) {
             delete st;
-            pthread_setspecific(gTLS, NULL);
+            pthread_setspecific(gTLS, nullptr);
         }
         pthread_key_delete(gTLS);
         gHaveTLS = false;
@@ -584,7 +584,7 @@ status_t IPCThreadState::transact(int32_t handle,
 
     LOG_ONEWAY(">>>> SEND from pid %d uid %d %s", getpid(), getuid(),
         (flags & TF_ONE_WAY) == 0 ? "READ REPLY" : "ONE WAY");
-    err = writeTransactionData(BC_TRANSACTION, flags, handle, code, data, NULL);
+    err = writeTransactionData(BC_TRANSACTION, flags, handle, code, data, nullptr);
 
     if (err != NO_ERROR) {
         if (reply) reply->setError(err);
@@ -621,7 +621,7 @@ status_t IPCThreadState::transact(int32_t handle,
             else alog << "(none requested)" << endl;
         }
     } else {
-        err = waitForResponse(NULL, NULL);
+        err = waitForResponse(nullptr, nullptr);
     }
 
     return err;
@@ -725,7 +725,7 @@ status_t IPCThreadState::sendReply(const Parcel& reply, uint32_t flags)
     err = writeTransactionData(BC_REPLY, flags, -1, 0, reply, &statusBuffer);
     if (err < NO_ERROR) return err;
 
-    return waitForResponse(NULL, NULL);
+    return waitForResponse(nullptr, nullptr);
 }
 
 status_t IPCThreadState::waitForResponse(Parcel *reply, status_t *acquireResult)
@@ -785,14 +785,14 @@ status_t IPCThreadState::waitForResponse(Parcel *reply, status_t *acquireResult)
                             freeBuffer, this);
                     } else {
                         err = *reinterpret_cast<const status_t*>(tr.data.ptr.buffer);
-                        freeBuffer(NULL,
+                        freeBuffer(nullptr,
                             reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
                             tr.data_size,
                             reinterpret_cast<const binder_size_t*>(tr.data.ptr.offsets),
                             tr.offsets_size/sizeof(binder_size_t), this);
                     }
                 } else {
-                    freeBuffer(NULL,
+                    freeBuffer(nullptr,
                         reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
                         tr.data_size,
                         reinterpret_cast<const binder_size_t*>(tr.data.ptr.offsets),
@@ -1185,7 +1185,7 @@ void IPCThreadState::freeBuffer(Parcel* parcel, const uint8_t* data,
         alog << "Writing BC_FREE_BUFFER for " << data << endl;
     }
     ALOG_ASSERT(data != NULL, "Called with NULL data");
-    if (parcel != NULL) parcel->closeFileDescriptors();
+    if (parcel != nullptr) parcel->closeFileDescriptors();
     IPCThreadState* state = self();
     state->mOut.writeInt32(BC_FREE_BUFFER);
     state->mOut.writePointer((uintptr_t)data);

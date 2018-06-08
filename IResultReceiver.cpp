@@ -40,7 +40,7 @@ public:
         Parcel data;
         data.writeInterfaceToken(IResultReceiver::getInterfaceDescriptor());
         data.writeInt32(resultCode);
-        remote()->transact(OP_SEND, data, NULL, IBinder::FLAG_ONEWAY);
+        remote()->transact(OP_SEND, data, nullptr, IBinder::FLAG_ONEWAY);
     }
 };
 
@@ -56,7 +56,7 @@ status_t BnResultReceiver::onTransact(
             CHECK_INTERFACE(IResultReceiver, data, reply);
             int32_t resultCode = data.readInt32();
             send(resultCode);
-            if (reply != NULL) {
+            if (reply != nullptr) {
                 reply->writeNoException();
             }
             return NO_ERROR;

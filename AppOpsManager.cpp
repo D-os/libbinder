@@ -42,7 +42,7 @@ static sp<IBinder> gToken;
 
 static const sp<IBinder>& getToken(const sp<IAppOpsService>& service) {
     pthread_mutex_lock(&gTokenMutex);
-    if (gToken == NULL || gToken->pingBinder() != NO_ERROR) {
+    if (gToken == nullptr || gToken->pingBinder() != NO_ERROR) {
         gToken = service->getToken(new BBinder());
     }
     pthread_mutex_unlock(&gTokenMutex);
@@ -63,16 +63,16 @@ sp<IAppOpsService> AppOpsManager::getService()
     std::lock_guard<Mutex> scoped_lock(mLock);
     int64_t startTime = 0;
     sp<IAppOpsService> service = mService;
-    while (service == NULL || !IInterface::asBinder(service)->isBinderAlive()) {
+    while (service == nullptr || !IInterface::asBinder(service)->isBinderAlive()) {
         sp<IBinder> binder = defaultServiceManager()->checkService(_appops);
-        if (binder == NULL) {
+        if (binder == nullptr) {
             // Wait for the app ops service to come back...
             if (startTime == 0) {
                 startTime = uptimeMillis();
                 ALOGI("Waiting for app ops service");
             } else if ((uptimeMillis()-startTime) > 10000) {
                 ALOGW("Waiting too long for app ops service, giving up");
-                service = NULL;
+                service = nullptr;
                 break;
             }
             sleep(1);
@@ -88,28 +88,28 @@ sp<IAppOpsService> AppOpsManager::getService()
 int32_t AppOpsManager::checkOp(int32_t op, int32_t uid, const String16& callingPackage)
 {
     sp<IAppOpsService> service = getService();
-    return service != NULL
+    return service != nullptr
             ? service->checkOperation(op, uid, callingPackage)
             : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 }
 
 int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage) {
     sp<IAppOpsService> service = getService();
-    return service != NULL
+    return service != nullptr
             ? service->noteOperation(op, uid, callingPackage)
             : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 }
 
 int32_t AppOpsManager::startOp(int32_t op, int32_t uid, const String16& callingPackage) {
     sp<IAppOpsService> service = getService();
-    return service != NULL
+    return service != nullptr
             ? service->startOperation(getToken(service), op, uid, callingPackage)
             : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 }
 
 void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPackage) {
     sp<IAppOpsService> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         service->finishOperation(getToken(service), op, uid, callingPackage);
     }
 }
@@ -117,21 +117,21 @@ void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPac
 void AppOpsManager::startWatchingMode(int32_t op, const String16& packageName,
         const sp<IAppOpsCallback>& callback) {
     sp<IAppOpsService> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         service->startWatchingMode(op, packageName, callback);
     }
 }
 
 void AppOpsManager::stopWatchingMode(const sp<IAppOpsCallback>& callback) {
     sp<IAppOpsService> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         service->stopWatchingMode(callback);
     }
 }
 
 int32_t AppOpsManager::permissionToOpCode(const String16& permission) {
     sp<IAppOpsService> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         return service->permissionToOpCode(permission);
     }
     return -1;

@@ -130,7 +130,7 @@ class BpMemory : public BpInterface<IMemory>
 public:
     explicit BpMemory(const sp<IBinder>& impl);
     virtual ~BpMemory();
-    virtual sp<IMemoryHeap> getMemory(ssize_t* offset=0, size_t* size=0) const;
+    virtual sp<IMemoryHeap> getMemory(ssize_t* offset=nullptr, size_t* size=nullptr) const;
 
 private:
     mutable sp<IMemoryHeap> mHeap;
@@ -145,22 +145,22 @@ void* IMemory::fastPointer(const sp<IBinder>& binder, ssize_t offset) const
     sp<IMemoryHeap> realHeap = BpMemoryHeap::get_heap(binder);
     void* const base = realHeap->base();
     if (base == MAP_FAILED)
-        return 0;
+        return nullptr;
     return static_cast<char*>(base) + offset;
 }
 
 void* IMemory::pointer() const {
     ssize_t offset;
     sp<IMemoryHeap> heap = getMemory(&offset);
-    void* const base = heap!=0 ? heap->base() : MAP_FAILED;
+    void* const base = heap!=nullptr ? heap->base() : MAP_FAILED;
     if (base == MAP_FAILED)
-        return 0;
+        return nullptr;
     return static_cast<char*>(base) + offset;
 }
 
 size_t IMemory::size() const {
     size_t size;
-    getMemory(NULL, &size);
+    getMemory(nullptr, &size);
     return size;
 }
 
@@ -183,16 +183,16 @@ BpMemory::~BpMemory()
 
 sp<IMemoryHeap> BpMemory::getMemory(ssize_t* offset, size_t* size) const
 {
-    if (mHeap == 0) {
+    if (mHeap == nullptr) {
         Parcel data, reply;
         data.writeInterfaceToken(IMemory::getInterfaceDescriptor());
         if (remote()->transact(GET_MEMORY, data, &reply) == NO_ERROR) {
             sp<IBinder> heap = reply.readStrongBinder();
             ssize_t o = reply.readInt32();
             size_t s = reply.readInt32();
-            if (heap != 0) {
+            if (heap != nullptr) {
                 mHeap = interface_cast<IMemoryHeap>(heap);
-                if (mHeap != 0) {
+                if (mHeap != nullptr) {
                     size_t heapSize = mHeap->getSize();
                     if (s <= heapSize
                             && o >= 0
@@ -202,7 +202,7 @@ sp<IMemoryHeap> BpMemory::getMemory(ssize_t* offset, size_t* size) const
                     } else {
                         // Hm.
                         android_errorWriteWithInfoLog(0x534e4554,
-                            "26877992", -1, NULL, 0);
+                            "26877992", -1, nullptr, 0);
                         mOffset = 0;
                         mSize = 0;
                     }
@@ -212,7 +212,7 @@ sp<IMemoryHeap> BpMemory::getMemory(ssize_t* offset, size_t* size) const
     }
     if (offset) *offset = mOffset;
     if (size) *size = mSize;
-    return (mSize > 0) ? mHeap : 0;
+    return (mSize > 0) ? mHeap : nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,7 +334,7 @@ void BpMemoryHeap::assertReallyMapped() const
                 access |= PROT_WRITE;
             }
             mRealHeap = true;
-            mBase = mmap(0, size, access, MAP_SHARED, fd, offset);
+            mBase = mmap(nullptr, size, access, MAP_SHARED, fd, offset);
             if (mBase == MAP_FAILED) {
                 ALOGE("cannot map BpMemoryHeap (binder=%p), size=%zd, fd=%d (%s)",
                         IInterface::asBinder(this).get(), size, fd, strerror(errno));

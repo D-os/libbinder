@@ -62,7 +62,7 @@ void BpBinder::ObjectManager::attach(
 void* BpBinder::ObjectManager::find(const void* objectID) const
 {
     const ssize_t i = mObjects.indexOfKey(objectID);
-    if (i < 0) return NULL;
+    if (i < 0) return nullptr;
     return mObjects.valueAt(i).object;
 }
 
@@ -77,7 +77,7 @@ void BpBinder::ObjectManager::kill()
     ALOGV("Killing %zu objects in manager %p", N, this);
     for (size_t i=0; i<N; i++) {
         const entry_t& e = mObjects.valueAt(i);
-        if (e.func != NULL) {
+        if (e.func != nullptr) {
             e.func(mObjects.keyAt(i), e.object, e.cleanupCookie);
         }
     }
@@ -91,7 +91,7 @@ BpBinder::BpBinder(int32_t handle)
     : mHandle(handle)
     , mAlive(1)
     , mObitsSent(0)
-    , mObituaries(NULL)
+    , mObituaries(nullptr)
 {
     ALOGV("Creating BpBinder %p handle %d\n", this, mHandle);
 
@@ -179,7 +179,7 @@ status_t BpBinder::linkToDeath(
     ob.cookie = cookie;
     ob.flags = flags;
 
-    LOG_ALWAYS_FATAL_IF(recipient == NULL,
+    LOG_ALWAYS_FATAL_IF(recipient == nullptr,
                         "linkToDeath(): recipient must be non-NULL");
 
     {
@@ -219,9 +219,9 @@ status_t BpBinder::unlinkToDeath(
     for (size_t i=0; i<N; i++) {
         const Obituary& obit = mObituaries->itemAt(i);
         if ((obit.recipient == recipient
-                    || (recipient == NULL && obit.cookie == cookie))
+                    || (recipient == nullptr && obit.cookie == cookie))
                 && obit.flags == flags) {
-            if (outRecipient != NULL) {
+            if (outRecipient != nullptr) {
                 *outRecipient = mObituaries->itemAt(i).recipient;
             }
             mObituaries->removeAt(i);
@@ -231,7 +231,7 @@ status_t BpBinder::unlinkToDeath(
                 self->clearDeathNotification(mHandle, this);
                 self->flushCommands();
                 delete mObituaries;
-                mObituaries = NULL;
+                mObituaries = nullptr;
             }
             return NO_ERROR;
         }
@@ -250,12 +250,12 @@ void BpBinder::sendObituary()
 
     mLock.lock();
     Vector<Obituary>* obits = mObituaries;
-    if(obits != NULL) {
+    if(obits != nullptr) {
         ALOGV("Clearing sent death notification: %p handle %d\n", this, mHandle);
         IPCThreadState* self = IPCThreadState::self();
         self->clearDeathNotification(mHandle, this);
         self->flushCommands();
-        mObituaries = NULL;
+        mObituaries = nullptr;
     }
     mObitsSent = 1;
     mLock.unlock();
@@ -263,7 +263,7 @@ void BpBinder::sendObituary()
     ALOGV("Reporting death of proxy %p for %zu recipients\n",
         this, obits ? obits->size() : 0U);
 
-    if (obits != NULL) {
+    if (obits != nullptr) {
         const size_t N = obits->size();
         for (size_t i=0; i<N; i++) {
             reportOneDeath(obits->itemAt(i));
@@ -277,7 +277,7 @@ void BpBinder::reportOneDeath(const Obituary& obit)
 {
     sp<DeathRecipient> recipient = obit.recipient.promote();
     ALOGV("Reporting death to recipient: %p\n", recipient.get());
-    if (recipient == NULL) return;
+    if (recipient == nullptr) return;
 
     recipient->binderDied(this);
 }
@@ -317,13 +317,13 @@ BpBinder::~BpBinder()
 
     mLock.lock();
     Vector<Obituary>* obits = mObituaries;
-    if(obits != NULL) {
+    if(obits != nullptr) {
         if (ipc) ipc->clearDeathNotification(mHandle, this);
-        mObituaries = NULL;
+        mObituaries = nullptr;
     }
     mLock.unlock();
 
-    if (obits != NULL) {
+    if (obits != nullptr) {
         // XXX Should we tell any remaining DeathRecipient
         // objects that the last strong ref has gone away, so they
         // are no longer linked?

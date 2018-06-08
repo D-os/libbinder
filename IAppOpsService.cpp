@@ -108,7 +108,7 @@ public:
         data.writeStrongBinder(clientToken);
         remote()->transact(GET_TOKEN_TRANSACTION, data, &reply);
         // fail on exception
-        if (reply.readExceptionCode() != 0) return NULL;
+        if (reply.readExceptionCode() != 0) return nullptr;
         return reply.readStrongBinder();
     }
 
