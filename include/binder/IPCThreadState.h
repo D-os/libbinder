@@ -64,9 +64,9 @@ public:
                                          uint32_t code, const Parcel& data,
                                          Parcel* reply, uint32_t flags);
 
-            void                incStrongHandle(int32_t handle);
+            void                incStrongHandle(int32_t handle, BpBinder *proxy);
             void                decStrongHandle(int32_t handle);
-            void                incWeakHandle(int32_t handle);
+            void                incWeakHandle(int32_t handle, BpBinder *proxy);
             void                decWeakHandle(int32_t handle);
             status_t            attemptIncStrongHandle(int32_t handle);
     static  void                expungeHandle(int32_t handle, IBinder* binder);
@@ -106,6 +106,7 @@ private:
             status_t            getAndExecuteCommand();
             status_t            executeCommand(int32_t command);
             void                processPendingDerefs();
+            void                processPostWriteDerefs();
 
             void                clearCaller();
 
@@ -118,7 +119,8 @@ private:
     const   sp<ProcessState>    mProcess;
             Vector<BBinder*>    mPendingStrongDerefs;
             Vector<RefBase::weakref_type*> mPendingWeakDerefs;
-
+            Vector<RefBase*>    mPostWriteStrongDerefs;
+            Vector<RefBase::weakref_type*> mPostWriteWeakDerefs;
             Parcel              mIn;
             Parcel              mOut;
             status_t            mLastError;

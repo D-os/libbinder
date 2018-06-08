@@ -17,6 +17,8 @@
 #ifndef ANDROID_APP_OPS_MANAGER_H
 #define ANDROID_APP_OPS_MANAGER_H
 
+#ifndef __ANDROID_VNDK__
+
 #include <binder/IAppOpsService.h>
 
 #include <utils/threads.h>
@@ -99,7 +101,8 @@ public:
 
     int32_t checkOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage);
-    int32_t startOp(int32_t op, int32_t uid, const String16& callingPackage);
+    int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
+            bool startIfModeDefault);
     void finishOp(int32_t op, int32_t uid, const String16& callingPackage);
     void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback);
@@ -116,4 +119,8 @@ private:
 
 }; // namespace android
 // ---------------------------------------------------------------------------
+#else // __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif // __ANDROID_VNDK__
+
 #endif // ANDROID_APP_OPS_MANAGER_H

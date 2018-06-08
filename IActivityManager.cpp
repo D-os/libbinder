@@ -56,6 +56,40 @@ public:
         }
         return fd;
     }
+
+    virtual void registerUidObserver(const sp<IUidObserver>& observer,
+                                     const int32_t event,
+                                     const int32_t cutpoint,
+                                     const String16& callingPackage)
+    {
+         Parcel data, reply;
+         data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
+         data.writeStrongBinder(IInterface::asBinder(observer));
+         data.writeInt32(event);
+         data.writeInt32(cutpoint);
+         data.writeString16(callingPackage);
+         remote()->transact(REGISTER_UID_OBSERVER_TRANSACTION, data, &reply);
+    }
+
+    virtual void unregisterUidObserver(const sp<IUidObserver>& observer)
+    {
+         Parcel data, reply;
+         data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
+         data.writeStrongBinder(IInterface::asBinder(observer));
+         remote()->transact(UNREGISTER_UID_OBSERVER_TRANSACTION, data, &reply);
+    }
+
+    virtual bool isUidActive(const uid_t uid, const String16& callingPackage)
+    {
+         Parcel data, reply;
+         data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
+         data.writeInt32(uid);
+         data.writeString16(callingPackage);
+         remote()->transact(IS_UID_ACTIVE_TRANSACTION, data, &reply);
+         // fail on exception
+         if (reply.readExceptionCode() != 0) return false;
+         return reply.readInt32() == 1;
+    }
 };
 
 // ------------------------------------------------------------------------------------

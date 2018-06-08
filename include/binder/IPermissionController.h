@@ -18,6 +18,8 @@
 #ifndef ANDROID_IPERMISSION_CONTROLLER_H
 #define ANDROID_IPERMISSION_CONTROLLER_H
 
+#ifndef __ANDROID_VNDK__
+
 #include <binder/IInterface.h>
 #include <stdlib.h>
 
@@ -32,14 +34,20 @@ public:
 
     virtual bool checkPermission(const String16& permission, int32_t pid, int32_t uid) = 0;
 
+    virtual int32_t noteOp(const String16& op, int32_t uid, const String16& packageName) = 0;
+
     virtual void getPackagesForUid(const uid_t uid, Vector<String16> &packages) = 0;
 
     virtual bool isRuntimePermission(const String16& permission) = 0;
 
+    virtual int getPackageUid(const String16& package, int flags) = 0;
+
     enum {
         CHECK_PERMISSION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
-        GET_PACKAGES_FOR_UID_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 1,
-        IS_RUNTIME_PERMISSION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 2
+        NOTE_OP_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 1,
+        GET_PACKAGES_FOR_UID_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 2,
+        IS_RUNTIME_PERMISSION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 3,
+        GET_PACKAGE_UID_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 4
     };
 };
 
@@ -57,6 +65,10 @@ public:
 // ----------------------------------------------------------------------
 
 }; // namespace android
+
+#else // __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif // __ANDROID_VNDK__
 
 #endif // ANDROID_IPERMISSION_CONTROLLER_H
 

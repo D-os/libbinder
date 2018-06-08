@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_I_PROCESS_INFO_SERVICE_H
-#define ANDROID_I_PROCESS_INFO_SERVICE_H
+//
+#ifndef ANDROID_IUID_OBSERVER_H
+#define ANDROID_IUID_OBSERVER_H
 
 #ifndef __ANDROID_VNDK__
 
@@ -25,23 +26,31 @@ namespace android {
 
 // ----------------------------------------------------------------------
 
-class IProcessInfoService : public IInterface {
+class IUidObserver : public IInterface
+{
 public:
-    DECLARE_META_INTERFACE(ProcessInfoService)
+    DECLARE_META_INTERFACE(UidObserver)
 
-    virtual status_t    getProcessStatesFromPids( size_t length,
-                                                  /*in*/ int32_t* pids,
-                                                  /*out*/ int32_t* states) = 0;
-
-    virtual status_t    getProcessStatesAndOomScoresFromPids( size_t length,
-                                                  /*in*/ int32_t* pids,
-                                                  /*out*/ int32_t* states,
-                                                  /*out*/ int32_t* scores) = 0;
+    virtual void onUidGone(uid_t uid, bool disabled) = 0;
+    virtual void onUidActive(uid_t uid) = 0;
+    virtual void onUidIdle(uid_t uid, bool disabled) = 0;
 
     enum {
-        GET_PROCESS_STATES_FROM_PIDS = IBinder::FIRST_CALL_TRANSACTION,
-        GET_PROCESS_STATES_AND_OOM_SCORES_FROM_PIDS,
+        ON_UID_GONE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
+        ON_UID_ACTIVE_TRANSACTION,
+        ON_UID_IDLE_TRANSACTION
     };
+};
+
+// ----------------------------------------------------------------------
+
+class BnUidObserver : public BnInterface<IUidObserver>
+{
+public:
+    virtual status_t  onTransact(uint32_t code,
+                                 const Parcel& data,
+                                 Parcel* reply,
+                                 uint32_t flags = 0);
 };
 
 // ----------------------------------------------------------------------
@@ -52,4 +61,4 @@ public:
 #error "This header is not visible to vendors"
 #endif // __ANDROID_VNDK__
 
-#endif // ANDROID_I_PROCESS_INFO_SERVICE_H
+#endif // ANDROID_IUID_OBSERVER_H

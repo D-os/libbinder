@@ -39,6 +39,7 @@ cc_library {
     double_loadable: true,
 
     srcs: [
+        "ActivityManager.cpp",
         "AppOpsManager.cpp",
         "Binder.cpp",
         "BpBinder.cpp",
@@ -57,11 +58,13 @@ cc_library {
         "IResultReceiver.cpp",
         "IServiceManager.cpp",
         "IShellCallback.cpp",
+        "IUidObserver.cpp",
         "MemoryBase.cpp",
         "MemoryDealer.cpp",
         "MemoryHeapBase.cpp",
         "Parcel.cpp",
         "PermissionCache.cpp",
+        "PermissionController.cpp",
         "PersistableBundle.cpp",
         "ProcessInfoService.cpp",
         "ProcessState.cpp",
@@ -72,6 +75,28 @@ cc_library {
         "Value.cpp",
         ":libbinder_aidl",
     ],
+
+    target: {
+        vendor: {
+            exclude_srcs: [
+                "ActivityManager.cpp",
+                "AppOpsManager.cpp",
+                "IActivityManager.cpp",
+                "IAppOpsCallback.cpp",
+                "IAppOpsService.cpp",
+                "IBatteryStats.cpp",
+                "IMediaResourceMonitor.cpp",
+                "IPermissionController.cpp",
+                "IProcessInfoService.cpp",
+                "IUidObserver.cpp",
+                "PermissionCache.cpp",
+                "PermissionController.cpp",
+                "ProcessInfoService.cpp",
+                "IpPrefix.cpp",
+                ":libbinder_aidl",
+            ],
+        },
+    },
 
     aidl: {
         export_aidl_headers: true,

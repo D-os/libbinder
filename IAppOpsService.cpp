@@ -61,13 +61,14 @@ public:
     }
 
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-                const String16& packageName) {
+                const String16& packageName, bool startIfModeDefault) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
         data.writeStrongBinder(token);
         data.writeInt32(code);
         data.writeInt32(uid);
         data.writeString16(packageName);
+        data.writeInt32(startIfModeDefault ? 1 : 0);
         remote()->transact(START_OPERATION_TRANSACTION, data, &reply);
         // fail on exception
         if (reply.readExceptionCode() != 0) return MODE_ERRORED;
@@ -159,7 +160,8 @@ status_t BnAppOpsService::onTransact(
             int32_t code = data.readInt32();
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
-            int32_t res = startOperation(token, code, uid, packageName);
+            bool startIfModeDefault = data.readInt32() == 1;
+            int32_t res = startOperation(token, code, uid, packageName, startIfModeDefault);
             reply->writeNoException();
             reply->writeInt32(res);
             return NO_ERROR;
