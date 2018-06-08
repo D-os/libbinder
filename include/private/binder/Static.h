@@ -32,7 +32,7 @@ namespace android {
 extern Vector<int32_t> gTextBuffers;
 
 // For ProcessState.cpp
-extern Mutex gProcessMutex;
+extern Mutex& gProcessMutex;
 extern sp<ProcessState> gProcess;
 
 // For IServiceManager.cpp
