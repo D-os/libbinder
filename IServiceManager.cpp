@@ -144,7 +144,7 @@ public:
     virtual sp<IBinder> getService(const String16& name) const
     {
         sp<IBinder> svc = checkService(name);
-        if (svc != NULL) return svc;
+        if (svc != nullptr) return svc;
 
         const bool isVendorService =
             strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
@@ -172,7 +172,7 @@ public:
             if (svc != NULL) return svc;
         }
         ALOGW("Service %s didn't start. Returning NULL", String8(name).string());
-        return NULL;
+        return nullptr;
     }
 
     virtual sp<IBinder> checkService( const String16& name) const

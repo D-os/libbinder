@@ -1278,7 +1278,7 @@ status_t Parcel::write(const FlattenableHelperInterface& val)
 
     // payload
     void* const buf = this->writeInplace(len);
-    if (buf == NULL)
+    if (buf == nullptr)
         return BAD_VALUE;
 
     int* fds = NULL;
@@ -1566,7 +1566,7 @@ const void* Parcel::readInplace(size_t len) const
                 // Still increment the data position by the expected length
                 mDataPos += pad_size(len);
                 ALOGV("readInplace Setting data pos of %p to %zu", this, mDataPos);
-                return NULL;
+                return nullptr;
             }
         }
 

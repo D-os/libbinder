@@ -139,7 +139,7 @@ BpBinder::BpBinder(int32_t handle, int32_t trackedUid)
     : mHandle(handle)
     , mAlive(1)
     , mObitsSent(0)
-    , mObituaries(NULL)
+    , mObituaries(nullptr)
     , mTrackedUid(trackedUid)
 {
     ALOGV("Creating BpBinder %p handle %d\n", this, mHandle);

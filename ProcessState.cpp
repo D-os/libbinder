@@ -315,7 +315,7 @@ wp<IBinder> ProcessState::getWeakProxyForHandle(int32_t handle)
         // releasing a reference on this BpBinder, and a new reference on its handle
         // arriving from the driver.
         IBinder* b = e->binder;
-        if (b == NULL || !e->refs->attemptIncWeak(this)) {
+        if (b == nullptr || !e->refs->attemptIncWeak(this)) {
             b = BpBinder::create(handle);
             result = b;
             e->binder = b;
