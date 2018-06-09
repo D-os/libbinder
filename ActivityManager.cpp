@@ -34,16 +34,16 @@ sp<IActivityManager> ActivityManager::getService()
     std::lock_guard<Mutex> scoped_lock(mLock);
     int64_t startTime = 0;
     sp<IActivityManager> service = mService;
-    while (service == NULL || !IInterface::asBinder(service)->isBinderAlive()) {
+    while (service == nullptr || !IInterface::asBinder(service)->isBinderAlive()) {
         sp<IBinder> binder = defaultServiceManager()->checkService(String16("activity"));
-        if (binder == NULL) {
+        if (binder == nullptr) {
             // Wait for the activity service to come back...
             if (startTime == 0) {
                 startTime = uptimeMillis();
                 ALOGI("Waiting for activity service");
             } else if ((uptimeMillis() - startTime) > 1000000) {
                 ALOGW("Waiting too long for activity service, giving up");
-                service = NULL;
+                service = nullptr;
                 break;
             }
             usleep(25000);
@@ -58,7 +58,7 @@ sp<IActivityManager> ActivityManager::getService()
 int ActivityManager::openContentUri(const String16& stringUri)
 {
     sp<IActivityManager> service = getService();
-    return service != NULL ? service->openContentUri(stringUri) : -1;
+    return service != nullptr ? service->openContentUri(stringUri) : -1;
 }
 
 void ActivityManager::registerUidObserver(const sp<IUidObserver>& observer,
@@ -67,7 +67,7 @@ void ActivityManager::registerUidObserver(const sp<IUidObserver>& observer,
                                           const String16& callingPackage)
 {
     sp<IActivityManager> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         service->registerUidObserver(observer, event, cutpoint, callingPackage);
     }
 }
@@ -75,7 +75,7 @@ void ActivityManager::registerUidObserver(const sp<IUidObserver>& observer,
 void ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
 {
     sp<IActivityManager> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         service->unregisterUidObserver(observer);
     }
 }
@@ -83,7 +83,7 @@ void ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
 bool ActivityManager::isUidActive(const uid_t uid, const String16& callingPackage)
 {
     sp<IActivityManager> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         return service->isUidActive(uid, callingPackage);
     }
     return false;
@@ -91,7 +91,7 @@ bool ActivityManager::isUidActive(const uid_t uid, const String16& callingPackag
 
 status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
     sp<IActivityManager> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         return IInterface::asBinder(service)->linkToDeath(recipient);
     }
     return INVALID_OPERATION;
@@ -99,7 +99,7 @@ status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipie
 
 status_t ActivityManager::unlinkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
     sp<IActivityManager> service = getService();
-    if (service != NULL) {
+    if (service != nullptr) {
         return IInterface::asBinder(service)->unlinkToDeath(recipient);
     }
     return INVALID_OPERATION;
