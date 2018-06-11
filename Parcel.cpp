@@ -1180,6 +1180,19 @@ status_t Parcel::writeParcelFileDescriptor(int fd, bool takeOwnership)
     return writeFileDescriptor(fd, takeOwnership);
 }
 
+status_t Parcel::writeDupParcelFileDescriptor(int fd)
+{
+    int dupFd = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+    if (dupFd < 0) {
+        return -errno;
+    }
+    status_t err = writeParcelFileDescriptor(dupFd, true /*takeOwnership*/);
+    if (err != OK) {
+        close(dupFd);
+    }
+    return err;
+}
+
 status_t Parcel::writeUniqueFileDescriptor(const base::unique_fd& fd) {
     return writeDupFileDescriptor(fd.get());
 }
@@ -2249,6 +2262,22 @@ status_t Parcel::readUniqueFileDescriptor(base::unique_fd* val) const
     return OK;
 }
 
+status_t Parcel::readUniqueParcelFileDescriptor(base::unique_fd* val) const
+{
+    int got = readParcelFileDescriptor();
+
+    if (got == BAD_TYPE) {
+        return BAD_TYPE;
+    }
+
+    val->reset(fcntl(got, F_DUPFD_CLOEXEC, 0));
+
+    if (val->get() < 0) {
+        return BAD_VALUE;
+    }
+
+    return OK;
+}
 
 status_t Parcel::readUniqueFileDescriptorVector(std::unique_ptr<std::vector<base::unique_fd>>* val) const {
     return readNullableTypedVector(val, &Parcel::readUniqueFileDescriptor);

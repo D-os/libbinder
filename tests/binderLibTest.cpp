@@ -65,6 +65,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_ADD_STRONG_REF_TRANSACTION,
     BINDER_LIB_TEST_LINK_DEATH_TRANSACTION,
     BINDER_LIB_TEST_WRITE_FILE_TRANSACTION,
+    BINDER_LIB_TEST_WRITE_PARCEL_FILE_DESCRIPTOR_TRANSACTION,
     BINDER_LIB_TEST_PROMOTE_WEAK_REF_TRANSACTION,
     BINDER_LIB_TEST_EXIT_TRANSACTION,
     BINDER_LIB_TEST_DELAYED_EXIT_TRANSACTION,
@@ -763,6 +764,41 @@ TEST_F(BinderLibTest, PassFile) {
     close(pipefd[0]);
 }
 
+TEST_F(BinderLibTest, PassParcelFileDescriptor) {
+    const int datasize = 123;
+    std::vector<uint8_t> writebuf(datasize);
+    for (size_t i = 0; i < writebuf.size(); ++i) {
+        writebuf[i] = i;
+    }
+
+    android::base::unique_fd read_end, write_end;
+    {
+        int pipefd[2];
+        ASSERT_EQ(0, pipe2(pipefd, O_NONBLOCK));
+        read_end.reset(pipefd[0]);
+        write_end.reset(pipefd[1]);
+    }
+    {
+        Parcel data;
+        EXPECT_EQ(NO_ERROR, data.writeDupParcelFileDescriptor(write_end.get()));
+        write_end.reset();
+        EXPECT_EQ(NO_ERROR, data.writeInt32(datasize));
+        EXPECT_EQ(NO_ERROR, data.write(writebuf.data(), datasize));
+
+        Parcel reply;
+        EXPECT_EQ(NO_ERROR,
+                  m_server->transact(BINDER_LIB_TEST_WRITE_PARCEL_FILE_DESCRIPTOR_TRANSACTION, data,
+                                     &reply));
+    }
+    std::vector<uint8_t> readbuf(datasize);
+    EXPECT_EQ(datasize, read(read_end.get(), readbuf.data(), datasize));
+    EXPECT_EQ(writebuf, readbuf);
+
+    waitForReadData(read_end.get(), 5000); /* wait for other proccess to close pipe */
+
+    EXPECT_EQ(0, read(read_end.get(), readbuf.data(), datasize));
+}
+
 TEST_F(BinderLibTest, PromoteLocal) {
     sp<IBinder> strong = new BBinder();
     wp<IBinder> weak = strong;
@@ -1138,6 +1174,28 @@ class BinderLibTestService : public BBinder
                     return UNKNOWN_ERROR;
                 return NO_ERROR;
             }
+            case BINDER_LIB_TEST_WRITE_PARCEL_FILE_DESCRIPTOR_TRANSACTION: {
+                int ret;
+                int32_t size;
+                const void *buf;
+                android::base::unique_fd fd;
+
+                ret = data.readUniqueParcelFileDescriptor(&fd);
+                if (ret != NO_ERROR) {
+                    return ret;
+                }
+                ret = data.readInt32(&size);
+                if (ret != NO_ERROR) {
+                    return ret;
+                }
+                buf = data.readInplace(size);
+                if (buf == NULL) {
+                    return BAD_VALUE;
+                }
+                ret = write(fd.get(), buf, size);
+                if (ret != size) return UNKNOWN_ERROR;
+                return NO_ERROR;
+            }
             case BINDER_LIB_TEST_PROMOTE_WEAK_REF_TRANSACTION: {
                 int ret;
                 wp<IBinder> weak;
@@ -1300,4 +1358,3 @@ int main(int argc, char **argv) {
     ProcessState::self()->startThreadPool();
     return RUN_ALL_TESTS();
 }
-
