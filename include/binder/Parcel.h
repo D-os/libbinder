@@ -205,6 +205,10 @@ public:
     // The Parcel does not take ownership of the given fd unless you ask it to.
     status_t            writeParcelFileDescriptor(int fd, bool takeOwnership = false);
 
+    // Place a Java "parcel file descriptor" into the parcel.  A dup of the fd is made, which will
+    // be closed once the parcel is destroyed.
+    status_t            writeDupParcelFileDescriptor(int fd);
+
     // Place a file descriptor into the parcel.  This will not affect the
     // semantics of the smart file descriptor. A new descriptor will be
     // created, and will be closed when the parcel is destroyed.
@@ -363,6 +367,9 @@ public:
     // Retrieve a smart file descriptor from the parcel.
     status_t            readUniqueFileDescriptor(
                             base::unique_fd* val) const;
+
+    // Retrieve a Java "parcel file descriptor" from the parcel.
+    status_t            readUniqueParcelFileDescriptor(base::unique_fd* val) const;
 
 
     // Retrieve a vector of smart file descriptors from the parcel.
