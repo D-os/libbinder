@@ -36,7 +36,7 @@ status_t ProcessInfoService::getProcessStatesImpl(size_t length, /*in*/ int32_t*
 
     for (int i = 0; i < BINDER_ATTEMPT_LIMIT; i++) {
 
-        if (pis != NULL) {
+        if (pis != nullptr) {
             err = pis->getProcessStatesFromPids(length, /*in*/ pids, /*out*/ states);
             if (err == NO_ERROR) return NO_ERROR; // success
             if (IInterface::asBinder(pis)->isBinderAlive()) return err;
@@ -68,7 +68,7 @@ status_t ProcessInfoService::getProcessStatesScoresImpl(size_t length,
 
     for (int i = 0; i < BINDER_ATTEMPT_LIMIT; i++) {
 
-        if (pis != NULL) {
+        if (pis != nullptr) {
             err = pis->getProcessStatesAndOomScoresFromPids(length,
                     /*in*/ pids, /*out*/ states, /*out*/ scores);
             if (err == NO_ERROR) return NO_ERROR; // success
@@ -93,7 +93,7 @@ status_t ProcessInfoService::getProcessStatesScoresImpl(size_t length,
 
 void ProcessInfoService::updateBinderLocked() {
     const sp<IServiceManager> sm(defaultServiceManager());
-    if (sm != NULL) {
+    if (sm != nullptr) {
         const String16 name("processinfo");
         mProcessInfoService = interface_cast<IProcessInfoService>(sm->checkService(name));
     }

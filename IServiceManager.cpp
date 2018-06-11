@@ -37,14 +37,14 @@ namespace android {
 
 sp<IServiceManager> defaultServiceManager()
 {
-    if (gDefaultServiceManager != NULL) return gDefaultServiceManager;
+    if (gDefaultServiceManager != nullptr) return gDefaultServiceManager;
 
     {
         AutoMutex _l(gDefaultServiceManagerLock);
-        while (gDefaultServiceManager == NULL) {
+        while (gDefaultServiceManager == nullptr) {
             gDefaultServiceManager = interface_cast<IServiceManager>(
-                ProcessState::self()->getContextObject(NULL));
-            if (gDefaultServiceManager == NULL)
+                ProcessState::self()->getContextObject(nullptr));
+            if (gDefaultServiceManager == nullptr)
                 sleep(1);
         }
     }
@@ -57,7 +57,7 @@ sp<IServiceManager> defaultServiceManager()
 
 bool checkCallingPermission(const String16& permission)
 {
-    return checkCallingPermission(permission, NULL, NULL);
+    return checkCallingPermission(permission, nullptr, nullptr);
 }
 
 static String16 _permission("permission");
@@ -83,7 +83,7 @@ bool checkPermission(const String16& permission, pid_t pid, uid_t uid)
     int64_t startTime = 0;
 
     while (true) {
-        if (pc != NULL) {
+        if (pc != nullptr) {
             bool res = pc->checkPermission(permission, pid, uid);
             if (res) {
                 if (startTime != 0) {
@@ -104,14 +104,14 @@ bool checkPermission(const String16& permission, pid_t pid, uid_t uid)
             // Object is dead!
             gDefaultServiceManagerLock.lock();
             if (gPermissionController == pc) {
-                gPermissionController = NULL;
+                gPermissionController = nullptr;
             }
             gDefaultServiceManagerLock.unlock();
         }
 
         // Need to retrieve the permission controller.
         sp<IBinder> binder = defaultServiceManager()->checkService(_permission);
-        if (binder == NULL) {
+        if (binder == nullptr) {
             // Wait for the permission controller to come back...
             if (startTime == 0) {
                 startTime = uptimeMillis();
@@ -169,7 +169,7 @@ public:
             usleep(1000*sleepTime);
 
             sp<IBinder> svc = checkService(name);
-            if (svc != NULL) return svc;
+            if (svc != nullptr) return svc;
         }
         ALOGW("Service %s didn't start. Returning NULL", String8(name).string());
         return nullptr;

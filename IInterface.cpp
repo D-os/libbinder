@@ -32,14 +32,14 @@ IInterface::~IInterface() {
 // static
 sp<IBinder> IInterface::asBinder(const IInterface* iface)
 {
-    if (iface == NULL) return NULL;
+    if (iface == nullptr) return nullptr;
     return const_cast<IInterface*>(iface)->onAsBinder();
 }
 
 // static
 sp<IBinder> IInterface::asBinder(const sp<IInterface>& iface)
 {
-    if (iface == NULL) return NULL;
+    if (iface == nullptr) return nullptr;
     return iface->onAsBinder();
 }
 
