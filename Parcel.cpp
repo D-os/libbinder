@@ -74,7 +74,7 @@ static size_t pad_size(size_t s) {
 }
 
 // Note: must be kept in sync with android/os/StrictMode.java's PENALTY_GATHER
-#define STRICT_MODE_PENALTY_GATHER (0x40 << 16)
+#define STRICT_MODE_PENALTY_GATHER (1 << 31)
 
 // XXX This can be made public if we want to provide
 // support for typed data.
