@@ -43,6 +43,12 @@
 #define BINDER_VM_SIZE ((1 * 1024 * 1024) - sysconf(_SC_PAGE_SIZE) * 2)
 #define DEFAULT_MAX_BINDER_THREADS 15
 
+#ifdef __ANDROID_VNDK__
+const char* kDefaultDriver = "/dev/vndbinder";
+#else
+const char* kDefaultDriver = "/dev/binder";
+#endif
+
 // -------------------------------------------------------------------------
 
 namespace android {
@@ -71,7 +77,7 @@ sp<ProcessState> ProcessState::self()
     if (gProcess != nullptr) {
         return gProcess;
     }
-    gProcess = new ProcessState("/dev/binder");
+    gProcess = new ProcessState(kDefaultDriver);
     return gProcess;
 }
 
