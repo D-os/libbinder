@@ -161,12 +161,8 @@ public:
         int n = 0;
         while (uptimeMillis() < timeout) {
             n++;
-            if (isVendorService) {
-                ALOGI("Waiting for vendor service %s...", String8(name).string());
-                CallStack stack(LOG_TAG);
-            } else if (n%10 == 0) {
-                ALOGI("Waiting for service %s...", String8(name).string());
-            }
+            ALOGI("Waiting for service '%s' on '%s'...", String8(name).string(),
+                ProcessState::self()->getDriverName().c_str());
             usleep(1000*sleepTime);
 
             sp<IBinder> svc = checkService(name);
