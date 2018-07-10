@@ -95,7 +95,7 @@ private:
 
             status_t            sendReply(const Parcel& reply, uint32_t flags);
             status_t            waitForResponse(Parcel *reply,
-                                                status_t *acquireResult=NULL);
+                                                status_t *acquireResult=nullptr);
             status_t            talkWithDriver(bool doReceive=true);
             status_t            writeTransactionData(int32_t cmd,
                                                      uint32_t binderFlags,
