@@ -129,7 +129,7 @@ void acquire_object(const sp<ProcessState>& proc,
             return;
         }
         case BINDER_TYPE_FD: {
-            if ((obj.cookie != 0) && (outAshmemSize != nullptr) && ashmem_valid(obj.handle)) {
+            if ((obj.cookie != 0) && (outAshmemSize != nullptr)) {
                 // If we own an ashmem fd, keep track of how much memory it refers to.
                 int size = ashmem_get_size_region(obj.handle);
                 if (size > 0) {
@@ -178,7 +178,7 @@ static void release_object(const sp<ProcessState>& proc,
         }
         case BINDER_TYPE_FD: {
             if (obj.cookie != 0) { // owned
-                if ((outAshmemSize != nullptr) && ashmem_valid(obj.handle)) {
+                if ((outAshmemSize != nullptr)) {
                     int size = ashmem_get_size_region(obj.handle);
                     if (size > 0) {
                         *outAshmemSize -= size;
@@ -2307,13 +2307,9 @@ status_t Parcel::readBlob(size_t len, ReadableBlob* outBlob) const
     int fd = readFileDescriptor();
     if (fd == int(BAD_TYPE)) return BAD_VALUE;
 
-    if (!ashmem_valid(fd)) {
-        ALOGE("invalid fd");
-        return BAD_VALUE;
-    }
     int size = ashmem_get_size_region(fd);
     if (size < 0 || size_t(size) < len) {
-        ALOGE("request size %zu does not match fd size %d", len, size);
+        ALOGE("invalid fd or request size %zu does not match fd size %d", len, size);
         return BAD_VALUE;
     }
     void* ptr = ::mmap(nullptr, len, isMutable ? PROT_READ | PROT_WRITE : PROT_READ,
