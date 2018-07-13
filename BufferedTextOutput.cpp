@@ -25,6 +25,7 @@
 
 #include <private/binder/Static.h>
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -87,7 +88,7 @@ struct BufferedTextOutput::ThreadState
     Vector<sp<BufferedTextOutput::BufferState> > states;
 };
 
-static mutex_t          gMutex;
+static pthread_mutex_t gMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static thread_store_t   tls;
 
@@ -113,7 +114,7 @@ static int32_t allocBufferIndex()
 {
     int32_t res = -1;
     
-    mutex_lock(&gMutex);
+    pthread_mutex_lock(&gMutex);
     
     if (gFreeBufferIndex >= 0) {
         res = gFreeBufferIndex;
@@ -125,17 +126,17 @@ static int32_t allocBufferIndex()
         gTextBuffers.add(-1);
     }
 
-    mutex_unlock(&gMutex);
+    pthread_mutex_unlock(&gMutex);
     
     return res;
 }
 
 static void freeBufferIndex(int32_t idx)
 {
-    mutex_lock(&gMutex);
+    pthread_mutex_lock(&gMutex);
     gTextBuffers.editItemAt(idx) = gFreeBufferIndex;
     gFreeBufferIndex = idx;
-    mutex_unlock(&gMutex);
+    pthread_mutex_unlock(&gMutex);
 }
 
 // ---------------------------------------------------------------------------
