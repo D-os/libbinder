@@ -149,12 +149,13 @@ public:
         const bool isVendorService =
             strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
         const long timeout = uptimeMillis() + 5000;
-        if (!gSystemBootCompleted) {
+        if (!gSystemBootCompleted && !isVendorService) {
+            // Vendor code can't access system properties
             char bootCompleted[PROPERTY_VALUE_MAX];
             property_get("sys.boot_completed", bootCompleted, "0");
             gSystemBootCompleted = strcmp(bootCompleted, "1") == 0 ? true : false;
         }
-        // retry interval in millisecond.
+        // retry interval in millisecond; note that vendor services stay at 100ms
         const long sleepTime = gSystemBootCompleted ? 1000 : 100;
 
         int n = 0;
