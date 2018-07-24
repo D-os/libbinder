@@ -132,7 +132,7 @@ public:
      * directly do with it now that it has passed on.)
      */
     virtual status_t        linkToDeath(const sp<DeathRecipient>& recipient,
-                                        void* cookie = NULL,
+                                        void* cookie = nullptr,
                                         uint32_t flags = 0) = 0;
 
     /**
@@ -143,9 +143,9 @@ public:
      * added with that cookie will be unlinked.
      */
     virtual status_t        unlinkToDeath(  const wp<DeathRecipient>& recipient,
-                                            void* cookie = NULL,
+                                            void* cookie = nullptr,
                                             uint32_t flags = 0,
-                                            wp<DeathRecipient>* outRecipient = NULL) = 0;
+                                            wp<DeathRecipient>* outRecipient = nullptr) = 0;
 
     virtual bool            checkSubclass(const void* subclassID) const;
 

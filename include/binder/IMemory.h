@@ -72,7 +72,7 @@ class IMemory : public IInterface
 public:
     DECLARE_META_INTERFACE(Memory)
 
-    virtual sp<IMemoryHeap> getMemory(ssize_t* offset=0, size_t* size=0) const = 0;
+    virtual sp<IMemoryHeap> getMemory(ssize_t* offset=nullptr, size_t* size=nullptr) const = 0;
 
     // helpers
     void* fastPointer(const sp<IBinder>& heap, ssize_t offset) const;
