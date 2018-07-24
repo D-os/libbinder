@@ -1189,7 +1189,7 @@ class BinderLibTestService : public BBinder
                     return ret;
                 }
                 buf = data.readInplace(size);
-                if (buf == NULL) {
+                if (buf == nullptr) {
                     return BAD_VALUE;
                 }
                 ret = write(fd.get(), buf, size);

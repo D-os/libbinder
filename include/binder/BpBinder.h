@@ -47,12 +47,12 @@ public:
                                     uint32_t flags = 0);
 
     virtual status_t    linkToDeath(const sp<DeathRecipient>& recipient,
-                                    void* cookie = NULL,
+                                    void* cookie = nullptr,
                                     uint32_t flags = 0);
     virtual status_t    unlinkToDeath(  const wp<DeathRecipient>& recipient,
-                                        void* cookie = NULL,
+                                        void* cookie = nullptr,
                                         uint32_t flags = 0,
-                                        wp<DeathRecipient>* outRecipient = NULL);
+                                        wp<DeathRecipient>* outRecipient = nullptr);
 
     virtual void        attachObject(   const void* objectID,
                                         void* object,

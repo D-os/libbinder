@@ -91,7 +91,7 @@ public:
     // IPCThreadState, which as an optimization may optionally be
     // passed in.
     bool                enforceInterface(const String16& interface,
-                                         IPCThreadState* threadState = NULL) const;
+                                         IPCThreadState* threadState = nullptr) const;
     bool                checkInterface(IBinder*) const;
 
     void                freeData();
@@ -552,7 +552,7 @@ public:
         friend class Parcel;
     public:
         inline const void* data() const { return mData; }
-        inline void* mutableData() { return isMutable() ? mData : NULL; }
+        inline void* mutableData() { return isMutable() ? mData : nullptr; }
     };
 
     class WritableBlob : public Blob {
@@ -592,7 +592,7 @@ status_t Parcel::write(const LightFlattenable<T>& val) {
     }
     if (size) {
         void* buffer = writeInplace(size);
-        if (buffer == NULL)
+        if (buffer == nullptr)
             return NO_MEMORY;
         return val.flatten(buffer, size);
     }
@@ -620,7 +620,7 @@ status_t Parcel::read(LightFlattenable<T>& val) const {
     }
     if (size) {
         void const* buffer = readInplace(size);
-        return buffer == NULL ? NO_MEMORY :
+        return buffer == nullptr ? NO_MEMORY :
                 val.unflatten(buffer, size);
     }
     return NO_ERROR;
