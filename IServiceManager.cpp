@@ -27,7 +27,6 @@
 #include <cutils/properties.h>
 #include <utils/String8.h>
 #include <utils/SystemClock.h>
-#include <utils/CallStack.h>
 
 #include <private/binder/Static.h>
 
