@@ -120,7 +120,6 @@ cc_library_shared {
         "liblog",
         "libcutils",
         "libutils",
-        "libutilscallstack",
     ],
 
     header_libs: [
