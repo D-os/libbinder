@@ -17,13 +17,15 @@
 #ifndef ANDROID_PARCEL_H
 #define ANDROID_PARCEL_H
 
+#include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <linux/android/binder.h>
 
 #include <android-base/unique_fd.h>
-#include <cutils/native_handle.h>
+//#include <cutils/native_handle.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 #include <utils/String16.h>
@@ -57,7 +59,7 @@ public:
 
                         Parcel();
                         ~Parcel();
-    
+
     const uint8_t*      data() const;
     size_t              dataSize() const;
     size_t              dataAvail() const;
@@ -67,7 +69,7 @@ public:
     status_t            setDataSize(size_t size);
     void                setDataPosition(size_t pos) const;
     status_t            setDataCapacity(size_t size);
-    
+
     status_t            setData(const uint8_t* buffer, size_t len);
 
     status_t            appendFrom(const Parcel *parcel,
@@ -102,10 +104,10 @@ private:
 
 public:
     size_t              objectsCount() const;
-    
+
     status_t            errorCheck() const;
     void                setError(status_t err);
-    
+
     status_t            write(const void* data, size_t len);
     void*               writeInplace(size_t len);
     status_t            writeUnpadded(const void* data, size_t len);
@@ -192,7 +194,7 @@ public:
     // descriptors are dup'ed, so it is safe to delete the native_handle
     // when this function returns).
     // Doesn't take ownership of the native_handle.
-    status_t            writeNativeHandle(const native_handle* handle);
+//    status_t            writeNativeHandle(const native_handle* handle);
 
     // Place a file descriptor into the parcel.  The given fd must remain
     // valid for the lifetime of the parcel.
@@ -246,7 +248,7 @@ public:
     status_t            writeNoException();
 
     void                remove(size_t start, size_t amt);
-    
+
     status_t            read(void* outData, size_t len) const;
     const void*         readInplace(size_t len) const;
     int32_t             readInt32() const;
@@ -356,11 +358,11 @@ public:
 
     // Retrieve native_handle from the parcel. This returns a copy of the
     // parcel's native_handle (the caller takes ownership). The caller
-    // must free the native_handle with native_handle_close() and 
+    // must free the native_handle with native_handle_close() and
     // native_handle_delete().
-    native_handle*     readNativeHandle() const;
+//    native_handle*     readNativeHandle() const;
 
-    
+
     // Retrieve a file descriptor from the parcel.  This returns the raw fd
     // in the parcel, which you do not own -- use dup() to get your own copy.
     int                 readFileDescriptor() const;
@@ -407,7 +409,7 @@ private:
                                         const uint8_t* data, size_t dataSize,
                                         const binder_size_t* objects, size_t objectsSize,
                                         void* cookie);
-                        
+
     uintptr_t           ipcData() const;
     size_t              ipcDataSize() const;
     uintptr_t           ipcObjects() const;
@@ -415,14 +417,14 @@ private:
     void                ipcSetDataReference(const uint8_t* data, size_t dataSize,
                                             const binder_size_t* objects, size_t objectsCount,
                                             release_func relFunc, void* relCookie);
-    
+
 public:
     void                print(TextOutput& to, uint32_t flags = 0) const;
 
 private:
                         Parcel(const Parcel& o);
     Parcel&             operator=(const Parcel& o);
-    
+
     status_t            finishWrite(size_t len);
     void                releaseObjects();
     void                acquireObjects();
@@ -437,7 +439,6 @@ private:
     void                scanForFds() const;
     status_t            validateReadData(size_t len) const;
     void                updateWorkSourceRequestHeaderPosition() const;
-                        
     template<class T>
     status_t            readAligned(T *pArg) const;
 
@@ -579,12 +580,7 @@ public:
     };
 
 private:
-    size_t mOpenAshmemSize;
-
-public:
-    // TODO: Remove once ABI can be changed.
-    size_t getBlobAshmemSize() const;
-    size_t getOpenAshmemSize() const;
+    size_t mOpenMemfdSize;
 };
 
 // ---------------------------------------------------------------------------

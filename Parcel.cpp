@@ -32,6 +32,7 @@
 
 #include <binder/Binder.h>
 #include <binder/BpBinder.h>
+#include <binder/Debug.h>
 #include <binder/IPCThreadState.h>
 #include <binder/Parcel.h>
 #include <binder/ProcessState.h>
@@ -39,7 +40,6 @@
 #include <binder/TextOutput.h>
 #include <binder/Value.h>
 
-#include <cutils/ashmem.h>
 #include <utils/Debug.h>
 #include <utils/Flattenable.h>
 #include <utils/Log.h>
@@ -89,12 +89,12 @@ static const size_t BLOB_INPLACE_LIMIT = 16 * 1024;
 
 enum {
     BLOB_INPLACE = 0,
-    BLOB_ASHMEM_IMMUTABLE = 1,
-    BLOB_ASHMEM_MUTABLE = 2,
+    BLOB_MEMFD_IMMUTABLE = 1,
+    BLOB_MEMFD_MUTABLE = 2,
 };
 
 void acquire_object(const sp<ProcessState>& proc,
-    const flat_binder_object& obj, const void* who, size_t* outAshmemSize)
+    const flat_binder_object& obj, const void* who, size_t* outMemfdSize)
 {
     switch (obj.hdr.type) {
         case BINDER_TYPE_BINDER:
@@ -121,11 +121,11 @@ void acquire_object(const sp<ProcessState>& proc,
             return;
         }
         case BINDER_TYPE_FD: {
-            if ((obj.cookie != 0) && (outAshmemSize != nullptr) && ashmem_valid(obj.handle)) {
-                // If we own an ashmem fd, keep track of how much memory it refers to.
-                int size = ashmem_get_size_region(obj.handle);
-                if (size > 0) {
-                    *outAshmemSize += size;
+            if ((obj.cookie != 0) && (outMemfdSize != nullptr)) {
+                // If we own an memfd fd, keep track of how much memory it refers to.
+                struct stat sb;
+                if (fstat(obj.handle, &sb) == 0 && sb.st_size > 0) {
+                    *outMemfdSize += sb.st_size;
                 }
             }
             return;
@@ -142,7 +142,7 @@ void acquire_object(const sp<ProcessState>& proc,
 }
 
 static void release_object(const sp<ProcessState>& proc,
-    const flat_binder_object& obj, const void* who, size_t* outAshmemSize)
+    const flat_binder_object& obj, const void* who, size_t* outMemfdSize)
 {
     switch (obj.hdr.type) {
         case BINDER_TYPE_BINDER:
@@ -170,13 +170,10 @@ static void release_object(const sp<ProcessState>& proc,
         }
         case BINDER_TYPE_FD: {
             if (obj.cookie != 0) { // owned
-                if ((outAshmemSize != nullptr) && ashmem_valid(obj.handle)) {
-                    int size = ashmem_get_size_region(obj.handle);
-                    if (size > 0) {
-                        // ashmem size might have changed since last time it was accounted for, e.g.
-                        // in acquire_object(). Value of *outAshmemSize is not critical since we are
-                        // releasing the object anyway. Check for integer overflow condition.
-                        *outAshmemSize -= std::min(*outAshmemSize, static_cast<size_t>(size));
+                if ((outMemfdSize != nullptr)) {
+                    struct stat sb;
+                    if (fstat(obj.handle, &sb) == 0 && sb.st_size > 0) {
+                        *outMemfdSize -= sb.st_size;
                     }
                 }
 
@@ -540,7 +537,7 @@ status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
 
             flat_binder_object* flat
                 = reinterpret_cast<flat_binder_object*>(mData + off);
-            acquire_object(proc, *flat, this, &mOpenAshmemSize);
+            acquire_object(proc, *flat, this, &mOpenMemfdSize);
 
             if (flat->hdr.type == BINDER_TYPE_FD) {
                 // If this is a file descriptor, we need to dup it so the
@@ -1179,28 +1176,28 @@ status_t Parcel::writeValue(const binder::Value& value) {
     return value.writeToParcel(this);
 }
 
-status_t Parcel::writeNativeHandle(const native_handle* handle)
-{
-    if (!handle || handle->version != sizeof(native_handle))
-        return BAD_TYPE;
+//status_t Parcel::writeNativeHandle(const native_handle* handle)
+//{
+//    if (!handle || handle->version != sizeof(native_handle))
+//        return BAD_TYPE;
 
-    status_t err;
-    err = writeInt32(handle->numFds);
-    if (err != NO_ERROR) return err;
+//    status_t err;
+//    err = writeInt32(handle->numFds);
+//    if (err != NO_ERROR) return err;
 
-    err = writeInt32(handle->numInts);
-    if (err != NO_ERROR) return err;
+//    err = writeInt32(handle->numInts);
+//    if (err != NO_ERROR) return err;
 
-    for (int i=0 ; err==NO_ERROR && i<handle->numFds ; i++)
-        err = writeDupFileDescriptor(handle->data[i]);
+//    for (int i=0 ; err==NO_ERROR && i<handle->numFds ; i++)
+//        err = writeDupFileDescriptor(handle->data[i]);
 
-    if (err != NO_ERROR) {
-        ALOGD("write native handle, write dup fd failed");
-        return err;
-    }
-    err = write(handle->data + handle->numFds, sizeof(int)*handle->numInts);
-    return err;
-}
+//    if (err != NO_ERROR) {
+//        ALOGD("write native handle, write dup fd failed");
+//        return err;
+//    }
+//    err = write(handle->data + handle->numFds, sizeof(int)*handle->numInts);
+//    return err;
+//}
 
 status_t Parcel::writeFileDescriptor(int fd, bool takeOwnership)
 {
@@ -1278,11 +1275,11 @@ status_t Parcel::writeBlob(size_t len, bool mutableCopy, WritableBlob* outBlob)
         return NO_ERROR;
     }
 
-    ALOGV("writeBlob: write to ashmem");
-    int fd = ashmem_create_region("Parcel Blob", len);
+    ALOGV("writeBlob: write to memfd");
+    int fd = memfd_create("Parcel Blob", MFD_ALLOW_SEALING);
     if (fd < 0) return NO_MEMORY;
 
-    int result = ashmem_set_prot_region(fd, PROT_READ | PROT_WRITE);
+    int result = ftruncate(fd, len);
     if (result < 0) {
         status = result;
     } else {
@@ -1291,12 +1288,14 @@ status_t Parcel::writeBlob(size_t len, bool mutableCopy, WritableBlob* outBlob)
             status = -errno;
         } else {
             if (!mutableCopy) {
-                result = ashmem_set_prot_region(fd, PROT_READ);
+                result = fcntl(fd, F_ADD_SEALS, F_SEAL_WRITE | F_SEAL_SEAL);
+            } else {
+                result = fcntl(fd, F_ADD_SEALS, F_SEAL_SEAL);
             }
             if (result < 0) {
                 status = result;
             } else {
-                status = writeInt32(mutableCopy ? BLOB_ASHMEM_MUTABLE : BLOB_ASHMEM_IMMUTABLE);
+                status = writeInt32(mutableCopy ? BLOB_MEMFD_MUTABLE : BLOB_MEMFD_IMMUTABLE);
                 if (!status) {
                     status = writeFileDescriptor(fd, true /*takeOwnership*/);
                     if (!status) {
@@ -1316,7 +1315,7 @@ status_t Parcel::writeDupImmutableBlobFileDescriptor(int fd)
 {
     // Must match up with what's done in writeBlob.
     if (!mAllowFds) return FDS_NOT_ALLOWED;
-    status_t status = writeInt32(BLOB_ASHMEM_IMMUTABLE);
+    status_t status = writeInt32(BLOB_MEMFD_IMMUTABLE);
     if (status) return status;
     return writeDupFileDescriptor(fd);
 }
@@ -1387,7 +1386,7 @@ restart_write:
         // Need to write meta-data?
         if (nullMetaData || val.binder != 0) {
             mObjects[mObjectsSize] = mDataPos;
-            acquire_object(ProcessState::self(), val, this, &mOpenAshmemSize);
+            acquire_object(ProcessState::self(), val, this, &mOpenMemfdSize);
             mObjectsSize++;
         }
 
@@ -2250,6 +2249,7 @@ int32_t Parcel::readExceptionCode() const
     return status.exceptionCode();
 }
 
+#if 0
 native_handle* Parcel::readNativeHandle() const
 {
     int numFds, numInts;
@@ -2282,6 +2282,7 @@ native_handle* Parcel::readNativeHandle() const
     }
     return h;
 }
+#endif
 
 int Parcel::readFileDescriptor() const
 {
@@ -2384,18 +2385,19 @@ status_t Parcel::readBlob(size_t len, ReadableBlob* outBlob) const
         return NO_ERROR;
     }
 
-    ALOGV("readBlob: read from ashmem");
-    bool isMutable = (blobType == BLOB_ASHMEM_MUTABLE);
+    ALOGV("readBlob: read from memfd");
+    bool isMutable = (blobType == BLOB_MEMFD_MUTABLE);
     int fd = readFileDescriptor();
     if (fd == int(BAD_TYPE)) return BAD_VALUE;
 
-    if (!ashmem_valid(fd)) {
+    struct stat fs;
+    if (fstat(fd, &fs) != 0) {
         ALOGE("invalid fd");
         return BAD_VALUE;
     }
-    int size = ashmem_get_size_region(fd);
+    off_t size = fs.st_size;
     if (size < 0 || size_t(size) < len) {
-        ALOGE("request size %zu does not match fd size %d", len, size);
+        ALOGE("request size %zu does not match fd size %ld", len, size);
         return BAD_VALUE;
     }
     void* ptr = ::mmap(nullptr, len, isMutable ? PROT_READ | PROT_WRITE : PROT_READ,
@@ -2623,7 +2625,7 @@ void Parcel::releaseObjects()
         i--;
         const flat_binder_object* flat
             = reinterpret_cast<flat_binder_object*>(data+objects[i]);
-        release_object(proc, *flat, this, &mOpenAshmemSize);
+        release_object(proc, *flat, this, &mOpenMemfdSize);
     }
 }
 
@@ -2640,7 +2642,7 @@ void Parcel::acquireObjects()
         i--;
         const flat_binder_object* flat
             = reinterpret_cast<flat_binder_object*>(data+objects[i]);
-        acquire_object(proc, *flat, this, &mOpenAshmemSize);
+        acquire_object(proc, *flat, this, &mOpenMemfdSize);
     }
 }
 
@@ -2833,7 +2835,7 @@ status_t Parcel::continueWrite(size_t desired)
                     // will need to rescan because we may have lopped off the only FDs
                     mFdsKnown = false;
                 }
-                release_object(proc, *flat, this, &mOpenAshmemSize);
+                release_object(proc, *flat, this, &mOpenMemfdSize);
             }
 
             if (objectsSize == 0) {
@@ -2926,7 +2928,7 @@ void Parcel::initState()
     mFdsKnown = true;
     mAllowFds = true;
     mOwner = nullptr;
-    mOpenAshmemSize = 0;
+    mOpenMemfdSize = 0;
     mWorkSourceRequestHeaderPosition = 0;
     mRequestHeaderPresent = false;
 
@@ -2956,19 +2958,6 @@ void Parcel::scanForFds() const
     }
     mHasFds = hasFds;
     mFdsKnown = true;
-}
-
-size_t Parcel::getBlobAshmemSize() const
-{
-    // This used to return the size of all blobs that were written to ashmem, now we're returning
-    // the ashmem currently referenced by this Parcel, which should be equivalent.
-    // TODO: Remove method once ABI can be changed.
-    return mOpenAshmemSize;
-}
-
-size_t Parcel::getOpenAshmemSize() const
-{
-    return mOpenAshmemSize;
 }
 
 // --- Parcel::Blob ---
