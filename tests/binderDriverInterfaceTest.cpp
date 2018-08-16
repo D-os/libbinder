@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 #include <linux/android/binder.h>
 #include <binder/IBinder.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <poll.h>
 

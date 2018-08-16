@@ -17,7 +17,7 @@
 // All static variables go here, to control initialization and
 // destruction order in the library.
 
-#include <utils/threads.h>
+#include <utils/Mutex.h>
 
 #include <binder/IBinder.h>
 #include <binder/ProcessState.h>

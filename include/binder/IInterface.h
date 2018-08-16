@@ -19,6 +19,7 @@
 #define ANDROID_IINTERFACE_H
 
 #include <binder/Binder.h>
+#include <memory>
 
 namespace android {
 

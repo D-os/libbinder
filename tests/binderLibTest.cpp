@@ -27,6 +27,7 @@
 #include <binder/IBinder.h>
 #include <binder/IPCThreadState.h>
 #include <binder/IServiceManager.h>
+#include <utils/misc.h>
 
 #include <sys/epoll.h>
 

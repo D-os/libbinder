@@ -114,7 +114,7 @@ status_t Status::readFromParcel(const Parcel& parcel) {
         }
 
         if (header_size < 0 || static_cast<size_t>(header_size) > header_avail) {
-            android_errorWriteLog(0x534e4554, "132650049");
+//            android_errorWriteLog(0x534e4554, "132650049");
             setFromStatusT(UNKNOWN_ERROR);
             return UNKNOWN_ERROR;
         }
@@ -148,7 +148,7 @@ status_t Status::readFromParcel(const Parcel& parcel) {
     if (remote_stack_trace_header_size < 0 ||
         static_cast<size_t>(remote_stack_trace_header_size) > parcel.dataAvail()) {
 
-        android_errorWriteLog(0x534e4554, "132650049");
+//        android_errorWriteLog(0x534e4554, "132650049");
         setFromStatusT(UNKNOWN_ERROR);
         return UNKNOWN_ERROR;
     }
@@ -170,7 +170,7 @@ status_t Status::readFromParcel(const Parcel& parcel) {
         }
 
         if (header_size < 0 || static_cast<size_t>(header_size) > header_avail) {
-            android_errorWriteLog(0x534e4554, "132650049");
+//            android_errorWriteLog(0x534e4554, "132650049");
             setFromStatusT(UNKNOWN_ERROR);
             return UNKNOWN_ERROR;
         }

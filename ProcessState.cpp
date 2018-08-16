@@ -25,7 +25,7 @@
 #include <utils/Log.h>
 #include <utils/String8.h>
 #include <utils/String8.h>
-#include <utils/threads.h>
+#include <utils/AndroidThreads.h>
 
 #include <private/binder/binder_module.h>
 #include <private/binder/Static.h>
@@ -60,14 +60,14 @@ public:
         : mIsMain(isMain)
     {
     }
-    
+
 protected:
     virtual bool threadLoop()
     {
         IPCThreadState::self()->joinThreadPool(mIsMain);
         return false;
     }
-    
+
     const bool mIsMain;
 };
 
@@ -130,9 +130,9 @@ sp<IBinder> ProcessState::getContextObject(const String16& name, const sp<IBinde
     sp<IBinder> object(
         mContexts.indexOfKey(name) >= 0 ? mContexts.valueFor(name) : nullptr);
     mLock.unlock();
-    
+
     //printf("Getting context object %s for %p\n", String8(name).string(), caller.get());
-    
+
     if (object != nullptr) return object;
 
     // Don't attempt to retrieve contexts if we manage them
@@ -141,7 +141,7 @@ sp<IBinder> ProcessState::getContextObject(const String16& name, const sp<IBinde
             String8(name).string());
         return nullptr;
     }
-    
+
     IPCThreadState* ipc = IPCThreadState::self();
     {
         Parcel data, reply;
@@ -153,9 +153,9 @@ sp<IBinder> ProcessState::getContextObject(const String16& name, const sp<IBinde
             object = reply.readStrongBinder();
         }
     }
-    
+
     ipc->flushCommands();
-    
+
     if (object != nullptr) setContextObject(object, name);
     return object;
 }
@@ -189,7 +189,7 @@ bool ProcessState::becomeContextManager(context_check_func checkFunc, void* user
 
         // fallback to original method
         if (result != 0) {
-            android_errorWriteLog(0x534e4554, "121035042");
+//            android_errorWriteLog(0x534e4554, "121035042");
 
             int dummy = 0;
             result = ioctl(mDriverFD, BINDER_SET_CONTEXT_MGR, &dummy);
@@ -321,7 +321,7 @@ wp<IBinder> ProcessState::getWeakProxyForHandle(int32_t handle)
 
     handle_entry* e = lookupHandleLocked(handle);
 
-    if (e != nullptr) {        
+    if (e != nullptr) {
         // We need to create a new BpBinder if there isn't currently one, OR we
         // are unable to acquire a weak reference on this current one.  The
         // attemptIncWeak() is safe because we know the BpBinder destructor will always
@@ -347,7 +347,7 @@ wp<IBinder> ProcessState::getWeakProxyForHandle(int32_t handle)
 void ProcessState::expungeHandle(int32_t handle, IBinder* binder)
 {
     AutoMutex _l(mLock);
-    
+
     handle_entry* e = lookupHandleLocked(handle);
 
     // This handle may have already been replaced with a new BpBinder
@@ -462,5 +462,5 @@ ProcessState::~ProcessState()
     }
     mDriverFD = -1;
 }
-        
+
 }; // namespace android

@@ -25,8 +25,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <binder/Debug.h>
 #include <binder/MemoryHeapBase.h>
-#include <cutils/ashmem.h>
+//#include <cutils/ashmem.h>
 #include <cutils/atomic.h>
 #include <log/log.h>
 
@@ -46,12 +47,12 @@ MemoryHeapBase::MemoryHeapBase(size_t size, uint32_t flags, char const * name)
 {
     const size_t pagesize = getpagesize();
     size = ((size + pagesize-1) & ~(pagesize-1));
-    int fd = ashmem_create_region(name == nullptr ? "MemoryHeapBase" : name, size);
+    int fd = -1;STUB;//ashmem_create_region(name == nullptr ? "MemoryHeapBase" : name, size);
     ALOGE_IF(fd<0, "error creating ashmem region: %s", strerror(errno));
     if (fd >= 0) {
         if (mapfd(fd, size) == NO_ERROR) {
             if (flags & READ_ONLY) {
-                ashmem_set_prot_region(fd, PROT_READ);
+                STUB;//ashmem_set_prot_region(fd, PROT_READ);
             }
         }
     }
