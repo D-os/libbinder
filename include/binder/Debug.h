@@ -47,3 +47,7 @@ __END_DECLS
 }; // namespace android
 
 #endif // ANDROID_BINDER_DEBUG_H
+
+#ifndef STUB
+#define STUB LOG_ALWAYS_FATAL("STUBBED @ %s:%d", __FILE__, __LINE__)
+#endif
