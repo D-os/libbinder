@@ -71,6 +71,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_DELAYED_EXIT_TRANSACTION,
     BINDER_LIB_TEST_GET_PTR_SIZE_TRANSACTION,
     BINDER_LIB_TEST_CREATE_BINDER_TRANSACTION,
+    BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION,
 };
 
 pid_t start_server_process(int arg2, bool usePoll = false)
@@ -938,6 +939,43 @@ TEST_F(BinderLibTest, OnewayQueueing)
     EXPECT_EQ(NO_ERROR, ret);
 }
 
+TEST_F(BinderLibTest, WorkSourceUnsetByDefault)
+{
+    status_t ret;
+    Parcel data, reply;
+    data.writeInterfaceToken(binderLibTestServiceName);
+    ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
+    EXPECT_EQ(-1, reply.readInt32());
+    EXPECT_EQ(NO_ERROR, ret);
+}
+
+TEST_F(BinderLibTest, WorkSourceSet)
+{
+    status_t ret;
+    Parcel data, reply;
+    uid_t previousWorkSource = IPCThreadState::self()->setWorkSource(100);
+    data.writeInterfaceToken(binderLibTestServiceName);
+    ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
+    EXPECT_EQ(100, reply.readInt32());
+    EXPECT_EQ(-1, previousWorkSource);
+    EXPECT_EQ(NO_ERROR, ret);
+}
+
+TEST_F(BinderLibTest, WorkSourceCleared)
+{
+    status_t ret;
+    Parcel data, reply;
+
+    IPCThreadState::self()->setWorkSource(100);
+    uid_t previousWorkSource = IPCThreadState::self()->clearWorkSource();
+    data.writeInterfaceToken(binderLibTestServiceName);
+    ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
+
+    EXPECT_EQ(-1, reply.readInt32());
+    EXPECT_EQ(100, previousWorkSource);
+    EXPECT_EQ(NO_ERROR, ret);
+}
+
 class BinderLibTestService : public BBinder
 {
     public:
@@ -1234,6 +1272,11 @@ class BinderLibTestService : public BBinder
                 } else {
                     reply->writeWeakBinder(binder);
                 }
+                return NO_ERROR;
+            }
+            case BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION: {
+                data.enforceInterface(binderLibTestServiceName);
+                reply->writeInt32(IPCThreadState::self()->getWorkSource());
                 return NO_ERROR;
             }
             default:

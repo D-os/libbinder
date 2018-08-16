@@ -47,6 +47,13 @@ public:
             void                setStrictModePolicy(int32_t policy);
             int32_t             getStrictModePolicy() const;
 
+            // See Binder#setThreadWorkSource in Binder.java.
+            uid_t               setWorkSource(uid_t uid);
+            // See Binder#getThreadWorkSource in Binder.java.
+            uid_t               getWorkSource() const;
+            // See Binder#clearThreadWorkSource in Binder.java.
+            uid_t               clearWorkSource();
+
             void                setLastTransactionBinderFlags(int32_t flags);
             int32_t             getLastTransactionBinderFlags() const;
 
@@ -155,6 +162,9 @@ private:
             status_t            mLastError;
             pid_t               mCallingPid;
             uid_t               mCallingUid;
+            // The UID of the process who is responsible for this transaction.
+            // This is used for resource attribution.
+            int32_t             mWorkSource;
             int32_t             mStrictModePolicy;
             int32_t             mLastTransactionBinderFlags;
             IPCThreadStateBase  *mIPCThreadStateBase;
