@@ -37,4 +37,7 @@ adb root
 adb wait-for-device
 adb sync data
 
+# very simple unit tests, tests things outside of the NDK as well
 run_libbinder_ndk_test
+
+atest android.binder.cts.NdkBinderTest
