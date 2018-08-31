@@ -118,9 +118,12 @@ binder_status_t IFoo::addService(const char* instance) {
 
 sp<IFoo> IFoo::getService(const char* instance) {
     AIBinder* binder = AServiceManager_getService(instance); // maybe nullptr
-    AIBinder_associateClass(&binder, IFoo::kClass);
-
     if (binder == nullptr) {
+        return nullptr;
+    }
+
+    if (!AIBinder_associateClass(binder, IFoo::kClass)) {
+        AIBinder_decStrong(binder);
         return nullptr;
     }
 

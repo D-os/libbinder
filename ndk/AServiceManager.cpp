@@ -41,7 +41,7 @@ AIBinder* AServiceManager_getService(const char* instance) {
     sp<IServiceManager> sm = defaultServiceManager();
     sp<IBinder> binder = sm->getService(String16(instance));
 
-    AIBinder* ret = new ABpBinder(binder);
-    AIBinder_incStrong(ret);
-    return ret;
+    sp<AIBinder> ret = ABpBinder::fromBinder(binder);
+    AIBinder_incStrong(ret.get());
+    return ret.get();
 }
