@@ -188,7 +188,7 @@ int32_t AIBinder_debugGetRefCount(AIBinder* binder);
  */
 bool AIBinder_associateClass(AIBinder* binder, const AIBinder_Class* clazz);
 
-/*
+/**
  * Returns the class that this binder was constructed with or associated with.
  */
 const AIBinder_Class* AIBinder_getClass(AIBinder* binder);
@@ -237,13 +237,13 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in);
 binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, AParcel** in,
                                   AParcel** out, binder_flags_t flags);
 
-/*
+/**
  * This does not take any ownership of the input binder, but it can be used to retrieve it if
  * something else in some process still holds a reference to it.
  */
 __attribute__((warn_unused_result)) AIBinder_Weak* AIBinder_Weak_new(AIBinder* binder);
 
-/*
+/**
  * Deletes the weak reference. This will have no impact on the lifetime of the binder.
  */
 void AIBinder_Weak_delete(AIBinder_Weak** weakBinder);
