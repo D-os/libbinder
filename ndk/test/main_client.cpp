@@ -16,6 +16,7 @@
 
 #include <android-base/logging.h>
 #include <android/binder_manager.h>
+#include <android/binder_process.h>
 #include <gtest/gtest.h>
 #include <iface/iface.h>
 
@@ -42,6 +43,28 @@ TEST(NdkBinder, RetrieveNonNdkService) {
     EXPECT_TRUE(AIBinder_isAlive(binder));
     EXPECT_EQ(EX_NONE, AIBinder_ping(binder));
 
+    AIBinder_decStrong(binder);
+}
+
+void OnBinderDeath(void* cookie) {
+    LOG(ERROR) << "BINDER DIED. COOKIE: " << cookie;
+}
+
+TEST(NdkBinder, LinkToDeath) {
+    ABinderProcess_setThreadPoolMaxThreadCount(1); // to recieve death notifications
+    ABinderProcess_startThreadPool();
+
+    AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
+    ASSERT_NE(nullptr, binder);
+
+    AIBinder_DeathRecipient* recipient = AIBinder_DeathRecipient_new(OnBinderDeath);
+    ASSERT_NE(nullptr, recipient);
+
+    EXPECT_EQ(EX_NONE, AIBinder_linkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(EX_NONE, AIBinder_unlinkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(-ENOENT, AIBinder_unlinkToDeath(binder, recipient, nullptr));
+
+    AIBinder_DeathRecipient_delete(&recipient);
     AIBinder_decStrong(binder);
 }
 

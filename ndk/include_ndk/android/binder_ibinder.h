@@ -84,6 +84,10 @@ typedef struct AIBinder_Class AIBinder_Class;
  * implementation (usually a callback) to transfer all ownership to a remote process and
  * automatically be deleted when the remote process is done with it or dies. Other memory models are
  * possible, but this is the standard one.
+ *
+ * If the process containing an AIBinder dies, it is possible to be holding a strong reference to
+ * an object which does not exist. In this case, transactions to this binder will return
+ * EX_DEAD_OBJECT. See also AIBinder_linkToDeath, AIBinder_unlinkToDeath, and AIBinder_isAlive.
  */
 struct AIBinder;
 typedef struct AIBinder AIBinder;
@@ -95,6 +99,12 @@ typedef struct AIBinder AIBinder;
  */
 struct AIBinder_Weak;
 typedef struct AIBinder_Weak AIBinder_Weak;
+
+/**
+ * Represents a handle on a death notification. See AIBinder_linkToDeath/AIBinder_unlinkToDeath.
+ */
+struct AIBinder_DeathRecipient;
+typedef struct AIBinder_DeathRecipient AIBinder_DeathRecipient;
 
 /**
  * This is called whenever a new AIBinder object is needed of a specific class.
@@ -161,6 +171,26 @@ bool AIBinder_isAlive(const AIBinder* binder);
  * sanity check.
  */
 binder_status_t AIBinder_ping(AIBinder* binder);
+
+/**
+ * Registers for notifications that the associated binder is dead. The same death recipient may be
+ * associated with multiple different binders. If the binder is local, then no death recipient will
+ * be given (since if the local process dies, then no recipient will exist to recieve a
+ * transaction). The cookie is passed to recipient in the case that this binder dies and can be
+ * null. The exact cookie must also be used to unlink this transaction (see AIBinder_linkToDeath).
+ * This function may return a binder transaction failure. The cookie can be used both for
+ * identification and holding user data.
+ */
+binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
+                                     void* cookie);
+
+/**
+ * Stops registration for the associated binder dying. Does not delete the recipient. This function
+ * may return a binder transaction failure and in case the death recipient cannot be found, it
+ * returns -ENOENT.
+ */
+binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
+                                       void* cookie);
 
 /**
  * This can only be called if a strong reference to this object already exists in process.
@@ -253,5 +283,22 @@ void AIBinder_Weak_delete(AIBinder_Weak** weakBinder);
  * nullptr.
  */
 __attribute__((warn_unused_result)) AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder);
+
+/**
+ * This function is executed on death receipt. See AIBinder_linkToDeath/AIBinder_unlinkToDeath.
+ */
+typedef void (*AIBinder_DeathRecipient_onBinderDied)(void* cookie);
+
+/**
+ * Creates a new binder death recipient. This can be attached to multiple different binder objects.
+ */
+__attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
+        AIBinder_DeathRecipient_onBinderDied onBinderDied);
+
+/**
+ * Deletes a binder death recipient. It is not necessary to call AIBinder_unlinkToDeath before
+ * calling this as these will all be automatically unlinked.
+ */
+void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient** recipient);
 
 __END_DECLS

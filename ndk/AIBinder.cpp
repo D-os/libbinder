@@ -22,6 +22,8 @@
 
 #include <android-base/logging.h>
 
+using DeathRecipient = ::android::IBinder::DeathRecipient;
+
 using ::android::IBinder;
 using ::android::Parcel;
 using ::android::sp;
@@ -179,6 +181,63 @@ AIBinder_Class* AIBinder_Class_define(const char* interfaceDescriptor,
     return new AIBinder_Class(interfaceDescriptor, onCreate, onDestroy, onTransact);
 }
 
+void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinder>& who) {
+    CHECK(who == mWho);
+
+    mOnDied(mCookie);
+    mWho = nullptr;
+}
+
+AIBinder_DeathRecipient::AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied)
+      : mOnDied(onDied) {
+    CHECK(onDied != nullptr);
+}
+
+binder_status_t AIBinder_DeathRecipient::linkToDeath(AIBinder* binder, void* cookie) {
+    CHECK(binder != nullptr);
+
+    std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
+
+    sp<TransferDeathRecipient> recipient =
+            new TransferDeathRecipient(binder->getBinder(), cookie, mOnDied);
+
+    binder_status_t status = binder->getBinder()->linkToDeath(recipient, cookie, 0 /*flags*/);
+    if (status != EX_NONE) {
+        return status;
+    }
+
+    mDeathRecipients.push_back(recipient);
+    return EX_NONE;
+}
+
+binder_status_t AIBinder_DeathRecipient::unlinkToDeath(AIBinder* binder, void* cookie) {
+    CHECK(binder != nullptr);
+
+    std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
+
+    for (auto it = mDeathRecipients.rbegin(); it != mDeathRecipients.rend(); ++it) {
+        sp<TransferDeathRecipient> recipient = *it;
+
+        if (recipient->getCookie() == cookie &&
+
+            recipient->getWho() == binder->getBinder()) {
+            mDeathRecipients.erase(it.base() - 1);
+
+            binder_status_t status =
+                    binder->getBinder()->unlinkToDeath(recipient, cookie, 0 /*flags*/);
+            if (status != EX_NONE) {
+                LOG(ERROR) << __func__
+                           << ": removed reference to death recipient but unlink failed.";
+            }
+            return status;
+        }
+    }
+
+    return -ENOENT;
+}
+
+// start of C-API methods
+
 AIBinder* AIBinder_new(const AIBinder_Class* clazz, void* args) {
     if (clazz == nullptr) {
         LOG(ERROR) << __func__ << ": Must provide class to construct local binder.";
@@ -216,6 +275,26 @@ binder_status_t AIBinder_ping(AIBinder* binder) {
     }
 
     return binder->getBinder()->pingBinder();
+}
+
+binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
+                                     void* cookie) {
+    if (binder == nullptr || recipient == nullptr) {
+        LOG(ERROR) << __func__ << ": Must provide binder and recipient.";
+        return EX_NULL_POINTER;
+    }
+
+    return recipient->linkToDeath(binder, cookie);
+}
+
+binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
+                                       void* cookie) {
+    if (binder == nullptr || recipient == nullptr) {
+        LOG(ERROR) << __func__ << ": Must provide binder and recipient.";
+        return EX_NULL_POINTER;
+    }
+
+    return recipient->unlinkToDeath(binder, cookie);
 }
 
 void AIBinder_incStrong(AIBinder* binder) {
@@ -346,4 +425,22 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
     }
 
     return parcelStatus;
+}
+
+AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
+        AIBinder_DeathRecipient_onBinderDied onBinderDied) {
+    if (onBinderDied == nullptr) {
+        LOG(ERROR) << __func__ << ": requires non-null onBinderDied parameter.";
+        return nullptr;
+    }
+    return new AIBinder_DeathRecipient(onBinderDied);
+}
+
+void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient** recipient) {
+    if (recipient == nullptr) {
+        return;
+    }
+
+    delete *recipient;
+    *recipient = nullptr;
 }
