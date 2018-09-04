@@ -14,6 +14,16 @@
  * limitations under the License.
  */
 
+/**
+ * @addtogroup NdkBinder
+ * @{
+ */
+
+/**
+ * @file binder_ibinder.h
+ * @brief Object which can receive transactions and be sent across processes.
+ */
+
 #pragma once
 
 #include <stdint.h>
@@ -245,3 +255,5 @@ void AIBinder_Weak_delete(AIBinder_Weak* weakBinder);
 __attribute__((warn_unused_result)) AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder);
 
 __END_DECLS
+
+/** @} */

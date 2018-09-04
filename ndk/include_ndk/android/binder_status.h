@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
+/**
+ * @addtogroup NdkBinder
+ * @{
+ */
+
+/**
+ * @file binder_status.h
+ */
+
 #pragma once
 
 #include <stdint.h>
@@ -54,3 +63,5 @@ enum {
 typedef int32_t binder_status_t;
 
 __END_DECLS
+
+/** @} */
