@@ -279,12 +279,6 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
     return status;
 }
 
-using AutoParcelDestroyer = std::unique_ptr<AParcel*, void (*)(AParcel**)>;
-static void destroy_parcel(AParcel** parcel) {
-    delete *parcel;
-    *parcel = nullptr;
-}
-
 binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, AParcel** in,
                                   AParcel** out, binder_flags_t flags) {
     if (in == nullptr) {
@@ -292,9 +286,10 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
         return EX_NULL_POINTER;
     }
 
+    using AutoParcelDestroyer = std::unique_ptr<AParcel*, void (*)(AParcel**)>;
     // This object is the input to the transaction. This function takes ownership of it and deletes
     // it.
-    AutoParcelDestroyer forIn(in, destroy_parcel);
+    AutoParcelDestroyer forIn(in, AParcel_delete);
 
     if (!isUserCommand(code)) {
         LOG(ERROR) << __func__ << ": Only user-defined transactions can be made from the NDK.";
@@ -328,34 +323,4 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
     }
 
     return parcelStatus;
-}
-
-binder_status_t AIBinder_finalizeTransaction(AIBinder* binder, AParcel** out) {
-    if (out == nullptr) {
-        LOG(ERROR) << __func__ << ": requires non-null out parameter";
-        return EX_NULL_POINTER;
-    }
-
-    // This object is the input to the transaction. This function takes ownership of it and deletes
-    // it.
-    AutoParcelDestroyer forOut(out, destroy_parcel);
-
-    if (binder == nullptr || *out == nullptr) {
-        LOG(ERROR) << __func__ << ": requires non-null parameters.";
-        return EX_NULL_POINTER;
-    }
-
-    if ((*out)->getBinder() != binder) {
-        LOG(ERROR) << __func__ << ": parcel is associated with binder object " << binder
-                   << " but called with " << (*out)->getBinder();
-        return EX_ILLEGAL_STATE;
-    }
-
-    if ((**out)->dataAvail() != 0) {
-        LOG(ERROR) << __func__
-                   << ": Only part of this transaction was read. There is remaining data left.";
-        return EX_ILLEGAL_STATE;
-    }
-
-    return EX_NONE;
 }
