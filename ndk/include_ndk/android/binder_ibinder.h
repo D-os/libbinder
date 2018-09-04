@@ -147,6 +147,22 @@ __attribute__((warn_unused_result)) AIBinder* AIBinder_new(const AIBinder_Class*
 bool AIBinder_isRemote(const AIBinder* binder);
 
 /**
+ * If this binder is known to be alive. This will not send a transaction to a remote process and
+ * returns a result based on the last known information. That is, whenever a transaction is made,
+ * this is automatically updated to reflect the current alive status of this binder. This will be
+ * updated as the result of a transaction made using AIBinder_transact, but it will also be updated
+ * based on the results of bookkeeping or other transactions made internally.
+ */
+bool AIBinder_isAlive(const AIBinder* binder);
+
+/**
+ * Built-in transaction for all binder objects. This sends a transaction which will immediately
+ * return. Usually this is used to make sure that a binder is alive, as a placeholder call, or as a
+ * sanity check.
+ */
+binder_status_t AIBinder_ping(AIBinder* binder);
+
+/**
  * This can only be called if a strong reference to this object already exists in process.
  */
 void AIBinder_incStrong(AIBinder* binder);
