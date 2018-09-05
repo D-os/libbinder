@@ -167,11 +167,10 @@ int32_t AIBinder_debugGetRefCount(AIBinder* binder);
  * However, if an object is just intended to be passed through to another process or used as a
  * handle this need not be called.
  *
- * The binder parameter may or may not be updated. If it is updated, the ownership of the original
- * object is transferred to the new object. If the class association fails, ownership of the binder
- * is lost, and it is set to nullptr.
+ * This returns true if the class association succeeds. If it fails, no change is made to the
+ * binder object.
  */
-void AIBinder_associateClass(AIBinder** binder, const AIBinder_Class* clazz);
+bool AIBinder_associateClass(AIBinder* binder, const AIBinder_Class* clazz);
 
 /*
  * Returns the class that this binder was constructed with or associated with.
