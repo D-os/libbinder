@@ -135,14 +135,25 @@ struct AIBinder_Weak {
     wp<AIBinder> binder;
 };
 AIBinder_Weak* AIBinder_Weak_new(AIBinder* binder) {
-    if (binder == nullptr) return nullptr;
+    if (binder == nullptr) {
+        return nullptr;
+    }
+
     return new AIBinder_Weak{wp<AIBinder>(binder)};
 }
-void AIBinder_Weak_delete(AIBinder_Weak* weakBinder) {
-    delete weakBinder;
+void AIBinder_Weak_delete(AIBinder_Weak** weakBinder) {
+    if (weakBinder == nullptr) {
+        return;
+    }
+
+    delete *weakBinder;
+    *weakBinder = nullptr;
 }
 AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder) {
-    if (weakBinder == nullptr) return nullptr;
+    if (weakBinder == nullptr) {
+        return nullptr;
+    }
+
     sp<AIBinder> binder = weakBinder->binder.promote();
     AIBinder_incStrong(binder.get());
     return binder.get();
