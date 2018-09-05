@@ -81,12 +81,17 @@ private:
     void* mUserData;
 };
 
-// This binder object may be remote or local (even though it is 'Bp'). It is not yet associated with
-// a class.
+// This binder object may be remote or local (even though it is 'Bp'). The implication if it is
+// local is that it is an IBinder object created outside of the domain of libbinder_ndk.
 struct ABpBinder : public AIBinder, public ::android::BpRefBase {
-    static ::android::sp<AIBinder> fromBinder(const ::android::sp<::android::IBinder>& binder);
+    // Looks up to see if this object has or is an existing ABBinder or ABpBinder object, otherwise
+    // it creates an ABpBinder object.
+    static ::android::sp<AIBinder> lookupOrCreateFromBinder(
+            const ::android::sp<::android::IBinder>& binder);
 
     virtual ~ABpBinder();
+
+    void onLastStrongRef(const void* id) override;
 
     ::android::sp<::android::IBinder> getBinder() override { return remote(); }
     ABpBinder* asABpBinder() override { return this; }

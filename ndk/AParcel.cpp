@@ -43,7 +43,7 @@ binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binde
     if (status != EX_NONE) {
         return status;
     }
-    sp<AIBinder> ret = ABpBinder::fromBinder(readBinder);
+    sp<AIBinder> ret = ABpBinder::lookupOrCreateFromBinder(readBinder);
     AIBinder_incStrong(ret.get());
     *binder = ret.get();
     return status;
@@ -54,7 +54,7 @@ binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder
     if (status != EX_NONE) {
         return status;
     }
-    sp<AIBinder> ret = ABpBinder::fromBinder(readBinder);
+    sp<AIBinder> ret = ABpBinder::lookupOrCreateFromBinder(readBinder);
     AIBinder_incStrong(ret.get());
     *binder = ret.get();
     return status;

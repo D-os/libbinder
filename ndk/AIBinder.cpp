@@ -34,16 +34,31 @@ namespace ABBinderTag {
 
 static const void* kId = "ABBinder";
 static void* kValue = static_cast<void*>(new bool{true});
-void cleanId(const void* /*id*/, void* /*obj*/, void* /*cookie*/){/* do nothing */};
+void clean(const void* /*id*/, void* /*obj*/, void* /*cookie*/){/* do nothing */};
 
 static void attach(const sp<IBinder>& binder) {
-    binder->attachObject(kId, kValue, nullptr /*cookie*/, cleanId);
+    binder->attachObject(kId, kValue, nullptr /*cookie*/, clean);
 }
 static bool has(const sp<IBinder>& binder) {
     return binder != nullptr && binder->findObject(kId) == kValue;
 }
 
 } // namespace ABBinderTag
+
+namespace ABpBinderTag {
+
+static std::mutex gLock;
+static const void* kId = "ABpBinder";
+struct Value {
+    wp<ABpBinder> binder;
+};
+void clean(const void* id, void* obj, void* cookie) {
+    CHECK(id == kId) << id << " " << obj << " " << cookie;
+
+    delete static_cast<Value*>(obj);
+};
+
+} // namespace ABpBinderTag
 
 AIBinder::AIBinder(const AIBinder_Class* clazz) : mClazz(clazz) {}
 AIBinder::~AIBinder() {}
@@ -123,14 +138,51 @@ ABpBinder::ABpBinder(const ::android::sp<::android::IBinder>& binder)
 }
 ABpBinder::~ABpBinder() {}
 
-sp<AIBinder> ABpBinder::fromBinder(const ::android::sp<::android::IBinder>& binder) {
+void ABpBinder::onLastStrongRef(const void* id) {
+    {
+        std::lock_guard<std::mutex> lock(ABpBinderTag::gLock);
+        // Since ABpBinder is OBJECT_LIFETIME_WEAK, we must remove this weak reference in order for
+        // the ABpBinder to be deleted. Since a strong reference to this ABpBinder object should no
+        // longer be able to exist at the time of this method call, there is no longer a need to
+        // recover it.
+
+        ABpBinderTag::Value* value =
+                static_cast<ABpBinderTag::Value*>(remote()->findObject(ABpBinderTag::kId));
+        if (value != nullptr) {
+            value->binder = nullptr;
+        }
+    }
+
+    BpRefBase::onLastStrongRef(id);
+}
+
+sp<AIBinder> ABpBinder::lookupOrCreateFromBinder(const ::android::sp<::android::IBinder>& binder) {
     if (binder == nullptr) {
         return nullptr;
     }
     if (ABBinderTag::has(binder)) {
         return static_cast<ABBinder*>(binder.get());
     }
-    return new ABpBinder(binder);
+
+    // The following code ensures that for a given binder object (remote or local), if it is not an
+    // ABBinder then at most one ABpBinder object exists in a given process representing it.
+    std::lock_guard<std::mutex> lock(ABpBinderTag::gLock);
+
+    ABpBinderTag::Value* value =
+            static_cast<ABpBinderTag::Value*>(binder->findObject(ABpBinderTag::kId));
+    if (value == nullptr) {
+        value = new ABpBinderTag::Value;
+        binder->attachObject(ABpBinderTag::kId, static_cast<void*>(value), nullptr /*cookie*/,
+                             ABpBinderTag::clean);
+    }
+
+    sp<ABpBinder> ret = value->binder.promote();
+    if (ret == nullptr) {
+        ret = new ABpBinder(binder);
+        value->binder = ret;
+    }
+
+    return ret;
 }
 
 struct AIBinder_Weak {

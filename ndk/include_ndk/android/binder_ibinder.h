@@ -88,6 +88,12 @@ typedef struct AIBinder_Class AIBinder_Class;
  * If the process containing an AIBinder dies, it is possible to be holding a strong reference to
  * an object which does not exist. In this case, transactions to this binder will return
  * EX_DEAD_OBJECT. See also AIBinder_linkToDeath, AIBinder_unlinkToDeath, and AIBinder_isAlive.
+ *
+ * Once an AIBinder is created, anywhere it is passed (remotely or locally), there is a 1-1
+ * correspondence between the address of an AIBinder and the object it represents. This means that
+ * when two AIBinder pointers point to the same address, they represent the same object (whether
+ * that object is local or remote). This correspondance can be broken accidentally if AIBinder_new
+ * is erronesouly called to create the same object multiple times.
  */
 struct AIBinder;
 typedef struct AIBinder AIBinder;
@@ -148,6 +154,14 @@ __attribute__((warn_unused_result)) AIBinder_Class* AIBinder_Class_define(
  *
  * When this is called, the refcount is implicitly 1. So, calling decStrong exactly one time is
  * required to delete this object.
+ *
+ * Once an AIBinder object is created using this API, re-creating that AIBinder for the same
+ * instance of the same class will break pointer equality for that specific AIBinder object. For
+ * instance, if someone erroneously created two AIBinder instances representing the same callback
+ * object and passed one to a hypothetical addCallback function and then later another one to a
+ * hypothetical removeCallback function, the remote process would have no way to determine that
+ * these two objects are actually equal using the AIBinder pointer alone (which they should be able
+ * to do). Also see the suggested memory ownership model suggested above.
  */
 __attribute__((warn_unused_result)) AIBinder* AIBinder_new(const AIBinder_Class* clazz, void* args);
 

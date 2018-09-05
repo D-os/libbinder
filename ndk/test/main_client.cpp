@@ -87,6 +87,34 @@ TEST(NdkBinder, GetServiceInProcess) {
     EXPECT_EQ(2, getFoo->doubleNumber(1));
 }
 
+TEST(NdkBinder, EqualityOfRemoteBinderPointer) {
+    AIBinder* binderA = AServiceManager_getService(kExistingNonNdkService);
+    ASSERT_NE(nullptr, binderA);
+
+    AIBinder* binderB = AServiceManager_getService(kExistingNonNdkService);
+    ASSERT_NE(nullptr, binderB);
+
+    EXPECT_EQ(binderA, binderB);
+
+    AIBinder_decStrong(binderA);
+    AIBinder_decStrong(binderB);
+}
+
+TEST(NdkBinder, ABpBinderRefCount) {
+    AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
+    AIBinder_Weak* wBinder = AIBinder_Weak_new(binder);
+
+    ASSERT_NE(nullptr, binder);
+    EXPECT_EQ(1, AIBinder_debugGetRefCount(binder));
+
+    AIBinder_decStrong(binder);
+
+    // assert because would need to decStrong if non-null and we shouldn't need to add a no-op here
+    ASSERT_NE(nullptr, AIBinder_Weak_promote(wBinder));
+
+    AIBinder_Weak_delete(&wBinder);
+}
+
 TEST(NdkBinder, AddServiceMultipleTimes) {
     static const char* kInstanceName1 = "test-multi-1";
     static const char* kInstanceName2 = "test-multi-2";
