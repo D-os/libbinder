@@ -235,7 +235,7 @@ __attribute__((warn_unused_result)) AIBinder_Weak* AIBinder_Weak_new(AIBinder* b
 /*
  * Deletes the weak reference. This will have no impact on the lifetime of the binder.
  */
-void AIBinder_Weak_delete(AIBinder_Weak* weakBinder);
+void AIBinder_Weak_delete(AIBinder_Weak** weakBinder);
 
 /**
  * If promotion succeeds, result will have one strong refcount added to it. Otherwise, this returns
