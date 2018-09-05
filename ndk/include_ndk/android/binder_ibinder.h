@@ -144,7 +144,7 @@ __attribute__((warn_unused_result)) AIBinder* AIBinder_new(const AIBinder_Class*
 /**
  * If this is hosted in a process other than the current one.
  */
-bool AIBinder_isRemote(AIBinder* binder);
+bool AIBinder_isRemote(const AIBinder* binder);
 
 /**
  * This can only be called if a strong reference to this object already exists in process.
