@@ -25,6 +25,15 @@ using ::android::IBinder;
 using ::android::Parcel;
 using ::android::sp;
 
+void AParcel_delete(AParcel** parcel) {
+    if (parcel == nullptr) {
+        return;
+    }
+
+    delete *parcel;
+    *parcel = nullptr;
+}
+
 binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) {
     return (*parcel)->writeStrongBinder(binder->getBinder());
 }
