@@ -42,7 +42,10 @@ struct AIBinder : public virtual ::android::RefBase {
     virtual ABBinder* asABBinder() { return nullptr; }
     virtual ABpBinder* asABpBinder() { return nullptr; }
 
-    bool isRemote() { return getBinder()->remoteBinder() != nullptr; }
+    bool isRemote() const {
+        ::android::sp<::android::IBinder> binder = const_cast<AIBinder*>(this)->getBinder();
+        return binder->remoteBinder() != nullptr;
+    }
 
 private:
     // AIBinder instance is instance of this class for a local object. In order to transact on a
