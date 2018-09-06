@@ -269,6 +269,10 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
         return EX_ILLEGAL_STATE;
     }
 
+    if (!binder->isRemote()) {
+        LOG(WARNING) << "A binder object at " << binder << " is being transacted on, however, this object is in the same process as its proxy. Transacting with this binder is expensive compared to just calling the corresponding functionality in the same process.";
+    }
+
     *in = new AParcel(binder);
     binder_status_t status = (**in)->writeInterfaceToken(clazz->getInterfaceDescriptor());
     if (status != EX_NONE) {
