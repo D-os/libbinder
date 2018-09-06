@@ -38,6 +38,10 @@ TEST(NdkBinder, DoubleNumber) {
 TEST(NdkBinder, RetrieveNonNdkService) {
     AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
     ASSERT_NE(nullptr, binder);
+    EXPECT_TRUE(AIBinder_isRemote(binder));
+    EXPECT_TRUE(AIBinder_isAlive(binder));
+    EXPECT_EQ(EX_NONE, AIBinder_ping(binder));
+
     AIBinder_decStrong(binder);
 }
 
