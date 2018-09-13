@@ -15,7 +15,7 @@
  */
 
 #include <android/binder_manager.h>
-#include "AIBinder_internal.h"
+#include "ibinder_internal.h"
 
 #include <binder/IServiceManager.h>
 
