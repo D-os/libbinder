@@ -22,6 +22,8 @@
 
 #include <android-base/logging.h>
 
+using DeathRecipient = ::android::IBinder::DeathRecipient;
+
 using ::android::IBinder;
 using ::android::Parcel;
 using ::android::sp;
@@ -32,16 +34,31 @@ namespace ABBinderTag {
 
 static const void* kId = "ABBinder";
 static void* kValue = static_cast<void*>(new bool{true});
-void cleanId(const void* /*id*/, void* /*obj*/, void* /*cookie*/){/* do nothing */};
+void clean(const void* /*id*/, void* /*obj*/, void* /*cookie*/){/* do nothing */};
 
 static void attach(const sp<IBinder>& binder) {
-    binder->attachObject(kId, kValue, nullptr /*cookie*/, cleanId);
+    binder->attachObject(kId, kValue, nullptr /*cookie*/, clean);
 }
 static bool has(const sp<IBinder>& binder) {
     return binder != nullptr && binder->findObject(kId) == kValue;
 }
 
 } // namespace ABBinderTag
+
+namespace ABpBinderTag {
+
+static std::mutex gLock;
+static const void* kId = "ABpBinder";
+struct Value {
+    wp<ABpBinder> binder;
+};
+void clean(const void* id, void* obj, void* cookie) {
+    CHECK(id == kId) << id << " " << obj << " " << cookie;
+
+    delete static_cast<Value*>(obj);
+};
+
+} // namespace ABpBinderTag
 
 AIBinder::AIBinder(const AIBinder_Class* clazz) : mClazz(clazz) {}
 AIBinder::~AIBinder() {}
@@ -121,14 +138,51 @@ ABpBinder::ABpBinder(const ::android::sp<::android::IBinder>& binder)
 }
 ABpBinder::~ABpBinder() {}
 
-sp<AIBinder> ABpBinder::fromBinder(const ::android::sp<::android::IBinder>& binder) {
+void ABpBinder::onLastStrongRef(const void* id) {
+    {
+        std::lock_guard<std::mutex> lock(ABpBinderTag::gLock);
+        // Since ABpBinder is OBJECT_LIFETIME_WEAK, we must remove this weak reference in order for
+        // the ABpBinder to be deleted. Since a strong reference to this ABpBinder object should no
+        // longer be able to exist at the time of this method call, there is no longer a need to
+        // recover it.
+
+        ABpBinderTag::Value* value =
+                static_cast<ABpBinderTag::Value*>(remote()->findObject(ABpBinderTag::kId));
+        if (value != nullptr) {
+            value->binder = nullptr;
+        }
+    }
+
+    BpRefBase::onLastStrongRef(id);
+}
+
+sp<AIBinder> ABpBinder::lookupOrCreateFromBinder(const ::android::sp<::android::IBinder>& binder) {
     if (binder == nullptr) {
         return nullptr;
     }
     if (ABBinderTag::has(binder)) {
         return static_cast<ABBinder*>(binder.get());
     }
-    return new ABpBinder(binder);
+
+    // The following code ensures that for a given binder object (remote or local), if it is not an
+    // ABBinder then at most one ABpBinder object exists in a given process representing it.
+    std::lock_guard<std::mutex> lock(ABpBinderTag::gLock);
+
+    ABpBinderTag::Value* value =
+            static_cast<ABpBinderTag::Value*>(binder->findObject(ABpBinderTag::kId));
+    if (value == nullptr) {
+        value = new ABpBinderTag::Value;
+        binder->attachObject(ABpBinderTag::kId, static_cast<void*>(value), nullptr /*cookie*/,
+                             ABpBinderTag::clean);
+    }
+
+    sp<ABpBinder> ret = value->binder.promote();
+    if (ret == nullptr) {
+        ret = new ABpBinder(binder);
+        value->binder = ret;
+    }
+
+    return ret;
 }
 
 struct AIBinder_Weak {
@@ -179,6 +233,63 @@ AIBinder_Class* AIBinder_Class_define(const char* interfaceDescriptor,
     return new AIBinder_Class(interfaceDescriptor, onCreate, onDestroy, onTransact);
 }
 
+void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinder>& who) {
+    CHECK(who == mWho);
+
+    mOnDied(mCookie);
+    mWho = nullptr;
+}
+
+AIBinder_DeathRecipient::AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied)
+      : mOnDied(onDied) {
+    CHECK(onDied != nullptr);
+}
+
+binder_status_t AIBinder_DeathRecipient::linkToDeath(AIBinder* binder, void* cookie) {
+    CHECK(binder != nullptr);
+
+    std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
+
+    sp<TransferDeathRecipient> recipient =
+            new TransferDeathRecipient(binder->getBinder(), cookie, mOnDied);
+
+    binder_status_t status = binder->getBinder()->linkToDeath(recipient, cookie, 0 /*flags*/);
+    if (status != EX_NONE) {
+        return status;
+    }
+
+    mDeathRecipients.push_back(recipient);
+    return EX_NONE;
+}
+
+binder_status_t AIBinder_DeathRecipient::unlinkToDeath(AIBinder* binder, void* cookie) {
+    CHECK(binder != nullptr);
+
+    std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
+
+    for (auto it = mDeathRecipients.rbegin(); it != mDeathRecipients.rend(); ++it) {
+        sp<TransferDeathRecipient> recipient = *it;
+
+        if (recipient->getCookie() == cookie &&
+
+            recipient->getWho() == binder->getBinder()) {
+            mDeathRecipients.erase(it.base() - 1);
+
+            binder_status_t status =
+                    binder->getBinder()->unlinkToDeath(recipient, cookie, 0 /*flags*/);
+            if (status != EX_NONE) {
+                LOG(ERROR) << __func__
+                           << ": removed reference to death recipient but unlink failed.";
+            }
+            return status;
+        }
+    }
+
+    return -ENOENT;
+}
+
+// start of C-API methods
+
 AIBinder* AIBinder_new(const AIBinder_Class* clazz, void* args) {
     if (clazz == nullptr) {
         LOG(ERROR) << __func__ << ": Must provide class to construct local binder.";
@@ -216,6 +327,26 @@ binder_status_t AIBinder_ping(AIBinder* binder) {
     }
 
     return binder->getBinder()->pingBinder();
+}
+
+binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
+                                     void* cookie) {
+    if (binder == nullptr || recipient == nullptr) {
+        LOG(ERROR) << __func__ << ": Must provide binder and recipient.";
+        return EX_NULL_POINTER;
+    }
+
+    return recipient->linkToDeath(binder, cookie);
+}
+
+binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
+                                       void* cookie) {
+    if (binder == nullptr || recipient == nullptr) {
+        LOG(ERROR) << __func__ << ": Must provide binder and recipient.";
+        return EX_NULL_POINTER;
+    }
+
+    return recipient->unlinkToDeath(binder, cookie);
 }
 
 void AIBinder_incStrong(AIBinder* binder) {
@@ -346,4 +477,22 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
     }
 
     return parcelStatus;
+}
+
+AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
+        AIBinder_DeathRecipient_onBinderDied onBinderDied) {
+    if (onBinderDied == nullptr) {
+        LOG(ERROR) << __func__ << ": requires non-null onBinderDied parameter.";
+        return nullptr;
+    }
+    return new AIBinder_DeathRecipient(onBinderDied);
+}
+
+void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient** recipient) {
+    if (recipient == nullptr) {
+        return;
+    }
+
+    delete *recipient;
+    *recipient = nullptr;
 }

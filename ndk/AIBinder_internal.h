@@ -20,6 +20,8 @@
 #include "AIBinder_internal.h"
 
 #include <atomic>
+#include <mutex>
+#include <vector>
 
 #include <binder/Binder.h>
 #include <binder/IBinder.h>
@@ -79,12 +81,17 @@ private:
     void* mUserData;
 };
 
-// This binder object may be remote or local (even though it is 'Bp'). It is not yet associated with
-// a class.
+// This binder object may be remote or local (even though it is 'Bp'). The implication if it is
+// local is that it is an IBinder object created outside of the domain of libbinder_ndk.
 struct ABpBinder : public AIBinder, public ::android::BpRefBase {
-    static ::android::sp<AIBinder> fromBinder(const ::android::sp<::android::IBinder>& binder);
+    // Looks up to see if this object has or is an existing ABBinder or ABpBinder object, otherwise
+    // it creates an ABpBinder object.
+    static ::android::sp<AIBinder> lookupOrCreateFromBinder(
+            const ::android::sp<::android::IBinder>& binder);
 
     virtual ~ABpBinder();
+
+    void onLastStrongRef(const void* id) override;
 
     ::android::sp<::android::IBinder> getBinder() override { return remote(); }
     ABpBinder* asABpBinder() override { return this; }
@@ -107,4 +114,39 @@ private:
     // This must be a String16 since BBinder virtual getInterfaceDescriptor returns a reference to
     // one.
     const ::android::String16 mInterfaceDescriptor;
+};
+
+// Ownership is like this (when linked to death):
+//
+//   AIBinder_DeathRecipient -sp-> TransferDeathRecipient <-wp-> IBinder
+//
+// When the AIBinder_DeathRecipient is dropped, so are the actual underlying death recipients. When
+// the IBinder dies, only a wp to it is kept.
+struct AIBinder_DeathRecipient {
+    // One of these is created for every linkToDeath. This is to be able to recover data when a
+    // binderDied receipt only gives us information about the IBinder.
+    struct TransferDeathRecipient : ::android::IBinder::DeathRecipient {
+        TransferDeathRecipient(const ::android::wp<::android::IBinder>& who, void* cookie,
+                               const AIBinder_DeathRecipient_onBinderDied& onDied)
+              : mWho(who), mCookie(cookie), mOnDied(onDied) {}
+
+        void binderDied(const ::android::wp<::android::IBinder>& who) override;
+
+        const ::android::wp<::android::IBinder>& getWho() { return mWho; }
+        void* getCookie() { return mCookie; }
+
+    private:
+        ::android::wp<::android::IBinder> mWho;
+        void* mCookie;
+        const AIBinder_DeathRecipient_onBinderDied& mOnDied;
+    };
+
+    AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied);
+    binder_status_t linkToDeath(AIBinder* binder, void* cookie);
+    binder_status_t unlinkToDeath(AIBinder* binder, void* cookie);
+
+private:
+    std::mutex mDeathRecipientsMutex;
+    std::vector<::android::sp<TransferDeathRecipient>> mDeathRecipients;
+    AIBinder_DeathRecipient_onBinderDied mOnDied;
 };
