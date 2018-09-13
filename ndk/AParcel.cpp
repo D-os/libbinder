@@ -35,7 +35,8 @@ void AParcel_delete(AParcel** parcel) {
 }
 
 binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) {
-    return (*parcel)->writeStrongBinder(binder->getBinder());
+    sp<IBinder> writeBinder = binder != nullptr ? binder->getBinder() : nullptr;
+    return (*parcel)->writeStrongBinder(writeBinder);
 }
 binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binder) {
     sp<IBinder> readBinder = nullptr;
@@ -43,7 +44,7 @@ binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binde
     if (status != EX_NONE) {
         return status;
     }
-    sp<AIBinder> ret = ABpBinder::fromBinder(readBinder);
+    sp<AIBinder> ret = ABpBinder::lookupOrCreateFromBinder(readBinder);
     AIBinder_incStrong(ret.get());
     *binder = ret.get();
     return status;
@@ -54,7 +55,7 @@ binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder
     if (status != EX_NONE) {
         return status;
     }
-    sp<AIBinder> ret = ABpBinder::fromBinder(readBinder);
+    sp<AIBinder> ret = ABpBinder::lookupOrCreateFromBinder(readBinder);
     AIBinder_incStrong(ret.get());
     *binder = ret.get();
     return status;

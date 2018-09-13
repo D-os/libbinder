@@ -16,6 +16,7 @@
 
 #include <android-base/logging.h>
 #include <android/binder_manager.h>
+#include <android/binder_process.h>
 #include <gtest/gtest.h>
 #include <iface/iface.h>
 
@@ -45,6 +46,28 @@ TEST(NdkBinder, RetrieveNonNdkService) {
     AIBinder_decStrong(binder);
 }
 
+void OnBinderDeath(void* cookie) {
+    LOG(ERROR) << "BINDER DIED. COOKIE: " << cookie;
+}
+
+TEST(NdkBinder, LinkToDeath) {
+    ABinderProcess_setThreadPoolMaxThreadCount(1); // to recieve death notifications
+    ABinderProcess_startThreadPool();
+
+    AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
+    ASSERT_NE(nullptr, binder);
+
+    AIBinder_DeathRecipient* recipient = AIBinder_DeathRecipient_new(OnBinderDeath);
+    ASSERT_NE(nullptr, recipient);
+
+    EXPECT_EQ(EX_NONE, AIBinder_linkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(EX_NONE, AIBinder_unlinkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(-ENOENT, AIBinder_unlinkToDeath(binder, recipient, nullptr));
+
+    AIBinder_DeathRecipient_delete(&recipient);
+    AIBinder_decStrong(binder);
+}
+
 class MyTestFoo : public IFoo {
     int32_t doubleNumber(int32_t in) override {
         LOG(INFO) << "doubleNumber " << in;
@@ -62,6 +85,34 @@ TEST(NdkBinder, GetServiceInProcess) {
     EXPECT_EQ(foo.get(), getFoo.get());
 
     EXPECT_EQ(2, getFoo->doubleNumber(1));
+}
+
+TEST(NdkBinder, EqualityOfRemoteBinderPointer) {
+    AIBinder* binderA = AServiceManager_getService(kExistingNonNdkService);
+    ASSERT_NE(nullptr, binderA);
+
+    AIBinder* binderB = AServiceManager_getService(kExistingNonNdkService);
+    ASSERT_NE(nullptr, binderB);
+
+    EXPECT_EQ(binderA, binderB);
+
+    AIBinder_decStrong(binderA);
+    AIBinder_decStrong(binderB);
+}
+
+TEST(NdkBinder, ABpBinderRefCount) {
+    AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
+    AIBinder_Weak* wBinder = AIBinder_Weak_new(binder);
+
+    ASSERT_NE(nullptr, binder);
+    EXPECT_EQ(1, AIBinder_debugGetRefCount(binder));
+
+    AIBinder_decStrong(binder);
+
+    // assert because would need to decStrong if non-null and we shouldn't need to add a no-op here
+    ASSERT_NE(nullptr, AIBinder_Weak_promote(wBinder));
+
+    AIBinder_Weak_delete(&wBinder);
 }
 
 TEST(NdkBinder, AddServiceMultipleTimes) {
