@@ -25,12 +25,42 @@
 
 #pragma once
 
+#include <errno.h>
 #include <stdint.h>
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
 
-// Keep the exception codes in sync with android/os/Parcel.java.
+enum {
+    STATUS_OK = 0,
+
+    STATUS_UNKNOWN_ERROR = (-2147483647 - 1), // INT32_MIN value
+    STATUS_NO_MEMORY = -ENOMEM,
+    STATUS_INVALID_OPERATION = -ENOSYS,
+    STATUS_BAD_VALUE = -EINVAL,
+    STATUS_BAD_TYPE = (STATUS_UNKNOWN_ERROR + 1),
+    STATUS_NAME_NOT_FOUND = -ENOENT,
+    STATUS_PERMISSION_DENIED = -EPERM,
+    STATUS_NO_INIT = -ENODEV,
+    STATUS_ALREADY_EXISTS = -EEXIST,
+    STATUS_DEAD_OBJECT = -EPIPE,
+    STATUS_FAILED_TRANSACTION = (STATUS_UNKNOWN_ERROR + 2),
+    STATUS_BAD_INDEX = -EOVERFLOW,
+    STATUS_NOT_ENOUGH_DATA = -ENODATA,
+    STATUS_WOULD_BLOCK = -EWOULDBLOCK,
+    STATUS_TIMED_OUT = -ETIMEDOUT,
+    STATUS_UNKNOWN_TRANSACTION = -EBADMSG,
+    STATUS_FDS_NOT_ALLOWED = (STATUS_UNKNOWN_ERROR + 7),
+    STATUS_UNEXPECTED_NULL = (STATUS_UNKNOWN_ERROR + 8),
+};
+
+/**
+ * One of the STATUS_* values.
+ *
+ * All unrecognized values are coerced into STATUS_UNKNOWN_ERROR.
+ */
+typedef int32_t binder_status_t;
+
 enum {
     EX_NONE = 0,
     EX_SECURITY = -1,
@@ -44,12 +74,6 @@ enum {
     EX_PARCELABLE = -9,
 
     /**
-     * This is special and Java specific; see Parcel.java.
-     * This should be considered a success, and the next readInt32 bytes can be ignored.
-     */
-    EX_HAS_REPLY_HEADER = -128,
-
-    /**
      * This is special, and indicates to native binder proxies that the
      * transaction has failed at a low level.
      */
@@ -57,10 +81,13 @@ enum {
 };
 
 /**
- * One of the above values or -errno.
- * By convention, positive values are considered to mean service-specific exceptions.
+ * One of the EXCEPTION_* types.
+ *
+ * All unrecognized values are coerced into EXCEPTION_TRANSACTION_FAILED.
+ *
+ * These exceptions values are used by the SDK for parcelables. Also see Parcel.java.
  */
-typedef int32_t binder_status_t;
+typedef int32_t binder_exception_t;
 
 __END_DECLS
 

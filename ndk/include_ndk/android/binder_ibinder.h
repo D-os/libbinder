@@ -97,7 +97,7 @@ typedef struct AIBinder_Class AIBinder_Class;
  *
  * If the process containing an AIBinder dies, it is possible to be holding a strong reference to
  * an object which does not exist. In this case, transactions to this binder will return
- * EX_DEAD_OBJECT. See also AIBinder_linkToDeath, AIBinder_unlinkToDeath, and AIBinder_isAlive.
+ * STATUS_DEAD_OBJECT. See also AIBinder_linkToDeath, AIBinder_unlinkToDeath, and AIBinder_isAlive.
  *
  * Once an AIBinder is created, anywhere it is passed (remotely or locally), there is a 1-1
  * correspondence between the address of an AIBinder and the object it represents. This means that
@@ -211,7 +211,7 @@ binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* 
 /**
  * Stops registration for the associated binder dying. Does not delete the recipient. This function
  * may return a binder transaction failure and in case the death recipient cannot be found, it
- * returns -ENOENT.
+ * returns STATUS_NAME_NOT_FOUND.
  */
 binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                        void* cookie);
