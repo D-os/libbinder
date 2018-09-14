@@ -426,7 +426,7 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
     }
 
     *in = new AParcel(binder);
-    status_t status = (**in)->writeInterfaceToken(clazz->getInterfaceDescriptor());
+    status_t status = (*in)->get()->writeInterfaceToken(clazz->getInterfaceDescriptor());
     binder_status_t ret = PruneStatusT(status);
 
     if (ret != STATUS_OK) {
@@ -472,8 +472,7 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
 
     *out = new AParcel(binder);
 
-    status_t status =
-            binder->getBinder()->transact(code, *(*in)->operator->(), (*out)->operator->(), flags);
+    status_t status = binder->getBinder()->transact(code, *(*in)->get(), (*out)->get(), flags);
     binder_status_t ret = PruneStatusT(status);
 
     if (ret != STATUS_OK) {
