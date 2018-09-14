@@ -17,7 +17,7 @@
 #pragma once
 
 #include <android/binder_ibinder.h>
-#include "AIBinder_internal.h"
+#include "ibinder_internal.h"
 
 #include <atomic>
 #include <mutex>

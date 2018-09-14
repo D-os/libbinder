@@ -15,9 +15,9 @@
  */
 
 #include <android/binder_parcel.h>
-#include "AParcel_internal.h"
+#include "parcel_internal.h"
 
-#include "AIBinder_internal.h"
+#include "ibinder_internal.h"
 
 #include <binder/Parcel.h>
 
