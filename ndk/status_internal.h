@@ -21,6 +21,17 @@
 #include <binder/Status.h>
 #include <utils/Errors.h>
 
+struct AStatus {
+    AStatus() {} // ok
+    AStatus(::android::binder::Status&& status) : mStatus(std::move(status)) {}
+
+    ::android::binder::Status* get() { return &mStatus; }
+    const ::android::binder::Status* get() const { return &mStatus; }
+
+private:
+    ::android::binder::Status mStatus;
+};
+
 // This collapses the statuses into the declared range.
 binder_status_t PruneStatusT(android::status_t status);
 
