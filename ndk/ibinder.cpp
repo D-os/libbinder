@@ -15,10 +15,10 @@
  */
 
 #include <android/binder_ibinder.h>
-#include "AIBinder_internal.h"
+#include "ibinder_internal.h"
 
 #include <android/binder_status.h>
-#include "AParcel_internal.h"
+#include "parcel_internal.h"
 
 #include <android-base/logging.h>
 

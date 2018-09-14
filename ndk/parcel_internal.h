@@ -21,7 +21,7 @@
 #include <sys/cdefs.h>
 
 #include <binder/Parcel.h>
-#include "AIBinder_internal.h"
+#include "ibinder_internal.h"
 
 struct AParcel {
     const ::android::Parcel* operator->() const { return mParcel; }

@@ -81,7 +81,7 @@ def main():
         source += "}\n\n"
 
     replaceFileTags(ROOT + "include_ndk/android/binder_parcel.h", header)
-    replaceFileTags(ROOT + "AParcel.cpp", source)
+    replaceFileTags(ROOT + "parcel.cpp", source)
 
     print("Updating DONE.")
 
