@@ -41,7 +41,7 @@ TEST(NdkBinder, RetrieveNonNdkService) {
     ASSERT_NE(nullptr, binder);
     EXPECT_TRUE(AIBinder_isRemote(binder));
     EXPECT_TRUE(AIBinder_isAlive(binder));
-    EXPECT_EQ(EX_NONE, AIBinder_ping(binder));
+    EXPECT_EQ(STATUS_OK, AIBinder_ping(binder));
 
     AIBinder_decStrong(binder);
 }
@@ -60,9 +60,11 @@ TEST(NdkBinder, LinkToDeath) {
     AIBinder_DeathRecipient* recipient = AIBinder_DeathRecipient_new(OnBinderDeath);
     ASSERT_NE(nullptr, recipient);
 
-    EXPECT_EQ(EX_NONE, AIBinder_linkToDeath(binder, recipient, nullptr));
-    EXPECT_EQ(EX_NONE, AIBinder_unlinkToDeath(binder, recipient, nullptr));
-    EXPECT_EQ(-ENOENT, AIBinder_unlinkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(STATUS_OK, AIBinder_linkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(STATUS_OK, AIBinder_linkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(STATUS_OK, AIBinder_unlinkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(STATUS_OK, AIBinder_unlinkToDeath(binder, recipient, nullptr));
+    EXPECT_EQ(STATUS_NAME_NOT_FOUND, AIBinder_unlinkToDeath(binder, recipient, nullptr));
 
     AIBinder_DeathRecipient_delete(&recipient);
     AIBinder_decStrong(binder);
@@ -79,7 +81,7 @@ TEST(NdkBinder, GetServiceInProcess) {
     static const char* kInstanceName = "test-get-service-in-process";
 
     sp<IFoo> foo = new MyTestFoo;
-    EXPECT_EQ(EX_NONE, foo->addService(kInstanceName));
+    EXPECT_EQ(STATUS_OK, foo->addService(kInstanceName));
 
     sp<IFoo> getFoo = IFoo::getService(kInstanceName);
     EXPECT_EQ(foo.get(), getFoo.get());
@@ -119,7 +121,7 @@ TEST(NdkBinder, AddServiceMultipleTimes) {
     static const char* kInstanceName1 = "test-multi-1";
     static const char* kInstanceName2 = "test-multi-2";
     sp<IFoo> foo = new MyTestFoo;
-    EXPECT_EQ(EX_NONE, foo->addService(kInstanceName1));
-    EXPECT_EQ(EX_NONE, foo->addService(kInstanceName2));
+    EXPECT_EQ(STATUS_OK, foo->addService(kInstanceName1));
+    EXPECT_EQ(STATUS_OK, foo->addService(kInstanceName2));
     EXPECT_EQ(IFoo::getService(kInstanceName1), IFoo::getService(kInstanceName2));
 }

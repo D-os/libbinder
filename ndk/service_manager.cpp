@@ -15,7 +15,9 @@
  */
 
 #include <android/binder_manager.h>
+
 #include "ibinder_internal.h"
+#include "status_internal.h"
 
 #include <binder/IServiceManager.h>
 
@@ -23,15 +25,17 @@ using ::android::defaultServiceManager;
 using ::android::IBinder;
 using ::android::IServiceManager;
 using ::android::sp;
+using ::android::status_t;
 using ::android::String16;
 
 binder_status_t AServiceManager_addService(AIBinder* binder, const char* instance) {
     if (binder == nullptr || instance == nullptr) {
-        return EX_NULL_POINTER;
+        return STATUS_UNEXPECTED_NULL;
     }
 
     sp<IServiceManager> sm = defaultServiceManager();
-    return sm->addService(String16(instance), binder->getBinder());
+    status_t status = sm->addService(String16(instance), binder->getBinder());
+    return PruneStatusT(status);
 }
 AIBinder* AServiceManager_getService(const char* instance) {
     if (instance == nullptr) {

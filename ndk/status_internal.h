@@ -14,30 +14,15 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
-#include <android/binder_process.h>
-#include <iface/iface.h>
+#pragma once
 
-using ::android::sp;
+#include <android/binder_status.h>
 
-class MyFoo : public IFoo {
-    int32_t doubleNumber(int32_t in) override {
-        LOG(INFO) << "doubling " << in;
-        return 2 * in;
-    }
-};
+#include <binder/Status.h>
+#include <utils/Errors.h>
 
-int main() {
-    ABinderProcess_setThreadPoolMaxThreadCount(0);
+// This collapses the statuses into the declared range.
+binder_status_t PruneStatusT(android::status_t status);
 
-    // Strong reference to MyFoo kept by service manager.
-    binder_status_t status = (new MyFoo)->addService(IFoo::kSomeInstanceName);
-
-    if (status != STATUS_OK) {
-        LOG(FATAL) << "Could not register: " << status;
-    }
-
-    ABinderProcess_joinThreadPool();
-
-    return 1;
-}
+// This collapses the exception into the declared range.
+binder_exception_t PruneException(int32_t exception);

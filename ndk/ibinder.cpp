@@ -19,6 +19,7 @@
 
 #include <android/binder_status.h>
 #include "parcel_internal.h"
+#include "status_internal.h"
 
 #include <android-base/logging.h>
 
@@ -27,6 +28,7 @@ using DeathRecipient = ::android::IBinder::DeathRecipient;
 using ::android::IBinder;
 using ::android::Parcel;
 using ::android::sp;
+using ::android::status_t;
 using ::android::String16;
 using ::android::wp;
 
@@ -116,17 +118,18 @@ const String16& ABBinder::getInterfaceDescriptor() const {
     return getClass()->getInterfaceDescriptor();
 }
 
-binder_status_t ABBinder::onTransact(transaction_code_t code, const Parcel& data, Parcel* reply,
-                                     binder_flags_t flags) {
+status_t ABBinder::onTransact(transaction_code_t code, const Parcel& data, Parcel* reply,
+                              binder_flags_t flags) {
     if (isUserCommand(code)) {
         if (!data.checkInterface(this)) {
-            return EX_ILLEGAL_STATE;
+            return STATUS_PERMISSION_DENIED;
         }
 
         const AParcel in = AParcel::readOnly(this, &data);
         AParcel out = AParcel(this, reply, false /*owns*/);
 
-        return getClass()->onTransact(this, code, &in, &out);
+        binder_status_t status = getClass()->onTransact(this, code, &in, &out);
+        return PruneStatusT(status);
     } else {
         return BBinder::onTransact(code, data, reply, flags);
     }
@@ -253,13 +256,13 @@ binder_status_t AIBinder_DeathRecipient::linkToDeath(AIBinder* binder, void* coo
     sp<TransferDeathRecipient> recipient =
             new TransferDeathRecipient(binder->getBinder(), cookie, mOnDied);
 
-    binder_status_t status = binder->getBinder()->linkToDeath(recipient, cookie, 0 /*flags*/);
-    if (status != EX_NONE) {
-        return status;
+    status_t status = binder->getBinder()->linkToDeath(recipient, cookie, 0 /*flags*/);
+    if (status != STATUS_OK) {
+        return PruneStatusT(status);
     }
 
     mDeathRecipients.push_back(recipient);
-    return EX_NONE;
+    return STATUS_OK;
 }
 
 binder_status_t AIBinder_DeathRecipient::unlinkToDeath(AIBinder* binder, void* cookie) {
@@ -270,22 +273,19 @@ binder_status_t AIBinder_DeathRecipient::unlinkToDeath(AIBinder* binder, void* c
     for (auto it = mDeathRecipients.rbegin(); it != mDeathRecipients.rend(); ++it) {
         sp<TransferDeathRecipient> recipient = *it;
 
-        if (recipient->getCookie() == cookie &&
-
-            recipient->getWho() == binder->getBinder()) {
+        if (recipient->getCookie() == cookie && recipient->getWho() == binder->getBinder()) {
             mDeathRecipients.erase(it.base() - 1);
 
-            binder_status_t status =
-                    binder->getBinder()->unlinkToDeath(recipient, cookie, 0 /*flags*/);
-            if (status != EX_NONE) {
+            status_t status = binder->getBinder()->unlinkToDeath(recipient, cookie, 0 /*flags*/);
+            if (status != ::android::OK) {
                 LOG(ERROR) << __func__
                            << ": removed reference to death recipient but unlink failed.";
             }
-            return status;
+            return PruneStatusT(status);
         }
     }
 
-    return -ENOENT;
+    return STATUS_NAME_NOT_FOUND;
 }
 
 // start of C-API methods
@@ -323,19 +323,20 @@ bool AIBinder_isAlive(const AIBinder* binder) {
 
 binder_status_t AIBinder_ping(AIBinder* binder) {
     if (binder == nullptr) {
-        return EX_NULL_POINTER;
+        return STATUS_UNEXPECTED_NULL;
     }
 
-    return binder->getBinder()->pingBinder();
+    return PruneStatusT(binder->getBinder()->pingBinder());
 }
 
 binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                      void* cookie) {
     if (binder == nullptr || recipient == nullptr) {
         LOG(ERROR) << __func__ << ": Must provide binder and recipient.";
-        return EX_NULL_POINTER;
+        return STATUS_UNEXPECTED_NULL;
     }
 
+    // returns binder_status_t
     return recipient->linkToDeath(binder, cookie);
 }
 
@@ -343,9 +344,10 @@ binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient
                                        void* cookie) {
     if (binder == nullptr || recipient == nullptr) {
         LOG(ERROR) << __func__ << ": Must provide binder and recipient.";
-        return EX_NULL_POINTER;
+        return STATUS_UNEXPECTED_NULL;
     }
 
+    // returns binder_status_t
     return recipient->unlinkToDeath(binder, cookie);
 }
 
@@ -406,14 +408,14 @@ void* AIBinder_getUserData(AIBinder* binder) {
 binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
     if (binder == nullptr || in == nullptr) {
         LOG(ERROR) << __func__ << ": requires non-null parameters.";
-        return EX_NULL_POINTER;
+        return STATUS_UNEXPECTED_NULL;
     }
     const AIBinder_Class* clazz = binder->getClass();
     if (clazz == nullptr) {
         LOG(ERROR) << __func__
                    << ": Class must be defined for a remote binder transaction. See "
                       "AIBinder_associateClass.";
-        return EX_ILLEGAL_STATE;
+        return STATUS_INVALID_OPERATION;
     }
 
     if (!binder->isRemote()) {
@@ -424,20 +426,22 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
     }
 
     *in = new AParcel(binder);
-    binder_status_t status = (**in)->writeInterfaceToken(clazz->getInterfaceDescriptor());
-    if (status != EX_NONE) {
+    status_t status = (**in)->writeInterfaceToken(clazz->getInterfaceDescriptor());
+    binder_status_t ret = PruneStatusT(status);
+
+    if (ret != STATUS_OK) {
         delete *in;
         *in = nullptr;
     }
 
-    return status;
+    return ret;
 }
 
 binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, AParcel** in,
                                   AParcel** out, binder_flags_t flags) {
     if (in == nullptr) {
         LOG(ERROR) << __func__ << ": requires non-null in parameter";
-        return EX_NULL_POINTER;
+        return STATUS_UNEXPECTED_NULL;
     }
 
     using AutoParcelDestroyer = std::unique_ptr<AParcel*, void (*)(AParcel**)>;
@@ -447,36 +451,37 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
 
     if (!isUserCommand(code)) {
         LOG(ERROR) << __func__ << ": Only user-defined transactions can be made from the NDK.";
-        return EX_UNSUPPORTED_OPERATION;
+        return STATUS_UNKNOWN_TRANSACTION;
     }
 
     if ((flags & ~FLAG_ONEWAY) != 0) {
         LOG(ERROR) << __func__ << ": Unrecognized flags sent: " << flags;
-        return EX_ILLEGAL_ARGUMENT;
+        return STATUS_BAD_VALUE;
     }
 
     if (binder == nullptr || *in == nullptr || out == nullptr) {
         LOG(ERROR) << __func__ << ": requires non-null parameters.";
-        return EX_NULL_POINTER;
+        return STATUS_UNEXPECTED_NULL;
     }
 
     if ((*in)->getBinder() != binder) {
         LOG(ERROR) << __func__ << ": parcel is associated with binder object " << binder
                    << " but called with " << (*in)->getBinder();
-        return EX_ILLEGAL_STATE;
+        return STATUS_BAD_VALUE;
     }
 
     *out = new AParcel(binder);
 
-    binder_status_t parcelStatus =
+    status_t status =
             binder->getBinder()->transact(code, *(*in)->operator->(), (*out)->operator->(), flags);
+    binder_status_t ret = PruneStatusT(status);
 
-    if (parcelStatus != EX_NONE) {
+    if (ret != STATUS_OK) {
         delete *out;
         *out = nullptr;
     }
 
-    return parcelStatus;
+    return ret;
 }
 
 AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
