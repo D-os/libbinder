@@ -66,8 +66,8 @@ struct ABBinder : public AIBinder, public ::android::BBinder {
     ABBinder* asABBinder() override { return this; }
 
     const ::android::String16& getInterfaceDescriptor() const override;
-    binder_status_t onTransact(uint32_t code, const ::android::Parcel& data,
-                               ::android::Parcel* reply, binder_flags_t flags) override;
+    ::android::status_t onTransact(uint32_t code, const ::android::Parcel& data,
+                                   ::android::Parcel* reply, binder_flags_t flags) override;
 
 private:
     ABBinder(const AIBinder_Class* clazz, void* userData);

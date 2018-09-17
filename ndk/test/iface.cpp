@@ -41,7 +41,7 @@ void IFoo_Class_onDestroy(void* userData) {
 
 binder_status_t IFoo_Class_onTransact(AIBinder* binder, transaction_code_t code, const AParcel* in,
                                       AParcel* out) {
-    binder_status_t stat = EX_UNSUPPORTED_OPERATION;
+    binder_status_t stat = STATUS_FAILED_TRANSACTION;
 
     sp<IFoo> foo = static_cast<IFoo_Class_Data*>(AIBinder_getUserData(binder))->foo;
     CHECK(foo != nullptr) << "Transaction made on already deleted object";
@@ -50,7 +50,7 @@ binder_status_t IFoo_Class_onTransact(AIBinder* binder, transaction_code_t code,
         case IFoo::DOFOO: {
             int32_t valueIn;
             stat = AParcel_readInt32(in, &valueIn);
-            if (stat != EX_NONE) break;
+            if (stat != STATUS_OK) break;
             int32_t valueOut = foo->doubleNumber(valueIn);
             stat = AParcel_writeInt32(out, valueOut);
             break;
@@ -70,16 +70,16 @@ public:
 
     virtual int32_t doubleNumber(int32_t in) {
         AParcel* parcelIn;
-        CHECK(EX_NONE == AIBinder_prepareTransaction(mBinder, &parcelIn));
+        CHECK(STATUS_OK == AIBinder_prepareTransaction(mBinder, &parcelIn));
 
-        CHECK(EX_NONE == AParcel_writeInt32(parcelIn, in));
+        CHECK(STATUS_OK == AParcel_writeInt32(parcelIn, in));
 
         AParcel* parcelOut;
-        CHECK(EX_NONE ==
+        CHECK(STATUS_OK ==
               AIBinder_transact(mBinder, IFoo::DOFOO, &parcelIn, &parcelOut, 0 /*flags*/));
 
         int32_t out;
-        CHECK(EX_NONE == AParcel_readInt32(parcelOut, &out));
+        CHECK(STATUS_OK == AParcel_readInt32(parcelOut, &out));
 
         AParcel_delete(&parcelOut);
 
