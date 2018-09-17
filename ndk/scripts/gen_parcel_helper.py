@@ -68,7 +68,7 @@ def main():
         header += " */\n"
         header += "binder_status_t AParcel_write" + pretty + "(AParcel* parcel, " + cpp + " value);\n\n"
         source += "binder_status_t AParcel_write" + pretty + "(AParcel* parcel, " + cpp + " value) {\n"
-        source += "    status_t status = (*parcel)->write" + pretty + "(value);\n"
+        source += "    status_t status = parcel->get()->write" + pretty + "(value);\n"
         source += "    return PruneStatusT(status);\n"
         source += "}\n\n"
 
@@ -78,7 +78,7 @@ def main():
         header += " */\n"
         header += "binder_status_t AParcel_read" + pretty + "(const AParcel* parcel, " + cpp + "* value);\n\n"
         source += "binder_status_t AParcel_read" + pretty + "(const AParcel* parcel, " + cpp + "* value) {\n"
-        source += "    status_t status = (*parcel)->read" + pretty + "(value);\n"
+        source += "    status_t status = parcel->get()->read" + pretty + "(value);\n"
         source += "    return PruneStatusT(status);\n"
         source += "}\n\n"
 
