@@ -24,8 +24,8 @@
 #include "ibinder_internal.h"
 
 struct AParcel {
-    const ::android::Parcel* operator->() const { return mParcel; }
-    ::android::Parcel* operator->() { return mParcel; }
+    const ::android::Parcel* get() const { return mParcel; }
+    ::android::Parcel* get() { return mParcel; }
 
     AParcel(const AIBinder* binder) : AParcel(binder, new ::android::Parcel, true /*owns*/) {}
     AParcel(const AIBinder* binder, ::android::Parcel* parcel, bool owns)
