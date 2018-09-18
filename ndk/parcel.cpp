@@ -62,6 +62,17 @@ binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder
     *binder = ret.get();
     return PruneStatusT(status);
 }
+binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status) {
+    return PruneStatusT(status->get()->writeToParcel(parcel->get()));
+}
+binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status) {
+    ::android::binder::Status bstatus;
+    binder_status_t ret = PruneStatusT(bstatus.readFromParcel(*parcel->get()));
+    if (ret == EX_NONE) {
+        *status = new AStatus(std::move(bstatus));
+    }
+    return ret;
+}
 
 // See gen_parcel_helper.py. These auto-generated read/write methods use the same types for
 // libbinder and this library.
