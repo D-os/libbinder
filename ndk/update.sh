@@ -18,5 +18,6 @@
 set -ex
 
 # This script makes sure that the source code is in sync with the various scripts
+./scripts/init_map.sh > libbinder_ndk.map.txt
 ./scripts/gen_parcel_helper.py
 ./scripts/format.sh
