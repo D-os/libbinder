@@ -25,6 +25,7 @@ cc_library {
 
     srcs: [
         "ibinder.cpp",
+        "ibinder_jni.cpp",
         "parcel.cpp",
         "process.cpp",
         "status.cpp",
@@ -32,6 +33,7 @@ cc_library {
     ],
 
     shared_libs: [
+        "libandroid_runtime",
         "libbase",
         "libbinder",
         "libutils",
