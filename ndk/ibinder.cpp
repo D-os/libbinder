@@ -122,7 +122,7 @@ status_t ABBinder::onTransact(transaction_code_t code, const Parcel& data, Parce
                               binder_flags_t flags) {
     if (isUserCommand(code)) {
         if (!data.checkInterface(this)) {
-            return STATUS_PERMISSION_DENIED;
+            return STATUS_BAD_TYPE;
         }
 
         const AParcel in = AParcel::readOnly(this, &data);
