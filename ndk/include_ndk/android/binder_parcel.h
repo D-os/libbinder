@@ -66,6 +66,17 @@ binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binde
  */
 binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder** binder);
 
+/**
+ * Writes an AStatus object to the next location in a non-null parcel.
+ */
+binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status);
+
+/**
+ * Reads an AStatus from the next location in a non-null parcel. Ownership is passed to the caller
+ * of this function.
+ */
+binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status);
+
 // @START
 /**
  * Writes int32_t value to the next location in a non-null parcel.

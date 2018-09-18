@@ -22,6 +22,59 @@
 using ::android::status_t;
 using ::android::binder::Status;
 
+AStatus* AStatus_newOk() {
+    return new AStatus();
+}
+
+AStatus* AStatus_fromExceptionCode(binder_exception_t exception) {
+    return new AStatus(Status::fromExceptionCode(exception));
+}
+
+AStatus* AStatus_fromExceptionCodeWithMessage(binder_exception_t exception, const char* message) {
+    return new AStatus(Status::fromExceptionCode(exception, message));
+}
+
+AStatus* AStatus_fromServiceSpecificError(int32_t serviceSpecific) {
+    return new AStatus(Status::fromServiceSpecificError(serviceSpecific));
+}
+
+AStatus* AStatus_fromServiceSpecificErrorWithMessage(int32_t serviceSpecific, const char* message) {
+    return new AStatus(Status::fromServiceSpecificError(serviceSpecific, message));
+}
+
+AStatus* AStatus_fromStatus(binder_status_t status) {
+    return new AStatus(Status::fromStatusT(status));
+}
+
+bool AStatus_isOk(const AStatus* status) {
+    return status->get()->isOk();
+}
+
+binder_exception_t AStatus_getExceptionCode(const AStatus* status) {
+    return PruneException(status->get()->exceptionCode());
+}
+
+int32_t AStatus_getServiceSpecificError(const AStatus* status) {
+    return status->get()->serviceSpecificErrorCode();
+}
+
+binder_status_t AStatus_getStatus(const AStatus* status) {
+    return PruneStatusT(status->get()->transactionError());
+}
+
+const char* AStatus_getMessage(const AStatus* status) {
+    return status->get()->exceptionMessage().c_str();
+}
+
+void AStatus_delete(AStatus** status) {
+    if (status == nullptr) {
+        return;
+    }
+
+    delete *status;
+    *status = nullptr;
+}
+
 binder_status_t PruneStatusT(status_t status) {
     if (status > 0) return status;
 
