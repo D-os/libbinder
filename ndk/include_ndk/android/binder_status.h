@@ -140,7 +140,8 @@ __attribute__((warn_unused_result)) AStatus* AStatus_fromServiceSpecificErrorWit
 __attribute__((warn_unused_result)) AStatus* AStatus_fromStatus(binder_status_t status);
 
 /**
- * Whether this object represents a successful transaction.
+ * Whether this object represents a successful transaction. If this function returns true, then
+ * AStatus_getExceptionCode will return EX_NONE.
  */
 bool AStatus_isOk(const AStatus* status);
 
@@ -150,16 +151,18 @@ bool AStatus_isOk(const AStatus* status);
 binder_exception_t AStatus_getExceptionCode(const AStatus* status);
 
 /**
- * The service specific error if this object represents one. If this object represents a different
- * kind of exception or is ok, this function will return 0. Just because this function returns 0
- * does not mean that the transaction was a success.
+ * The service specific error if this object represents one. This function will only ever return a
+ * non-zero result if AStatus_getExceptionCode returns EX_SERVICE_SPECIFIC. If this function returns
+ * 0, the status object may still represent a different exception or status. To find out if this
+ * transaction as a whole is okay, use AStatus_isOk instead.
  */
 int32_t AStatus_getServiceSpecificError(const AStatus* status);
 
 /**
- * The status if this object represents one. If this object represents a different kind of exception
- * or is ok, this function will return 0. Just because this function returns 0 does not mean that
- * the transaction was a success.
+ * The status if this object represents one. This function will only ever return a non-zero result
+ * if AStatus_getExceptionCode returns EX_TRANSACTION_FAILED. If this function return 0, the status
+ * object may represent a different exception or a service specific error. To find out if this
+ * transaction as a whole is okay, use AStatus_isOk instead.
  */
 binder_status_t AStatus_getStatus(const AStatus* status);
 
