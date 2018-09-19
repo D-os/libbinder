@@ -27,13 +27,8 @@ using ::android::Parcel;
 using ::android::sp;
 using ::android::status_t;
 
-void AParcel_delete(AParcel** parcel) {
-    if (parcel == nullptr) {
-        return;
-    }
-
-    delete *parcel;
-    *parcel = nullptr;
+void AParcel_delete(AParcel* parcel) {
+    delete parcel;
 }
 
 binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) {

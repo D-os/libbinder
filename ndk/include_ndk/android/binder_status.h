@@ -174,7 +174,7 @@ const char* AStatus_getMessage(const AStatus* status);
 /**
  * Deletes memory associated with the status instance.
  */
-void AStatus_delete(AStatus** status);
+void AStatus_delete(AStatus* status);
 
 __END_DECLS
 

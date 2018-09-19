@@ -300,7 +300,7 @@ __attribute__((warn_unused_result)) AIBinder_Weak* AIBinder_Weak_new(AIBinder* b
 /**
  * Deletes the weak reference. This will have no impact on the lifetime of the binder.
  */
-void AIBinder_Weak_delete(AIBinder_Weak** weakBinder);
+void AIBinder_Weak_delete(AIBinder_Weak* weakBinder);
 
 /**
  * If promotion succeeds, result will have one strong refcount added to it. Otherwise, this returns
@@ -323,7 +323,7 @@ __attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecip
  * Deletes a binder death recipient. It is not necessary to call AIBinder_unlinkToDeath before
  * calling this as these will all be automatically unlinked.
  */
-void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient** recipient);
+void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient);
 
 __END_DECLS
 
