@@ -66,13 +66,8 @@ const char* AStatus_getMessage(const AStatus* status) {
     return status->get()->exceptionMessage().c_str();
 }
 
-void AStatus_delete(AStatus** status) {
-    if (status == nullptr) {
-        return;
-    }
-
-    delete *status;
-    *status = nullptr;
+void AStatus_delete(AStatus* status) {
+    delete status;
 }
 
 binder_status_t PruneStatusT(status_t status) {

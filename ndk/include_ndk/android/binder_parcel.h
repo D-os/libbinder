@@ -45,9 +45,9 @@ struct AParcel;
 typedef struct AParcel AParcel;
 
 /**
- * Cleans up a parcel and sets it to nullptr.
+ * Cleans up a parcel.
  */
-void AParcel_delete(AParcel** parcel);
+void AParcel_delete(AParcel* parcel);
 
 /**
  * Writes an AIBinder to the next location in a non-null parcel. Can be null.
