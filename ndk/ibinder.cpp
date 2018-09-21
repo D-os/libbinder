@@ -198,13 +198,8 @@ AIBinder_Weak* AIBinder_Weak_new(AIBinder* binder) {
 
     return new AIBinder_Weak{wp<AIBinder>(binder)};
 }
-void AIBinder_Weak_delete(AIBinder_Weak** weakBinder) {
-    if (weakBinder == nullptr) {
-        return;
-    }
-
-    delete *weakBinder;
-    *weakBinder = nullptr;
+void AIBinder_Weak_delete(AIBinder_Weak* weakBinder) {
+    delete weakBinder;
 }
 AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder) {
     if (weakBinder == nullptr) {
@@ -437,6 +432,11 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
     return ret;
 }
 
+static void DestroyParcel(AParcel** parcel) {
+    delete *parcel;
+    *parcel = nullptr;
+}
+
 binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, AParcel** in,
                                   AParcel** out, binder_flags_t flags) {
     if (in == nullptr) {
@@ -447,7 +447,7 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
     using AutoParcelDestroyer = std::unique_ptr<AParcel*, void (*)(AParcel**)>;
     // This object is the input to the transaction. This function takes ownership of it and deletes
     // it.
-    AutoParcelDestroyer forIn(in, AParcel_delete);
+    AutoParcelDestroyer forIn(in, DestroyParcel);
 
     if (!isUserCommand(code)) {
         LOG(ERROR) << __func__ << ": Only user-defined transactions can be made from the NDK.";
@@ -492,11 +492,6 @@ AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
     return new AIBinder_DeathRecipient(onBinderDied);
 }
 
-void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient** recipient) {
-    if (recipient == nullptr) {
-        return;
-    }
-
-    delete *recipient;
-    *recipient = nullptr;
+void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) {
+    delete recipient;
 }
