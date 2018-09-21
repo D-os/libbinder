@@ -66,7 +66,7 @@ TEST(NdkBinder, LinkToDeath) {
     EXPECT_EQ(STATUS_OK, AIBinder_unlinkToDeath(binder, recipient, nullptr));
     EXPECT_EQ(STATUS_NAME_NOT_FOUND, AIBinder_unlinkToDeath(binder, recipient, nullptr));
 
-    AIBinder_DeathRecipient_delete(&recipient);
+    AIBinder_DeathRecipient_delete(recipient);
     AIBinder_decStrong(binder);
 }
 
@@ -114,7 +114,7 @@ TEST(NdkBinder, ABpBinderRefCount) {
     // assert because would need to decStrong if non-null and we shouldn't need to add a no-op here
     ASSERT_NE(nullptr, AIBinder_Weak_promote(wBinder));
 
-    AIBinder_Weak_delete(&wBinder);
+    AIBinder_Weak_delete(wBinder);
 }
 
 TEST(NdkBinder, AddServiceMultipleTimes) {

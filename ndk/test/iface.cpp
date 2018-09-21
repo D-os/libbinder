@@ -81,7 +81,7 @@ public:
         int32_t out;
         CHECK(STATUS_OK == AParcel_readInt32(parcelOut, &out));
 
-        AParcel_delete(&parcelOut);
+        AParcel_delete(parcelOut);
 
         return out;
     }
@@ -92,7 +92,7 @@ private:
 };
 
 IFoo::~IFoo() {
-    AIBinder_Weak_delete(&mWeakBinder);
+    AIBinder_Weak_delete(mWeakBinder);
 }
 
 binder_status_t IFoo::addService(const char* instance) {
@@ -106,7 +106,7 @@ binder_status_t IFoo::addService(const char* instance) {
         // or one strong refcount here
         binder = AIBinder_new(IFoo::kClass, static_cast<void*>(new IFoo_Class_Data{this}));
         if (mWeakBinder != nullptr) {
-            AIBinder_Weak_delete(&mWeakBinder);
+            AIBinder_Weak_delete(mWeakBinder);
         }
         mWeakBinder = AIBinder_Weak_new(binder);
     }
