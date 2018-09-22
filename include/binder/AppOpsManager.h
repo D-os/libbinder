@@ -108,7 +108,7 @@ public:
         OP_MANAGE_IPSEC_TUNNELS = 75,
         OP_START_FOREGROUND = 76,
         OP_BLUETOOTH_SCAN = 77,
-        OP_USE_FACE = 78,
+        OP_USE_BIOMETRIC = 78,
     };
 
     AppOpsManager();
