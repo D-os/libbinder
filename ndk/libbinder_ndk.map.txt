@@ -6,6 +6,7 @@ LIBBINDER_NDK { # introduced=29
     AIBinder_DeathRecipient_new;
     AIBinder_debugGetRefCount;
     AIBinder_decStrong;
+    AIBinder_fromJavaBinder;
     AIBinder_getClass;
     AIBinder_getUserData;
     AIBinder_incStrong;
@@ -15,6 +16,7 @@ LIBBINDER_NDK { # introduced=29
     AIBinder_new;
     AIBinder_ping;
     AIBinder_prepareTransaction;
+    AIBinder_toJavaBinder;
     AIBinder_transact;
     AIBinder_unlinkToDeath;
     AIBinder_Weak_delete;
