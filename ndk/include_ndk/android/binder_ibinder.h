@@ -33,6 +33,7 @@
 #include <android/binder_status.h>
 
 __BEGIN_DECLS
+#if __ANDROID_API__ >= __ANDROID_API_Q__
 
 // Also see TF_* in kernel's binder.h
 typedef uint32_t binder_flags_t;
@@ -154,7 +155,8 @@ typedef binder_status_t (*AIBinder_Class_onTransact)(AIBinder* binder, transacti
  */
 __attribute__((warn_unused_result)) AIBinder_Class* AIBinder_Class_define(
         const char* interfaceDescriptor, AIBinder_Class_onCreate onCreate,
-        AIBinder_Class_onDestroy onDestroy, AIBinder_Class_onTransact onTransact);
+        AIBinder_Class_onDestroy onDestroy, AIBinder_Class_onTransact onTransact)
+        __INTRODUCED_IN(29);
 
 /**
  * Creates a new binder object of the appropriate class.
@@ -173,12 +175,13 @@ __attribute__((warn_unused_result)) AIBinder_Class* AIBinder_Class_define(
  * these two objects are actually equal using the AIBinder pointer alone (which they should be able
  * to do). Also see the suggested memory ownership model suggested above.
  */
-__attribute__((warn_unused_result)) AIBinder* AIBinder_new(const AIBinder_Class* clazz, void* args);
+__attribute__((warn_unused_result)) AIBinder* AIBinder_new(const AIBinder_Class* clazz, void* args)
+        __INTRODUCED_IN(29);
 
 /**
  * If this is hosted in a process other than the current one.
  */
-bool AIBinder_isRemote(const AIBinder* binder);
+bool AIBinder_isRemote(const AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * If this binder is known to be alive. This will not send a transaction to a remote process and
@@ -187,14 +190,14 @@ bool AIBinder_isRemote(const AIBinder* binder);
  * updated as the result of a transaction made using AIBinder_transact, but it will also be updated
  * based on the results of bookkeeping or other transactions made internally.
  */
-bool AIBinder_isAlive(const AIBinder* binder);
+bool AIBinder_isAlive(const AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * Built-in transaction for all binder objects. This sends a transaction which will immediately
  * return. Usually this is used to make sure that a binder is alive, as a placeholder call, or as a
  * sanity check.
  */
-binder_status_t AIBinder_ping(AIBinder* binder);
+binder_status_t AIBinder_ping(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * Registers for notifications that the associated binder is dead. The same death recipient may be
@@ -206,7 +209,7 @@ binder_status_t AIBinder_ping(AIBinder* binder);
  * identification and holding user data.
  */
 binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
-                                     void* cookie);
+                                     void* cookie) __INTRODUCED_IN(29);
 
 /**
  * Stops registration for the associated binder dying. Does not delete the recipient. This function
@@ -214,22 +217,22 @@ binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* 
  * returns STATUS_NAME_NOT_FOUND.
  */
 binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
-                                       void* cookie);
+                                       void* cookie) __INTRODUCED_IN(29);
 
 /**
  * This can only be called if a strong reference to this object already exists in process.
  */
-void AIBinder_incStrong(AIBinder* binder);
+void AIBinder_incStrong(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * This will delete the object and call onDestroy once the refcount reaches zero.
  */
-void AIBinder_decStrong(AIBinder* binder);
+void AIBinder_decStrong(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * For debugging only!
  */
-int32_t AIBinder_debugGetRefCount(AIBinder* binder);
+int32_t AIBinder_debugGetRefCount(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * This sets the class of an AIBinder object. This checks to make sure the remote object is of
@@ -240,18 +243,18 @@ int32_t AIBinder_debugGetRefCount(AIBinder* binder);
  * This returns true if the class association succeeds. If it fails, no change is made to the
  * binder object.
  */
-bool AIBinder_associateClass(AIBinder* binder, const AIBinder_Class* clazz);
+bool AIBinder_associateClass(AIBinder* binder, const AIBinder_Class* clazz) __INTRODUCED_IN(29);
 
 /**
  * Returns the class that this binder was constructed with or associated with.
  */
-const AIBinder_Class* AIBinder_getClass(AIBinder* binder);
+const AIBinder_Class* AIBinder_getClass(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * Value returned by onCreate for a local binder. For stateless classes (if onCreate returns
  * nullptr), this also returns nullptr. For a remote binder, this will always return nullptr.
  */
-void* AIBinder_getUserData(AIBinder* binder);
+void* AIBinder_getUserData(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * A transaction is a series of calls to these functions which looks this
@@ -274,7 +277,7 @@ void* AIBinder_getUserData(AIBinder* binder);
  * AIBinder_transact. Alternatively, if there is an error while filling out the parcel, it can be
  * deleted with AParcel_delete.
  */
-binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in);
+binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) __INTRODUCED_IN(29);
 
 /**
  * Transact using a parcel created from AIBinder_prepareTransaction. This actually communicates with
@@ -289,42 +292,45 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in);
  * and must be released with AParcel_delete when finished reading.
  */
 binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, AParcel** in,
-                                  AParcel** out, binder_flags_t flags);
+                                  AParcel** out, binder_flags_t flags) __INTRODUCED_IN(29);
 
 /**
  * This does not take any ownership of the input binder, but it can be used to retrieve it if
  * something else in some process still holds a reference to it.
  */
-__attribute__((warn_unused_result)) AIBinder_Weak* AIBinder_Weak_new(AIBinder* binder);
+__attribute__((warn_unused_result)) AIBinder_Weak* AIBinder_Weak_new(AIBinder* binder)
+        __INTRODUCED_IN(29);
 
 /**
  * Deletes the weak reference. This will have no impact on the lifetime of the binder.
  */
-void AIBinder_Weak_delete(AIBinder_Weak* weakBinder);
+void AIBinder_Weak_delete(AIBinder_Weak* weakBinder) __INTRODUCED_IN(29);
 
 /**
  * If promotion succeeds, result will have one strong refcount added to it. Otherwise, this returns
  * nullptr.
  */
-__attribute__((warn_unused_result)) AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder);
+__attribute__((warn_unused_result)) AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder)
+        __INTRODUCED_IN(29);
 
 /**
  * This function is executed on death receipt. See AIBinder_linkToDeath/AIBinder_unlinkToDeath.
  */
-typedef void (*AIBinder_DeathRecipient_onBinderDied)(void* cookie);
+typedef void (*AIBinder_DeathRecipient_onBinderDied)(void* cookie) __INTRODUCED_IN(29);
 
 /**
  * Creates a new binder death recipient. This can be attached to multiple different binder objects.
  */
 __attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
-        AIBinder_DeathRecipient_onBinderDied onBinderDied);
+        AIBinder_DeathRecipient_onBinderDied onBinderDied) __INTRODUCED_IN(29);
 
 /**
  * Deletes a binder death recipient. It is not necessary to call AIBinder_unlinkToDeath before
  * calling this as these will all be automatically unlinked.
  */
-void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient);
+void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) __INTRODUCED_IN(29);
 
+#endif //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */
