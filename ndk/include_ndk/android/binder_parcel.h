@@ -68,6 +68,12 @@ binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder
 
 /**
  * Writes an AStatus object to the next location in a non-null parcel.
+ *
+ * If the status is considered to be a low-level status and has no additional information other
+ * than a binder_status_t (for instance, if it is created with AStatus_fromStatus), then that
+ * status will be returned from this method and nothing will be written to the parcel. If either
+ * this happens or if writing the status object itself fails, the return value from this function
+ * should be propagated to the client, and AParcel_readStatusHeader shouldn't be called.
  */
 binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status);
 
