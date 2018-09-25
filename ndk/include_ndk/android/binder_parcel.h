@@ -34,6 +34,7 @@ struct AIBinder;
 typedef struct AIBinder AIBinder;
 
 __BEGIN_DECLS
+#if __ANDROID_API__ >= __ANDROID_API_Q__
 
 /**
  * This object represents a package of data that can be sent between processes. When transacting, an
@@ -47,129 +48,134 @@ typedef struct AParcel AParcel;
 /**
  * Cleans up a parcel.
  */
-void AParcel_delete(AParcel* parcel);
+void AParcel_delete(AParcel* parcel) __INTRODUCED_IN(29);
 
 /**
  * Writes an AIBinder to the next location in a non-null parcel. Can be null.
  */
-binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder);
+binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * Reads an AIBinder from the next location in a non-null parcel. This will fail if the binder is
  * non-null. One strong ref-count of ownership is passed to the caller of this function.
  */
-binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binder);
+binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binder)
+        __INTRODUCED_IN(29);
 
 /**
  * Reads an AIBinder from the next location in a non-null parcel. This may read a null. One strong
  * ref-count of ownership is passed to the caller of this function.
  */
-binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder** binder);
+binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder** binder)
+        __INTRODUCED_IN(29);
 
 /**
  * Writes an AStatus object to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status);
+binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status)
+        __INTRODUCED_IN(29);
 
 /**
  * Reads an AStatus from the next location in a non-null parcel. Ownership is passed to the caller
  * of this function.
  */
-binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status);
+binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status)
+        __INTRODUCED_IN(29);
 
 // @START
 /**
  * Writes int32_t value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeInt32(AParcel* parcel, int32_t value);
+binder_status_t AParcel_writeInt32(AParcel* parcel, int32_t value) __INTRODUCED_IN(29);
 
 /**
  * Writes uint32_t value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeUint32(AParcel* parcel, uint32_t value);
+binder_status_t AParcel_writeUint32(AParcel* parcel, uint32_t value) __INTRODUCED_IN(29);
 
 /**
  * Writes int64_t value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeInt64(AParcel* parcel, int64_t value);
+binder_status_t AParcel_writeInt64(AParcel* parcel, int64_t value) __INTRODUCED_IN(29);
 
 /**
  * Writes uint64_t value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeUint64(AParcel* parcel, uint64_t value);
+binder_status_t AParcel_writeUint64(AParcel* parcel, uint64_t value) __INTRODUCED_IN(29);
 
 /**
  * Writes float value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeFloat(AParcel* parcel, float value);
+binder_status_t AParcel_writeFloat(AParcel* parcel, float value) __INTRODUCED_IN(29);
 
 /**
  * Writes double value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeDouble(AParcel* parcel, double value);
+binder_status_t AParcel_writeDouble(AParcel* parcel, double value) __INTRODUCED_IN(29);
 
 /**
  * Writes bool value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeBool(AParcel* parcel, bool value);
+binder_status_t AParcel_writeBool(AParcel* parcel, bool value) __INTRODUCED_IN(29);
 
 /**
  * Writes char16_t value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeChar(AParcel* parcel, char16_t value);
+binder_status_t AParcel_writeChar(AParcel* parcel, char16_t value) __INTRODUCED_IN(29);
 
 /**
  * Writes int8_t value to the next location in a non-null parcel.
  */
-binder_status_t AParcel_writeByte(AParcel* parcel, int8_t value);
+binder_status_t AParcel_writeByte(AParcel* parcel, int8_t value) __INTRODUCED_IN(29);
 
 /**
  * Reads into int32_t value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readInt32(const AParcel* parcel, int32_t* value);
+binder_status_t AParcel_readInt32(const AParcel* parcel, int32_t* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into uint32_t value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readUint32(const AParcel* parcel, uint32_t* value);
+binder_status_t AParcel_readUint32(const AParcel* parcel, uint32_t* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into int64_t value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readInt64(const AParcel* parcel, int64_t* value);
+binder_status_t AParcel_readInt64(const AParcel* parcel, int64_t* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into uint64_t value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readUint64(const AParcel* parcel, uint64_t* value);
+binder_status_t AParcel_readUint64(const AParcel* parcel, uint64_t* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into float value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readFloat(const AParcel* parcel, float* value);
+binder_status_t AParcel_readFloat(const AParcel* parcel, float* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into double value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readDouble(const AParcel* parcel, double* value);
+binder_status_t AParcel_readDouble(const AParcel* parcel, double* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into bool value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readBool(const AParcel* parcel, bool* value);
+binder_status_t AParcel_readBool(const AParcel* parcel, bool* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into char16_t value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readChar(const AParcel* parcel, char16_t* value);
+binder_status_t AParcel_readChar(const AParcel* parcel, char16_t* value) __INTRODUCED_IN(29);
 
 /**
  * Reads into int8_t value from the next location in a non-null parcel.
  */
-binder_status_t AParcel_readByte(const AParcel* parcel, int8_t* value);
+binder_status_t AParcel_readByte(const AParcel* parcel, int8_t* value) __INTRODUCED_IN(29);
 
 // @END
 
+#endif //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */
