@@ -71,8 +71,6 @@ void AStatus_delete(AStatus* status) {
 }
 
 binder_status_t PruneStatusT(status_t status) {
-    if (status > 0) return status;
-
     switch (status) {
         case ::android::OK:
             return STATUS_OK;
