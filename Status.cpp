@@ -136,7 +136,7 @@ status_t Status::writeToParcel(Parcel* parcel) const {
     // Something really bad has happened, and we're not going to even
     // try returning rich error data.
     if (mException == EX_TRANSACTION_FAILED) {
-        return mErrorCode;
+        return mErrorCode == OK ? FAILED_TRANSACTION : mErrorCode;
     }
 
     status_t status = parcel->writeInt32(mException);
