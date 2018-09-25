@@ -44,6 +44,7 @@ cc_defaults {
     name: "test_libbinder_ndk_test_defaults",
     defaults: ["test_libbinder_ndk_defaults"],
     shared_libs: [
+        "libandroid_runtime",
         "libbase",
         "libbinder",
         "libutils",
