@@ -17,6 +17,7 @@
 #define LOG_TAG "IPCThreadState"
 
 #include <binder/IPCThreadState.h>
+#include <binderthreadstate/IPCThreadStateBase.h>
 
 #include <binder/Binder.h>
 #include <binder/BpBinder.h>
@@ -742,6 +743,7 @@ IPCThreadState::IPCThreadState()
     clearCaller();
     mIn.setDataCapacity(256);
     mOut.setDataCapacity(256);
+    mIPCThreadStateBase = IPCThreadStateBase::self();
 }
 
 IPCThreadState::~IPCThreadState()
@@ -1082,6 +1084,9 @@ status_t IPCThreadState::executeCommand(int32_t cmd)
                 "Not enough command data for brTRANSACTION");
             if (result != NO_ERROR) break;
 
+            //Record the fact that we're in a binder call.
+            mIPCThreadStateBase->pushCurrentState(
+                IPCThreadStateBase::CallState::BINDER);
             Parcel buffer;
             buffer.ipcSetDataReference(
                 reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
@@ -1129,6 +1134,7 @@ status_t IPCThreadState::executeCommand(int32_t cmd)
                 error = the_context_object->transact(tr.code, buffer, &reply, tr.flags);
             }
 
+            mIPCThreadStateBase->popCurrentState();
             //ALOGI("<<<< TRANSACT from pid %d restore pid %d uid %d\n",
             //     mCallingPid, origPid, origUid);
 
@@ -1190,6 +1196,10 @@ status_t IPCThreadState::executeCommand(int32_t cmd)
     }
 
     return result;
+}
+
+bool IPCThreadState::isServingCall() const {
+    return mIPCThreadStateBase->getCurrentBinderCallState() == IPCThreadStateBase::CallState::BINDER;
 }
 
 void IPCThreadState::threadDestructor(void *st)

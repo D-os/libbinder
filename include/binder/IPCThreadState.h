@@ -29,6 +29,8 @@ typedef  int  uid_t;
 // ---------------------------------------------------------------------------
 namespace android {
 
+class IPCThreadStateBase;
+
 class IPCThreadState
 {
 public:
@@ -89,6 +91,33 @@ public:
             // the maximum number of binder threads threads allowed for this process.
             void                blockUntilThreadAvailable();
 
+
+            // Is this thread currently serving a binder call. This method
+            // returns true if while traversing backwards from the function call
+            // stack for this thread, we encounter a function serving a binder
+            // call before encountering a hwbinder call / hitting the end of the
+            // call stack.
+            // Eg: If thread T1 went through the following call pattern
+            //     1) T1 receives and executes hwbinder call H1.
+            //     2) While handling H1, T1 makes binder call B1.
+            //     3) The handler of B1, calls into T1 with a callback B2.
+            // If isServingCall() is called during H1 before 3), this method
+            // will return false, else true.
+            //
+            //  ----
+            // | B2 | ---> While callback B2 is being handled, during 3).
+            //  ----
+            // | H1 | ---> While H1 is being handled.
+            //  ----
+            // Fig: Thread Call stack while handling B2
+            //
+            // This is since after 3), while traversing the thread call stack,
+            // we hit a binder call before a hwbinder call / end of stack. This
+            // method may be typically used to determine whether to use
+            // hardware::IPCThreadState methods or IPCThreadState methods to
+            // infer information about thread state.
+            bool                isServingCall() const;
+
 private:
                                 IPCThreadState();
                                 ~IPCThreadState();
@@ -128,6 +157,7 @@ private:
             uid_t               mCallingUid;
             int32_t             mStrictModePolicy;
             int32_t             mLastTransactionBinderFlags;
+            IPCThreadStateBase  *mIPCThreadStateBase;
 };
 
 }; // namespace android
