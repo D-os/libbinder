@@ -119,6 +119,7 @@ cc_library_shared {
         "liblog",
         "libcutils",
         "libutils",
+        "libbinderthreadstate",
     ],
 
     header_libs: [
