@@ -88,6 +88,43 @@ binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status
 binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status)
         __INTRODUCED_IN(29);
 
+/**
+ * Writes string value to the next location in a non-null parcel.
+ */
+binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t length)
+        __INTRODUCED_IN(29);
+
+/**
+ * This is called to allocate a buffer
+ *
+ * The length here includes the space required to insert a '\0' for a properly formed c-str. If the
+ * buffer returned from this function is retStr, it will be filled by AParcel_readString with the
+ * data from the remote process, and it will be filled such that retStr[length] == '\0'.
+ *
+ * If allocation fails, null should be returned.
+ */
+typedef void* (*AParcel_string_reallocator)(void* stringData, size_t length);
+
+/**
+ * This is called to get the buffer from a stringData object.
+ */
+typedef char* (*AParcel_string_getter)(void* stringData);
+
+/**
+ * Reads and allocates string value from the next location in a non-null parcel.
+ *
+ * Data is passed to the string allocator once the string size is known. This data should be used to
+ * point to some kind of string data. For instance, it could be a char*, and the string allocator
+ * could be realloc. Then the getter would simply be a cast to char*. In more complicated cases,
+ * stringData could be a structure containing additional string data.
+ *
+ * If this function returns a success, the buffer returned by allocator when passed stringData will
+ * contain a null-terminated c-str read from the binder.
+ */
+binder_status_t AParcel_readString(const AParcel* parcel, AParcel_string_reallocator reallocator,
+                                   AParcel_string_getter getter, void** stringData)
+        __INTRODUCED_IN(29);
+
 // @START
 /**
  * Writes int32_t value to the next location in a non-null parcel.

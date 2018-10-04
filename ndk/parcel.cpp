@@ -20,7 +20,11 @@
 #include "ibinder_internal.h"
 #include "status_internal.h"
 
+#include <limits>
+
+#include <android-base/logging.h>
 #include <binder/Parcel.h>
+#include <utils/Unicode.h>
 
 using ::android::IBinder;
 using ::android::Parcel;
@@ -67,6 +71,67 @@ binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status
         *status = new AStatus(std::move(bstatus));
     }
     return ret;
+}
+
+binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t length) {
+    const uint8_t* str8 = (uint8_t*)string;
+
+    const ssize_t len16 = utf8_to_utf16_length(str8, length);
+
+    if (len16 < 0 || len16 >= std::numeric_limits<int32_t>::max()) {
+        LOG(WARNING) << __func__ << ": Invalid string length: " << len16;
+        return STATUS_BAD_VALUE;
+    }
+
+    status_t err = parcel->get()->writeInt32(len16);
+    if (err) {
+        return PruneStatusT(err);
+    }
+
+    void* str16 = parcel->get()->writeInplace((len16 + 1) * sizeof(char16_t));
+    if (str16 == nullptr) {
+        return STATUS_NO_MEMORY;
+    }
+
+    utf8_to_utf16(str8, length, (char16_t*)str16, (size_t)len16 + 1);
+
+    return STATUS_OK;
+}
+
+binder_status_t AParcel_readString(const AParcel* parcel, AParcel_string_reallocator reallocator,
+                                   AParcel_string_getter getter, void** stringData) {
+    size_t len16;
+    const char16_t* str16 = parcel->get()->readString16Inplace(&len16);
+
+    if (str16 == nullptr) {
+        LOG(WARNING) << __func__ << ": Failed to read string in place.";
+        return STATUS_UNEXPECTED_NULL;
+    }
+
+    ssize_t len8;
+
+    if (len16 == 0) {
+        len8 = 1;
+    } else {
+        len8 = utf16_to_utf8_length(str16, len16) + 1;
+    }
+
+    if (len8 <= 0 || len8 >= std::numeric_limits<int32_t>::max()) {
+        LOG(WARNING) << __func__ << ": Invalid string length: " << len8;
+        return STATUS_BAD_VALUE;
+    }
+
+    *stringData = reallocator(*stringData, len8);
+    char* str8 = getter(*stringData);
+
+    if (str8 == nullptr) {
+        LOG(WARNING) << __func__ << ": AParcel_string_allocator failed to allocate.";
+        return STATUS_NO_MEMORY;
+    }
+
+    utf16_to_utf8(str16, len16, str8, len8);
+
+    return STATUS_OK;
 }
 
 // See gen_parcel_helper.py. These auto-generated read/write methods use the same types for
