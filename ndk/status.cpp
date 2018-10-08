@@ -27,11 +27,11 @@ AStatus* AStatus_newOk() {
 }
 
 AStatus* AStatus_fromExceptionCode(binder_exception_t exception) {
-    return new AStatus(Status::fromExceptionCode(exception));
+    return new AStatus(Status::fromExceptionCode(PruneException(exception)));
 }
 
 AStatus* AStatus_fromExceptionCodeWithMessage(binder_exception_t exception, const char* message) {
-    return new AStatus(Status::fromExceptionCode(exception, message));
+    return new AStatus(Status::fromExceptionCode(PruneException(exception), message));
 }
 
 AStatus* AStatus_fromServiceSpecificError(int32_t serviceSpecific) {
@@ -43,7 +43,7 @@ AStatus* AStatus_fromServiceSpecificErrorWithMessage(int32_t serviceSpecific, co
 }
 
 AStatus* AStatus_fromStatus(binder_status_t status) {
-    return new AStatus(Status::fromStatusT(status));
+    return new AStatus(Status::fromStatusT(PruneStatusT(status)));
 }
 
 bool AStatus_isOk(const AStatus* status) {
