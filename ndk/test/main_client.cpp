@@ -131,3 +131,6 @@ TEST(NdkBinder, AddServiceMultipleTimes) {
     EXPECT_EQ(STATUS_OK, foo->addService(kInstanceName2));
     EXPECT_EQ(IFoo::getService(kInstanceName1), IFoo::getService(kInstanceName2));
 }
+
+#include <android/binder_auto_utils.h>
+#include <android/binder_interface_utils.h>
