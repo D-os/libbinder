@@ -56,6 +56,15 @@ public:
         return std::static_pointer_cast<CHILD>(ref());
     }
 
+    /**
+     * Convenience method for making an object directly with a reference.
+     */
+    template<class T, class... Args>
+    static std::shared_ptr<T> make(Args&&... args) {
+        T* t = new T(std::forward<Args>(args)...);
+        return t->template ref<T>();
+    }
+
 private:
     std::once_flag mFlagThis;
     std::weak_ptr<SharedRefBase> mThis;
