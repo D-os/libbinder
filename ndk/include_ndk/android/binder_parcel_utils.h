@@ -32,6 +32,8 @@
 
 #include <string>
 
+namespace ndk {
+
 /**
  * Takes a std::string and reallocates it to the specified length. For use with AParcel_readString.
  * See use below in AParcel_readString.
@@ -65,6 +67,8 @@ static inline binder_status_t AParcel_readString(const AParcel* parcel, std::str
     return AParcel_readString(parcel, AParcel_std_string_reallocator, AParcel_std_string_getter,
                               &stringData);
 }
+
+} // namespace ndk
 
 #endif // __cplusplus
 

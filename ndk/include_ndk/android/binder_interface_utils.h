@@ -35,7 +35,7 @@
 #include <memory>
 #include <mutex>
 
-namespace android {
+namespace ndk {
 
 // analog using std::shared_ptr for RefBase-like semantics
 class SharedRefBase {
@@ -68,7 +68,7 @@ public:
     virtual ~ICInterface() {}
 
     // This either returns the single existing implementation or creates a new implementation.
-    virtual AutoAIBinder asBinder() = 0;
+    virtual SpAIBinder asBinder() = 0;
 };
 
 // wrapper analog to BnInterface
@@ -78,36 +78,36 @@ public:
     BnCInterface() {}
     virtual ~BnCInterface() {}
 
-    AutoAIBinder asBinder() override;
+    SpAIBinder asBinder() override;
 
 protected:
     // This function should only be called by asBinder. Otherwise, there is a possibility of
     // multiple AIBinder* objects being created for the same instance of an object.
-    virtual AutoAIBinder createBinder() = 0;
+    virtual SpAIBinder createBinder() = 0;
 
 private:
     std::mutex mMutex; // for asBinder
-    AutoAIBinder_Weak mWeakBinder;
+    ScopedAIBinder_Weak mWeakBinder;
 };
 
 // wrapper analog to BpInterfae
 template <typename INTERFACE>
 class BpCInterface : public INTERFACE {
 public:
-    BpCInterface(const AutoAIBinder& binder) : mBinder(binder) {}
+    BpCInterface(const SpAIBinder& binder) : mBinder(binder) {}
     virtual ~BpCInterface() {}
 
-    AutoAIBinder asBinder() override;
+    SpAIBinder asBinder() override;
 
 private:
-    AutoAIBinder mBinder;
+    SpAIBinder mBinder;
 };
 
 template <typename INTERFACE>
-AutoAIBinder BnCInterface<INTERFACE>::asBinder() {
+SpAIBinder BnCInterface<INTERFACE>::asBinder() {
     std::lock_guard<std::mutex> l(mMutex);
 
-    AutoAIBinder binder;
+    SpAIBinder binder;
     if (mWeakBinder.get() != nullptr) {
         binder.set(AIBinder_Weak_promote(mWeakBinder.get()));
     }
@@ -120,12 +120,12 @@ AutoAIBinder BnCInterface<INTERFACE>::asBinder() {
 }
 
 template <typename INTERFACE>
-AutoAIBinder BpCInterface<INTERFACE>::asBinder() {
+SpAIBinder BpCInterface<INTERFACE>::asBinder() {
     return mBinder;
 }
 
-#endif // __cplusplus
+} // namespace ndk
 
-} // namespace android
+#endif // __cplusplus
 
 /** @} */

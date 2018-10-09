@@ -34,39 +34,39 @@
 
 #include <cstddef>
 
-namespace android {
+namespace ndk {
 
 /**
  * Represents one strong pointer to an AIBinder object.
  */
-class AutoAIBinder {
+class SpAIBinder {
 public:
     /**
      * Takes ownership of one strong refcount of binder.
      */
-    explicit AutoAIBinder(AIBinder* binder = nullptr) : mBinder(binder) {}
+    explicit SpAIBinder(AIBinder* binder = nullptr) : mBinder(binder) {}
 
     /**
-     * Convenience operator for implicitly constructing an AutoAIBinder from nullptr. This is not
+     * Convenience operator for implicitly constructing an SpAIBinder from nullptr. This is not
      * explicit because it is not taking ownership of anything.
      */
-    AutoAIBinder(std::nullptr_t) : AutoAIBinder() {}
+    SpAIBinder(std::nullptr_t) : SpAIBinder() {}
 
     /**
      * This will delete the underlying object if it exists. See operator=.
      */
-    AutoAIBinder(const AutoAIBinder& other) { *this = other; }
+    SpAIBinder(const SpAIBinder& other) { *this = other; }
 
     /**
      * This deletes the underlying object if it exists. See set.
      */
-    ~AutoAIBinder() { set(nullptr); }
+    ~SpAIBinder() { set(nullptr); }
 
     /**
      * This takes ownership of a binder from another AIBinder object but it does not affect the
      * ownership of that other object.
      */
-    AutoAIBinder& operator=(const AutoAIBinder& other) {
+    SpAIBinder& operator=(const SpAIBinder& other) {
         AIBinder_incStrong(other.mBinder);
         set(other.mBinder);
         return *this;
@@ -82,7 +82,7 @@ public:
 
     /**
      * This returns the underlying binder object for transactions. If it is used to create another
-     * AutoAIBinder object, it should first be incremented.
+     * SpAIBinder object, it should first be incremented.
      */
     AIBinder* get() const { return mBinder; }
 
@@ -92,7 +92,7 @@ public:
      * ownership to the object that is put in here.
      *
      * Recommended use is like this:
-     *   AutoAIBinder a;  // will be nullptr
+     *   SpAIBinder a;  // will be nullptr
      *   SomeInitFunction(a.getR());  // value is initialized with refcount
      *
      * Other usecases are discouraged.
@@ -108,17 +108,17 @@ private:
  * This baseclass owns a single object, used to make various classes RAII.
  */
 template <typename T, void (*Destroy)(T*)>
-class AutoA {
+class ScopedA {
 public:
     /**
      * Takes ownership of t.
      */
-    explicit AutoA(T* t = nullptr) : mT(t) {}
+    explicit ScopedA(T* t = nullptr) : mT(t) {}
 
     /**
      * This deletes the underlying object if it exists. See set.
      */
-    ~AutoA() { set(nullptr); }
+    ~ScopedA() { set(nullptr); }
 
     /**
      * Takes ownership of t.
@@ -144,7 +144,7 @@ public:
      * ownership to the object that is put in here.
      *
      * Recommended use is like this:
-     *   AutoA<T> a; // will be nullptr
+     *   ScopedA<T> a; // will be nullptr
      *   SomeInitFunction(a.getR()); // value is initialized with refcount
      *
      * Other usecases are discouraged.
@@ -153,12 +153,12 @@ public:
     T** getR() { return &mT; }
 
     // copy-constructing, or move/copy assignment is disallowed
-    AutoA(const AutoA&) = delete;
-    AutoA& operator=(const AutoA&) = delete;
-    AutoA& operator=(AutoA&&) = delete;
+    ScopedA(const ScopedA&) = delete;
+    ScopedA& operator=(const ScopedA&) = delete;
+    ScopedA& operator=(ScopedA&&) = delete;
 
     // move-constructing is okay
-    AutoA(AutoA&&) = default;
+    ScopedA(ScopedA&&) = default;
 
 private:
     T* mT;
@@ -167,27 +167,27 @@ private:
 /**
  * Convenience wrapper. See AParcel.
  */
-class AutoAParcel : public AutoA<AParcel, AParcel_delete> {
+class ScopedAParcel : public ScopedA<AParcel, AParcel_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit AutoAParcel(AParcel* a = nullptr) : AutoA(a) {}
-    ~AutoAParcel() {}
-    AutoAParcel(AutoAParcel&&) = default;
+    explicit ScopedAParcel(AParcel* a = nullptr) : ScopedA(a) {}
+    ~ScopedAParcel() {}
+    ScopedAParcel(ScopedAParcel&&) = default;
 };
 
 /**
  * Convenience wrapper. See AStatus.
  */
-class AutoAStatus : public AutoA<AStatus, AStatus_delete> {
+class ScopedAStatus : public ScopedA<AStatus, AStatus_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit AutoAStatus(AStatus* a = nullptr) : AutoA(a) {}
-    ~AutoAStatus() {}
-    AutoAStatus(AutoAStatus&&) = default;
+    explicit ScopedAStatus(AStatus* a = nullptr) : ScopedA(a) {}
+    ~ScopedAStatus() {}
+    ScopedAStatus(ScopedAStatus&&) = default;
 
     /**
      * See AStatus_isOk.
@@ -198,36 +198,36 @@ public:
 /**
  * Convenience wrapper. See AIBinder_DeathRecipient.
  */
-class AutoAIBinder_DeathRecipient
-      : public AutoA<AIBinder_DeathRecipient, AIBinder_DeathRecipient_delete> {
+class ScopedAIBinder_DeathRecipient
+      : public ScopedA<AIBinder_DeathRecipient, AIBinder_DeathRecipient_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit AutoAIBinder_DeathRecipient(AIBinder_DeathRecipient* a = nullptr) : AutoA(a) {}
-    ~AutoAIBinder_DeathRecipient() {}
-    AutoAIBinder_DeathRecipient(AutoAIBinder_DeathRecipient&&) = default;
+    explicit ScopedAIBinder_DeathRecipient(AIBinder_DeathRecipient* a = nullptr) : ScopedA(a) {}
+    ~ScopedAIBinder_DeathRecipient() {}
+    ScopedAIBinder_DeathRecipient(ScopedAIBinder_DeathRecipient&&) = default;
 };
 
 /**
  * Convenience wrapper. See AIBinder_Weak.
  */
-class AutoAIBinder_Weak : public AutoA<AIBinder_Weak, AIBinder_Weak_delete> {
+class ScopedAIBinder_Weak : public ScopedA<AIBinder_Weak, AIBinder_Weak_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit AutoAIBinder_Weak(AIBinder_Weak* a = nullptr) : AutoA(a) {}
-    ~AutoAIBinder_Weak() {}
-    AutoAIBinder_Weak(AutoAIBinder_Weak&&) = default;
+    explicit ScopedAIBinder_Weak(AIBinder_Weak* a = nullptr) : ScopedA(a) {}
+    ~ScopedAIBinder_Weak() {}
+    ScopedAIBinder_Weak(ScopedAIBinder_Weak&&) = default;
 
     /**
      * See AIBinder_Weak_promote.
      */
-    AutoAIBinder promote() { return AutoAIBinder(AIBinder_Weak_promote(get())); }
+    SpAIBinder promote() { return SpAIBinder(AIBinder_Weak_promote(get())); }
 };
 
-} // namespace android
+} // namespace ndk
 
 #endif // __cplusplus
 
