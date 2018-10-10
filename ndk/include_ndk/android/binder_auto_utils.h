@@ -108,17 +108,17 @@ private:
  * This baseclass owns a single object, used to make various classes RAII.
  */
 template <typename T, void (*Destroy)(T*)>
-class ScopedA {
+class ScopedAResource {
 public:
     /**
      * Takes ownership of t.
      */
-    explicit ScopedA(T* t = nullptr) : mT(t) {}
+    explicit ScopedAResource(T* t = nullptr) : mT(t) {}
 
     /**
      * This deletes the underlying object if it exists. See set.
      */
-    ~ScopedA() { set(nullptr); }
+    ~ScopedAResource() { set(nullptr); }
 
     /**
      * Takes ownership of t.
@@ -144,7 +144,7 @@ public:
      * ownership to the object that is put in here.
      *
      * Recommended use is like this:
-     *   ScopedA<T> a; // will be nullptr
+     *   ScopedAResource<T> a; // will be nullptr
      *   SomeInitFunction(a.getR()); // value is initialized with refcount
      *
      * Other usecases are discouraged.
@@ -153,12 +153,12 @@ public:
     T** getR() { return &mT; }
 
     // copy-constructing, or move/copy assignment is disallowed
-    ScopedA(const ScopedA&) = delete;
-    ScopedA& operator=(const ScopedA&) = delete;
-    ScopedA& operator=(ScopedA&&) = delete;
+    ScopedAResource(const ScopedAResource&) = delete;
+    ScopedAResource& operator=(const ScopedAResource&) = delete;
+    ScopedAResource& operator=(ScopedAResource&&) = delete;
 
     // move-constructing is okay
-    ScopedA(ScopedA&&) = default;
+    ScopedAResource(ScopedAResource&&) = default;
 
 private:
     T* mT;
@@ -167,12 +167,12 @@ private:
 /**
  * Convenience wrapper. See AParcel.
  */
-class ScopedAParcel : public ScopedA<AParcel, AParcel_delete> {
+class ScopedAParcel : public ScopedAResource<AParcel, AParcel_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit ScopedAParcel(AParcel* a = nullptr) : ScopedA(a) {}
+    explicit ScopedAParcel(AParcel* a = nullptr) : ScopedAResource(a) {}
     ~ScopedAParcel() {}
     ScopedAParcel(ScopedAParcel&&) = default;
 };
@@ -180,12 +180,12 @@ public:
 /**
  * Convenience wrapper. See AStatus.
  */
-class ScopedAStatus : public ScopedA<AStatus, AStatus_delete> {
+class ScopedAStatus : public ScopedAResource<AStatus, AStatus_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit ScopedAStatus(AStatus* a = nullptr) : ScopedA(a) {}
+    explicit ScopedAStatus(AStatus* a = nullptr) : ScopedAResource(a) {}
     ~ScopedAStatus() {}
     ScopedAStatus(ScopedAStatus&&) = default;
 
@@ -199,12 +199,13 @@ public:
  * Convenience wrapper. See AIBinder_DeathRecipient.
  */
 class ScopedAIBinder_DeathRecipient
-      : public ScopedA<AIBinder_DeathRecipient, AIBinder_DeathRecipient_delete> {
+      : public ScopedAResource<AIBinder_DeathRecipient, AIBinder_DeathRecipient_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit ScopedAIBinder_DeathRecipient(AIBinder_DeathRecipient* a = nullptr) : ScopedA(a) {}
+    explicit ScopedAIBinder_DeathRecipient(AIBinder_DeathRecipient* a = nullptr)
+          : ScopedAResource(a) {}
     ~ScopedAIBinder_DeathRecipient() {}
     ScopedAIBinder_DeathRecipient(ScopedAIBinder_DeathRecipient&&) = default;
 };
@@ -212,12 +213,12 @@ public:
 /**
  * Convenience wrapper. See AIBinder_Weak.
  */
-class ScopedAIBinder_Weak : public ScopedA<AIBinder_Weak, AIBinder_Weak_delete> {
+class ScopedAIBinder_Weak : public ScopedAResource<AIBinder_Weak, AIBinder_Weak_delete> {
 public:
     /**
      * Takes ownership of a.
      */
-    explicit ScopedAIBinder_Weak(AIBinder_Weak* a = nullptr) : ScopedA(a) {}
+    explicit ScopedAIBinder_Weak(AIBinder_Weak* a = nullptr) : ScopedAResource(a) {}
     ~ScopedAIBinder_Weak() {}
     ScopedAIBinder_Weak(ScopedAIBinder_Weak&&) = default;
 
