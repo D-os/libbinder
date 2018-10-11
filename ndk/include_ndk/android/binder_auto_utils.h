@@ -30,6 +30,8 @@
 #include <android/binder_parcel.h>
 #include <android/binder_status.h>
 
+#include <assert.h>
+
 #ifdef __cplusplus
 
 #include <cstddef>
@@ -76,7 +78,11 @@ public:
      * Takes ownership of one strong refcount of binder
      */
     void set(AIBinder* binder) {
-        if (mBinder != nullptr) AIBinder_decStrong(mBinder);
+        AIBinder* old = *const_cast<AIBinder* volatile*>(&mBinder);
+        if (old != nullptr) AIBinder_decStrong(old);
+        if (old != *const_cast<AIBinder* volatile*>(&mBinder)) {
+            __assert(__FILE__, __LINE__, "Race detected.");
+        }
         mBinder = binder;
     }
 

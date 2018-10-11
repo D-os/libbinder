@@ -30,6 +30,8 @@
 #include <android/binder_auto_utils.h>
 #include <android/binder_ibinder.h>
 
+#include <assert.h>
+
 #ifdef __cplusplus
 
 #include <memory>
@@ -39,11 +41,18 @@ namespace ndk {
 
 /**
  * analog using std::shared_ptr for internally held refcount
+ *
+ * ref must be called at least one time during the lifetime of this object. The recommended way to construct
+ * this object is with SharedRefBase::make.
  */
 class SharedRefBase {
 public:
     SharedRefBase() {}
-    virtual ~SharedRefBase() {}
+    virtual ~SharedRefBase() {
+        std::call_once(mFlagThis, [&]() {
+            __assert(__FILE__, __LINE__, "SharedRefBase: no ref created during lifetime");
+        });
+    }
 
     /**
      * A shared_ptr must be held to this object when this is called. This must be called once during
