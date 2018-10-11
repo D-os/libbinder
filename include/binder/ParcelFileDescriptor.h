@@ -31,6 +31,7 @@ class ParcelFileDescriptor : public android::Parcelable {
 public:
     ParcelFileDescriptor();
     explicit ParcelFileDescriptor(android::base::unique_fd fd);
+    explicit ParcelFileDescriptor(ParcelFileDescriptor&& other) : mFd(std::move(other.mFd)) { }
     ~ParcelFileDescriptor() override;
 
     int get() const { return mFd.get(); }
