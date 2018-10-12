@@ -207,6 +207,8 @@ binder_status_t AIBinder_ping(AIBinder* binder) __INTRODUCED_IN(29);
  * null. The exact cookie must also be used to unlink this transaction (see AIBinder_linkToDeath).
  * This function may return a binder transaction failure. The cookie can be used both for
  * identification and holding user data.
+ *
+ * If binder is local, this will return STATUS_INVALID_OPERATION.
  */
 binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                      void* cookie) __INTRODUCED_IN(29);
