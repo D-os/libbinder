@@ -42,8 +42,8 @@ namespace ndk {
 /**
  * analog using std::shared_ptr for internally held refcount
  *
- * ref must be called at least one time during the lifetime of this object. The recommended way to construct
- * this object is with SharedRefBase::make.
+ * ref must be called at least one time during the lifetime of this object. The recommended way to
+ * construct this object is with SharedRefBase::make.
  */
 class SharedRefBase {
 public:
@@ -77,7 +77,7 @@ public:
     /**
      * Convenience method for making an object directly with a reference.
      */
-    template<class T, class... Args>
+    template <class T, class... Args>
     static std::shared_ptr<T> make(Args&&... args) {
         T* t = new T(std::forward<Args>(args)...);
         return t->template ref<T>();
