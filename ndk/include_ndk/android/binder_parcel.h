@@ -163,6 +163,23 @@ binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder
         __INTRODUCED_IN(29);
 
 /**
+ * Writes a file descriptor to the next location in a non-null parcel. This does not take ownership
+ * of fd.
+ *
+ * This corresponds to the SDK's android.os.ParcelFileDescriptor.
+ */
+binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd);
+
+/**
+ * Reads an int from the next location in a non-null parcel.
+ *
+ * The returned fd must be closed.
+ *
+ * This corresponds to the SDK's android.os.ParcelFileDescriptor.
+ */
+binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd);
+
+/**
  * Writes an AStatus object to the next location in a non-null parcel.
  *
  * If the status is considered to be a low-level status and has no additional information other

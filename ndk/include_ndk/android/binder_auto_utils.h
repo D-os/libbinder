@@ -31,6 +31,7 @@
 #include <android/binder_status.h>
 
 #include <assert.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 
@@ -113,23 +114,23 @@ private:
 /**
  * This baseclass owns a single object, used to make various classes RAII.
  */
-template <typename T, void (*Destroy)(T*)>
+template <typename T, typename R, R (*Destroy)(T), T DEFAULT>
 class ScopedAResource {
 public:
     /**
      * Takes ownership of t.
      */
-    explicit ScopedAResource(T* t = nullptr) : mT(t) {}
+    explicit ScopedAResource(T t = DEFAULT) : mT(t) {}
 
     /**
      * This deletes the underlying object if it exists. See set.
      */
-    ~ScopedAResource() { set(nullptr); }
+    ~ScopedAResource() { set(DEFAULT); }
 
     /**
      * Takes ownership of t.
      */
-    void set(T* t) {
+    void set(T t) {
         Destroy(mT);
         mT = t;
     }
@@ -137,12 +138,12 @@ public:
     /**
      * This returns the underlying object to be modified but does not affect ownership.
      */
-    T* get() { return mT; }
+    T get() { return mT; }
 
     /**
      * This returns the const underlying object but does not affect ownership.
      */
-    const T* get() const { return mT; }
+    const T get() const { return mT; }
 
     /**
      * This allows the value in this class to be set from beneath it. If you call this method and
@@ -156,7 +157,7 @@ public:
      * Other usecases are discouraged.
      *
      */
-    T** getR() { return &mT; }
+    T* getR() { return &mT; }
 
     // copy-constructing, or move/copy assignment is disallowed
     ScopedAResource(const ScopedAResource&) = delete;
@@ -167,13 +168,13 @@ public:
     ScopedAResource(ScopedAResource&&) = default;
 
 private:
-    T* mT;
+    T mT;
 };
 
 /**
  * Convenience wrapper. See AParcel.
  */
-class ScopedAParcel : public ScopedAResource<AParcel, AParcel_delete> {
+class ScopedAParcel : public ScopedAResource<AParcel*, void, AParcel_delete, nullptr> {
 public:
     /**
      * Takes ownership of a.
@@ -186,7 +187,7 @@ public:
 /**
  * Convenience wrapper. See AStatus.
  */
-class ScopedAStatus : public ScopedAResource<AStatus, AStatus_delete> {
+class ScopedAStatus : public ScopedAResource<AStatus*, void, AStatus_delete, nullptr> {
 public:
     /**
      * Takes ownership of a.
@@ -205,7 +206,8 @@ public:
  * Convenience wrapper. See AIBinder_DeathRecipient.
  */
 class ScopedAIBinder_DeathRecipient
-      : public ScopedAResource<AIBinder_DeathRecipient, AIBinder_DeathRecipient_delete> {
+      : public ScopedAResource<AIBinder_DeathRecipient*, void, AIBinder_DeathRecipient_delete,
+                               nullptr> {
 public:
     /**
      * Takes ownership of a.
@@ -219,7 +221,8 @@ public:
 /**
  * Convenience wrapper. See AIBinder_Weak.
  */
-class ScopedAIBinder_Weak : public ScopedAResource<AIBinder_Weak, AIBinder_Weak_delete> {
+class ScopedAIBinder_Weak
+      : public ScopedAResource<AIBinder_Weak*, void, AIBinder_Weak_delete, nullptr> {
 public:
     /**
      * Takes ownership of a.
@@ -232,6 +235,19 @@ public:
      * See AIBinder_Weak_promote.
      */
     SpAIBinder promote() { return SpAIBinder(AIBinder_Weak_promote(get())); }
+};
+
+/**
+ * Convenience wrapper for a file descriptor.
+ */
+class ScopedFileDescriptor : public ScopedAResource<int, int, close, -1> {
+public:
+    /**
+     * Takes ownership of a.
+     */
+    explicit ScopedFileDescriptor(int a = -1) : ScopedAResource(a) {}
+    ~ScopedFileDescriptor() {}
+    ScopedFileDescriptor(ScopedFileDescriptor&&) = default;
 };
 
 } // namespace ndk
