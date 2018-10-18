@@ -89,6 +89,15 @@ bool ActivityManager::isUidActive(const uid_t uid, const String16& callingPackag
     return false;
 }
 
+int32_t ActivityManager::getUidProcessState(const uid_t uid, const String16& callingPackage)
+{
+    sp<IActivityManager> service = getService();
+    if (service != nullptr) {
+        return service->getUidProcessState(uid, callingPackage);
+    }
+    return PROCESS_STATE_UNKNOWN;
+}
+
 status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
     sp<IActivityManager> service = getService();
     if (service != nullptr) {
