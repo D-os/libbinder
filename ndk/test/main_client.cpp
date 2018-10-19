@@ -134,3 +134,4 @@ TEST(NdkBinder, AddServiceMultipleTimes) {
 
 #include <android/binder_auto_utils.h>
 #include <android/binder_interface_utils.h>
+#include <android/binder_parcel_utils.h>
