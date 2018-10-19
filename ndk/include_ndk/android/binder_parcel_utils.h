@@ -270,7 +270,7 @@ inline binder_status_t AParcel_readVector<int8_t>(const AParcel* parcel, std::ve
  * Takes a std::string and reallocates it to the specified length. For use with AParcel_readString.
  * See use below in AParcel_readString.
  */
-static inline void* AParcel_std_string_reallocator(void* stringData, size_t length) {
+static inline void* AParcel_stdStringReallocator(void* stringData, size_t length) {
     std::string* str = static_cast<std::string*>(stringData);
     str->resize(length - 1);
     return stringData;
@@ -279,7 +279,7 @@ static inline void* AParcel_std_string_reallocator(void* stringData, size_t leng
 /**
  * Takes a std::string and returns the inner char*.
  */
-static inline char* AParcel_std_string_getter(void* stringData) {
+static inline char* AParcel_stdStringGetter(void* stringData) {
     std::string* str = static_cast<std::string*>(stringData);
     return &(*str)[0];
 }
@@ -296,7 +296,7 @@ static inline binder_status_t AParcel_writeString(AParcel* parcel, const std::st
  */
 static inline binder_status_t AParcel_readString(const AParcel* parcel, std::string* str) {
     void* stringData = static_cast<void*>(str);
-    return AParcel_readString(parcel, AParcel_std_string_reallocator, AParcel_std_string_getter,
+    return AParcel_readString(parcel, AParcel_stdStringReallocator, AParcel_stdStringGetter,
                               &stringData);
 }
 
