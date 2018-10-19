@@ -255,8 +255,8 @@ binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t 
     return STATUS_OK;
 }
 
-binder_status_t AParcel_readString(const AParcel* parcel, AParcel_string_reallocator reallocator,
-                                   AParcel_string_getter getter, void** stringData) {
+binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringReallocator reallocator,
+                                   AParcel_stringGetter getter, void** stringData) {
     size_t len16;
     const char16_t* str16 = parcel->get()->readString16Inplace(&len16);
 
@@ -287,7 +287,7 @@ binder_status_t AParcel_readString(const AParcel* parcel, AParcel_string_realloc
     char* str8 = getter(*stringData);
 
     if (str8 == nullptr) {
-        LOG(WARNING) << __func__ << ": AParcel_string_allocator failed to allocate.";
+        LOG(WARNING) << __func__ << ": AParcel_stringReallocator failed to allocate.";
         return STATUS_NO_MEMORY;
     }
 

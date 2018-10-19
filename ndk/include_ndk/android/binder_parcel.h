@@ -136,12 +136,12 @@ typedef int8_t* (*AParcel_byteArrayGetter)(void* arrayData);
  *
  * If allocation fails, null should be returned.
  */
-typedef void* (*AParcel_string_reallocator)(void* stringData, size_t length);
+typedef void* (*AParcel_stringReallocator)(void* stringData, size_t length);
 
 /**
  * This is called to get the buffer from a stringData object.
  */
-typedef char* (*AParcel_string_getter)(void* stringData);
+typedef char* (*AParcel_stringGetter)(void* stringData);
 
 /**
  * Writes an AIBinder to the next location in a non-null parcel. Can be null.
@@ -198,8 +198,8 @@ binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t 
  * If this function returns a success, the buffer returned by allocator when passed stringData will
  * contain a null-terminated c-str read from the binder.
  */
-binder_status_t AParcel_readString(const AParcel* parcel, AParcel_string_reallocator reallocator,
-                                   AParcel_string_getter getter, void** stringData)
+binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringReallocator reallocator,
+                                   AParcel_stringGetter getter, void** stringData)
         __INTRODUCED_IN(29);
 
 // @START-PRIMITIVE-READ-WRITE
