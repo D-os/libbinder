@@ -106,7 +106,7 @@ void BufferedTextOutput::threadDestructor(void *st)
     delete ((ThreadState*)st);
 }
 
-static volatile std::atomic<int32_t> gSequence = 0;
+static volatile std::atomic<int32_t> gSequence(0);
 
 static volatile int32_t gFreeBufferIndex = -1;
 
