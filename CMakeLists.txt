@@ -35,6 +35,7 @@ add_library(binder SHARED
         "IpPrefix.cpp"
         "Value.cpp"
 )
+target_compile_options(binder PRIVATE -fPIC)
 target_link_libraries(binder utils)
 
 add_subdirectory(tests)
