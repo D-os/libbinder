@@ -467,7 +467,6 @@ status_t Parcel::setData(const uint8_t* buffer, size_t len)
 
 status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
 {
-    const sp<ProcessState> proc(ProcessState::self());
     status_t err;
     const uint8_t *data = parcel->mData;
     const binder_size_t *objects = parcel->mObjects;
@@ -520,6 +519,7 @@ status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
     err = NO_ERROR;
 
     if (numObjects > 0) {
+        const sp<ProcessState> proc(ProcessState::self());
         // grow objects
         if (mObjectsCapacity < mObjectsSize + numObjects) {
             size_t newSize = ((mObjectsSize + numObjects)*3)/2;
@@ -2521,8 +2521,11 @@ void Parcel::print(TextOutput& to, uint32_t /*flags*/) const
 
 void Parcel::releaseObjects()
 {
-    const sp<ProcessState> proc(ProcessState::self());
     size_t i = mObjectsSize;
+    if (i == 0) {
+        return;
+    }
+    sp<ProcessState> proc(ProcessState::self());
     uint8_t* const data = mData;
     binder_size_t* const objects = mObjects;
     while (i > 0) {
@@ -2535,8 +2538,11 @@ void Parcel::releaseObjects()
 
 void Parcel::acquireObjects()
 {
-    const sp<ProcessState> proc(ProcessState::self());
     size_t i = mObjectsSize;
+    if (i == 0) {
+        return;
+    }
+    const sp<ProcessState> proc(ProcessState::self());
     uint8_t* const data = mData;
     binder_size_t* const objects = mObjects;
     while (i > 0) {
