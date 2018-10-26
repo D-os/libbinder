@@ -152,8 +152,7 @@ def main():
         cpp_helper += "/**\n"
         cpp_helper += " * Writes a vector of " + cpp + " to the next location in a non-null parcel.\n"
         cpp_helper += " */\n"
-        cpp_helper += "template<>\n"
-        cpp_helper += "inline binder_status_t AParcel_writeVector<" + cpp + ">(AParcel* parcel, const std::vector<" + cpp + ">& vec) {\n"
+        cpp_helper += "inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<" + cpp + ">& vec) {\n"
         write_args = "vec.data()"
         if nca: write_args = "static_cast<const void*>(&vec), AParcel_stdVectorGetter<" + cpp + ">"
         cpp_helper += "    return AParcel_write" + pretty + "Array(parcel, " + write_args + ", vec.size());\n"
@@ -162,8 +161,7 @@ def main():
         cpp_helper += "/**\n"
         cpp_helper += " * Reads a vector of " + cpp + " from the next location in a non-null parcel.\n"
         cpp_helper += " */\n"
-        cpp_helper += "template<>\n"
-        cpp_helper += "inline binder_status_t AParcel_readVector<" + cpp + ">(const AParcel* parcel, std::vector<" + cpp + ">* vec) {\n"
+        cpp_helper += "inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<" + cpp + ">* vec) {\n"
         cpp_helper += "    void* vectorData = static_cast<void*>(vec);\n"
         read_args = []
         read_args += ["parcel"]
