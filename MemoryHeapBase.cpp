@@ -76,7 +76,7 @@ MemoryHeapBase::MemoryHeapBase(const char* device, size_t size, uint32_t flags)
     }
 }
 
-MemoryHeapBase::MemoryHeapBase(int fd, size_t size, uint32_t flags, uint32_t offset)
+MemoryHeapBase::MemoryHeapBase(int fd, size_t size, uint32_t flags, off_t offset)
     : mFD(-1), mSize(0), mBase(MAP_FAILED), mFlags(flags),
       mDevice(nullptr), mNeedUnmap(false), mOffset(0)
 {
@@ -85,7 +85,7 @@ MemoryHeapBase::MemoryHeapBase(int fd, size_t size, uint32_t flags, uint32_t off
     mapfd(fcntl(fd, F_DUPFD_CLOEXEC, 0), size, offset);
 }
 
-status_t MemoryHeapBase::init(int fd, void *base, int size, int flags, const char* device)
+status_t MemoryHeapBase::init(int fd, void *base, size_t size, int flags, const char* device)
 {
     if (mFD != -1) {
         return INVALID_OPERATION;
@@ -98,13 +98,20 @@ status_t MemoryHeapBase::init(int fd, void *base, int size, int flags, const cha
     return NO_ERROR;
 }
 
-status_t MemoryHeapBase::mapfd(int fd, size_t size, uint32_t offset)
+status_t MemoryHeapBase::mapfd(int fd, size_t size, off_t offset)
 {
     if (size == 0) {
         // try to figure out the size automatically
         struct stat sb;
-        if (fstat(fd, &sb) == 0)
-            size = sb.st_size;
+        if (fstat(fd, &sb) == 0) {
+            size = (size_t)sb.st_size;
+            // sb.st_size is off_t which on ILP32 may be 64 bits while size_t is 32 bits.
+            if ((off_t)size != sb.st_size) {
+                ALOGE("%s: size of file %lld cannot fit in memory",
+                        __func__, (long long)sb.st_size);
+                return INVALID_OPERATION;
+            }
+        }
         // if it didn't work, let mmap() fail.
     }
 
@@ -112,12 +119,12 @@ status_t MemoryHeapBase::mapfd(int fd, size_t size, uint32_t offset)
         void* base = (uint8_t*)mmap(nullptr, size,
                 PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset);
         if (base == MAP_FAILED) {
-            ALOGE("mmap(fd=%d, size=%u) failed (%s)",
-                    fd, uint32_t(size), strerror(errno));
+            ALOGE("mmap(fd=%d, size=%zu) failed (%s)",
+                    fd, size, strerror(errno));
             close(fd);
             return -errno;
         }
-        //ALOGD("mmap(fd=%d, base=%p, size=%lu)", fd, base, size);
+        //ALOGD("mmap(fd=%d, base=%p, size=%zu)", fd, base, size);
         mBase = base;
         mNeedUnmap = true;
     } else  {
@@ -140,7 +147,7 @@ void MemoryHeapBase::dispose()
     int fd = android_atomic_or(-1, &mFD);
     if (fd >= 0) {
         if (mNeedUnmap) {
-            //ALOGD("munmap(fd=%d, base=%p, size=%lu)", fd, mBase, mSize);
+            //ALOGD("munmap(fd=%d, base=%p, size=%zu)", fd, mBase, mSize);
             munmap(mBase, mSize);
         }
         mBase = nullptr;
@@ -169,7 +176,7 @@ const char* MemoryHeapBase::getDevice() const {
     return mDevice;
 }
 
-uint32_t MemoryHeapBase::getOffset() const {
+off_t MemoryHeapBase::getOffset() const {
     return mOffset;
 }
 
