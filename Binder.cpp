@@ -115,6 +115,7 @@ const String16& BBinder::getInterfaceDescriptor() const
     return sEmptyDescriptor;
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BBinder::transact(
     uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
 {
@@ -137,6 +138,7 @@ status_t BBinder::transact(
     return err;
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BBinder::linkToDeath(
     const sp<DeathRecipient>& /*recipient*/, void* /*cookie*/,
     uint32_t /*flags*/)
@@ -144,6 +146,7 @@ status_t BBinder::linkToDeath(
     return INVALID_OPERATION;
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BBinder::unlinkToDeath(
     const wp<DeathRecipient>& /*recipient*/, void* /*cookie*/,
     uint32_t /*flags*/, wp<DeathRecipient>* /*outRecipient*/)
@@ -208,6 +211,7 @@ BBinder::~BBinder()
 }
 
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BBinder::onTransact(
     uint32_t code, const Parcel& data, Parcel* reply, uint32_t /*flags*/)
 {
