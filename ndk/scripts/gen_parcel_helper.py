@@ -96,6 +96,10 @@ def main():
 
         header += "/**\n"
         header += " * Writes an array of " + cpp + " to the next location in a non-null parcel.\n"
+        if nca:
+            header += " *\n"
+            header += " * getter(arrayData, i) will be called for each i in [0, length) in order to get the underlying values to write "
+            header += "to the parcel.\n"
         header += " */\n"
         header += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_type + ", size_t length) __INTRODUCED_IN(29);\n\n"
         source += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_type + ", size_t length) {\n"
@@ -105,48 +109,69 @@ def main():
     for pretty, cpp in data_types:
         nca = pretty in non_contiguously_addressable
 
-        extra_getter_args = ""
-        if nca: extra_getter_args = ", size_t index"
-        getter_return = cpp + "*"
-        if nca: getter_return = cpp
-        getter_array_data = "void* arrayData"
-        if nca: getter_array_data = "const void* arrayData"
-
+        read_func = "AParcel_read" + pretty + "Array"
+        write_func = "AParcel_write" + pretty + "Array"
+        allocator_type = "AParcel_" + pretty.lower() + "Allocator"
         getter_type = "AParcel_" + pretty.lower() + "ArrayGetter"
         setter_type = "AParcel_" + pretty.lower() + "ArraySetter"
 
-        pre_header += "/**\n"
-        pre_header += " * This is called to get the underlying data from an arrayData object.\n"
-        pre_header += " *\n"
-        pre_header += " * This will never be called for an empty array.\n"
-        pre_header += " */\n"
-        pre_header += "typedef " + getter_return + " (*" + getter_type + ")(" + getter_array_data + extra_getter_args + ");\n\n"
-
         if nca:
             pre_header += "/**\n"
+            pre_header += " * This allocates an array of length length inside of arrayData and returns whether or not there was "
+            pre_header += "a success.\n"
+            pre_header += " *\n"
+            pre_header += " * See also " + read_func + "\n"
+            pre_header += " */\n"
+            pre_header += "typedef bool (*" + allocator_type + ")(void* arrayData, size_t length);\n\n"
+
+            pre_header += "/**\n"
+            pre_header += " * This is called to get the underlying data from an arrayData object at index.\n"
+            pre_header += " *\n"
+            pre_header += " * See also " + write_func + "\n"
+            pre_header += " */\n"
+            pre_header += "typedef " + cpp + " (*" + getter_type + ")(const void* arrayData, size_t index);\n\n"
+
+            pre_header += "/**\n"
             pre_header += " * This is called to set an underlying value in an arrayData object at index.\n"
+            pre_header += " *\n"
+            pre_header += " * See also " + read_func + "\n"
             pre_header += " */\n"
             pre_header += "typedef void (*" + setter_type + ")(void* arrayData, size_t index, " + cpp + " value);\n\n"
+        else:
+            pre_header += "/**\n"
+            pre_header += " * This is called to get the underlying data from an arrayData object.\n"
+            pre_header += " *\n"
+            pre_header += " * The implementation of this function should allocate a contiguous array of length length and "
+            pre_header += "return that underlying buffer to be filled out. If there is an error or length is 0, null may be "
+            pre_header += "returned.\n"
+            pre_header += " *\n"
+            pre_header += " * See also " + read_func + "\n"
+            pre_header += " */\n"
+            pre_header += "typedef " + cpp + "* (*" + allocator_type + ")(void* arrayData, size_t length);\n\n"
 
-        read_using = "getter"
-        if nca: read_using = "setter"
-        read_type = getter_type
-        if nca: read_type = setter_type
+        read_array_args = [("const AParcel*", "parcel")]
+        read_array_args += [("void*", "arrayData")]
+        read_array_args += [(allocator_type, "allocator")]
+        if nca: read_array_args += [(setter_type, "setter")]
 
-        arguments = ["const AParcel* parcel"]
-        arguments += ["void** arrayData"]
-        arguments += ["AParcel_arrayReallocator reallocator"]
-        arguments += [read_type + " " + read_using]
-        arguments = ", ".join(arguments)
+        read_type_args = ", ".join((varType + " " + name for varType, name in read_array_args))
+        read_call_args = ", ".join((name for varType, name in read_array_args))
 
         header += "/**\n"
         header += " * Reads an array of " + cpp + " from the next location in a non-null parcel.\n"
+        header += " *\n"
+        if nca:
+            header += " * First, allocator will be called with the length of the array. Then, for every i in [0, length), "
+            header += "setter(arrayData, i, x) will be called where x is the value at the associated index.\n"
+        else:
+            header += " * First, allocator will be called with the length of the array. If the allocation succeeds and the "
+            header += "length is greater than zero, the buffer returned by the allocator will be filled with the corresponding data\n"
         header += " */\n"
-        header += "binder_status_t AParcel_read" + pretty + "Array(" + arguments + ") __INTRODUCED_IN(29);\n\n"
-        source += "binder_status_t AParcel_read" + pretty + "Array(" + arguments + ") {\n"
+        header += "binder_status_t " + read_func + "(" + read_type_args + ") __INTRODUCED_IN(29);\n\n"
+        source += "binder_status_t " + read_func + "(" + read_type_args + ") {\n"
         additional_args = ""
         if nca: additional_args = ", &Parcel::read" + pretty
-        source += "    return ReadArray<" + cpp + ">(parcel, arrayData, reallocator, " + read_using + additional_args + ");\n";
+        source += "    return ReadArray<" + cpp + ">(" + read_call_args + additional_args + ");\n";
         source += "}\n\n"
 
         cpp_helper += "/**\n"
@@ -165,9 +190,12 @@ def main():
         cpp_helper += "    void* vectorData = static_cast<void*>(vec);\n"
         read_args = []
         read_args += ["parcel"]
-        read_args += ["&vectorData"]
-        read_args += ["&AParcel_stdVectorReallocator<" + cpp + ">"]
-        read_args += ["AParcel_stdVector" + read_using.capitalize() + "<" + cpp + ">"]
+        read_args += ["vectorData"]
+        if nca:
+            read_args += ["AParcel_stdVectorBoolAllocator"]
+            read_args += ["AParcel_stdVectorSetter<" + cpp + ">"]
+        else:
+            read_args += ["AParcel_stdVectorAllocator<" + cpp + ">"]
         cpp_helper += "    return AParcel_read" + pretty + "Array(" + ", ".join(read_args) + ");\n"
         cpp_helper += "}\n\n"
 
