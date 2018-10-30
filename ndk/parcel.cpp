@@ -216,10 +216,10 @@ binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status
 binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status) {
     ::android::binder::Status bstatus;
     binder_status_t ret = PruneStatusT(bstatus.readFromParcel(*parcel->get()));
-    if (ret == EX_NONE) {
+    if (ret == STATUS_OK) {
         *status = new AStatus(std::move(bstatus));
     }
-    return ret;
+    return PruneStatusT(ret);
 }
 
 binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t length) {
