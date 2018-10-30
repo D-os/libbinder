@@ -32,7 +32,10 @@ using ::android::sp;
 using ::android::status_t;
 
 template <typename T>
-using ContiguousArrayGetter = T* (*)(void* arrayData);
+using ContiguousArrayAllocator = T* (*)(void* arrayData, size_t length);
+
+template <typename T>
+using ArrayAllocator = bool (*)(void* arrayData, size_t length);
 template <typename T>
 using ArrayGetter = T (*)(const void* arrayData, size_t index);
 template <typename T>
@@ -81,8 +84,8 @@ binder_status_t WriteArray<char16_t>(AParcel* parcel, const char16_t* array, siz
 }
 
 template <typename T>
-binder_status_t ReadArray(const AParcel* parcel, void** arrayData,
-                          AParcel_arrayReallocator reallocator, ContiguousArrayGetter<T> getter) {
+binder_status_t ReadArray(const AParcel* parcel, void* arrayData,
+                          ContiguousArrayAllocator<T> allocator) {
     const Parcel* rawParcel = parcel->get();
 
     int32_t length;
@@ -91,12 +94,8 @@ binder_status_t ReadArray(const AParcel* parcel, void** arrayData,
     if (status != STATUS_OK) return PruneStatusT(status);
     if (length < 0) return STATUS_UNEXPECTED_NULL;
 
-    *arrayData = reallocator(*arrayData, length);
-    if (*arrayData == nullptr) return STATUS_NO_MEMORY;
-
+    T* array = allocator(arrayData, length);
     if (length == 0) return STATUS_OK;
-
-    T* array = getter(*arrayData);
     if (array == nullptr) return STATUS_NO_MEMORY;
 
     int32_t size = 0;
@@ -112,9 +111,8 @@ binder_status_t ReadArray(const AParcel* parcel, void** arrayData,
 
 // Each element in a char16_t array is converted to an int32_t (not packed)
 template <>
-binder_status_t ReadArray<char16_t>(const AParcel* parcel, void** arrayData,
-                                    AParcel_arrayReallocator reallocator,
-                                    ContiguousArrayGetter<char16_t> getter) {
+binder_status_t ReadArray<char16_t>(const AParcel* parcel, void* arrayData,
+                                    ContiguousArrayAllocator<char16_t> allocator) {
     const Parcel* rawParcel = parcel->get();
 
     int32_t length;
@@ -123,12 +121,8 @@ binder_status_t ReadArray<char16_t>(const AParcel* parcel, void** arrayData,
     if (status != STATUS_OK) return PruneStatusT(status);
     if (length < 0) return STATUS_UNEXPECTED_NULL;
 
-    *arrayData = reallocator(*arrayData, length);
-    if (*arrayData == nullptr) return STATUS_NO_MEMORY;
-
+    char16_t* array = allocator(arrayData, length);
     if (length == 0) return STATUS_OK;
-
-    char16_t* array = getter(*arrayData);
     if (array == nullptr) return STATUS_NO_MEMORY;
 
     int32_t size = 0;
@@ -163,9 +157,8 @@ binder_status_t WriteArray(AParcel* parcel, const void* arrayData, ArrayGetter<T
 }
 
 template <typename T>
-binder_status_t ReadArray(const AParcel* parcel, void** arrayData,
-                          AParcel_arrayReallocator reallocator, ArraySetter<T> setter,
-                          status_t (Parcel::*read)(T*) const) {
+binder_status_t ReadArray(const AParcel* parcel, void* arrayData, ArrayAllocator<T> allocator,
+                          ArraySetter<T> setter, status_t (Parcel::*read)(T*) const) {
     const Parcel* rawParcel = parcel->get();
 
     int32_t length;
@@ -174,15 +167,14 @@ binder_status_t ReadArray(const AParcel* parcel, void** arrayData,
     if (status != STATUS_OK) return PruneStatusT(status);
     if (length < 0) return STATUS_UNEXPECTED_NULL;
 
-    *arrayData = reallocator(*arrayData, length);
-    if (*arrayData == nullptr) return STATUS_NO_MEMORY;
+    if (!allocator(arrayData, length)) return STATUS_NO_MEMORY;
 
     for (size_t i = 0; i < length; i++) {
         T readTarget;
         status = (rawParcel->*read)(&readTarget);
         if (status != STATUS_OK) return PruneStatusT(status);
 
-        setter(*arrayData, i, readTarget);
+        setter(arrayData, i, readTarget);
     }
 
     return STATUS_OK;
@@ -255,8 +247,8 @@ binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t 
     return STATUS_OK;
 }
 
-binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringReallocator reallocator,
-                                   AParcel_stringGetter getter, void** stringData) {
+binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringAllocator allocator,
+                                   void* stringData) {
     size_t len16;
     const char16_t* str16 = parcel->get()->readString16Inplace(&len16);
 
@@ -278,16 +270,10 @@ binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringRealloca
         return STATUS_BAD_VALUE;
     }
 
-    *stringData = reallocator(*stringData, len8);
-
-    if (*stringData == nullptr) {
-        return STATUS_NO_MEMORY;
-    }
-
-    char* str8 = getter(*stringData);
+    char* str8 = allocator(stringData, len8);
 
     if (str8 == nullptr) {
-        LOG(WARNING) << __func__ << ": AParcel_stringReallocator failed to allocate.";
+        LOG(WARNING) << __func__ << ": AParcel_stringAllocator failed to allocate.";
         return STATUS_NO_MEMORY;
     }
 
@@ -426,58 +412,50 @@ binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* value, siz
     return WriteArray<int8_t>(parcel, value, length);
 }
 
-binder_status_t AParcel_readInt32Array(const AParcel* parcel, void** arrayData,
-                                       AParcel_arrayReallocator reallocator,
-                                       AParcel_int32ArrayGetter getter) {
-    return ReadArray<int32_t>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
+                                       AParcel_int32Allocator allocator) {
+    return ReadArray<int32_t>(parcel, arrayData, allocator);
 }
 
-binder_status_t AParcel_readUint32Array(const AParcel* parcel, void** arrayData,
-                                        AParcel_arrayReallocator reallocator,
-                                        AParcel_uint32ArrayGetter getter) {
-    return ReadArray<uint32_t>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
+                                        AParcel_uint32Allocator allocator) {
+    return ReadArray<uint32_t>(parcel, arrayData, allocator);
 }
 
-binder_status_t AParcel_readInt64Array(const AParcel* parcel, void** arrayData,
-                                       AParcel_arrayReallocator reallocator,
-                                       AParcel_int64ArrayGetter getter) {
-    return ReadArray<int64_t>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
+                                       AParcel_int64Allocator allocator) {
+    return ReadArray<int64_t>(parcel, arrayData, allocator);
 }
 
-binder_status_t AParcel_readUint64Array(const AParcel* parcel, void** arrayData,
-                                        AParcel_arrayReallocator reallocator,
-                                        AParcel_uint64ArrayGetter getter) {
-    return ReadArray<uint64_t>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
+                                        AParcel_uint64Allocator allocator) {
+    return ReadArray<uint64_t>(parcel, arrayData, allocator);
 }
 
-binder_status_t AParcel_readFloatArray(const AParcel* parcel, void** arrayData,
-                                       AParcel_arrayReallocator reallocator,
-                                       AParcel_floatArrayGetter getter) {
-    return ReadArray<float>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
+                                       AParcel_floatAllocator allocator) {
+    return ReadArray<float>(parcel, arrayData, allocator);
 }
 
-binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void** arrayData,
-                                        AParcel_arrayReallocator reallocator,
-                                        AParcel_doubleArrayGetter getter) {
-    return ReadArray<double>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
+                                        AParcel_doubleAllocator allocator) {
+    return ReadArray<double>(parcel, arrayData, allocator);
 }
 
-binder_status_t AParcel_readBoolArray(const AParcel* parcel, void** arrayData,
-                                      AParcel_arrayReallocator reallocator,
+binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
+                                      AParcel_boolAllocator allocator,
                                       AParcel_boolArraySetter setter) {
-    return ReadArray<bool>(parcel, arrayData, reallocator, setter, &Parcel::readBool);
+    return ReadArray<bool>(parcel, arrayData, allocator, setter, &Parcel::readBool);
 }
 
-binder_status_t AParcel_readCharArray(const AParcel* parcel, void** arrayData,
-                                      AParcel_arrayReallocator reallocator,
-                                      AParcel_charArrayGetter getter) {
-    return ReadArray<char16_t>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
+                                      AParcel_charAllocator allocator) {
+    return ReadArray<char16_t>(parcel, arrayData, allocator);
 }
 
-binder_status_t AParcel_readByteArray(const AParcel* parcel, void** arrayData,
-                                      AParcel_arrayReallocator reallocator,
-                                      AParcel_byteArrayGetter getter) {
-    return ReadArray<int8_t>(parcel, arrayData, reallocator, getter);
+binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
+                                      AParcel_byteAllocator allocator) {
+    return ReadArray<int8_t>(parcel, arrayData, allocator);
 }
 
 // @END
