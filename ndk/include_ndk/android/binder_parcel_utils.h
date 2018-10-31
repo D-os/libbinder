@@ -36,24 +36,26 @@
 namespace ndk {
 
 /**
- * This resizes a std::vector of some underlying type to the given length.
+ * This retrieves and allocates a vector to length length and returns the underlying buffer.
  */
 template <typename T>
-static inline void* AParcel_stdVectorReallocator(void* vectorData, size_t length) {
+static inline T* AParcel_stdVectorAllocator(void* vectorData, size_t length) {
     std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
     if (length > vec->max_size()) return nullptr;
 
     vec->resize(length);
-    return vec;
+    return vec->data();
 }
 
 /**
- * This retrieves the underlying contiguous vector from a corresponding vectorData.
+ * This allocates a vector to length length and returns whether the allocation is successful.
  */
-template <typename T>
-static inline T* AParcel_stdVectorGetter(void* vectorData) {
-    std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
-    return vec->data();
+static inline bool AParcel_stdVectorBoolAllocator(void* vectorData, size_t length) {
+    std::vector<bool>* vec = static_cast<std::vector<bool>*>(vectorData);
+    if (length > vec->max_size()) return false;
+
+    vec->resize(length);
+    return true;
 }
 
 /**
@@ -89,8 +91,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<in
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int32_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readInt32Array(parcel, &vectorData, &AParcel_stdVectorReallocator<int32_t>,
-                                  AParcel_stdVectorGetter<int32_t>);
+    return AParcel_readInt32Array(parcel, vectorData, AParcel_stdVectorAllocator<int32_t>);
 }
 
 /**
@@ -105,8 +106,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<ui
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<uint32_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readUint32Array(parcel, &vectorData, &AParcel_stdVectorReallocator<uint32_t>,
-                                   AParcel_stdVectorGetter<uint32_t>);
+    return AParcel_readUint32Array(parcel, vectorData, AParcel_stdVectorAllocator<uint32_t>);
 }
 
 /**
@@ -121,8 +121,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<in
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int64_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readInt64Array(parcel, &vectorData, &AParcel_stdVectorReallocator<int64_t>,
-                                  AParcel_stdVectorGetter<int64_t>);
+    return AParcel_readInt64Array(parcel, vectorData, AParcel_stdVectorAllocator<int64_t>);
 }
 
 /**
@@ -137,8 +136,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<ui
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<uint64_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readUint64Array(parcel, &vectorData, &AParcel_stdVectorReallocator<uint64_t>,
-                                   AParcel_stdVectorGetter<uint64_t>);
+    return AParcel_readUint64Array(parcel, vectorData, AParcel_stdVectorAllocator<uint64_t>);
 }
 
 /**
@@ -153,8 +151,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<fl
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<float>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readFloatArray(parcel, &vectorData, &AParcel_stdVectorReallocator<float>,
-                                  AParcel_stdVectorGetter<float>);
+    return AParcel_readFloatArray(parcel, vectorData, AParcel_stdVectorAllocator<float>);
 }
 
 /**
@@ -169,8 +166,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<do
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<double>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readDoubleArray(parcel, &vectorData, &AParcel_stdVectorReallocator<double>,
-                                   AParcel_stdVectorGetter<double>);
+    return AParcel_readDoubleArray(parcel, vectorData, AParcel_stdVectorAllocator<double>);
 }
 
 /**
@@ -186,7 +182,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<bo
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<bool>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readBoolArray(parcel, &vectorData, &AParcel_stdVectorReallocator<bool>,
+    return AParcel_readBoolArray(parcel, vectorData, AParcel_stdVectorBoolAllocator,
                                  AParcel_stdVectorSetter<bool>);
 }
 
@@ -202,8 +198,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<ch
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<char16_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readCharArray(parcel, &vectorData, &AParcel_stdVectorReallocator<char16_t>,
-                                 AParcel_stdVectorGetter<char16_t>);
+    return AParcel_readCharArray(parcel, vectorData, AParcel_stdVectorAllocator<char16_t>);
 }
 
 /**
@@ -218,27 +213,18 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<in
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int8_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readByteArray(parcel, &vectorData, &AParcel_stdVectorReallocator<int8_t>,
-                                 AParcel_stdVectorGetter<int8_t>);
+    return AParcel_readByteArray(parcel, vectorData, AParcel_stdVectorAllocator<int8_t>);
 }
 
 // @END
 
 /**
- * Takes a std::string and reallocates it to the specified length. For use with AParcel_readString.
- * See use below in AParcel_readString.
+ * Allocates a std::string to length and returns the underlying buffer. For use with
+ * AParcel_readString. See use below in AParcel_readString(const AParcel*, std::string*).
  */
-static inline void* AParcel_stdStringReallocator(void* stringData, size_t length) {
+static inline char* AParcel_stdStringAllocator(void* stringData, size_t length) {
     std::string* str = static_cast<std::string*>(stringData);
     str->resize(length - 1);
-    return stringData;
-}
-
-/**
- * Takes a std::string and returns the inner char*.
- */
-static inline char* AParcel_stdStringGetter(void* stringData) {
-    std::string* str = static_cast<std::string*>(stringData);
     return &(*str)[0];
 }
 
@@ -254,8 +240,7 @@ static inline binder_status_t AParcel_writeString(AParcel* parcel, const std::st
  */
 static inline binder_status_t AParcel_readString(const AParcel* parcel, std::string* str) {
     void* stringData = static_cast<void*>(str);
-    return AParcel_readString(parcel, AParcel_stdStringReallocator, AParcel_stdStringGetter,
-                              &stringData);
+    return AParcel_readString(parcel, AParcel_stdStringAllocator, stringData);
 }
 
 template <typename T>
