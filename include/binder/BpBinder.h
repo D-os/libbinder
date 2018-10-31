@@ -41,14 +41,18 @@ public:
     virtual status_t    pingBinder();
     virtual status_t    dump(int fd, const Vector<String16>& args);
 
+    // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t    transact(   uint32_t code,
                                     const Parcel& data,
                                     Parcel* reply,
                                     uint32_t flags = 0);
 
+    // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t    linkToDeath(const sp<DeathRecipient>& recipient,
                                     void* cookie = nullptr,
                                     uint32_t flags = 0);
+
+    // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t    unlinkToDeath(  const wp<DeathRecipient>& recipient,
                                         void* cookie = nullptr,
                                         uint32_t flags = 0,

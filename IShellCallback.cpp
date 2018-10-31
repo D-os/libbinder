@@ -58,6 +58,7 @@ IMPLEMENT_META_INTERFACE(ShellCallback, "com.android.internal.os.IShellCallback"
 
 // ----------------------------------------------------------------------
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BnShellCallback::onTransact(
     uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
 {
