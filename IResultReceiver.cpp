@@ -48,6 +48,7 @@ IMPLEMENT_META_INTERFACE(ResultReceiver, "com.android.internal.os.IResultReceive
 
 // ----------------------------------------------------------------------
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BnResultReceiver::onTransact(
     uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
 {

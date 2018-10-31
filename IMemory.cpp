@@ -129,6 +129,7 @@ class BpMemory : public BpInterface<IMemory>
 public:
     explicit BpMemory(const sp<IBinder>& impl);
     virtual ~BpMemory();
+    // NOLINTNEXTLINE(google-default-arguments)
     virtual sp<IMemoryHeap> getMemory(ssize_t* offset=nullptr, size_t* size=nullptr) const;
 
 private:
@@ -180,6 +181,7 @@ BpMemory::~BpMemory()
 {
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 sp<IMemoryHeap> BpMemory::getMemory(ssize_t* offset, size_t* size) const
 {
     if (mHeap == nullptr) {
@@ -224,6 +226,7 @@ BnMemory::BnMemory() {
 BnMemory::~BnMemory() {
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BnMemory::onTransact(
     uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
 {
@@ -383,6 +386,7 @@ BnMemoryHeap::BnMemoryHeap() {
 BnMemoryHeap::~BnMemoryHeap() {
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BnMemoryHeap::onTransact(
         uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
 {

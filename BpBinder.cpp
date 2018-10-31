@@ -206,6 +206,7 @@ status_t BpBinder::dump(int fd, const Vector<String16>& args)
     return err;
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BpBinder::transact(
     uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
 {
@@ -220,6 +221,7 @@ status_t BpBinder::transact(
     return DEAD_OBJECT;
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BpBinder::linkToDeath(
     const sp<DeathRecipient>& recipient, void* cookie, uint32_t flags)
 {
@@ -254,6 +256,7 @@ status_t BpBinder::linkToDeath(
     return DEAD_OBJECT;
 }
 
+// NOLINTNEXTLINE(google-default-arguments)
 status_t BpBinder::unlinkToDeath(
     const wp<DeathRecipient>& recipient, void* cookie, uint32_t flags,
     wp<DeathRecipient>* outRecipient)
