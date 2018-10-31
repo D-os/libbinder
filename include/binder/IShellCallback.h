@@ -42,6 +42,7 @@ public:
 class BnShellCallback : public BnInterface<IShellCallback>
 {
 public:
+    // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t    onTransact( uint32_t code,
                                     const Parcel& data,
                                     Parcel* reply,
