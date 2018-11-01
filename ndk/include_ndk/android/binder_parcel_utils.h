@@ -173,8 +173,8 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<dou
  * Writes a vector of bool to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<bool>& vec) {
-    return AParcel_writeBoolArray(parcel, static_cast<const void*>(&vec),
-                                  AParcel_stdVectorGetter<bool>, vec.size());
+    return AParcel_writeBoolArray(parcel, static_cast<const void*>(&vec), vec.size(),
+                                  AParcel_stdVectorGetter<bool>);
 }
 
 /**

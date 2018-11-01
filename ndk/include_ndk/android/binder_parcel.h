@@ -377,9 +377,8 @@ binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* value, s
  * getter(arrayData, i) will be called for each i in [0, length) in order to get the underlying
  * values to write to the parcel.
  */
-binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData,
-                                       AParcel_boolArrayGetter getter, size_t length)
-        __INTRODUCED_IN(29);
+binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, size_t length,
+                                       AParcel_boolArrayGetter getter) __INTRODUCED_IN(29);
 
 /**
  * Writes an array of char16_t to the next location in a non-null parcel.

@@ -89,10 +89,10 @@ def main():
     for pretty, cpp in data_types:
         nca = pretty in non_contiguously_addressable
 
-        arg_type = "const " + cpp + "* value"
-        if nca: arg_type = "const void* arrayData, AParcel_" + pretty.lower() + "ArrayGetter getter"
+        arg_types = "const " + cpp + "* value, size_t length"
+        if nca: arg_types = "const void* arrayData, size_t length, AParcel_" + pretty.lower() + "ArrayGetter getter"
         args = "value, length"
-        if nca: args = "arrayData, getter, length, &Parcel::write" + pretty
+        if nca: args = "arrayData, length, getter, &Parcel::write" + pretty
 
         header += "/**\n"
         header += " * Writes an array of " + cpp + " to the next location in a non-null parcel.\n"
@@ -101,8 +101,8 @@ def main():
             header += " * getter(arrayData, i) will be called for each i in [0, length) in order to get the underlying values to write "
             header += "to the parcel.\n"
         header += " */\n"
-        header += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_type + ", size_t length) __INTRODUCED_IN(29);\n\n"
-        source += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_type + ", size_t length) {\n"
+        header += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_types + ") __INTRODUCED_IN(29);\n\n"
+        source += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_types + ") {\n"
         source += "    return WriteArray<" + cpp + ">(parcel, " + args + ");\n";
         source += "}\n\n"
 
@@ -178,9 +178,9 @@ def main():
         cpp_helper += " * Writes a vector of " + cpp + " to the next location in a non-null parcel.\n"
         cpp_helper += " */\n"
         cpp_helper += "inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<" + cpp + ">& vec) {\n"
-        write_args = "vec.data()"
-        if nca: write_args = "static_cast<const void*>(&vec), AParcel_stdVectorGetter<" + cpp + ">"
-        cpp_helper += "    return AParcel_write" + pretty + "Array(parcel, " + write_args + ", vec.size());\n"
+        write_args = "vec.data(), vec.size()"
+        if nca: write_args = "static_cast<const void*>(&vec), vec.size(), AParcel_stdVectorGetter<" + cpp + ">"
+        cpp_helper += "    return AParcel_write" + pretty + "Array(parcel, " + write_args + ");\n"
         cpp_helper += "}\n\n"
 
         cpp_helper += "/**\n"

@@ -142,8 +142,8 @@ binder_status_t ReadArray<char16_t>(const AParcel* parcel, void* arrayData,
 }
 
 template <typename T>
-binder_status_t WriteArray(AParcel* parcel, const void* arrayData, ArrayGetter<T> getter,
-                           size_t length, status_t (Parcel::*write)(T)) {
+binder_status_t WriteArray(AParcel* parcel, const void* arrayData, size_t length,
+                           ArrayGetter<T> getter, status_t (Parcel::*write)(T)) {
     if (length > std::numeric_limits<int32_t>::max()) return STATUS_BAD_VALUE;
 
     Parcel* rawParcel = parcel->get();
@@ -425,9 +425,9 @@ binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* value, s
     return WriteArray<double>(parcel, value, length);
 }
 
-binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData,
-                                       AParcel_boolArrayGetter getter, size_t length) {
-    return WriteArray<bool>(parcel, arrayData, getter, length, &Parcel::writeBool);
+binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, size_t length,
+                                       AParcel_boolArrayGetter getter) {
+    return WriteArray<bool>(parcel, arrayData, length, getter, &Parcel::writeBool);
 }
 
 binder_status_t AParcel_writeCharArray(AParcel* parcel, const char16_t* value, size_t length) {
