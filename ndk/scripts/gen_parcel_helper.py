@@ -111,7 +111,7 @@ def main():
 
         read_func = "AParcel_read" + pretty + "Array"
         write_func = "AParcel_write" + pretty + "Array"
-        allocator_type = "AParcel_" + pretty.lower() + "Allocator"
+        allocator_type = "AParcel_" + pretty.lower() + "ArrayAllocator"
         getter_type = "AParcel_" + pretty.lower() + "ArrayGetter"
         setter_type = "AParcel_" + pretty.lower() + "ArraySetter"
 

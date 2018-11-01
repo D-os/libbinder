@@ -60,7 +60,7 @@ void AParcel_delete(AParcel* parcel) __INTRODUCED_IN(29);
  *
  * See also AParcel_readInt32Array
  */
-typedef int32_t* (*AParcel_int32Allocator)(void* arrayData, size_t length);
+typedef int32_t* (*AParcel_int32ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
@@ -71,7 +71,7 @@ typedef int32_t* (*AParcel_int32Allocator)(void* arrayData, size_t length);
  *
  * See also AParcel_readUint32Array
  */
-typedef uint32_t* (*AParcel_uint32Allocator)(void* arrayData, size_t length);
+typedef uint32_t* (*AParcel_uint32ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
@@ -82,7 +82,7 @@ typedef uint32_t* (*AParcel_uint32Allocator)(void* arrayData, size_t length);
  *
  * See also AParcel_readInt64Array
  */
-typedef int64_t* (*AParcel_int64Allocator)(void* arrayData, size_t length);
+typedef int64_t* (*AParcel_int64ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
@@ -93,7 +93,7 @@ typedef int64_t* (*AParcel_int64Allocator)(void* arrayData, size_t length);
  *
  * See also AParcel_readUint64Array
  */
-typedef uint64_t* (*AParcel_uint64Allocator)(void* arrayData, size_t length);
+typedef uint64_t* (*AParcel_uint64ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
@@ -104,7 +104,7 @@ typedef uint64_t* (*AParcel_uint64Allocator)(void* arrayData, size_t length);
  *
  * See also AParcel_readFloatArray
  */
-typedef float* (*AParcel_floatAllocator)(void* arrayData, size_t length);
+typedef float* (*AParcel_floatArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
@@ -115,7 +115,7 @@ typedef float* (*AParcel_floatAllocator)(void* arrayData, size_t length);
  *
  * See also AParcel_readDoubleArray
  */
-typedef double* (*AParcel_doubleAllocator)(void* arrayData, size_t length);
+typedef double* (*AParcel_doubleArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This allocates an array of length length inside of arrayData and returns whether or not there was
@@ -123,7 +123,7 @@ typedef double* (*AParcel_doubleAllocator)(void* arrayData, size_t length);
  *
  * See also AParcel_readBoolArray
  */
-typedef bool (*AParcel_boolAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_boolArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object at index.
@@ -148,7 +148,7 @@ typedef void (*AParcel_boolArraySetter)(void* arrayData, size_t index, bool valu
  *
  * See also AParcel_readCharArray
  */
-typedef char16_t* (*AParcel_charAllocator)(void* arrayData, size_t length);
+typedef char16_t* (*AParcel_charArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
@@ -159,7 +159,7 @@ typedef char16_t* (*AParcel_charAllocator)(void* arrayData, size_t length);
  *
  * See also AParcel_readByteArray
  */
-typedef int8_t* (*AParcel_byteAllocator)(void* arrayData, size_t length);
+typedef int8_t* (*AParcel_byteArrayAllocator)(void* arrayData, size_t length);
 
 // @END-PRIMITIVE-VECTOR-GETTERS
 
@@ -400,7 +400,7 @@ binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* value, siz
  * corresponding data
  */
 binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int32Allocator allocator) __INTRODUCED_IN(29);
+                                       AParcel_int32ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of uint32_t from the next location in a non-null parcel.
@@ -410,7 +410,7 @@ binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint32Allocator allocator) __INTRODUCED_IN(29);
+                                        AParcel_uint32ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of int64_t from the next location in a non-null parcel.
@@ -420,7 +420,7 @@ binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int64Allocator allocator) __INTRODUCED_IN(29);
+                                       AParcel_int64ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of uint64_t from the next location in a non-null parcel.
@@ -430,7 +430,7 @@ binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint64Allocator allocator) __INTRODUCED_IN(29);
+                                        AParcel_uint64ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of float from the next location in a non-null parcel.
@@ -440,7 +440,7 @@ binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
-                                       AParcel_floatAllocator allocator) __INTRODUCED_IN(29);
+                                       AParcel_floatArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of double from the next location in a non-null parcel.
@@ -450,7 +450,7 @@ binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
-                                        AParcel_doubleAllocator allocator) __INTRODUCED_IN(29);
+                                        AParcel_doubleArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of bool from the next location in a non-null parcel.
@@ -459,7 +459,7 @@ binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
  * setter(arrayData, i, x) will be called where x is the value at the associated index.
  */
 binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_boolAllocator allocator,
+                                      AParcel_boolArrayAllocator allocator,
                                       AParcel_boolArraySetter setter) __INTRODUCED_IN(29);
 
 /**
@@ -470,7 +470,7 @@ binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_charAllocator allocator) __INTRODUCED_IN(29);
+                                      AParcel_charArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of int8_t from the next location in a non-null parcel.
@@ -480,7 +480,7 @@ binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_byteAllocator allocator) __INTRODUCED_IN(29);
+                                      AParcel_byteArrayAllocator allocator) __INTRODUCED_IN(29);
 
 // @END-PRIMITIVE-READ-WRITE
 

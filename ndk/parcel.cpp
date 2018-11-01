@@ -439,48 +439,48 @@ binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* value, siz
 }
 
 binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int32Allocator allocator) {
+                                       AParcel_int32ArrayAllocator allocator) {
     return ReadArray<int32_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint32Allocator allocator) {
+                                        AParcel_uint32ArrayAllocator allocator) {
     return ReadArray<uint32_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int64Allocator allocator) {
+                                       AParcel_int64ArrayAllocator allocator) {
     return ReadArray<int64_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint64Allocator allocator) {
+                                        AParcel_uint64ArrayAllocator allocator) {
     return ReadArray<uint64_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
-                                       AParcel_floatAllocator allocator) {
+                                       AParcel_floatArrayAllocator allocator) {
     return ReadArray<float>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
-                                        AParcel_doubleAllocator allocator) {
+                                        AParcel_doubleArrayAllocator allocator) {
     return ReadArray<double>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_boolAllocator allocator,
+                                      AParcel_boolArrayAllocator allocator,
                                       AParcel_boolArraySetter setter) {
     return ReadArray<bool>(parcel, arrayData, allocator, setter, &Parcel::readBool);
 }
 
 binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_charAllocator allocator) {
+                                      AParcel_charArrayAllocator allocator) {
     return ReadArray<char16_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_byteAllocator allocator) {
+                                      AParcel_byteArrayAllocator allocator) {
     return ReadArray<int8_t>(parcel, arrayData, allocator);
 }
 
