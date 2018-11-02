@@ -117,7 +117,7 @@ def main():
 
         if nca:
             pre_header += "/**\n"
-            pre_header += " * This allocates an array of length length inside of arrayData and returns whether or not there was "
+            pre_header += " * This allocates an array of size 'length' inside of arrayData and returns whether or not there was "
             pre_header += "a success.\n"
             pre_header += " *\n"
             pre_header += " * See also " + read_func + "\n"
@@ -141,7 +141,7 @@ def main():
             pre_header += "/**\n"
             pre_header += " * This is called to get the underlying data from an arrayData object.\n"
             pre_header += " *\n"
-            pre_header += " * The implementation of this function should allocate a contiguous array of length length and "
+            pre_header += " * The implementation of this function should allocate a contiguous array of size 'length' and "
             pre_header += "return that underlying buffer to be filled out. If there is an error or length is 0, null may be "
             pre_header += "returned.\n"
             pre_header += " *\n"
@@ -192,7 +192,7 @@ def main():
         read_args += ["parcel"]
         read_args += ["vectorData"]
         if nca:
-            read_args += ["AParcel_stdVectorBoolAllocator"]
+            read_args += ["AParcel_stdVectorExternalAllocator<bool>"]
             read_args += ["AParcel_stdVectorSetter<" + cpp + ">"]
         else:
             read_args += ["AParcel_stdVectorAllocator<" + cpp + ">"]
