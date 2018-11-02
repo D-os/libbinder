@@ -23,13 +23,17 @@
 #include <limits>
 
 #include <android-base/logging.h>
+#include <android-base/unique_fd.h>
 #include <binder/Parcel.h>
+#include <binder/ParcelFileDescriptor.h>
 #include <utils/Unicode.h>
 
 using ::android::IBinder;
 using ::android::Parcel;
 using ::android::sp;
 using ::android::status_t;
+using ::android::base::unique_fd;
+using ::android::os::ParcelFileDescriptor;
 
 template <typename T>
 using ContiguousArrayAllocator = T* (*)(void* arrayData, size_t length);
@@ -210,6 +214,28 @@ binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder
     *binder = ret.get();
     return PruneStatusT(status);
 }
+
+binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd) {
+    ParcelFileDescriptor parcelFd((unique_fd(fd)));
+
+    status_t status = parcel->get()->writeParcelable(parcelFd);
+
+    // ownership is retained by caller
+    (void)parcelFd.release().release();
+
+    return PruneStatusT(status);
+}
+
+binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd) {
+    ParcelFileDescriptor parcelFd;
+    // status_t status = parcelFd.readFromParcel(parcel->get());
+    status_t status = parcel->get()->readParcelable(&parcelFd);
+    if (status != STATUS_OK) return PruneStatusT(status);
+
+    *fd = parcelFd.release().release();
+    return STATUS_OK;
+}
+
 binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status) {
     return PruneStatusT(status->get()->writeToParcel(parcel->get()));
 }
