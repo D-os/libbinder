@@ -38,6 +38,8 @@ cc_library {
         "libbinder",
         "libutils",
     ],
+
+    version_script: "libbinder_ndk.map.txt",
 }
 
 ndk_headers {
