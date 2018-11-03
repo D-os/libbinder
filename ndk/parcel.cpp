@@ -463,28 +463,30 @@ binder_status_t AParcel_readByte(const AParcel* parcel, int8_t* value) {
     return PruneStatusT(status);
 }
 
-binder_status_t AParcel_writeInt32Array(AParcel* parcel, const int32_t* value, size_t length) {
-    return WriteArray<int32_t>(parcel, value, length);
+binder_status_t AParcel_writeInt32Array(AParcel* parcel, const int32_t* arrayData, size_t length) {
+    return WriteArray<int32_t>(parcel, arrayData, length);
 }
 
-binder_status_t AParcel_writeUint32Array(AParcel* parcel, const uint32_t* value, size_t length) {
-    return WriteArray<uint32_t>(parcel, value, length);
+binder_status_t AParcel_writeUint32Array(AParcel* parcel, const uint32_t* arrayData,
+                                         size_t length) {
+    return WriteArray<uint32_t>(parcel, arrayData, length);
 }
 
-binder_status_t AParcel_writeInt64Array(AParcel* parcel, const int64_t* value, size_t length) {
-    return WriteArray<int64_t>(parcel, value, length);
+binder_status_t AParcel_writeInt64Array(AParcel* parcel, const int64_t* arrayData, size_t length) {
+    return WriteArray<int64_t>(parcel, arrayData, length);
 }
 
-binder_status_t AParcel_writeUint64Array(AParcel* parcel, const uint64_t* value, size_t length) {
-    return WriteArray<uint64_t>(parcel, value, length);
+binder_status_t AParcel_writeUint64Array(AParcel* parcel, const uint64_t* arrayData,
+                                         size_t length) {
+    return WriteArray<uint64_t>(parcel, arrayData, length);
 }
 
-binder_status_t AParcel_writeFloatArray(AParcel* parcel, const float* value, size_t length) {
-    return WriteArray<float>(parcel, value, length);
+binder_status_t AParcel_writeFloatArray(AParcel* parcel, const float* arrayData, size_t length) {
+    return WriteArray<float>(parcel, arrayData, length);
 }
 
-binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* value, size_t length) {
-    return WriteArray<double>(parcel, value, length);
+binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* arrayData, size_t length) {
+    return WriteArray<double>(parcel, arrayData, length);
 }
 
 binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, size_t length,
@@ -492,12 +494,12 @@ binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, s
     return WriteArray<bool>(parcel, arrayData, length, getter, &Parcel::writeBool);
 }
 
-binder_status_t AParcel_writeCharArray(AParcel* parcel, const char16_t* value, size_t length) {
-    return WriteArray<char16_t>(parcel, value, length);
+binder_status_t AParcel_writeCharArray(AParcel* parcel, const char16_t* arrayData, size_t length) {
+    return WriteArray<char16_t>(parcel, arrayData, length);
 }
 
-binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* value, size_t length) {
-    return WriteArray<int8_t>(parcel, value, length);
+binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* arrayData, size_t length) {
+    return WriteArray<int8_t>(parcel, arrayData, length);
 }
 
 binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
