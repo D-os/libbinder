@@ -319,8 +319,8 @@ static inline binder_status_t AParcel_resizeVector(const AParcel* parcel, std::v
     return STATUS_OK;
 }
 
-} // namespace ndk
+}  // namespace ndk
 
-#endif // __cplusplus
+#endif  // __cplusplus
 
 /** @} */

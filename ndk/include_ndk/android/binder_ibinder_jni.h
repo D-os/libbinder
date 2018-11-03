@@ -52,7 +52,7 @@ __attribute__((warn_unused_result)) AIBinder* AIBinder_fromJavaBinder(JNIEnv* en
 __attribute__((warn_unused_result)) jobject AIBinder_toJavaBinder(JNIEnv* env, AIBinder* binder)
         __INTRODUCED_IN(29);
 
-#endif //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */

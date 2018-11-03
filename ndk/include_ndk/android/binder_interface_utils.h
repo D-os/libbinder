@@ -46,7 +46,7 @@ namespace ndk {
  * construct this object is with SharedRefBase::make.
  */
 class SharedRefBase {
-public:
+   public:
     SharedRefBase() {}
     virtual ~SharedRefBase() {
         std::call_once(mFlagThis, [&]() {
@@ -83,7 +83,7 @@ public:
         return t->template ref<T>();
     }
 
-private:
+   private:
     std::once_flag mFlagThis;
     std::weak_ptr<SharedRefBase> mThis;
 };
@@ -92,7 +92,7 @@ private:
  * wrapper analog to IInterface
  */
 class ICInterface : public SharedRefBase {
-public:
+   public:
     ICInterface() {}
     virtual ~ICInterface() {}
 
@@ -113,7 +113,7 @@ public:
  */
 template <typename INTERFACE>
 class BnCInterface : public INTERFACE {
-public:
+   public:
     BnCInterface() {}
     virtual ~BnCInterface() {}
 
@@ -121,15 +121,15 @@ public:
 
     bool isRemote() override { return true; }
 
-protected:
+   protected:
     /**
      * This function should only be called by asBinder. Otherwise, there is a possibility of
      * multiple AIBinder* objects being created for the same instance of an object.
      */
     virtual SpAIBinder createBinder() = 0;
 
-private:
-    std::mutex mMutex; // for asBinder
+   private:
+    std::mutex mMutex;  // for asBinder
     ScopedAIBinder_Weak mWeakBinder;
 };
 
@@ -138,7 +138,7 @@ private:
  */
 template <typename INTERFACE>
 class BpCInterface : public INTERFACE {
-public:
+   public:
     BpCInterface(const SpAIBinder& binder) : mBinder(binder) {}
     virtual ~BpCInterface() {}
 
@@ -146,7 +146,7 @@ public:
 
     bool isRemote() override { return AIBinder_isRemote(mBinder.get()); }
 
-private:
+   private:
     SpAIBinder mBinder;
 };
 
@@ -171,8 +171,8 @@ SpAIBinder BpCInterface<INTERFACE>::asBinder() {
     return mBinder;
 }
 
-} // namespace ndk
+}  // namespace ndk
 
-#endif // __cplusplus
+#endif  // __cplusplus
 
 /** @} */

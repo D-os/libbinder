@@ -35,7 +35,7 @@ __BEGIN_DECLS
 enum {
     STATUS_OK = 0,
 
-    STATUS_UNKNOWN_ERROR = (-2147483647 - 1), // INT32_MIN value
+    STATUS_UNKNOWN_ERROR = (-2147483647 - 1),  // INT32_MIN value
     STATUS_NO_MEMORY = -ENOMEM,
     STATUS_INVALID_OPERATION = -ENOSYS,
     STATUS_BAD_VALUE = -EINVAL,
@@ -181,7 +181,7 @@ const char* AStatus_getMessage(const AStatus* status) __INTRODUCED_IN(29);
  */
 void AStatus_delete(AStatus* status) __INTRODUCED_IN(29);
 
-#endif //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */

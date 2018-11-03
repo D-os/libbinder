@@ -332,7 +332,7 @@ __attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecip
  */
 void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) __INTRODUCED_IN(29);
 
-#endif //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */

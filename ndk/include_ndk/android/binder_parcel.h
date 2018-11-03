@@ -539,7 +539,7 @@ binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
 
 // @END-PRIMITIVE-READ-WRITE
 
-#endif //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */

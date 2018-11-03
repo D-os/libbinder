@@ -29,7 +29,7 @@ struct AParcel {
 
     AParcel(const AIBinder* binder) : AParcel(binder, new ::android::Parcel, true /*owns*/) {}
     AParcel(const AIBinder* binder, ::android::Parcel* parcel, bool owns)
-          : mBinder(binder), mParcel(parcel), mOwns(owns) {}
+        : mBinder(binder), mParcel(parcel), mOwns(owns) {}
 
     ~AParcel() {
         if (mOwns) {
@@ -43,7 +43,7 @@ struct AParcel {
 
     const AIBinder* getBinder() { return mBinder; }
 
-private:
+   private:
     // This object is associated with a calls to a specific AIBinder object. This is used for sanity
     // checking to make sure that a parcel is one that is expected.
     const AIBinder* mBinder;

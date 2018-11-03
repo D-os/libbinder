@@ -332,8 +332,8 @@ binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData,
 // This implements AParcel_stringAllocator for a string using an array, index, and element
 // allocator.
 struct StringArrayElementAllocationAdapter {
-    void* arrayData; // stringData from the NDK
-    size_t index;    // index into the string array
+    void* arrayData;  // stringData from the NDK
+    size_t index;     // index into the string array
     AParcel_stringArrayElementAllocator elementAllocator;
 
     static char* Allocator(void* stringData, size_t length) {
