@@ -28,8 +28,6 @@
 
 #include <android/binder_parcel.h>
 
-#ifdef __cplusplus
-
 #include <string>
 #include <vector>
 
@@ -326,7 +324,5 @@ static inline binder_status_t AParcel_resizeVector(const AParcel* parcel, std::v
 }
 
 }  // namespace ndk
-
-#endif  // __cplusplus
 
 /** @} */

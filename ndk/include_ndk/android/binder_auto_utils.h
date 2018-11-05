@@ -31,10 +31,8 @@
 #include <android/binder_status.h>
 
 #include <assert.h>
+
 #include <unistd.h>
-
-#ifdef __cplusplus
-
 #include <cstddef>
 
 namespace ndk {
@@ -251,7 +249,5 @@ class ScopedFileDescriptor : public ScopedAResource<int, int, close, -1> {
 };
 
 }  // namespace ndk
-
-#endif  // __cplusplus
 
 /** @} */

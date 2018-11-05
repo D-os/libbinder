@@ -32,8 +32,6 @@
 
 #include <assert.h>
 
-#ifdef __cplusplus
-
 #include <memory>
 #include <mutex>
 
@@ -172,7 +170,5 @@ SpAIBinder BpCInterface<INTERFACE>::asBinder() {
 }
 
 }  // namespace ndk
-
-#endif  // __cplusplus
 
 /** @} */
