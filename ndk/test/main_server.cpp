@@ -21,23 +21,37 @@
 using ::android::sp;
 
 class MyFoo : public IFoo {
-    int32_t doubleNumber(int32_t in) override {
-        LOG(INFO) << "doubling " << in;
-        return 2 * in;
+    binder_status_t doubleNumber(int32_t in, int32_t* out) override {
+        *out = 2 * in;
+        LOG(INFO) << "doubleNumber (" << in << ") => " << *out;
+        return STATUS_OK;
+    }
+
+    binder_status_t die() override {
+        LOG(FATAL) << "IFoo::die called!";
+        return STATUS_UNKNOWN_ERROR;
     }
 };
 
-int main() {
+int service(const char* instance) {
     ABinderProcess_setThreadPoolMaxThreadCount(0);
 
     // Strong reference to MyFoo kept by service manager.
-    binder_status_t status = (new MyFoo)->addService(IFoo::kSomeInstanceName);
+    binder_status_t status = (new MyFoo)->addService(instance);
 
     if (status != STATUS_OK) {
-        LOG(FATAL) << "Could not register: " << status;
+        LOG(FATAL) << "Could not register: " << status << " " << instance;
     }
 
     ABinderProcess_joinThreadPool();
 
-    return 1;
+    return 1;  // should not return
+}
+
+int main() {
+    if (fork() == 0) {
+        return service(IFoo::kInstanceNameToDieFor);
+    }
+
+    return service(IFoo::kSomeInstanceName);
 }
