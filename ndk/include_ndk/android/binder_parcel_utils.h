@@ -36,7 +36,7 @@
 namespace ndk {
 
 /**
- * This retrieves and allocates a vector to length length and returns the underlying buffer.
+ * This retrieves and allocates a vector to size 'length' and returns the underlying buffer.
  */
 template <typename T>
 static inline T* AParcel_stdVectorAllocator(void* vectorData, size_t length) {
@@ -48,10 +48,18 @@ static inline T* AParcel_stdVectorAllocator(void* vectorData, size_t length) {
 }
 
 /**
- * This allocates a vector to length length and returns whether the allocation is successful.
+ * This allocates a vector to size 'length' and returns whether the allocation is successful.
+ *
+ * See also AParcel_stdVectorAllocator. Types used with this allocator have their sizes defined
+ * externally with respect to the NDK, and that size information is not passed into the NDK.
+ * Instead, it is used in cases where callbacks are used.
+ *
+ * See AParcel_readVector(const AParcel* parcel, std::vector<bool>)
+ * See AParcel_readVector(const AParcel* parcel, std::vector<std::string>)
  */
-static inline bool AParcel_stdVectorBoolAllocator(void* vectorData, size_t length) {
-    std::vector<bool>* vec = static_cast<std::vector<bool>*>(vectorData);
+template <typename T>
+static inline bool AParcel_stdVectorExternalAllocator(void* vectorData, size_t length) {
+    std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
     if (length > vec->max_size()) return false;
 
     vec->resize(length);
@@ -173,8 +181,8 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<dou
  * Writes a vector of bool to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<bool>& vec) {
-    return AParcel_writeBoolArray(parcel, static_cast<const void*>(&vec),
-                                  AParcel_stdVectorGetter<bool>, vec.size());
+    return AParcel_writeBoolArray(parcel, static_cast<const void*>(&vec), vec.size(),
+                                  AParcel_stdVectorGetter<bool>);
 }
 
 /**
@@ -182,7 +190,7 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<bo
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<bool>* vec) {
     void* vectorData = static_cast<void*>(vec);
-    return AParcel_readBoolArray(parcel, vectorData, AParcel_stdVectorBoolAllocator,
+    return AParcel_readBoolArray(parcel, vectorData, AParcel_stdVectorExternalAllocator<bool>,
                                  AParcel_stdVectorSetter<bool>);
 }
 
@@ -229,6 +237,32 @@ static inline char* AParcel_stdStringAllocator(void* stringData, size_t length) 
 }
 
 /**
+ * Allocates a std::string inside of a std::vector<std::string> at index index to size 'length'.
+ */
+static inline char* AParcel_stdVectorStringElementAllocator(void* vectorData, size_t index,
+                                                            size_t length) {
+    std::vector<std::string>* vec = static_cast<std::vector<std::string>*>(vectorData);
+
+    std::string& element = vec->at(index);
+    element.resize(length - 1);
+    return &element[0];
+}
+
+/**
+ * This gets the length and buffer of a std::string inside of a std::vector<std::string> at index
+ * index.
+ */
+static inline const char* AParcel_stdVectorStringElementGetter(const void* vectorData, size_t index,
+                                                               size_t* outLength) {
+    const std::vector<std::string>* vec = static_cast<const std::vector<std::string>*>(vectorData);
+
+    const std::string& element = vec->at(index);
+
+    *outLength = element.size();
+    return element.c_str();
+}
+
+/**
  * Convenience API for writing a std::string.
  */
 static inline binder_status_t AParcel_writeString(AParcel* parcel, const std::string& str) {
@@ -240,7 +274,28 @@ static inline binder_status_t AParcel_writeString(AParcel* parcel, const std::st
  */
 static inline binder_status_t AParcel_readString(const AParcel* parcel, std::string* str) {
     void* stringData = static_cast<void*>(str);
-    return AParcel_readString(parcel, AParcel_stdStringAllocator, stringData);
+    return AParcel_readString(parcel, stringData, AParcel_stdStringAllocator);
+}
+
+/**
+ * Convenience API for writing a std::vector<std::string>
+ */
+static inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                                  const std::vector<std::string>& vec) {
+    const void* vectorData = static_cast<const void*>(&vec);
+    return AParcel_writeStringArray(parcel, vectorData, vec.size(),
+                                    AParcel_stdVectorStringElementGetter);
+}
+
+/**
+ * Convenience API for reading a std::vector<std::string>
+ */
+static inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                                 std::vector<std::string>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readStringArray(parcel, vectorData,
+                                   AParcel_stdVectorExternalAllocator<std::string>,
+                                   AParcel_stdVectorStringElementAllocator);
 }
 
 template <typename T>
