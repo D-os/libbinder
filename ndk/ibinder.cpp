@@ -302,7 +302,7 @@ AIBinder* AIBinder_new(const AIBinder_Class* clazz, void* args) {
 
 bool AIBinder_isRemote(const AIBinder* binder) {
     if (binder == nullptr) {
-        return true;
+        return false;
     }
 
     return binder->isRemote();
