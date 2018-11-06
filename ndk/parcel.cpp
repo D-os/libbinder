@@ -142,8 +142,8 @@ binder_status_t ReadArray<char16_t>(const AParcel* parcel, void* arrayData,
 }
 
 template <typename T>
-binder_status_t WriteArray(AParcel* parcel, const void* arrayData, ArrayGetter<T> getter,
-                           size_t length, status_t (Parcel::*write)(T)) {
+binder_status_t WriteArray(AParcel* parcel, const void* arrayData, size_t length,
+                           ArrayGetter<T> getter, status_t (Parcel::*write)(T)) {
     if (length > std::numeric_limits<int32_t>::max()) return STATUS_BAD_VALUE;
 
     Parcel* rawParcel = parcel->get();
@@ -273,8 +273,8 @@ binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t 
     return STATUS_OK;
 }
 
-binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringAllocator allocator,
-                                   void* stringData) {
+binder_status_t AParcel_readString(const AParcel* parcel, void* stringData,
+                                   AParcel_stringAllocator allocator) {
     size_t len16;
     const char16_t* str16 = parcel->get()->readString16Inplace(&len16);
 
@@ -291,7 +291,7 @@ binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringAllocato
         len8 = utf16_to_utf8_length(str16, len16) + 1;
     }
 
-    if (len8 <= 0 || len8 >= std::numeric_limits<int32_t>::max()) {
+    if (len8 <= 0 || len8 > std::numeric_limits<int32_t>::max()) {
         LOG(WARNING) << __func__ << ": Invalid string length: " << len8;
         return STATUS_BAD_VALUE;
     }
@@ -304,6 +304,68 @@ binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringAllocato
     }
 
     utf16_to_utf8(str16, len16, str8, len8);
+
+    return STATUS_OK;
+}
+
+binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData, size_t length,
+                                         AParcel_stringArrayElementGetter getter) {
+    if (length > std::numeric_limits<int32_t>::max()) return STATUS_BAD_VALUE;
+
+    Parcel* rawParcel = parcel->get();
+
+    status_t status = rawParcel->writeInt32(static_cast<int32_t>(length));
+    if (status != STATUS_OK) return PruneStatusT(status);
+
+    for (size_t i = 0; i < length; i++) {
+        size_t length = 0;
+        const char* str = getter(arrayData, i, &length);
+        if (str == nullptr) return STATUS_BAD_VALUE;
+
+        binder_status_t status = AParcel_writeString(parcel, str, length);
+        if (status != STATUS_OK) return status;
+    }
+
+    return STATUS_OK;
+}
+
+// This implements AParcel_stringAllocator for a string using an array, index, and element
+// allocator.
+struct StringArrayElementAllocationAdapter {
+    void* arrayData; // stringData from the NDK
+    size_t index;    // index into the string array
+    AParcel_stringArrayElementAllocator elementAllocator;
+
+    static char* Allocator(void* stringData, size_t length) {
+        StringArrayElementAllocationAdapter* adapter =
+                static_cast<StringArrayElementAllocationAdapter*>(stringData);
+        return adapter->elementAllocator(adapter->arrayData, adapter->index, length);
+    }
+};
+
+binder_status_t AParcel_readStringArray(const AParcel* parcel, void* arrayData,
+                                        AParcel_stringArrayAllocator allocator,
+                                        AParcel_stringArrayElementAllocator elementAllocator) {
+    const Parcel* rawParcel = parcel->get();
+
+    int32_t length;
+    status_t status = rawParcel->readInt32(&length);
+
+    if (status != STATUS_OK) return PruneStatusT(status);
+    if (length < 0) return STATUS_UNEXPECTED_NULL;
+
+    if (!allocator(arrayData, length)) return STATUS_NO_MEMORY;
+
+    StringArrayElementAllocationAdapter adapter{
+            .arrayData = arrayData,
+            .index = 0,
+            .elementAllocator = elementAllocator,
+    };
+
+    for (; adapter.index < length; adapter.index++) {
+        AParcel_readString(parcel, static_cast<void*>(&adapter),
+                           StringArrayElementAllocationAdapter::Allocator);
+    }
 
     return STATUS_OK;
 }
@@ -425,9 +487,9 @@ binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* value, s
     return WriteArray<double>(parcel, value, length);
 }
 
-binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData,
-                                       AParcel_boolArrayGetter getter, size_t length) {
-    return WriteArray<bool>(parcel, arrayData, getter, length, &Parcel::writeBool);
+binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, size_t length,
+                                       AParcel_boolArrayGetter getter) {
+    return WriteArray<bool>(parcel, arrayData, length, getter, &Parcel::writeBool);
 }
 
 binder_status_t AParcel_writeCharArray(AParcel* parcel, const char16_t* value, size_t length) {
@@ -439,48 +501,48 @@ binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* value, siz
 }
 
 binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int32Allocator allocator) {
+                                       AParcel_int32ArrayAllocator allocator) {
     return ReadArray<int32_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint32Allocator allocator) {
+                                        AParcel_uint32ArrayAllocator allocator) {
     return ReadArray<uint32_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int64Allocator allocator) {
+                                       AParcel_int64ArrayAllocator allocator) {
     return ReadArray<int64_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint64Allocator allocator) {
+                                        AParcel_uint64ArrayAllocator allocator) {
     return ReadArray<uint64_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
-                                       AParcel_floatAllocator allocator) {
+                                       AParcel_floatArrayAllocator allocator) {
     return ReadArray<float>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
-                                        AParcel_doubleAllocator allocator) {
+                                        AParcel_doubleArrayAllocator allocator) {
     return ReadArray<double>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_boolAllocator allocator,
+                                      AParcel_boolArrayAllocator allocator,
                                       AParcel_boolArraySetter setter) {
     return ReadArray<bool>(parcel, arrayData, allocator, setter, &Parcel::readBool);
 }
 
 binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_charAllocator allocator) {
+                                      AParcel_charArrayAllocator allocator) {
     return ReadArray<char16_t>(parcel, arrayData, allocator);
 }
 
 binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_byteAllocator allocator) {
+                                      AParcel_byteArrayAllocator allocator) {
     return ReadArray<int8_t>(parcel, arrayData, allocator);
 }
 

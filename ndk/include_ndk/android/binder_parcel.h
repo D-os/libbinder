@@ -50,80 +50,120 @@ typedef struct AParcel AParcel;
  */
 void AParcel_delete(AParcel* parcel) __INTRODUCED_IN(29);
 
+/**
+ * This is called to allocate a buffer for a C-style string (null-terminated). The returned buffer
+ * should be at least length bytes. This includes space for a null terminator. length will always be
+ * strictly less than or equal to the maximum size that can be held in a size_t and will always be
+ * greater than 0.
+ *
+ * See also AParcel_readString.
+ *
+ * If allocation fails, null should be returned.
+ */
+typedef char* (*AParcel_stringAllocator)(void* stringData, size_t length);
+
+/**
+ * This is called to allocate an array of size 'length'.
+ *
+ * See also AParcel_readStringArray
+ */
+typedef bool (*AParcel_stringArrayAllocator)(void* arrayData, size_t length);
+
+/**
+ * This is called to allocate a string inside of an array that was allocated by an
+ * AParcel_stringArrayAllocator.
+ *
+ * The index returned will always be within the range [0, length of arrayData). The returned buffer
+ * should be at least length bytes. This includes space for a null-terminator. length will always be
+ * strictly less than or equal to the maximum size that can be held in a size_t and will always be
+ * greater than 0.
+ *
+ * See also AParcel_readStringArray
+ */
+typedef char* (*AParcel_stringArrayElementAllocator)(void* arrayData, size_t index, size_t length);
+
+/**
+ * This returns the length and buffer of an array at a specific index in an arrayData object.
+ *
+ * See also AParcel_writeStringArray
+ */
+typedef const char* (*AParcel_stringArrayElementGetter)(const void* arrayData, size_t index,
+                                                        size_t* outLength);
+
 // @START-PRIMITIVE-VECTOR-GETTERS
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readInt32Array
  */
-typedef int32_t* (*AParcel_int32Allocator)(void* arrayData, size_t length);
+typedef int32_t* (*AParcel_int32ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readUint32Array
  */
-typedef uint32_t* (*AParcel_uint32Allocator)(void* arrayData, size_t length);
+typedef uint32_t* (*AParcel_uint32ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readInt64Array
  */
-typedef int64_t* (*AParcel_int64Allocator)(void* arrayData, size_t length);
+typedef int64_t* (*AParcel_int64ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readUint64Array
  */
-typedef uint64_t* (*AParcel_uint64Allocator)(void* arrayData, size_t length);
+typedef uint64_t* (*AParcel_uint64ArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readFloatArray
  */
-typedef float* (*AParcel_floatAllocator)(void* arrayData, size_t length);
+typedef float* (*AParcel_floatArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readDoubleArray
  */
-typedef double* (*AParcel_doubleAllocator)(void* arrayData, size_t length);
+typedef double* (*AParcel_doubleArrayAllocator)(void* arrayData, size_t length);
 
 /**
- * This allocates an array of length length inside of arrayData and returns whether or not there was
+ * This allocates an array of size 'length' inside of arrayData and returns whether or not there was
  * a success.
  *
  * See also AParcel_readBoolArray
  */
-typedef bool (*AParcel_boolAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_boolArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object at index.
@@ -142,36 +182,26 @@ typedef void (*AParcel_boolArraySetter)(void* arrayData, size_t index, bool valu
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readCharArray
  */
-typedef char16_t* (*AParcel_charAllocator)(void* arrayData, size_t length);
+typedef char16_t* (*AParcel_charArrayAllocator)(void* arrayData, size_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
- * The implementation of this function should allocate a contiguous array of length length and
+ * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
  * returned.
  *
  * See also AParcel_readByteArray
  */
-typedef int8_t* (*AParcel_byteAllocator)(void* arrayData, size_t length);
+typedef int8_t* (*AParcel_byteArrayAllocator)(void* arrayData, size_t length);
 
 // @END-PRIMITIVE-VECTOR-GETTERS
-
-/**
- * This is called to allocate a buffer for a C-style string (null-terminated). The buffer should be
- * of length length which includes space for the null-terminator.
- *
- * See also AParcel_readString.
- *
- * If allocation fails, null should be returned.
- */
-typedef char* (*AParcel_stringAllocator)(void* stringData, size_t length);
 
 /**
  * Writes an AIBinder to the next location in a non-null parcel. Can be null.
@@ -229,20 +259,45 @@ binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status
         __INTRODUCED_IN(29);
 
 /**
- * Writes string value to the next location in a non-null parcel.
+ * Writes utf-8 string value to the next location in a non-null parcel.
  */
 binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t length)
         __INTRODUCED_IN(29);
 
 /**
- * Reads and allocates string value from the next location in a non-null parcel.
+ * Reads and allocates utf-8 string value from the next location in a non-null parcel.
  *
  * Data is passed to the string allocator once the string size is known. This size includes the
  * space for the null-terminator of this string. This allocator returns a buffer which is used as
  * the output buffer from this read.
  */
-binder_status_t AParcel_readString(const AParcel* parcel, AParcel_stringAllocator allocator,
-                                   void* stringData) __INTRODUCED_IN(29);
+binder_status_t AParcel_readString(const AParcel* parcel, void* stringData,
+                                   AParcel_stringAllocator allocator) __INTRODUCED_IN(29);
+
+/**
+ * Writes utf-8 string array data to the next location in a non-null parcel.
+ *
+ * length is the length of the array. AParcel_stringArrayElementGetter will be called for all
+ * indices in range [0, length) with the arrayData provided here. The string length and buffer
+ * returned from this function will be used to fill out the data from the parcel.
+ */
+binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData, size_t length,
+                                         AParcel_stringArrayElementGetter getter)
+        __INTRODUCED_IN(29);
+
+/**
+ * Reads and allocates utf-8 string array value from the next location in a non-null parcel.
+ *
+ * First, AParcel_stringArrayAllocator will be called with the size of the array to be read where
+ * length is the length of the array to be read from the parcel. Then, for each index i in [0,
+ * length), AParcel_stringArrayElementAllocator will be called with the length of the string to be
+ * read from the parcel. The resultant buffer from each of these calls will be filled according to
+ * the contents of the string that is read.
+ */
+binder_status_t AParcel_readStringArray(const AParcel* parcel, void* arrayData,
+                                        AParcel_stringArrayAllocator allocator,
+                                        AParcel_stringArrayElementAllocator elementAllocator)
+        __INTRODUCED_IN(29);
 
 // @START-PRIMITIVE-READ-WRITE
 /**
@@ -377,9 +432,8 @@ binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* value, s
  * getter(arrayData, i) will be called for each i in [0, length) in order to get the underlying
  * values to write to the parcel.
  */
-binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData,
-                                       AParcel_boolArrayGetter getter, size_t length)
-        __INTRODUCED_IN(29);
+binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, size_t length,
+                                       AParcel_boolArrayGetter getter) __INTRODUCED_IN(29);
 
 /**
  * Writes an array of char16_t to the next location in a non-null parcel.
@@ -401,7 +455,7 @@ binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* value, siz
  * corresponding data
  */
 binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int32Allocator allocator) __INTRODUCED_IN(29);
+                                       AParcel_int32ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of uint32_t from the next location in a non-null parcel.
@@ -411,7 +465,7 @@ binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint32Allocator allocator) __INTRODUCED_IN(29);
+                                        AParcel_uint32ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of int64_t from the next location in a non-null parcel.
@@ -421,7 +475,7 @@ binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
-                                       AParcel_int64Allocator allocator) __INTRODUCED_IN(29);
+                                       AParcel_int64ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of uint64_t from the next location in a non-null parcel.
@@ -431,7 +485,7 @@ binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
-                                        AParcel_uint64Allocator allocator) __INTRODUCED_IN(29);
+                                        AParcel_uint64ArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of float from the next location in a non-null parcel.
@@ -441,7 +495,7 @@ binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
-                                       AParcel_floatAllocator allocator) __INTRODUCED_IN(29);
+                                       AParcel_floatArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of double from the next location in a non-null parcel.
@@ -451,7 +505,7 @@ binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
-                                        AParcel_doubleAllocator allocator) __INTRODUCED_IN(29);
+                                        AParcel_doubleArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of bool from the next location in a non-null parcel.
@@ -460,7 +514,7 @@ binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
  * setter(arrayData, i, x) will be called where x is the value at the associated index.
  */
 binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_boolAllocator allocator,
+                                      AParcel_boolArrayAllocator allocator,
                                       AParcel_boolArraySetter setter) __INTRODUCED_IN(29);
 
 /**
@@ -471,7 +525,7 @@ binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_charAllocator allocator) __INTRODUCED_IN(29);
+                                      AParcel_charArrayAllocator allocator) __INTRODUCED_IN(29);
 
 /**
  * Reads an array of int8_t from the next location in a non-null parcel.
@@ -481,7 +535,7 @@ binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
  * corresponding data
  */
 binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
-                                      AParcel_byteAllocator allocator) __INTRODUCED_IN(29);
+                                      AParcel_byteArrayAllocator allocator) __INTRODUCED_IN(29);
 
 // @END-PRIMITIVE-READ-WRITE
 
