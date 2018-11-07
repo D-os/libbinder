@@ -35,7 +35,7 @@ __BEGIN_DECLS
 enum {
     STATUS_OK = 0,
 
-    STATUS_UNKNOWN_ERROR = (-2147483647 - 1), // INT32_MIN value
+    STATUS_UNKNOWN_ERROR = (-2147483647 - 1),  // INT32_MIN value
     STATUS_NO_MEMORY = -ENOMEM,
     STATUS_INVALID_OPERATION = -ENOSYS,
     STATUS_BAD_VALUE = -EINVAL,
@@ -95,24 +95,39 @@ typedef int32_t binder_exception_t;
  * along with service specific errors.
  *
  * It is not required to be used in order to parcel/receive transactions, but it is required in
- * order to be compatible with standard AIDL transactions.
+ * order to be compatible with standard AIDL transactions since it is written as the header to the
+ * out parcel for transactions which get executed (don't fail during unparceling of input arguments
+ * or sooner).
  */
 struct AStatus;
 typedef struct AStatus AStatus;
 
 /**
  * New status which is considered a success.
+ *
+ * \return a newly constructed status object that the caller owns.
  */
 __attribute__((warn_unused_result)) AStatus* AStatus_newOk() __INTRODUCED_IN(29);
 
 /**
  * New status with exception code.
+ *
+ * \param exception the code that this status should represent. If this is EX_NONE, then this
+ * constructs an non-error status object.
+ *
+ * \return a newly constructed status object that the caller owns.
  */
 __attribute__((warn_unused_result)) AStatus* AStatus_fromExceptionCode(binder_exception_t exception)
         __INTRODUCED_IN(29);
 
 /**
  * New status with exception code and message.
+ *
+ * \param exception the code that this status should represent. If this is EX_NONE, then this
+ * constructs an non-error status object.
+ * \param message the error message to associate with this status object.
+ *
+ * \return a newly constructed status object that the caller owns.
  */
 __attribute__((warn_unused_result)) AStatus* AStatus_fromExceptionCodeWithMessage(
         binder_exception_t exception, const char* message) __INTRODUCED_IN(29);
@@ -121,6 +136,10 @@ __attribute__((warn_unused_result)) AStatus* AStatus_fromExceptionCodeWithMessag
  * New status with a service speciic error.
  *
  * This is considered to be EX_TRANSACTION_FAILED with extra information.
+ *
+ * \param serviceSpecific an implementation defined error code.
+ *
+ * \return a newly constructed status object that the caller owns.
  */
 __attribute__((warn_unused_result)) AStatus* AStatus_fromServiceSpecificError(
         int32_t serviceSpecific) __INTRODUCED_IN(29);
@@ -129,6 +148,11 @@ __attribute__((warn_unused_result)) AStatus* AStatus_fromServiceSpecificError(
  * New status with a service specific error and message.
  *
  * This is considered to be EX_TRANSACTION_FAILED with extra information.
+ *
+ * \param serviceSpecific an implementation defined error code.
+ * \param message the error message to associate with this status object.
+ *
+ * \return a newly constructed status object that the caller owns.
  */
 __attribute__((warn_unused_result)) AStatus* AStatus_fromServiceSpecificErrorWithMessage(
         int32_t serviceSpecific, const char* message) __INTRODUCED_IN(29);
@@ -137,6 +161,10 @@ __attribute__((warn_unused_result)) AStatus* AStatus_fromServiceSpecificErrorWit
  * New status with binder_status_t. This is typically for low level failures when a binder_status_t
  * is returned by an API on AIBinder or AParcel, and that is to be returned from a method returning
  * an AStatus instance.
+ *
+ * \param a low-level error to associate with this status object.
+ *
+ * \return a newly constructed status object that the caller owns.
  */
 __attribute__((warn_unused_result)) AStatus* AStatus_fromStatus(binder_status_t status)
         __INTRODUCED_IN(29);
@@ -144,11 +172,19 @@ __attribute__((warn_unused_result)) AStatus* AStatus_fromStatus(binder_status_t 
 /**
  * Whether this object represents a successful transaction. If this function returns true, then
  * AStatus_getExceptionCode will return EX_NONE.
+ *
+ * \param status the status being queried.
+ *
+ * \return whether the status represents a successful transaction. For more details, see below.
  */
 bool AStatus_isOk(const AStatus* status) __INTRODUCED_IN(29);
 
 /**
  * The exception that this status object represents.
+ *
+ * \param status the status being queried.
+ *
+ * \return the exception code that this object represents.
  */
 binder_exception_t AStatus_getExceptionCode(const AStatus* status) __INTRODUCED_IN(29);
 
@@ -157,6 +193,10 @@ binder_exception_t AStatus_getExceptionCode(const AStatus* status) __INTRODUCED_
  * non-zero result if AStatus_getExceptionCode returns EX_SERVICE_SPECIFIC. If this function returns
  * 0, the status object may still represent a different exception or status. To find out if this
  * transaction as a whole is okay, use AStatus_isOk instead.
+ *
+ * \param status the status being queried.
+ *
+ * \return the service-specific error code if the exception code is EX_SERVICE_SPECIFIC or 0.
  */
 int32_t AStatus_getServiceSpecificError(const AStatus* status) __INTRODUCED_IN(29);
 
@@ -165,6 +205,10 @@ int32_t AStatus_getServiceSpecificError(const AStatus* status) __INTRODUCED_IN(2
  * if AStatus_getExceptionCode returns EX_TRANSACTION_FAILED. If this function return 0, the status
  * object may represent a different exception or a service specific error. To find out if this
  * transaction as a whole is okay, use AStatus_isOk instead.
+ *
+ * \param status the status being queried.
+ *
+ * \return the status code if the exception code is EX_TRANSACTION_FAILED or 0.
  */
 binder_status_t AStatus_getStatus(const AStatus* status) __INTRODUCED_IN(29);
 
@@ -173,15 +217,21 @@ binder_status_t AStatus_getStatus(const AStatus* status) __INTRODUCED_IN(29);
  * message, this will return an empty string.
  *
  * The returned string has the lifetime of the status object passed into this function.
+ *
+ * \param status the status being queried.
+ *
+ * \return the message associated with this error.
  */
 const char* AStatus_getMessage(const AStatus* status) __INTRODUCED_IN(29);
 
 /**
  * Deletes memory associated with the status instance.
+ *
+ * \param status the status to delete, returned from AStatus_newOk or one of the AStatus_from* APIs.
  */
 void AStatus_delete(AStatus* status) __INTRODUCED_IN(29);
 
-#endif //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */

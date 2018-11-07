@@ -22,13 +22,13 @@
 #include <utils/Errors.h>
 
 struct AStatus {
-    AStatus() {} // ok
+    AStatus() {}  // ok
     AStatus(::android::binder::Status&& status) : mStatus(std::move(status)) {}
 
     ::android::binder::Status* get() { return &mStatus; }
     const ::android::binder::Status* get() const { return &mStatus; }
 
-private:
+   private:
     ::android::binder::Status mStatus;
 };
 

@@ -49,7 +49,7 @@ struct AIBinder : public virtual ::android::RefBase {
         return binder->remoteBinder() != nullptr;
     }
 
-private:
+   private:
     // AIBinder instance is instance of this class for a local object. In order to transact on a
     // remote object, this also must be set for simplicity (although right now, only the
     // interfaceDescriptor from it is used).
@@ -69,7 +69,7 @@ struct ABBinder : public AIBinder, public ::android::BBinder {
     ::android::status_t onTransact(uint32_t code, const ::android::Parcel& data,
                                    ::android::Parcel* reply, binder_flags_t flags) override;
 
-private:
+   private:
     ABBinder(const AIBinder_Class* clazz, void* userData);
 
     // only thing that should create an ABBinder
@@ -96,7 +96,7 @@ struct ABpBinder : public AIBinder, public ::android::BpRefBase {
     ::android::sp<::android::IBinder> getBinder() override { return remote(); }
     ABpBinder* asABpBinder() override { return this; }
 
-private:
+   private:
     ABpBinder(const ::android::sp<::android::IBinder>& binder);
 };
 
@@ -110,7 +110,7 @@ struct AIBinder_Class {
     const AIBinder_Class_onDestroy onDestroy;
     const AIBinder_Class_onTransact onTransact;
 
-private:
+   private:
     // This must be a String16 since BBinder virtual getInterfaceDescriptor returns a reference to
     // one.
     const ::android::String16 mInterfaceDescriptor;
@@ -128,14 +128,14 @@ struct AIBinder_DeathRecipient {
     struct TransferDeathRecipient : ::android::IBinder::DeathRecipient {
         TransferDeathRecipient(const ::android::wp<::android::IBinder>& who, void* cookie,
                                const AIBinder_DeathRecipient_onBinderDied& onDied)
-              : mWho(who), mCookie(cookie), mOnDied(onDied) {}
+            : mWho(who), mCookie(cookie), mOnDied(onDied) {}
 
         void binderDied(const ::android::wp<::android::IBinder>& who) override;
 
         const ::android::wp<::android::IBinder>& getWho() { return mWho; }
         void* getCookie() { return mCookie; }
 
-    private:
+       private:
         ::android::wp<::android::IBinder> mWho;
         void* mCookie;
         const AIBinder_DeathRecipient_onBinderDied& mOnDied;
@@ -145,7 +145,7 @@ struct AIBinder_DeathRecipient {
     binder_status_t linkToDeath(AIBinder* binder, void* cookie);
     binder_status_t unlinkToDeath(AIBinder* binder, void* cookie);
 
-private:
+   private:
     std::mutex mDeathRecipientsMutex;
     std::vector<::android::sp<TransferDeathRecipient>> mDeathRecipients;
     AIBinder_DeathRecipient_onBinderDied mOnDied;

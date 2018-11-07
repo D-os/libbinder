@@ -45,7 +45,7 @@ static bool has(const sp<IBinder>& binder) {
     return binder != nullptr && binder->findObject(kId) == kValue;
 }
 
-} // namespace ABBinderTag
+}  // namespace ABBinderTag
 
 namespace ABpBinderTag {
 
@@ -60,7 +60,7 @@ void clean(const void* id, void* obj, void* cookie) {
     delete static_cast<Value*>(obj);
 };
 
-} // namespace ABpBinderTag
+}  // namespace ABpBinderTag
 
 AIBinder::AIBinder(const AIBinder_Class* clazz) : mClazz(clazz) {}
 AIBinder::~AIBinder() {}
@@ -91,7 +91,7 @@ bool AIBinder::associateClass(const AIBinder_Class* clazz) {
         return false;
     }
 
-    CHECK(asABpBinder() != nullptr); // ABBinder always has a descriptor
+    CHECK(asABpBinder() != nullptr);  // ABBinder always has a descriptor
 
     String8 descriptor(getBinder()->getInterfaceDescriptor());
     if (descriptor != newDescriptor) {
@@ -107,7 +107,7 @@ bool AIBinder::associateClass(const AIBinder_Class* clazz) {
 }
 
 ABBinder::ABBinder(const AIBinder_Class* clazz, void* userData)
-      : AIBinder(clazz), BBinder(), mUserData(userData) {
+    : AIBinder(clazz), BBinder(), mUserData(userData) {
     CHECK(clazz != nullptr);
 }
 ABBinder::~ABBinder() {
@@ -136,7 +136,7 @@ status_t ABBinder::onTransact(transaction_code_t code, const Parcel& data, Parce
 }
 
 ABpBinder::ABpBinder(const ::android::sp<::android::IBinder>& binder)
-      : AIBinder(nullptr /*clazz*/), BpRefBase(binder) {
+    : AIBinder(nullptr /*clazz*/), BpRefBase(binder) {
     CHECK(binder != nullptr);
 }
 ABpBinder::~ABpBinder() {}
@@ -214,10 +214,10 @@ AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder) {
 AIBinder_Class::AIBinder_Class(const char* interfaceDescriptor, AIBinder_Class_onCreate onCreate,
                                AIBinder_Class_onDestroy onDestroy,
                                AIBinder_Class_onTransact onTransact)
-      : onCreate(onCreate),
-        onDestroy(onDestroy),
-        onTransact(onTransact),
-        mInterfaceDescriptor(interfaceDescriptor) {}
+    : onCreate(onCreate),
+      onDestroy(onDestroy),
+      onTransact(onTransact),
+      mInterfaceDescriptor(interfaceDescriptor) {}
 
 AIBinder_Class* AIBinder_Class_define(const char* interfaceDescriptor,
                                       AIBinder_Class_onCreate onCreate,
@@ -239,7 +239,7 @@ void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinde
 }
 
 AIBinder_DeathRecipient::AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied)
-      : mOnDied(onDied) {
+    : mOnDied(onDied) {
     CHECK(onDied != nullptr);
 }
 

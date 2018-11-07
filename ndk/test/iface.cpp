@@ -64,7 +64,7 @@ AIBinder_Class* IFoo::kClass = AIBinder_Class_define(kIFooDescriptor, IFoo_Class
                                                      IFoo_Class_onDestroy, IFoo_Class_onTransact);
 
 class BpFoo : public IFoo {
-public:
+   public:
     BpFoo(AIBinder* binder) : mBinder(binder) {}
     virtual ~BpFoo() { AIBinder_decStrong(mBinder); }
 
@@ -86,7 +86,7 @@ public:
         return out;
     }
 
-private:
+   private:
     // Always assumes one refcount
     AIBinder* mBinder;
 };
@@ -118,7 +118,7 @@ binder_status_t IFoo::addService(const char* instance) {
 }
 
 sp<IFoo> IFoo::getService(const char* instance) {
-    AIBinder* binder = AServiceManager_getService(instance); // maybe nullptr
+    AIBinder* binder = AServiceManager_getService(instance);  // maybe nullptr
     if (binder == nullptr) {
         return nullptr;
     }
@@ -129,13 +129,13 @@ sp<IFoo> IFoo::getService(const char* instance) {
     }
 
     if (AIBinder_isRemote(binder)) {
-        sp<IFoo> ret = new BpFoo(binder); // takes ownership of binder
+        sp<IFoo> ret = new BpFoo(binder);  // takes ownership of binder
         return ret;
     }
 
     IFoo_Class_Data* data = static_cast<IFoo_Class_Data*>(AIBinder_getUserData(binder));
 
-    CHECK(data != nullptr); // always created with non-null data
+    CHECK(data != nullptr);  // always created with non-null data
 
     sp<IFoo> ret = data->foo;
 

@@ -31,10 +31,8 @@
 #include <android/binder_status.h>
 
 #include <assert.h>
+
 #include <unistd.h>
-
-#ifdef __cplusplus
-
 #include <cstddef>
 
 namespace ndk {
@@ -43,7 +41,7 @@ namespace ndk {
  * Represents one strong pointer to an AIBinder object.
  */
 class SpAIBinder {
-public:
+   public:
     /**
      * Takes ownership of one strong refcount of binder.
      */
@@ -107,7 +105,7 @@ public:
      */
     AIBinder** getR() { return &mBinder; }
 
-private:
+   private:
     AIBinder* mBinder = nullptr;
 };
 
@@ -116,7 +114,7 @@ private:
  */
 template <typename T, typename R, R (*Destroy)(T), T DEFAULT>
 class ScopedAResource {
-public:
+   public:
     /**
      * Takes ownership of t.
      */
@@ -167,7 +165,7 @@ public:
     // move-constructing is okay
     ScopedAResource(ScopedAResource&&) = default;
 
-private:
+   private:
     T mT;
 };
 
@@ -175,7 +173,7 @@ private:
  * Convenience wrapper. See AParcel.
  */
 class ScopedAParcel : public ScopedAResource<AParcel*, void, AParcel_delete, nullptr> {
-public:
+   public:
     /**
      * Takes ownership of a.
      */
@@ -188,7 +186,7 @@ public:
  * Convenience wrapper. See AStatus.
  */
 class ScopedAStatus : public ScopedAResource<AStatus*, void, AStatus_delete, nullptr> {
-public:
+   public:
     /**
      * Takes ownership of a.
      */
@@ -206,14 +204,14 @@ public:
  * Convenience wrapper. See AIBinder_DeathRecipient.
  */
 class ScopedAIBinder_DeathRecipient
-      : public ScopedAResource<AIBinder_DeathRecipient*, void, AIBinder_DeathRecipient_delete,
-                               nullptr> {
-public:
+    : public ScopedAResource<AIBinder_DeathRecipient*, void, AIBinder_DeathRecipient_delete,
+                             nullptr> {
+   public:
     /**
      * Takes ownership of a.
      */
     explicit ScopedAIBinder_DeathRecipient(AIBinder_DeathRecipient* a = nullptr)
-          : ScopedAResource(a) {}
+        : ScopedAResource(a) {}
     ~ScopedAIBinder_DeathRecipient() {}
     ScopedAIBinder_DeathRecipient(ScopedAIBinder_DeathRecipient&&) = default;
 };
@@ -222,8 +220,8 @@ public:
  * Convenience wrapper. See AIBinder_Weak.
  */
 class ScopedAIBinder_Weak
-      : public ScopedAResource<AIBinder_Weak*, void, AIBinder_Weak_delete, nullptr> {
-public:
+    : public ScopedAResource<AIBinder_Weak*, void, AIBinder_Weak_delete, nullptr> {
+   public:
     /**
      * Takes ownership of a.
      */
@@ -241,7 +239,7 @@ public:
  * Convenience wrapper for a file descriptor.
  */
 class ScopedFileDescriptor : public ScopedAResource<int, int, close, -1> {
-public:
+   public:
     /**
      * Takes ownership of a.
      */
@@ -250,8 +248,6 @@ public:
     ScopedFileDescriptor(ScopedFileDescriptor&&) = default;
 };
 
-} // namespace ndk
-
-#endif // __cplusplus
+}  // namespace ndk
 
 /** @} */
