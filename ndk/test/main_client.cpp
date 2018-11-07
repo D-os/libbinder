@@ -21,6 +21,10 @@
 #include <gtest/gtest.h>
 #include <iface/iface.h>
 
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+
 using ::android::sp;
 
 constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
@@ -34,7 +38,47 @@ constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
 TEST(NdkBinder, DoubleNumber) {
     sp<IFoo> foo = IFoo::getService(IFoo::kSomeInstanceName);
     ASSERT_NE(foo, nullptr);
-    EXPECT_EQ(2, foo->doubleNumber(1));
+
+    int32_t out;
+    EXPECT_EQ(STATUS_OK, foo->doubleNumber(1, &out));
+    EXPECT_EQ(2, out);
+}
+
+void LambdaOnDeath(void* cookie) {
+    auto onDeath = static_cast<std::function<void(void)>*>(cookie);
+    (*onDeath)();
+};
+TEST(NdkBinder, DeathRecipient) {
+    using namespace std::chrono_literals;
+
+    AIBinder* binder;
+    sp<IFoo> foo = IFoo::getService(IFoo::kInstanceNameToDieFor, &binder);
+    ASSERT_NE(nullptr, foo.get());
+    ASSERT_NE(nullptr, binder);
+
+    std::mutex deathMutex;
+    std::condition_variable deathCv;
+    bool deathRecieved = false;
+
+    std::function<void(void)> onDeath = [&] {
+        std::cerr << "Binder died (as requested)." << std::endl;
+        deathRecieved = true;
+        deathCv.notify_one();
+    };
+
+    AIBinder_DeathRecipient* recipient = AIBinder_DeathRecipient_new(LambdaOnDeath);
+
+    EXPECT_EQ(STATUS_OK, AIBinder_linkToDeath(binder, recipient, static_cast<void*>(&onDeath)));
+
+    // the binder driver should return this if the service dies during the transaction
+    EXPECT_EQ(STATUS_DEAD_OBJECT, foo->die());
+
+    std::unique_lock<std::mutex> lock(deathMutex);
+    EXPECT_TRUE(deathCv.wait_for(lock, 1s, [&] { return deathRecieved; }));
+    EXPECT_TRUE(deathRecieved);
+
+    AIBinder_DeathRecipient_delete(recipient);
+    AIBinder_decStrong(binder);
 }
 
 TEST(NdkBinder, RetrieveNonNdkService) {
@@ -52,9 +96,6 @@ void OnBinderDeath(void* cookie) {
 }
 
 TEST(NdkBinder, LinkToDeath) {
-    ABinderProcess_setThreadPoolMaxThreadCount(1);  // to recieve death notifications
-    ABinderProcess_startThreadPool();
-
     AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
     ASSERT_NE(nullptr, binder);
 
@@ -72,9 +113,14 @@ TEST(NdkBinder, LinkToDeath) {
 }
 
 class MyTestFoo : public IFoo {
-    int32_t doubleNumber(int32_t in) override {
-        LOG(INFO) << "doubleNumber " << in;
-        return 2 * in;
+    binder_status_t doubleNumber(int32_t in, int32_t* out) override {
+        *out = 2 * in;
+        LOG(INFO) << "doubleNumber (" << in << ") => " << *out;
+        return STATUS_OK;
+    }
+    binder_status_t die() override {
+        ADD_FAILURE() << "die called on local instance";
+        return STATUS_OK;
     }
 };
 
@@ -87,7 +133,9 @@ TEST(NdkBinder, GetServiceInProcess) {
     sp<IFoo> getFoo = IFoo::getService(kInstanceName);
     EXPECT_EQ(foo.get(), getFoo.get());
 
-    EXPECT_EQ(2, getFoo->doubleNumber(1));
+    int32_t out;
+    EXPECT_EQ(STATUS_OK, getFoo->doubleNumber(1, &out));
+    EXPECT_EQ(2, out);
 }
 
 TEST(NdkBinder, EqualityOfRemoteBinderPointer) {
@@ -130,6 +178,15 @@ TEST(NdkBinder, AddServiceMultipleTimes) {
     EXPECT_EQ(STATUS_OK, foo->addService(kInstanceName1));
     EXPECT_EQ(STATUS_OK, foo->addService(kInstanceName2));
     EXPECT_EQ(IFoo::getService(kInstanceName1), IFoo::getService(kInstanceName2));
+}
+
+int main(int argc, char* argv[]) {
+    ::testing::InitGoogleTest(&argc, argv);
+
+    ABinderProcess_setThreadPoolMaxThreadCount(1);  // to recieve death notifications/callbacks
+    ABinderProcess_startThreadPool();
+
+    return RUN_ALL_TESTS();
 }
 
 #include <android/binder_auto_utils.h>
