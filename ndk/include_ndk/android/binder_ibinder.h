@@ -126,8 +126,9 @@ typedef struct AIBinder_DeathRecipient AIBinder_DeathRecipient;
 /**
  * This is called whenever a new AIBinder object is needed of a specific class.
  *
- * These arguments are passed from AIBinder_new. The return value is stored and can be retrieved
- * using AIBinder_getUserData.
+ * \param args these can be used to construct a new class. These are passed from AIBinder_new.
+ * \return this is the userdata representing the class. It can be retrieved using
+ * AIBinder_getUserData.
  */
 typedef void* (*AIBinder_Class_onCreate)(void* args);
 
@@ -135,23 +136,41 @@ typedef void* (*AIBinder_Class_onCreate)(void* args);
  * This is called whenever an AIBinder object is no longer referenced and needs destroyed.
  *
  * Typically, this just deletes whatever the implementation is.
+ *
+ * \param userData this is the same object returned by AIBinder_Class_onCreate
  */
 typedef void (*AIBinder_Class_onDestroy)(void* userData);
 
 /**
  * This is called whenever a transaction needs to be processed by a local implementation.
+ *
+ * \param binder the object being transacted on.
+ * \param code implementation-specific code representing which transaction should be taken.
+ * \param in the implementation-specific input data to this transaction.
+ * \param out the implementation-specific output data to this transaction.
+ *
+ * \return the implementation-specific output code. This may be forwarded from another service, the
+ * result of a parcel read or write, or another error as is applicable to the specific
+ * implementation. Usually, implementation-specific error codes are written to the output parcel,
+ * and the transaction code is reserved for kernel errors or error codes that have been repeated
+ * from subsequent transactions.
  */
 typedef binder_status_t (*AIBinder_Class_onTransact)(AIBinder* binder, transaction_code_t code,
                                                      const AParcel* in, AParcel* out);
 
 /**
- * An interfaceDescriptor uniquely identifies the type of object that is being created. This is used
- * internally for sanity checks on transactions.
+ * This creates a new instance of a class of binders which can be instantiated. This is called one
+ * time during library initialization and cleaned up when the process exits or execs.
  *
- * None of these parameters can be nullptr.
+ * None of these parameters can be null.
  *
- * This is created one time during library initialization and cleaned up when the process exits or
- * execs.
+ * \param interfaceDescriptor this is a unique identifier for the class. This is used internally for
+ * sanity checks on transactions.
+ * \param onCreate see AIBinder_Class_onCreate.
+ * \param onDestroy see AIBinder_Class_onDestroy.
+ * \param onTransact see AIBinder_Class_onTransact.
+ *
+ * \return the class object representing these parameters or null on error.
  */
 __attribute__((warn_unused_result)) AIBinder_Class* AIBinder_Class_define(
         const char* interfaceDescriptor, AIBinder_Class_onCreate onCreate,
@@ -174,12 +193,21 @@ __attribute__((warn_unused_result)) AIBinder_Class* AIBinder_Class_define(
  * hypothetical removeCallback function, the remote process would have no way to determine that
  * these two objects are actually equal using the AIBinder pointer alone (which they should be able
  * to do). Also see the suggested memory ownership model suggested above.
+ *
+ * \param clazz the type of the object to be created.
+ * \param args the args to pass to AIBinder_onCreate for that class.
+ *
+ * \return a binder object representing the newly instantiated object.
  */
 __attribute__((warn_unused_result)) AIBinder* AIBinder_new(const AIBinder_Class* clazz, void* args)
         __INTRODUCED_IN(29);
 
 /**
  * If this is hosted in a process other than the current one.
+ *
+ * \param binder the binder being queried.
+ *
+ * \return true if the AIBinder represents an object in another process.
  */
 bool AIBinder_isRemote(const AIBinder* binder) __INTRODUCED_IN(29);
 
@@ -189,13 +217,21 @@ bool AIBinder_isRemote(const AIBinder* binder) __INTRODUCED_IN(29);
  * this is automatically updated to reflect the current alive status of this binder. This will be
  * updated as the result of a transaction made using AIBinder_transact, but it will also be updated
  * based on the results of bookkeeping or other transactions made internally.
+ *
+ * \param binder the binder being queried.
+ *
+ * \return true if the binder is alive.
  */
 bool AIBinder_isAlive(const AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
- * Built-in transaction for all binder objects. This sends a transaction which will immediately
+ * Built-in transaction for all binder objects. This sends a transaction that will immediately
  * return. Usually this is used to make sure that a binder is alive, as a placeholder call, or as a
  * sanity check.
+ *
+ * \param binder the binder being queried.
+ *
+ * \return STATUS_OK if the ping succeeds.
  */
 binder_status_t AIBinder_ping(AIBinder* binder) __INTRODUCED_IN(29);
 
@@ -209,6 +245,12 @@ binder_status_t AIBinder_ping(AIBinder* binder) __INTRODUCED_IN(29);
  * identification and holding user data.
  *
  * If binder is local, this will return STATUS_INVALID_OPERATION.
+ *
+ * \param binder the binder object you want to receive death notifications from.
+ * \param recipient the callback that will receive notifications when/if the binder dies.
+ * \param cookie the value that will be passed to the death recipient on death.
+ *
+ * \return STATUS_OK on success.
  */
 binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                      void* cookie) __INTRODUCED_IN(29);
@@ -217,22 +259,34 @@ binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* 
  * Stops registration for the associated binder dying. Does not delete the recipient. This function
  * may return a binder transaction failure and in case the death recipient cannot be found, it
  * returns STATUS_NAME_NOT_FOUND.
+ *
+ * \param binder the binder object to remove a previously linked death recipient from.
+ * \param recipient the callback to remove.
+ * \param cookie the cookie used to link to death.
+ *
+ * \return STATUS_OK on success. STATUS_NAME_NOT_FOUND if the binder cannot be found to be unlinked.
  */
 binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                        void* cookie) __INTRODUCED_IN(29);
 
 /**
  * This can only be called if a strong reference to this object already exists in process.
+ *
+ * \param binder the binder object to add a refcount to.
  */
 void AIBinder_incStrong(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * This will delete the object and call onDestroy once the refcount reaches zero.
+ *
+ * \param binder the binder object to remove a refcount from.
  */
 void AIBinder_decStrong(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * For debugging only!
+ *
+ * \param binder the binder object to retrieve the refcount of.
  */
 int32_t AIBinder_debugGetRefCount(AIBinder* binder) __INTRODUCED_IN(29);
 
@@ -244,17 +298,32 @@ int32_t AIBinder_debugGetRefCount(AIBinder* binder) __INTRODUCED_IN(29);
  *
  * This returns true if the class association succeeds. If it fails, no change is made to the
  * binder object.
+ *
+ * \param binder the object to attach the class to.
+ * \param clazz the clazz to attach to binder.
+ *
+ * \return true if the binder has the class clazz and if the association was successful.
  */
 bool AIBinder_associateClass(AIBinder* binder, const AIBinder_Class* clazz) __INTRODUCED_IN(29);
 
 /**
  * Returns the class that this binder was constructed with or associated with.
+ *
+ * \param binder the object that is being queried.
+ *
+ * \return the class that this binder is associated with. If this binder wasn't created with
+ * AIBinder_new, and AIBinder_associateClass hasn't been called, then this will return null.
  */
 const AIBinder_Class* AIBinder_getClass(AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
  * Value returned by onCreate for a local binder. For stateless classes (if onCreate returns
- * nullptr), this also returns nullptr. For a remote binder, this will always return nullptr.
+ * null), this also returns null. For a remote binder, this will always return null.
+ *
+ * \param binder the object that is being queried.
+ *
+ * \return the userdata returned from AIBinder_onCreate when this object was created. This may be
+ * null for stateless objects. For remote objects, this is always null.
  */
 void* AIBinder_getUserData(AIBinder* binder) __INTRODUCED_IN(29);
 
@@ -278,6 +347,12 @@ void* AIBinder_getUserData(AIBinder* binder) __INTRODUCED_IN(29);
  * ownership is passed to the caller. At this point, the parcel can be filled out and passed to
  * AIBinder_transact. Alternatively, if there is an error while filling out the parcel, it can be
  * deleted with AParcel_delete.
+ *
+ * \param binder the binder object to start a transaction on.
+ * \param in out parameter for input data to the transaction.
+ *
+ * \return STATUS_OK on success. This will return STATUS_INVALID_OPERATION if the binder has not yet
+ * been associated with a class (see AIBinder_new and AIBinder_associateClass).
  */
 binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) __INTRODUCED_IN(29);
 
@@ -292,6 +367,16 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) __IN
  *
  * This does not affect the ownership of binder. The out parcel's ownership is passed to the caller
  * and must be released with AParcel_delete when finished reading.
+ *
+ * \param binder the binder object to transact on.
+ * \param code the implementation-specific code representing which transaction should be taken.
+ * \param in the implementation-specific input data to this transaction.
+ * \param out the implementation-specific output data to this transaction.
+ * \param flags possible flags to alter the way in which the transaction is conducted or 0.
+ *
+ * \return the result from the kernel or from the remote process. Usually, implementation-specific
+ * error codes are written to the output parcel, and the transaction code is reserved for kernel
+ * errors or error codes that have been repeated from subsequent transactions.
  */
 binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, AParcel** in,
                                   AParcel** out, binder_flags_t flags) __INTRODUCED_IN(29);
@@ -299,29 +384,45 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
 /**
  * This does not take any ownership of the input binder, but it can be used to retrieve it if
  * something else in some process still holds a reference to it.
+ *
+ * \param binder object to create a weak pointer to.
+ *
+ * \return object representing a weak pointer to binder (or null if binder is null).
  */
 __attribute__((warn_unused_result)) AIBinder_Weak* AIBinder_Weak_new(AIBinder* binder)
         __INTRODUCED_IN(29);
 
 /**
  * Deletes the weak reference. This will have no impact on the lifetime of the binder.
+ *
+ * \param weakBinder object created with AIBinder_Weak_new.
  */
 void AIBinder_Weak_delete(AIBinder_Weak* weakBinder) __INTRODUCED_IN(29);
 
 /**
  * If promotion succeeds, result will have one strong refcount added to it. Otherwise, this returns
- * nullptr.
+ * null.
+ *
+ * \param weakBinder weak pointer to attempt retrieving the original object from.
+ *
+ * \return an AIBinder object with one refcount given to the caller or null.
  */
 __attribute__((warn_unused_result)) AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder)
         __INTRODUCED_IN(29);
 
 /**
  * This function is executed on death receipt. See AIBinder_linkToDeath/AIBinder_unlinkToDeath.
+ *
+ * \param cookie the cookie passed to AIBinder_linkToDeath.
  */
 typedef void (*AIBinder_DeathRecipient_onBinderDied)(void* cookie) __INTRODUCED_IN(29);
 
 /**
  * Creates a new binder death recipient. This can be attached to multiple different binder objects.
+ *
+ * \param onBinderDied the callback to call when this death recipient is invoked.
+ *
+ * \return the newly constructed object (or null if onBinderDied is null).
  */
 __attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
         AIBinder_DeathRecipient_onBinderDied onBinderDied) __INTRODUCED_IN(29);
@@ -329,10 +430,12 @@ __attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecip
 /**
  * Deletes a binder death recipient. It is not necessary to call AIBinder_unlinkToDeath before
  * calling this as these will all be automatically unlinked.
+ *
+ * \param recipient the binder to delete (previously created with AIBinder_DeathRecipient_new).
  */
 void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) __INTRODUCED_IN(29);
 
-#endif //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
 __END_DECLS
 
 /** @} */

@@ -28,8 +28,6 @@
 
 #include <android/binder_parcel.h>
 
-#ifdef __cplusplus
-
 #include <string>
 #include <vector>
 
@@ -298,6 +296,9 @@ static inline binder_status_t AParcel_readVector(const AParcel* parcel,
                                    AParcel_stdVectorStringElementAllocator);
 }
 
+/**
+ * Convenience API for writing the size of a vector.
+ */
 template <typename T>
 static inline binder_status_t AParcel_writeVectorSize(AParcel* parcel, const std::vector<T>& vec) {
     if (vec.size() > INT32_MAX) {
@@ -307,6 +308,9 @@ static inline binder_status_t AParcel_writeVectorSize(AParcel* parcel, const std
     return AParcel_writeInt32(parcel, static_cast<int32_t>(vec.size()));
 }
 
+/**
+ * Convenience API for resizing a vector.
+ */
 template <typename T>
 static inline binder_status_t AParcel_resizeVector(const AParcel* parcel, std::vector<T>* vec) {
     int32_t size;
@@ -319,8 +323,6 @@ static inline binder_status_t AParcel_resizeVector(const AParcel* parcel, std::v
     return STATUS_OK;
 }
 
-} // namespace ndk
-
-#endif // __cplusplus
+}  // namespace ndk
 
 /** @} */

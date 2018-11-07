@@ -69,6 +69,11 @@ def main():
     for pretty, cpp in data_types:
         header += "/**\n"
         header += " * Writes " + cpp + " value to the next location in a non-null parcel.\n"
+        header += " *\n"
+        header += " * \\param parcel the parcel to write to.\n"
+        header += " * \\param value the value to write to the parcel.\n"
+        header += " *\n"
+        header += " * \\return STATUS_OK on successful write.\n"
         header += " */\n"
         header += "binder_status_t AParcel_write" + pretty + "(AParcel* parcel, " + cpp + " value) __INTRODUCED_IN(29);\n\n"
         source += "binder_status_t AParcel_write" + pretty + "(AParcel* parcel, " + cpp + " value) {\n"
@@ -79,6 +84,11 @@ def main():
     for pretty, cpp in data_types:
         header += "/**\n"
         header += " * Reads into " + cpp + " value from the next location in a non-null parcel.\n"
+        header += " *\n"
+        header += " * \\param parcel the parcel to read from.\n"
+        header += " * \\param value the value to read from the parcel.\n"
+        header += " *\n"
+        header += " * \\return STATUS_OK on successful read.\n"
         header += " */\n"
         header += "binder_status_t AParcel_read" + pretty + "(const AParcel* parcel, " + cpp + "* value) __INTRODUCED_IN(29);\n\n"
         source += "binder_status_t AParcel_read" + pretty + "(const AParcel* parcel, " + cpp + "* value) {\n"
@@ -89,9 +99,9 @@ def main():
     for pretty, cpp in data_types:
         nca = pretty in non_contiguously_addressable
 
-        arg_types = "const " + cpp + "* value, size_t length"
+        arg_types = "const " + cpp + "* arrayData, size_t length"
         if nca: arg_types = "const void* arrayData, size_t length, AParcel_" + pretty.lower() + "ArrayGetter getter"
-        args = "value, length"
+        args = "arrayData, length"
         if nca: args = "arrayData, length, getter, &Parcel::write" + pretty
 
         header += "/**\n"
@@ -100,6 +110,17 @@ def main():
             header += " *\n"
             header += " * getter(arrayData, i) will be called for each i in [0, length) in order to get the underlying values to write "
             header += "to the parcel.\n"
+        header += " *\n"
+        header += " * \\param parcel the parcel to write to.\n"
+        if nca:
+            header += " * \\param arrayData some external representation of an array.\n"
+            header += " * \\param length the length of arrayData.\n"
+            header += " * \\param getter the callback to retrieve data at specific locations in the array.\n"
+        else:
+            header += " * \\param arrayData an array of size 'length'.\n"
+            header += " * \\param length the length of arrayData.\n"
+        header += " *\n"
+        header += " * \\return STATUS_OK on successful write.\n"
         header += " */\n"
         header += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_types + ") __INTRODUCED_IN(29);\n\n"
         source += "binder_status_t AParcel_write" + pretty + "Array(AParcel* parcel, " + arg_types + ") {\n"
@@ -121,6 +142,11 @@ def main():
             pre_header += "a success.\n"
             pre_header += " *\n"
             pre_header += " * See also " + read_func + "\n"
+            pre_header += " *\n"
+            pre_header += " * \\param arrayData some external representation of an array of " + cpp + ".\n"
+            pre_header += " * \\param length the length to allocate arrayData to.\n"
+            pre_header += " *\n"
+            pre_header += " * \\return whether the allocation succeeded.\n"
             pre_header += " */\n"
             pre_header += "typedef bool (*" + allocator_type + ")(void* arrayData, size_t length);\n\n"
 
@@ -128,6 +154,11 @@ def main():
             pre_header += " * This is called to get the underlying data from an arrayData object at index.\n"
             pre_header += " *\n"
             pre_header += " * See also " + write_func + "\n"
+            pre_header += " *\n"
+            pre_header += " * \\param arrayData some external representation of an array of " + cpp + ".\n"
+            pre_header += " * \\param index the index of the value to be retrieved.\n"
+            pre_header += " *\n"
+            pre_header += " * \\return the value of the array at index index.\n"
             pre_header += " */\n"
             pre_header += "typedef " + cpp + " (*" + getter_type + ")(const void* arrayData, size_t index);\n\n"
 
@@ -135,6 +166,10 @@ def main():
             pre_header += " * This is called to set an underlying value in an arrayData object at index.\n"
             pre_header += " *\n"
             pre_header += " * See also " + read_func + "\n"
+            pre_header += " *\n"
+            pre_header += " * \\param arrayData some external representation of an array of " + cpp + ".\n"
+            pre_header += " * \\param index the index of the value to be set.\n"
+            pre_header += " * \\param value the value to set at index index.\n"
             pre_header += " */\n"
             pre_header += "typedef void (*" + setter_type + ")(void* arrayData, size_t index, " + cpp + " value);\n\n"
         else:
@@ -146,6 +181,11 @@ def main():
             pre_header += "returned.\n"
             pre_header += " *\n"
             pre_header += " * See also " + read_func + "\n"
+            pre_header += " *\n"
+            pre_header += " * \\param arrayData some external representation of an array of " + cpp + ".\n"
+            pre_header += " * \\param length the length to allocate arrayData to.\n"
+            pre_header += " *\n"
+            pre_header += " * \\return a buffer of " + cpp + " of size 'length'.\n"
             pre_header += " */\n"
             pre_header += "typedef " + cpp + "* (*" + allocator_type + ")(void* arrayData, size_t length);\n\n"
 
@@ -166,6 +206,14 @@ def main():
         else:
             header += " * First, allocator will be called with the length of the array. If the allocation succeeds and the "
             header += "length is greater than zero, the buffer returned by the allocator will be filled with the corresponding data\n"
+        header += " *\n"
+        header += " * \\param parcel the parcel to read from.\n"
+        header += " * \\param arrayData some external representation of an array.\n"
+        header += " * \\param allocator the callback that will be called to allocate the array.\n"
+        if nca:
+            header += " * \\param setter the callback that will be called to set a value at a specific location in the array.\n"
+        header += " *\n"
+        header += " * \\return STATUS_OK on successful read.\n"
         header += " */\n"
         header += "binder_status_t " + read_func + "(" + read_type_args + ") __INTRODUCED_IN(29);\n\n"
         source += "binder_status_t " + read_func + "(" + read_type_args + ") {\n"

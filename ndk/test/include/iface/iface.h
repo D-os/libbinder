@@ -20,7 +20,7 @@
 #include <utils/RefBase.h>
 
 class IFoo : public virtual ::android::RefBase {
-public:
+   public:
     static const char* kSomeInstanceName;
     static AIBinder_Class* kClass;
 
@@ -35,6 +35,6 @@ public:
     virtual ~IFoo();
     virtual int32_t doubleNumber(int32_t in) = 0;
 
-private:
-    AIBinder_Weak* mWeakBinder = nullptr; // maybe owns AIBinder
+   private:
+    AIBinder_Weak* mWeakBinder = nullptr;  // maybe owns AIBinder
 };

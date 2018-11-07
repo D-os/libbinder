@@ -52,7 +52,7 @@ void OnBinderDeath(void* cookie) {
 }
 
 TEST(NdkBinder, LinkToDeath) {
-    ABinderProcess_setThreadPoolMaxThreadCount(1); // to recieve death notifications
+    ABinderProcess_setThreadPoolMaxThreadCount(1);  // to recieve death notifications
     ABinderProcess_startThreadPool();
 
     AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
