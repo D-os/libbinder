@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-// This test is a unit test of the low-level API that is presented here.
-// Actual users should use AIDL to generate these complicated stubs.
-
 cc_defaults {
     name: "test_libbinder_ndk_defaults",
     shared_libs: [
@@ -55,6 +52,9 @@ cc_defaults {
     ],
 }
 
+// This test is a unit test of the low-level API that is presented here,
+// specifically the parts which are outside of the NDK. Actual users should
+// also instead use AIDL to generate these stubs. See android.binder.cts.
 cc_test {
     name: "libbinder_ndk_test_client",
     defaults: ["test_libbinder_ndk_test_defaults"],
