@@ -287,6 +287,9 @@ void AIBinder_decStrong(AIBinder* binder) __INTRODUCED_IN(29);
  * For debugging only!
  *
  * \param binder the binder object to retrieve the refcount of.
+ *
+ * \return the number of strong-refs on this binder in this process. If binder is null, this will be
+ * -1.
  */
 int32_t AIBinder_debugGetRefCount(AIBinder* binder) __INTRODUCED_IN(29);
 
