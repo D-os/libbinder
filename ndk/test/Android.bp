@@ -22,6 +22,7 @@ cc_defaults {
     strip: {
         none: true,
     },
+    cpp_std: "c++17",
     cflags: [
         "-O0",
         "-g",
