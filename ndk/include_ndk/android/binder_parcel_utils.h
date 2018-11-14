@@ -85,6 +85,28 @@ static inline void AParcel_stdVectorSetter(void* vectorData, size_t index, T val
 }
 
 /**
+ * Convenience method to write a strong binder but return an error if it is null.
+ */
+static inline binder_status_t AParcel_writeRequiredStrongBinder(AParcel* parcel, AIBinder* binder) {
+    if (binder == nullptr) {
+        return STATUS_UNEXPECTED_NULL;
+    }
+    return AParcel_writeStrongBinder(parcel, binder);
+}
+
+/**
+ * Convenience method to read a strong binder but return an error if it is null.
+ */
+static inline binder_status_t AParcel_readRequiredStrongBinder(const AParcel* parcel,
+                                                               AIBinder** binder) {
+    binder_status_t ret = AParcel_readStrongBinder(parcel, binder);
+    if (ret == STATUS_OK && *binder == nullptr) {
+        return STATUS_UNEXPECTED_NULL;
+    }
+    return ret;
+}
+
+/**
  * Allocates a std::string to length and returns the underlying buffer. For use with
  * AParcel_readString. See use below in AParcel_readString(const AParcel*, std::string*).
  */
