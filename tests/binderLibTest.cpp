@@ -180,6 +180,7 @@ class BinderLibTest : public ::testing::Test {
     public:
         virtual void SetUp() {
             m_server = static_cast<BinderLibTestEnv *>(binder_env)->getServer();
+            IPCThreadState::self()->restoreCallingWorkSource(0); 
         }
         virtual void TearDown() {
         }
@@ -953,11 +954,28 @@ TEST_F(BinderLibTest, WorkSourceSet)
 {
     status_t ret;
     Parcel data, reply;
+    IPCThreadState::self()->clearCallingWorkSource();
     int64_t previousWorkSource = IPCThreadState::self()->setCallingWorkSourceUid(100);
     data.writeInterfaceToken(binderLibTestServiceName);
     ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
     EXPECT_EQ(100, reply.readInt32());
     EXPECT_EQ(-1, previousWorkSource);
+    EXPECT_EQ(true, IPCThreadState::self()->shouldPropagateWorkSource());
+    EXPECT_EQ(NO_ERROR, ret);
+}
+
+TEST_F(BinderLibTest, WorkSourceSetWithoutPropagation)
+{
+    status_t ret;
+    Parcel data, reply;
+
+    IPCThreadState::self()->setCallingWorkSourceUidWithoutPropagation(100);
+    EXPECT_EQ(false, IPCThreadState::self()->shouldPropagateWorkSource());
+
+    data.writeInterfaceToken(binderLibTestServiceName);
+    ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
+    EXPECT_EQ(-1, reply.readInt32());
+    EXPECT_EQ(false, IPCThreadState::self()->shouldPropagateWorkSource());
     EXPECT_EQ(NO_ERROR, ret);
 }
 
@@ -967,7 +985,8 @@ TEST_F(BinderLibTest, WorkSourceCleared)
     Parcel data, reply;
 
     IPCThreadState::self()->setCallingWorkSourceUid(100);
-    int64_t previousWorkSource = IPCThreadState::self()->clearCallingWorkSource();
+    int64_t token = IPCThreadState::self()->clearCallingWorkSource();
+    int32_t previousWorkSource = (int32_t)token;
     data.writeInterfaceToken(binderLibTestServiceName);
     ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
 
@@ -989,7 +1008,56 @@ TEST_F(BinderLibTest, WorkSourceRestored)
     ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
 
     EXPECT_EQ(100, reply.readInt32());
+    EXPECT_EQ(true, IPCThreadState::self()->shouldPropagateWorkSource());
     EXPECT_EQ(NO_ERROR, ret);
+}
+
+TEST_F(BinderLibTest, PropagateFlagSet)
+{
+    status_t ret;
+    Parcel data, reply;
+
+    IPCThreadState::self()->clearPropagateWorkSource();
+    IPCThreadState::self()->setCallingWorkSourceUid(100);
+    EXPECT_EQ(true, IPCThreadState::self()->shouldPropagateWorkSource());
+}
+
+TEST_F(BinderLibTest, PropagateFlagCleared)
+{
+    status_t ret;
+    Parcel data, reply;
+
+    IPCThreadState::self()->setCallingWorkSourceUid(100);
+    IPCThreadState::self()->clearPropagateWorkSource();
+    EXPECT_EQ(false, IPCThreadState::self()->shouldPropagateWorkSource());
+}
+
+TEST_F(BinderLibTest, PropagateFlagRestored)
+{
+    status_t ret;
+    Parcel data, reply;
+
+    int token = IPCThreadState::self()->setCallingWorkSourceUid(100);
+    IPCThreadState::self()->restoreCallingWorkSource(token);
+
+    EXPECT_EQ(false, IPCThreadState::self()->shouldPropagateWorkSource());
+}
+
+TEST_F(BinderLibTest, WorkSourcePropagatedForAllFollowingBinderCalls)
+{
+    IPCThreadState::self()->setCallingWorkSourceUid(100);
+
+    Parcel data, reply;
+    status_t ret;
+    data.writeInterfaceToken(binderLibTestServiceName);
+    ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
+
+    Parcel data2, reply2;
+    status_t ret2;
+    data2.writeInterfaceToken(binderLibTestServiceName);
+    ret2 = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data2, &reply2);
+    EXPECT_EQ(100, reply2.readInt32());
+    EXPECT_EQ(NO_ERROR, ret2);
 }
 
 class BinderLibTestService : public BBinder
