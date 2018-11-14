@@ -953,7 +953,7 @@ TEST_F(BinderLibTest, WorkSourceSet)
 {
     status_t ret;
     Parcel data, reply;
-    uid_t previousWorkSource = IPCThreadState::self()->setWorkSource(100);
+    int64_t previousWorkSource = IPCThreadState::self()->setCallingWorkSourceUid(100);
     data.writeInterfaceToken(binderLibTestServiceName);
     ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
     EXPECT_EQ(100, reply.readInt32());
@@ -966,13 +966,29 @@ TEST_F(BinderLibTest, WorkSourceCleared)
     status_t ret;
     Parcel data, reply;
 
-    IPCThreadState::self()->setWorkSource(100);
-    uid_t previousWorkSource = IPCThreadState::self()->clearWorkSource();
+    IPCThreadState::self()->setCallingWorkSourceUid(100);
+    int64_t previousWorkSource = IPCThreadState::self()->clearCallingWorkSource();
     data.writeInterfaceToken(binderLibTestServiceName);
     ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
 
     EXPECT_EQ(-1, reply.readInt32());
     EXPECT_EQ(100, previousWorkSource);
+    EXPECT_EQ(NO_ERROR, ret);
+}
+
+TEST_F(BinderLibTest, WorkSourceRestored)
+{
+    status_t ret;
+    Parcel data, reply;
+
+    IPCThreadState::self()->setCallingWorkSourceUid(100);
+    int64_t token = IPCThreadState::self()->clearCallingWorkSource();
+    IPCThreadState::self()->restoreCallingWorkSource(token);
+
+    data.writeInterfaceToken(binderLibTestServiceName);
+    ret = m_server->transact(BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION, data, &reply);
+
+    EXPECT_EQ(100, reply.readInt32());
     EXPECT_EQ(NO_ERROR, ret);
 }
 
@@ -1276,7 +1292,7 @@ class BinderLibTestService : public BBinder
             }
             case BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION: {
                 data.enforceInterface(binderLibTestServiceName);
-                reply->writeInt32(IPCThreadState::self()->getWorkSource());
+                reply->writeInt32(IPCThreadState::self()->getCallingWorkSourceUid());
                 return NO_ERROR;
             }
             default:

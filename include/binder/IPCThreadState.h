@@ -47,12 +47,14 @@ public:
             void                setStrictModePolicy(int32_t policy);
             int32_t             getStrictModePolicy() const;
 
-            // See Binder#setThreadWorkSource in Binder.java.
-            uid_t               setWorkSource(uid_t uid);
-            // See Binder#getThreadWorkSource in Binder.java.
-            uid_t               getWorkSource() const;
-            // See Binder#clearThreadWorkSource in Binder.java.
-            uid_t               clearWorkSource();
+            // See Binder#setCallingWorkSourceUid in Binder.java.
+            int64_t             setCallingWorkSourceUid(uid_t uid);
+            // See Binder#getCallingWorkSourceUid in Binder.java.
+            uid_t               getCallingWorkSourceUid() const;
+            // See Binder#clearCallingWorkSource in Binder.java.
+            int64_t             clearCallingWorkSource();
+            // See Binder#restoreCallingWorkSource in Binder.java.
+            void                restoreCallingWorkSource(int64_t token);
 
             void                setLastTransactionBinderFlags(int32_t flags);
             int32_t             getLastTransactionBinderFlags() const;

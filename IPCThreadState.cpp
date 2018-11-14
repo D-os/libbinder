@@ -387,23 +387,28 @@ int32_t IPCThreadState::getStrictModePolicy() const
     return mStrictModePolicy;
 }
 
-uid_t IPCThreadState::setWorkSource(uid_t uid)
+int64_t IPCThreadState::setCallingWorkSourceUid(uid_t uid)
 {
-    uid_t returnValue = mWorkSource;
+    // Note: we currently only use half of the int64. We return an int64 for extensibility.
+    int64_t token = mWorkSource;
     mWorkSource = uid;
-    return returnValue;
+    return token;
 }
 
-uid_t IPCThreadState::getWorkSource() const
+uid_t IPCThreadState::getCallingWorkSourceUid() const
 {
     return mWorkSource;
 }
 
-uid_t IPCThreadState::clearWorkSource()
+int64_t IPCThreadState::clearCallingWorkSource()
 {
-    uid_t returnValue = mWorkSource;
-    mWorkSource = kUnsetWorkSource;
-    return returnValue;
+    return setCallingWorkSourceUid(kUnsetWorkSource);
+}
+
+void IPCThreadState::restoreCallingWorkSource(int64_t token)
+{
+    uid_t uid = (int)token;
+    setCallingWorkSourceUid(uid);
 }
 
 void IPCThreadState::setLastTransactionBinderFlags(int32_t flags)
