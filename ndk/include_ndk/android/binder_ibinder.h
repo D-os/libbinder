@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <sys/cdefs.h>
+#include <sys/types.h>
 
 #include <android/binder_parcel.h>
 #include <android/binder_status.h>
@@ -268,6 +269,31 @@ binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* 
  */
 binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                        void* cookie) __INTRODUCED_IN(29);
+
+/**
+ * This returns the calling UID assuming that this thread is called from a thread that is processing
+ * a binder transaction (for instance, in the implementation of AIBinder_Class_onTransact).
+ *
+ * This can be used with higher-level system services to determine the caller's identity and check
+ * permissions.
+ *
+ * \return calling uid or the current process's UID if this thread isn't processing a transaction.
+ */
+uid_t AIBinder_getCallingUid();
+
+/**
+ * This returns the calling PID assuming that this thread is called from a thread that is processing
+ * a binder transaction (for instance, in the implementation of AIBinder_Class_onTransact).
+ *
+ * This can be used with higher-level system services to determine the caller's identity and check
+ * permissions. However, when doing this, one should be aware of possible TOCTOU problems when the
+ * calling process dies and is replaced with another process with elevated permissions and the same
+ * PID.
+ *
+ * \return calling pid or the current process's PID if this thread isn't processing a transaction.
+ * If the transaction being processed is a oneway transaction, then this method will return 0.
+ */
+pid_t AIBinder_getCallingPid();
 
 /**
  * This can only be called if a strong reference to this object already exists in process.

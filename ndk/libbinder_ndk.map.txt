@@ -7,6 +7,8 @@ LIBBINDER_NDK { # introduced=29
     AIBinder_debugGetRefCount;
     AIBinder_decStrong;
     AIBinder_fromJavaBinder;
+    AIBinder_getCallingPid;
+    AIBinder_getCallingUid;
     AIBinder_getClass;
     AIBinder_getUserData;
     AIBinder_incStrong;
