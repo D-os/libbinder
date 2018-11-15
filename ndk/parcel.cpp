@@ -237,9 +237,23 @@ binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status
     return PruneStatusT(ret);
 }
 
-binder_status_t AParcel_writeString(AParcel* parcel, const char* string, size_t length) {
-    const uint8_t* str8 = (uint8_t*)string;
+binder_status_t AParcel_writeString(AParcel* parcel, const char* string, int32_t length) {
+    if (string == nullptr) {
+        if (length != -1) {
+            LOG(WARNING) << __func__ << ": null string must be used with length == -1.";
+            return STATUS_BAD_VALUE;
+        }
 
+        status_t err = parcel->get()->writeInt32(-1);
+        return PruneStatusT(err);
+    }
+
+    if (length < 0) {
+        LOG(WARNING) << __func__ << ": Negative string length: " << length;
+        return STATUS_BAD_VALUE;
+    }
+
+    const uint8_t* str8 = (uint8_t*)string;
     const ssize_t len16 = utf8_to_utf16_length(str8, length);
 
     if (len16 < 0 || len16 >= std::numeric_limits<int32_t>::max()) {
@@ -268,7 +282,10 @@ binder_status_t AParcel_readString(const AParcel* parcel, void* stringData,
     const char16_t* str16 = parcel->get()->readString16Inplace(&len16);
 
     if (str16 == nullptr) {
-        LOG(WARNING) << __func__ << ": Failed to read string in place.";
+        if (allocator(stringData, -1, nullptr)) {
+            return STATUS_OK;
+        }
+
         return STATUS_UNEXPECTED_NULL;
     }
 
@@ -285,9 +302,10 @@ binder_status_t AParcel_readString(const AParcel* parcel, void* stringData,
         return STATUS_BAD_VALUE;
     }
 
-    char* str8 = allocator(stringData, len8);
+    char* str8;
+    bool success = allocator(stringData, len8, &str8);
 
-    if (str8 == nullptr) {
+    if (!success || str8 == nullptr) {
         LOG(WARNING) << __func__ << ": AParcel_stringAllocator failed to allocate.";
         return STATUS_NO_MEMORY;
     }
@@ -297,11 +315,19 @@ binder_status_t AParcel_readString(const AParcel* parcel, void* stringData,
     return STATUS_OK;
 }
 
-binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData, size_t length,
+binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData, int32_t length,
                                          AParcel_stringArrayElementGetter getter) {
-    if (length > std::numeric_limits<int32_t>::max()) return STATUS_BAD_VALUE;
-
     Parcel* rawParcel = parcel->get();
+
+    if (length < 0) {
+        if (length != -1) {
+            LOG(WARNING) << __func__ << ": null array must be used with length == -1.";
+            return STATUS_BAD_VALUE;
+        }
+
+        status_t status = rawParcel->writeInt32(-1);
+        return PruneStatusT(status);
+    }
 
     status_t status = rawParcel->writeInt32(static_cast<int32_t>(length));
     if (status != STATUS_OK) return PruneStatusT(status);
@@ -309,7 +335,7 @@ binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData,
     for (size_t i = 0; i < length; i++) {
         size_t length = 0;
         const char* str = getter(arrayData, i, &length);
-        if (str == nullptr) return STATUS_BAD_VALUE;
+        if (str == nullptr && length != -1) return STATUS_BAD_VALUE;
 
         binder_status_t status = AParcel_writeString(parcel, str, length);
         if (status != STATUS_OK) return status;
@@ -325,10 +351,10 @@ struct StringArrayElementAllocationAdapter {
     size_t index;     // index into the string array
     AParcel_stringArrayElementAllocator elementAllocator;
 
-    static char* Allocator(void* stringData, size_t length) {
+    static bool Allocator(void* stringData, int32_t length, char** buffer) {
         StringArrayElementAllocationAdapter* adapter =
                 static_cast<StringArrayElementAllocationAdapter*>(stringData);
-        return adapter->elementAllocator(adapter->arrayData, adapter->index, length);
+        return adapter->elementAllocator(adapter->arrayData, adapter->index, length, buffer);
     }
 };
 
@@ -341,9 +367,11 @@ binder_status_t AParcel_readStringArray(const AParcel* parcel, void* arrayData,
     status_t status = rawParcel->readInt32(&length);
 
     if (status != STATUS_OK) return PruneStatusT(status);
-    if (length < 0) return STATUS_UNEXPECTED_NULL;
+    if (length < -1) return STATUS_BAD_VALUE;
 
     if (!allocator(arrayData, length)) return STATUS_NO_MEMORY;
+
+    if (length == -1) return STATUS_OK;  // null string array
 
     StringArrayElementAllocationAdapter adapter{
             .arrayData = arrayData,
@@ -352,8 +380,10 @@ binder_status_t AParcel_readStringArray(const AParcel* parcel, void* arrayData,
     };
 
     for (; adapter.index < length; adapter.index++) {
-        AParcel_readString(parcel, static_cast<void*>(&adapter),
-                           StringArrayElementAllocationAdapter::Allocator);
+        binder_status_t status = AParcel_readString(parcel, static_cast<void*>(&adapter),
+                                                    StringArrayElementAllocationAdapter::Allocator);
+
+        if (status != STATUS_OK) return status;
     }
 
     return STATUS_OK;
