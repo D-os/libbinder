@@ -38,31 +38,36 @@ namespace ndk {
  * This retrieves and allocates a vector to size 'length' and returns the underlying buffer.
  */
 template <typename T>
-static inline T* AParcel_stdVectorAllocator(void* vectorData, size_t length) {
-    std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
-    if (length > vec->max_size()) return nullptr;
+static inline bool AParcel_stdVectorAllocator(void* vectorData, int32_t length, T** outBuffer) {
+    if (length < 0) return false;
 
-    vec->resize(length);
-    return vec->data();
-}
-
-/**
- * TODO(b/111445392): delete this function
- *
- * This allocates a vector to size 'length' and returns whether the allocation is successful.
- *
- * See also AParcel_stdVectorAllocator. Types used with this allocator have their sizes defined
- * externally with respect to the NDK, and that size information is not passed into the NDK.
- * Instead, it is used in cases where callbacks are used.
- *
- * See AParcel_readVector(const AParcel* parcel, std::vector<bool>)
- */
-template <typename T>
-static inline bool AParcel_stdVectorExternalAllocator(void* vectorData, size_t length) {
     std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
     if (length > vec->max_size()) return false;
 
     vec->resize(length);
+    *outBuffer = vec->data();
+    return true;
+}
+
+/**
+ * This retrieves and allocates a vector to size 'length' and returns the underlying buffer.
+ */
+template <typename T>
+static inline bool AParcel_nullableStdVectorAllocator(void* vectorData, int32_t length,
+                                                      T** outBuffer) {
+    std::optional<std::vector<T>>* vec = static_cast<std::optional<std::vector<T>>*>(vectorData);
+
+    if (length < 0) {
+        *vec = std::nullopt;
+        return true;
+    }
+
+    *vec = std::optional<std::vector<T>>(std::vector<T>{});
+
+    if (length > (*vec)->max_size()) return false;
+    (*vec)->resize(length);
+
+    *outBuffer = (*vec)->data();
     return true;
 }
 
@@ -74,6 +79,7 @@ static inline bool AParcel_stdVectorExternalAllocator(void* vectorData, size_t l
  * Instead, it is used in cases where callbacks are used. Note that when this allocator is used,
  * null arrays are not supported.
  *
+ * See AParcel_readVector(const AParcel* parcel, std::vector<bool>)
  * See AParcel_readVector(const AParcel* parcel, std::vector<std::string>)
  */
 template <typename T>
@@ -133,6 +139,16 @@ template <typename T>
 static inline void AParcel_stdVectorSetter(void* vectorData, size_t index, T value) {
     std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
     (*vec)[index] = value;
+}
+
+/**
+ * This sets the underlying value in a corresponding vectorData which may not be contiguous at
+ * index.
+ */
+template <typename T>
+static inline void AParcel_nullableStdVectorSetter(void* vectorData, size_t index, T value) {
+    std::optional<std::vector<T>>* vec = static_cast<std::optional<std::vector<T>>*>(vectorData);
+    vec->value()[index] = value;
 }
 
 /**
@@ -337,6 +353,15 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<in
 }
 
 /**
+ * Writes an optional vector of int32_t to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<int32_t>>& vec) {
+    if (!vec) return AParcel_writeInt32Array(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
+}
+
+/**
  * Reads a vector of int32_t from the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int32_t>* vec) {
@@ -345,10 +370,28 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int
 }
 
 /**
+ * Reads an optional vector of int32_t from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<int32_t>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readInt32Array(parcel, vectorData, AParcel_nullableStdVectorAllocator<int32_t>);
+}
+
+/**
  * Writes a vector of uint32_t to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<uint32_t>& vec) {
     return AParcel_writeUint32Array(parcel, vec.data(), vec.size());
+}
+
+/**
+ * Writes an optional vector of uint32_t to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<uint32_t>>& vec) {
+    if (!vec) return AParcel_writeUint32Array(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -360,10 +403,29 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<uin
 }
 
 /**
+ * Reads an optional vector of uint32_t from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<uint32_t>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readUint32Array(parcel, vectorData,
+                                   AParcel_nullableStdVectorAllocator<uint32_t>);
+}
+
+/**
  * Writes a vector of int64_t to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<int64_t>& vec) {
     return AParcel_writeInt64Array(parcel, vec.data(), vec.size());
+}
+
+/**
+ * Writes an optional vector of int64_t to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<int64_t>>& vec) {
+    if (!vec) return AParcel_writeInt64Array(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -375,10 +437,28 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int
 }
 
 /**
+ * Reads an optional vector of int64_t from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<int64_t>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readInt64Array(parcel, vectorData, AParcel_nullableStdVectorAllocator<int64_t>);
+}
+
+/**
  * Writes a vector of uint64_t to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<uint64_t>& vec) {
     return AParcel_writeUint64Array(parcel, vec.data(), vec.size());
+}
+
+/**
+ * Writes an optional vector of uint64_t to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<uint64_t>>& vec) {
+    if (!vec) return AParcel_writeUint64Array(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -390,10 +470,29 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<uin
 }
 
 /**
+ * Reads an optional vector of uint64_t from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<uint64_t>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readUint64Array(parcel, vectorData,
+                                   AParcel_nullableStdVectorAllocator<uint64_t>);
+}
+
+/**
  * Writes a vector of float to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<float>& vec) {
     return AParcel_writeFloatArray(parcel, vec.data(), vec.size());
+}
+
+/**
+ * Writes an optional vector of float to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<float>>& vec) {
+    if (!vec) return AParcel_writeFloatArray(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -405,10 +504,28 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<flo
 }
 
 /**
+ * Reads an optional vector of float from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<float>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readFloatArray(parcel, vectorData, AParcel_nullableStdVectorAllocator<float>);
+}
+
+/**
  * Writes a vector of double to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<double>& vec) {
     return AParcel_writeDoubleArray(parcel, vec.data(), vec.size());
+}
+
+/**
+ * Writes an optional vector of double to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<double>>& vec) {
+    if (!vec) return AParcel_writeDoubleArray(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -420,11 +537,29 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<dou
 }
 
 /**
+ * Reads an optional vector of double from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<double>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readDoubleArray(parcel, vectorData, AParcel_nullableStdVectorAllocator<double>);
+}
+
+/**
  * Writes a vector of bool to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<bool>& vec) {
     return AParcel_writeBoolArray(parcel, static_cast<const void*>(&vec), vec.size(),
                                   AParcel_stdVectorGetter<bool>);
+}
+
+/**
+ * Writes an optional vector of bool to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<bool>>& vec) {
+    if (!vec) return AParcel_writeBoolArray(parcel, nullptr, -1, AParcel_stdVectorGetter<bool>);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -437,10 +572,30 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<boo
 }
 
 /**
+ * Reads an optional vector of bool from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<bool>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readBoolArray(parcel, vectorData,
+                                 AParcel_nullableStdVectorExternalAllocator<bool>,
+                                 AParcel_nullableStdVectorSetter<bool>);
+}
+
+/**
  * Writes a vector of char16_t to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<char16_t>& vec) {
     return AParcel_writeCharArray(parcel, vec.data(), vec.size());
+}
+
+/**
+ * Writes an optional vector of char16_t to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<char16_t>>& vec) {
+    if (!vec) return AParcel_writeCharArray(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -452,10 +607,28 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<cha
 }
 
 /**
+ * Reads an optional vector of char16_t from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<char16_t>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readCharArray(parcel, vectorData, AParcel_nullableStdVectorAllocator<char16_t>);
+}
+
+/**
  * Writes a vector of int8_t to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<int8_t>& vec) {
     return AParcel_writeByteArray(parcel, vec.data(), vec.size());
+}
+
+/**
+ * Writes an optional vector of int8_t to the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                           const std::optional<std::vector<int8_t>>& vec) {
+    if (!vec) return AParcel_writeByteArray(parcel, nullptr, -1);
+    return AParcel_writeVector(parcel, *vec);
 }
 
 /**
@@ -464,6 +637,15 @@ inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<in
 inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int8_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
     return AParcel_readByteArray(parcel, vectorData, AParcel_stdVectorAllocator<int8_t>);
+}
+
+/**
+ * Reads an optional vector of int8_t from the next location in a non-null parcel.
+ */
+inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                          std::optional<std::vector<int8_t>>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readByteArray(parcel, vectorData, AParcel_nullableStdVectorAllocator<int8_t>);
 }
 
 // @END
