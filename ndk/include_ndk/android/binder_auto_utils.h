@@ -198,6 +198,11 @@ class ScopedAStatus : public ScopedAResource<AStatus*, void, AStatus_delete, nul
      * See AStatus_isOk.
      */
     bool isOk() { return get() != nullptr && AStatus_isOk(get()); }
+
+    /**
+     * Convenience method for okay status.
+     */
+    static ScopedAStatus ok() { return ScopedAStatus(AStatus_newOk()); }
 };
 
 /**
