@@ -194,17 +194,6 @@ binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) {
 }
 binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binder) {
     sp<IBinder> readBinder = nullptr;
-    status_t status = parcel->get()->readStrongBinder(&readBinder);
-    if (status != STATUS_OK) {
-        return PruneStatusT(status);
-    }
-    sp<AIBinder> ret = ABpBinder::lookupOrCreateFromBinder(readBinder);
-    AIBinder_incStrong(ret.get());
-    *binder = ret.get();
-    return PruneStatusT(status);
-}
-binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder** binder) {
-    sp<IBinder> readBinder = nullptr;
     status_t status = parcel->get()->readNullableStrongBinder(&readBinder);
     if (status != STATUS_OK) {
         return PruneStatusT(status);
