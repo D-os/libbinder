@@ -84,6 +84,78 @@ static inline void AParcel_stdVectorSetter(void* vectorData, size_t index, T val
     (*vec)[index] = value;
 }
 
+/**
+ * Allocates a std::string to length and returns the underlying buffer. For use with
+ * AParcel_readString. See use below in AParcel_readString(const AParcel*, std::string*).
+ */
+static inline char* AParcel_stdStringAllocator(void* stringData, size_t length) {
+    std::string* str = static_cast<std::string*>(stringData);
+    str->resize(length - 1);
+    return &(*str)[0];
+}
+
+/**
+ * Allocates a std::string inside of a std::vector<std::string> at index index to size 'length'.
+ */
+static inline char* AParcel_stdVectorStringElementAllocator(void* vectorData, size_t index,
+                                                            size_t length) {
+    std::vector<std::string>* vec = static_cast<std::vector<std::string>*>(vectorData);
+
+    std::string& element = vec->at(index);
+    element.resize(length - 1);
+    return &element[0];
+}
+
+/**
+ * This gets the length and buffer of a std::string inside of a std::vector<std::string> at index
+ * index.
+ */
+static inline const char* AParcel_stdVectorStringElementGetter(const void* vectorData, size_t index,
+                                                               size_t* outLength) {
+    const std::vector<std::string>* vec = static_cast<const std::vector<std::string>*>(vectorData);
+
+    const std::string& element = vec->at(index);
+
+    *outLength = element.size();
+    return element.c_str();
+}
+
+/**
+ * Convenience API for writing a std::string.
+ */
+static inline binder_status_t AParcel_writeString(AParcel* parcel, const std::string& str) {
+    return AParcel_writeString(parcel, str.c_str(), str.size());
+}
+
+/**
+ * Convenience API for reading a std::string.
+ */
+static inline binder_status_t AParcel_readString(const AParcel* parcel, std::string* str) {
+    void* stringData = static_cast<void*>(str);
+    return AParcel_readString(parcel, stringData, AParcel_stdStringAllocator);
+}
+
+/**
+ * Convenience API for writing a std::vector<std::string>
+ */
+static inline binder_status_t AParcel_writeVector(AParcel* parcel,
+                                                  const std::vector<std::string>& vec) {
+    const void* vectorData = static_cast<const void*>(&vec);
+    return AParcel_writeStringArray(parcel, vectorData, vec.size(),
+                                    AParcel_stdVectorStringElementGetter);
+}
+
+/**
+ * Convenience API for reading a std::vector<std::string>
+ */
+static inline binder_status_t AParcel_readVector(const AParcel* parcel,
+                                                 std::vector<std::string>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readStringArray(parcel, vectorData,
+                                   AParcel_stdVectorExternalAllocator<std::string>,
+                                   AParcel_stdVectorStringElementAllocator);
+}
+
 // @START
 /**
  * Writes a vector of int32_t to the next location in a non-null parcel.
@@ -223,78 +295,6 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int
 }
 
 // @END
-
-/**
- * Allocates a std::string to length and returns the underlying buffer. For use with
- * AParcel_readString. See use below in AParcel_readString(const AParcel*, std::string*).
- */
-static inline char* AParcel_stdStringAllocator(void* stringData, size_t length) {
-    std::string* str = static_cast<std::string*>(stringData);
-    str->resize(length - 1);
-    return &(*str)[0];
-}
-
-/**
- * Allocates a std::string inside of a std::vector<std::string> at index index to size 'length'.
- */
-static inline char* AParcel_stdVectorStringElementAllocator(void* vectorData, size_t index,
-                                                            size_t length) {
-    std::vector<std::string>* vec = static_cast<std::vector<std::string>*>(vectorData);
-
-    std::string& element = vec->at(index);
-    element.resize(length - 1);
-    return &element[0];
-}
-
-/**
- * This gets the length and buffer of a std::string inside of a std::vector<std::string> at index
- * index.
- */
-static inline const char* AParcel_stdVectorStringElementGetter(const void* vectorData, size_t index,
-                                                               size_t* outLength) {
-    const std::vector<std::string>* vec = static_cast<const std::vector<std::string>*>(vectorData);
-
-    const std::string& element = vec->at(index);
-
-    *outLength = element.size();
-    return element.c_str();
-}
-
-/**
- * Convenience API for writing a std::string.
- */
-static inline binder_status_t AParcel_writeString(AParcel* parcel, const std::string& str) {
-    return AParcel_writeString(parcel, str.c_str(), str.size());
-}
-
-/**
- * Convenience API for reading a std::string.
- */
-static inline binder_status_t AParcel_readString(const AParcel* parcel, std::string* str) {
-    void* stringData = static_cast<void*>(str);
-    return AParcel_readString(parcel, stringData, AParcel_stdStringAllocator);
-}
-
-/**
- * Convenience API for writing a std::vector<std::string>
- */
-static inline binder_status_t AParcel_writeVector(AParcel* parcel,
-                                                  const std::vector<std::string>& vec) {
-    const void* vectorData = static_cast<const void*>(&vec);
-    return AParcel_writeStringArray(parcel, vectorData, vec.size(),
-                                    AParcel_stdVectorStringElementGetter);
-}
-
-/**
- * Convenience API for reading a std::vector<std::string>
- */
-static inline binder_status_t AParcel_readVector(const AParcel* parcel,
-                                                 std::vector<std::string>* vec) {
-    void* vectorData = static_cast<void*>(vec);
-    return AParcel_readStringArray(parcel, vectorData,
-                                   AParcel_stdVectorExternalAllocator<std::string>,
-                                   AParcel_stdVectorStringElementAllocator);
-}
 
 /**
  * Convenience API for writing the size of a vector.
