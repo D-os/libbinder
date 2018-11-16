@@ -132,109 +132,127 @@ typedef const char* (*AParcel_stringArrayElementGetter)(const void* arrayData, s
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readInt32Array
  *
  * \param arrayData some external representation of an array of int32_t.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of int32_t of size 'length' (if length is >= 0, if length is 0, this
+ * may be nullptr).
  *
- * \return a buffer of int32_t of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef int32_t* (*AParcel_int32ArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_int32ArrayAllocator)(void* arrayData, int32_t length, int32_t** outBuffer);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readUint32Array
  *
  * \param arrayData some external representation of an array of uint32_t.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of uint32_t of size 'length' (if length is >= 0, if length is 0, this
+ * may be nullptr).
  *
- * \return a buffer of uint32_t of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef uint32_t* (*AParcel_uint32ArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_uint32ArrayAllocator)(void* arrayData, int32_t length, uint32_t** outBuffer);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readInt64Array
  *
  * \param arrayData some external representation of an array of int64_t.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of int64_t of size 'length' (if length is >= 0, if length is 0, this
+ * may be nullptr).
  *
- * \return a buffer of int64_t of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef int64_t* (*AParcel_int64ArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_int64ArrayAllocator)(void* arrayData, int32_t length, int64_t** outBuffer);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readUint64Array
  *
  * \param arrayData some external representation of an array of uint64_t.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of uint64_t of size 'length' (if length is >= 0, if length is 0, this
+ * may be nullptr).
  *
- * \return a buffer of uint64_t of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef uint64_t* (*AParcel_uint64ArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_uint64ArrayAllocator)(void* arrayData, int32_t length, uint64_t** outBuffer);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readFloatArray
  *
  * \param arrayData some external representation of an array of float.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of float of size 'length' (if length is >= 0, if length is 0, this may
+ * be nullptr).
  *
- * \return a buffer of float of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef float* (*AParcel_floatArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_floatArrayAllocator)(void* arrayData, int32_t length, float** outBuffer);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readDoubleArray
  *
  * \param arrayData some external representation of an array of double.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of double of size 'length' (if length is >= 0, if length is 0, this may
+ * be nullptr).
  *
- * \return a buffer of double of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef double* (*AParcel_doubleArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_doubleArrayAllocator)(void* arrayData, int32_t length, double** outBuffer);
 
 /**
  * This allocates an array of size 'length' inside of arrayData and returns whether or not there was
- * a success.
+ * a success. If length is -1, then this should allocate some representation of a null array.
  *
  * See also AParcel_readBoolArray
  *
  * \param arrayData some external representation of an array of bool.
- * \param length the length to allocate arrayData to.
+ * \param length the length to allocate arrayData to (or -1 if this represents a null array).
  *
  * \return whether the allocation succeeded.
  */
-typedef bool (*AParcel_boolArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_boolArrayAllocator)(void* arrayData, int32_t length);
 
 /**
  * This is called to get the underlying data from an arrayData object at index.
@@ -264,32 +282,38 @@ typedef void (*AParcel_boolArraySetter)(void* arrayData, size_t index, bool valu
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readCharArray
  *
  * \param arrayData some external representation of an array of char16_t.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of char16_t of size 'length' (if length is >= 0, if length is 0, this
+ * may be nullptr).
  *
- * \return a buffer of char16_t of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef char16_t* (*AParcel_charArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_charArrayAllocator)(void* arrayData, int32_t length, char16_t** outBuffer);
 
 /**
  * This is called to get the underlying data from an arrayData object.
  *
  * The implementation of this function should allocate a contiguous array of size 'length' and
  * return that underlying buffer to be filled out. If there is an error or length is 0, null may be
- * returned.
+ * returned. If length is -1, this should allocate some representation of a null array.
  *
  * See also AParcel_readByteArray
  *
  * \param arrayData some external representation of an array of int8_t.
  * \param length the length to allocate arrayData to.
+ * \param outBuffer a buffer of int8_t of size 'length' (if length is >= 0, if length is 0, this may
+ * be nullptr).
  *
- * \return a buffer of int8_t of size 'length'.
+ * \return whether or not the allocation was successful (or whether a null array is represented when
+ * length is -1).
  */
-typedef int8_t* (*AParcel_byteArrayAllocator)(void* arrayData, size_t length);
+typedef bool (*AParcel_byteArrayAllocator)(void* arrayData, int32_t length, int8_t** outBuffer);
 
 // @END-PRIMITIVE-VECTOR-GETTERS
 
@@ -632,72 +656,72 @@ binder_status_t AParcel_readByte(const AParcel* parcel, int8_t* value) __INTRODU
  * Writes an array of int32_t to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeInt32Array(AParcel* parcel, const int32_t* arrayData, size_t length)
+binder_status_t AParcel_writeInt32Array(AParcel* parcel, const int32_t* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
  * Writes an array of uint32_t to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeUint32Array(AParcel* parcel, const uint32_t* arrayData, size_t length)
+binder_status_t AParcel_writeUint32Array(AParcel* parcel, const uint32_t* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
  * Writes an array of int64_t to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeInt64Array(AParcel* parcel, const int64_t* arrayData, size_t length)
+binder_status_t AParcel_writeInt64Array(AParcel* parcel, const int64_t* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
  * Writes an array of uint64_t to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeUint64Array(AParcel* parcel, const uint64_t* arrayData, size_t length)
+binder_status_t AParcel_writeUint64Array(AParcel* parcel, const uint64_t* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
  * Writes an array of float to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeFloatArray(AParcel* parcel, const float* arrayData, size_t length)
+binder_status_t AParcel_writeFloatArray(AParcel* parcel, const float* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
  * Writes an array of double to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* arrayData, size_t length)
+binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
@@ -708,36 +732,36 @@ binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* arrayDat
  *
  * \param parcel the parcel to write to.
  * \param arrayData some external representation of an array.
- * \param length the length of arrayData.
+ * \param length the length of arrayData (or -1 if this represents a null array).
  * \param getter the callback to retrieve data at specific locations in the array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, size_t length,
+binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, int32_t length,
                                        AParcel_boolArrayGetter getter) __INTRODUCED_IN(29);
 
 /**
  * Writes an array of char16_t to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeCharArray(AParcel* parcel, const char16_t* arrayData, size_t length)
+binder_status_t AParcel_writeCharArray(AParcel* parcel, const char16_t* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
  * Writes an array of int8_t to the next location in a non-null parcel.
  *
  * \param parcel the parcel to write to.
- * \param arrayData an array of size 'length'.
- * \param length the length of arrayData.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* arrayData, size_t length)
+binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* arrayData, int32_t length)
         __INTRODUCED_IN(29);
 
 /**
