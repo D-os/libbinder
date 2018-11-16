@@ -297,29 +297,15 @@ typedef int8_t* (*AParcel_byteArrayAllocator)(void* arrayData, size_t length);
 binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) __INTRODUCED_IN(29);
 
 /**
- * Reads an AIBinder from the next location in a non-null parcel. This will fail if the binder is
- * non-null. One strong ref-count of ownership is passed to the caller of this function.
+ * Reads an AIBinder from the next location in a non-null parcel. One strong ref-count of ownership
+ * is passed to the caller of this function.
  *
  * \param parcel the parcel to read from.
- * \param binder the out parameter for what is read from the parcel. This will not be null on
- * success.
+ * \param binder the out parameter for what is read from the parcel. This may be null.
  *
  * \return STATUS_OK on successful write.
  */
 binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binder)
-        __INTRODUCED_IN(29);
-
-/**
- * Reads an AIBinder from the next location in a non-null parcel. This may read a null. One strong
- * ref-count of ownership is passed to the caller of this function.
- *
- * \param parcel the parcel to read from.
- * \param binder the out parameter for what is read from the parcel. This may be null even on
- * success.
- *
- * \return STATUS_OK on successful write.
- */
-binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel, AIBinder** binder)
         __INTRODUCED_IN(29);
 
 /**
