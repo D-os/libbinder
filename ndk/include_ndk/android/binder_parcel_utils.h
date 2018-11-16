@@ -202,6 +202,54 @@ static inline binder_status_t AParcel_readRequiredStrongBinder(const AParcel* pa
 }
 
 /**
+ * Convenience method to write a ParcelFileDescriptor where -1 represents a null value.
+ */
+static inline binder_status_t AParcel_writeNullableParcelFileDescriptor(
+        AParcel* parcel, const ScopedFileDescriptor& fd) {
+    return AParcel_writeParcelFileDescriptor(parcel, fd.get());
+}
+
+/**
+ * Convenience method to read a ParcelFileDescriptor where -1 represents a null value.
+ */
+static inline binder_status_t AParcel_readNullableParcelFileDescriptor(const AParcel* parcel,
+                                                                       ScopedFileDescriptor* fd) {
+    int readFd;
+    binder_status_t status = AParcel_readParcelFileDescriptor(parcel, &readFd);
+    if (status == STATUS_OK) {
+        fd->set(readFd);
+    }
+    return status;
+}
+
+/**
+ * Convenience method to write a valid ParcelFileDescriptor.
+ */
+static inline binder_status_t AParcel_writeRequiredParcelFileDescriptor(
+        AParcel* parcel, const ScopedFileDescriptor& fd) {
+    if (fd.get() < 0) {
+        return STATUS_UNEXPECTED_NULL;
+    }
+    return AParcel_writeParcelFileDescriptor(parcel, fd.get());
+}
+
+/**
+ * Convenience method to read a valid ParcelFileDescriptor.
+ */
+static inline binder_status_t AParcel_readRequiredParcelFileDescriptor(const AParcel* parcel,
+                                                                       ScopedFileDescriptor* fd) {
+    int readFd;
+    binder_status_t status = AParcel_readParcelFileDescriptor(parcel, &readFd);
+    if (status == STATUS_OK) {
+        if (readFd < 0) {
+            return STATUS_UNEXPECTED_NULL;
+        }
+        fd->set(readFd);
+    }
+    return status;
+}
+
+/**
  * Allocates a std::string to length and returns the underlying buffer. For use with
  * AParcel_readString. See use below in AParcel_readString(const AParcel*, std::string*).
  */

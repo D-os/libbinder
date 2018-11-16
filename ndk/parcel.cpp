@@ -229,23 +229,39 @@ binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binde
 }
 
 binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd) {
-    ParcelFileDescriptor parcelFd((unique_fd(fd)));
+    std::unique_ptr<ParcelFileDescriptor> parcelFd;
 
-    status_t status = parcel->get()->writeParcelable(parcelFd);
+    if (fd < 0) {
+        if (fd != -1) {
+            return STATUS_UNKNOWN_ERROR;
+        }
+        // parcelFd = nullptr
+    } else {  // fd >= 0
+        parcelFd = std::make_unique<ParcelFileDescriptor>(unique_fd(fd));
+    }
+
+    status_t status = parcel->get()->writeNullableParcelable(parcelFd);
 
     // ownership is retained by caller
-    (void)parcelFd.release().release();
+    if (parcelFd != nullptr) {
+        (void)parcelFd->release().release();
+    }
 
     return PruneStatusT(status);
 }
 
 binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd) {
-    ParcelFileDescriptor parcelFd;
-    // status_t status = parcelFd.readFromParcel(parcel->get());
+    std::unique_ptr<ParcelFileDescriptor> parcelFd;
+
     status_t status = parcel->get()->readParcelable(&parcelFd);
     if (status != STATUS_OK) return PruneStatusT(status);
 
-    *fd = parcelFd.release().release();
+    if (parcelFd) {
+        *fd = parcelFd->release().release();
+    } else {
+        *fd = -1;
+    }
+
     return STATUS_OK;
 }
 
