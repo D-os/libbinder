@@ -39,6 +39,8 @@ cc_library {
         "libutils",
     ],
 
+    cpp_std: "c++17",
+
     version_script: "libbinder_ndk.map.txt",
 }
 
