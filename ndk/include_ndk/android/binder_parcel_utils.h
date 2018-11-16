@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include <android/binder_auto_utils.h>
 #include <android/binder_parcel.h>
 
 #include <optional>
@@ -152,23 +153,50 @@ static inline void AParcel_nullableStdVectorSetter(void* vectorData, size_t inde
 }
 
 /**
+ * Convenience method to write a nullable strong binder.
+ */
+static inline binder_status_t AParcel_writeNullableStrongBinder(AParcel* parcel,
+                                                                const SpAIBinder& binder) {
+    return AParcel_writeStrongBinder(parcel, binder.get());
+}
+
+/**
+ * Convenience method to read a nullable strong binder.
+ */
+static inline binder_status_t AParcel_readNullableStrongBinder(const AParcel* parcel,
+                                                               SpAIBinder* binder) {
+    AIBinder* readBinder;
+    binder_status_t status = AParcel_readStrongBinder(parcel, &readBinder);
+    if (status == STATUS_OK) {
+        binder->set(readBinder);
+    }
+    return status;
+}
+
+/**
  * Convenience method to write a strong binder but return an error if it is null.
  */
-static inline binder_status_t AParcel_writeRequiredStrongBinder(AParcel* parcel, AIBinder* binder) {
-    if (binder == nullptr) {
+static inline binder_status_t AParcel_writeRequiredStrongBinder(AParcel* parcel,
+                                                                const SpAIBinder& binder) {
+    if (binder.get() == nullptr) {
         return STATUS_UNEXPECTED_NULL;
     }
-    return AParcel_writeStrongBinder(parcel, binder);
+    return AParcel_writeStrongBinder(parcel, binder.get());
 }
 
 /**
  * Convenience method to read a strong binder but return an error if it is null.
  */
 static inline binder_status_t AParcel_readRequiredStrongBinder(const AParcel* parcel,
-                                                               AIBinder** binder) {
-    binder_status_t ret = AParcel_readStrongBinder(parcel, binder);
-    if (ret == STATUS_OK && *binder == nullptr) {
-        return STATUS_UNEXPECTED_NULL;
+                                                               SpAIBinder* binder) {
+    AIBinder* readBinder;
+    binder_status_t ret = AParcel_readStrongBinder(parcel, &readBinder);
+    if (ret == STATUS_OK) {
+        if (readBinder == nullptr) {
+            return STATUS_UNEXPECTED_NULL;
+        }
+
+        binder->set(readBinder);
     }
     return ret;
 }
