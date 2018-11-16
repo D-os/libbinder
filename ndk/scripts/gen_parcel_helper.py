@@ -99,8 +99,8 @@ def main():
     for pretty, cpp in data_types:
         nca = pretty in non_contiguously_addressable
 
-        arg_types = "const " + cpp + "* arrayData, size_t length"
-        if nca: arg_types = "const void* arrayData, size_t length, AParcel_" + pretty.lower() + "ArrayGetter getter"
+        arg_types = "const " + cpp + "* arrayData, int32_t length"
+        if nca: arg_types = "const void* arrayData, int32_t length, AParcel_" + pretty.lower() + "ArrayGetter getter"
         args = "arrayData, length"
         if nca: args = "arrayData, length, getter, &Parcel::write" + pretty
 
@@ -114,11 +114,11 @@ def main():
         header += " * \\param parcel the parcel to write to.\n"
         if nca:
             header += " * \\param arrayData some external representation of an array.\n"
-            header += " * \\param length the length of arrayData.\n"
+            header += " * \\param length the length of arrayData (or -1 if this represents a null array).\n"
             header += " * \\param getter the callback to retrieve data at specific locations in the array.\n"
         else:
-            header += " * \\param arrayData an array of size 'length'.\n"
-            header += " * \\param length the length of arrayData.\n"
+            header += " * \\param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).\n"
+            header += " * \\param length the length of arrayData or -1 if this represents a null array.\n"
         header += " *\n"
         header += " * \\return STATUS_OK on successful write.\n"
         header += " */\n"
@@ -139,16 +139,16 @@ def main():
         if nca:
             pre_header += "/**\n"
             pre_header += " * This allocates an array of size 'length' inside of arrayData and returns whether or not there was "
-            pre_header += "a success.\n"
+            pre_header += "a success. If length is -1, then this should allocate some representation of a null array.\n"
             pre_header += " *\n"
             pre_header += " * See also " + read_func + "\n"
             pre_header += " *\n"
             pre_header += " * \\param arrayData some external representation of an array of " + cpp + ".\n"
-            pre_header += " * \\param length the length to allocate arrayData to.\n"
+            pre_header += " * \\param length the length to allocate arrayData to (or -1 if this represents a null array).\n"
             pre_header += " *\n"
             pre_header += " * \\return whether the allocation succeeded.\n"
             pre_header += " */\n"
-            pre_header += "typedef bool (*" + allocator_type + ")(void* arrayData, size_t length);\n\n"
+            pre_header += "typedef bool (*" + allocator_type + ")(void* arrayData, int32_t length);\n\n"
 
             pre_header += "/**\n"
             pre_header += " * This is called to get the underlying data from an arrayData object at index.\n"
@@ -178,16 +178,18 @@ def main():
             pre_header += " *\n"
             pre_header += " * The implementation of this function should allocate a contiguous array of size 'length' and "
             pre_header += "return that underlying buffer to be filled out. If there is an error or length is 0, null may be "
-            pre_header += "returned.\n"
+            pre_header += "returned. If length is -1, this should allocate some representation of a null array.\n"
             pre_header += " *\n"
             pre_header += " * See also " + read_func + "\n"
             pre_header += " *\n"
             pre_header += " * \\param arrayData some external representation of an array of " + cpp + ".\n"
             pre_header += " * \\param length the length to allocate arrayData to.\n"
+            pre_header += " * \\param outBuffer a buffer of " + cpp + " of size 'length' (if length is >= 0, if length is 0, "
+            pre_header += "this may be nullptr).\n"
             pre_header += " *\n"
-            pre_header += " * \\return a buffer of " + cpp + " of size 'length'.\n"
+            pre_header += " * \\return whether or not the allocation was successful (or whether a null array is represented when length is -1).\n"
             pre_header += " */\n"
-            pre_header += "typedef " + cpp + "* (*" + allocator_type + ")(void* arrayData, size_t length);\n\n"
+            pre_header += "typedef bool (*" + allocator_type + ")(void* arrayData, int32_t length, " + cpp + "** outBuffer);\n\n"
 
         read_array_args = [("const AParcel*", "parcel")]
         read_array_args += [("void*", "arrayData")]
@@ -232,6 +234,16 @@ def main():
         cpp_helper += "}\n\n"
 
         cpp_helper += "/**\n"
+        cpp_helper += " * Writes an optional vector of " + cpp + " to the next location in a non-null parcel.\n"
+        cpp_helper += " */\n"
+        cpp_helper += "inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::optional<std::vector<" + cpp + ">>& vec) {\n"
+        extra_args = ""
+        if nca: extra_args = ", AParcel_stdVectorGetter<" + cpp + ">"
+        cpp_helper += "    if (!vec) return AParcel_write" + pretty + "Array(parcel, nullptr, -1" + extra_args + ");\n"
+        cpp_helper += "    return AParcel_writeVector(parcel, *vec);\n"
+        cpp_helper += "}\n\n"
+
+        cpp_helper += "/**\n"
         cpp_helper += " * Reads a vector of " + cpp + " from the next location in a non-null parcel.\n"
         cpp_helper += " */\n"
         cpp_helper += "inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<" + cpp + ">* vec) {\n"
@@ -244,6 +256,22 @@ def main():
             read_args += ["AParcel_stdVectorSetter<" + cpp + ">"]
         else:
             read_args += ["AParcel_stdVectorAllocator<" + cpp + ">"]
+        cpp_helper += "    return AParcel_read" + pretty + "Array(" + ", ".join(read_args) + ");\n"
+        cpp_helper += "}\n\n"
+
+        cpp_helper += "/**\n"
+        cpp_helper += " * Reads an optional vector of " + cpp + " from the next location in a non-null parcel.\n"
+        cpp_helper += " */\n"
+        cpp_helper += "inline binder_status_t AParcel_readVector(const AParcel* parcel, std::optional<std::vector<" + cpp + ">>* vec) {\n"
+        cpp_helper += "    void* vectorData = static_cast<void*>(vec);\n"
+        read_args = []
+        read_args += ["parcel"]
+        read_args += ["vectorData"]
+        if nca:
+            read_args += ["AParcel_nullableStdVectorExternalAllocator<bool>"]
+            read_args += ["AParcel_nullableStdVectorSetter<" + cpp + ">"]
+        else:
+            read_args += ["AParcel_nullableStdVectorAllocator<" + cpp + ">"]
         cpp_helper += "    return AParcel_read" + pretty + "Array(" + ", ".join(read_args) + ");\n"
         cpp_helper += "}\n\n"
 
