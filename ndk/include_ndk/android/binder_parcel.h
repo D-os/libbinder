@@ -347,7 +347,7 @@ binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binde
  * This corresponds to the SDK's android.os.ParcelFileDescriptor.
  *
  * \param parcel the parcel to write to.
- * \param fd the value to write to the parcel.
+ * \param fd the value to write to the parcel (-1 to represent a null ParcelFileDescriptor).
  *
  * \return STATUS_OK on successful write.
  */
@@ -361,7 +361,8 @@ binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd);
  * This corresponds to the SDK's android.os.ParcelFileDescriptor.
  *
  * \param parcel the parcel to read from.
- * \param binder the out parameter for what is read from the parcel.
+ * \param fd the out parameter for what is read from the parcel (or -1 to represent a null
+ * ParcelFileDescriptor)
  *
  * \return STATUS_OK on successful write.
  */
