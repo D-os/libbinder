@@ -54,6 +54,31 @@ typedef struct AParcel AParcel;
 void AParcel_delete(AParcel* parcel) __INTRODUCED_IN(29);
 
 /**
+ * Sets the position within the parcel.
+ *
+ * \param parcel The parcel of which to set the position.
+ * \param position Position of the parcel to set. This must be a value returned by
+ * AParcel_getDataPosition. Positions are constant for a given parcel between processes.
+ *
+ * \return STATUS_OK on success. If position is negative, then STATUS_BAD_VALUE will be returned.
+ */
+binder_status_t AParcel_setDataPosition(const AParcel* parcel, int32_t position)
+        __INTRODUCED_IN(29);
+
+/**
+ * Gets the current position within the parcel.
+ *
+ * \param parcel The parcel of which to get the position.
+ *
+ * \return The size of the parcel. This will always be greater than 0. The values returned by this
+ * function before and after calling various reads and writes are not defined. Only the delta
+ * between two positions between a specific sequence of calls is defined. For instance, if position
+ * is X, writeBool is called, and then position is Y, readBool can be called from position X will
+ * return the same value, and then position will be Y.
+ */
+int32_t AParcel_getDataPosition(const AParcel* parcel) __INTRODUCED_IN(29);
+
+/**
  * This is called to allocate a buffer for a C-style string (null-terminated). The returned buffer
  * should be at least length bytes. This includes space for a null terminator. For a string, length
  * will always be strictly less than or equal to the maximum size that can be held in a size_t and

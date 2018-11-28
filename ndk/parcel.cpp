@@ -212,6 +212,19 @@ void AParcel_delete(AParcel* parcel) {
     delete parcel;
 }
 
+binder_status_t AParcel_setDataPosition(const AParcel* parcel, int32_t position) {
+    if (position < 0) {
+        return STATUS_BAD_VALUE;
+    }
+
+    parcel->get()->setDataPosition(position);
+    return STATUS_OK;
+}
+
+int32_t AParcel_getDataPosition(const AParcel* parcel) {
+    return parcel->get()->dataPosition();
+}
+
 binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) {
     sp<IBinder> writeBinder = binder != nullptr ? binder->getBinder() : nullptr;
     return parcel->get()->writeStrongBinder(writeBinder);
