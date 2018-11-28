@@ -25,6 +25,7 @@ LIBBINDER_NDK { # introduced=29
     AIBinder_Weak_new;
     AIBinder_Weak_promote;
     AParcel_delete;
+    AParcel_getDataPosition;
     AParcel_readBool;
     AParcel_readBoolArray;
     AParcel_readByte;
@@ -48,6 +49,7 @@ LIBBINDER_NDK { # introduced=29
     AParcel_readUint32Array;
     AParcel_readUint64;
     AParcel_readUint64Array;
+    AParcel_setDataPosition;
     AParcel_writeBool;
     AParcel_writeBoolArray;
     AParcel_writeByte;
