@@ -31,6 +31,8 @@ class ActivityManager
 public:
 
     enum {
+        // Flag for registerUidObserver: report uid state changed
+        UID_OBSERVER_PROCSTATE = 1<<0,
         // Flag for registerUidObserver: report uid gone
         UID_OBSERVER_GONE = 1<<1,
         // Flag for registerUidObserver: report uid has become idle
@@ -40,8 +42,27 @@ public:
     };
 
     enum {
-        // Not a real process state
-        PROCESS_STATE_UNKNOWN = -1
+        PROCESS_STATE_UNKNOWN = -1,
+        PROCESS_STATE_PERSISTENT = 0,
+        PROCESS_STATE_PERSISTENT_UI = 1,
+        PROCESS_STATE_TOP = 2,
+        PROCESS_STATE_FOREGROUND_SERVICE = 3,
+        PROCESS_STATE_BOUND_FOREGROUND_SERVICE = 4,
+        PROCESS_STATE_IMPORTANT_FOREGROUND = 5,
+        PROCESS_STATE_IMPORTANT_BACKGROUND = 6,
+        PROCESS_STATE_TRANSIENT_BACKGROUND = 7,
+        PROCESS_STATE_BACKUP = 8,
+        PROCESS_STATE_SERVICE = 9,
+        PROCESS_STATE_RECEIVER = 10,
+        PROCESS_STATE_TOP_SLEEPING = 11,
+        PROCESS_STATE_HEAVY_WEIGHT = 12,
+        PROCESS_STATE_HOME = 13,
+        PROCESS_STATE_LAST_ACTIVITY = 14,
+        PROCESS_STATE_CACHED_ACTIVITY = 15,
+        PROCESS_STATE_CACHED_ACTIVITY_CLIENT = 16,
+        PROCESS_STATE_CACHED_RECENT = 17,
+        PROCESS_STATE_CACHED_EMPTY = 18,
+        PROCESS_STATE_NONEXISTENT = 19,
     };
 
     ActivityManager();
@@ -53,8 +74,10 @@ public:
                              const String16& callingPackage);
     void unregisterUidObserver(const sp<IUidObserver>& observer);
     bool isUidActive(const uid_t uid, const String16& callingPackage);
+    int getUidProcessState(const uid_t uid, const String16& callingPackage);
 
-    status_t linkToDeath(const sp<IBinder::DeathRecipient>& recipient);
+
+  status_t linkToDeath(const sp<IBinder::DeathRecipient>& recipient);
     status_t unlinkToDeath(const sp<IBinder::DeathRecipient>& recipient);
 
 private:

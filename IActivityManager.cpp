@@ -17,8 +17,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <binder/ActivityManager.h>
 #include <binder/IActivityManager.h>
-
 #include <binder/Parcel.h>
 
 namespace android {
@@ -89,6 +89,20 @@ public:
          // fail on exception
          if (reply.readExceptionCode() != 0) return false;
          return reply.readInt32() == 1;
+    }
+
+    virtual int32_t getUidProcessState(const uid_t uid, const String16& callingPackage)
+    {
+        Parcel data, reply;
+        data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
+        data.writeInt32(uid);
+        data.writeString16(callingPackage);
+        remote()->transact(GET_UID_PROCESS_STATE_TRANSACTION, data, &reply);
+        // fail on exception
+        if (reply.readExceptionCode() != 0) {
+            return ActivityManager::PROCESS_STATE_UNKNOWN;
+        }
+        return reply.readInt32();
     }
 };
 
