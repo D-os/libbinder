@@ -132,8 +132,10 @@ public:
             bool                isServingCall() const;
 
             // The work source represents the UID of the process we should attribute the transaction
-            // to.
-            // We use -1 to specify that the work source was not set using #setWorkSource.
+            // to. We use -1 to specify that the work source was not set using #setWorkSource.
+            //
+            // This constant needs to be kept in sync with Binder.UNSET_WORKSOURCE from the Java
+            // side.
             static const int32_t kUnsetWorkSource = -1;
 
 private:
