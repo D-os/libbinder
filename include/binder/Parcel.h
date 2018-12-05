@@ -139,6 +139,8 @@ public:
     status_t            writeInt32Vector(const std::vector<int32_t>& val);
     status_t            writeInt64Vector(const std::unique_ptr<std::vector<int64_t>>& val);
     status_t            writeInt64Vector(const std::vector<int64_t>& val);
+    status_t            writeUint64Vector(const std::unique_ptr<std::vector<uint64_t>>& val);
+    status_t            writeUint64Vector(const std::vector<uint64_t>& val);
     status_t            writeFloatVector(const std::unique_ptr<std::vector<float>>& val);
     status_t            writeFloatVector(const std::vector<float>& val);
     status_t            writeDoubleVector(const std::unique_ptr<std::vector<double>>& val);
@@ -313,6 +315,8 @@ public:
     status_t            readInt32Vector(std::vector<int32_t>* val) const;
     status_t            readInt64Vector(std::unique_ptr<std::vector<int64_t>>* val) const;
     status_t            readInt64Vector(std::vector<int64_t>* val) const;
+    status_t            readUint64Vector(std::unique_ptr<std::vector<uint64_t>>* val) const;
+    status_t            readUint64Vector(std::vector<uint64_t>* val) const;
     status_t            readFloatVector(std::unique_ptr<std::vector<float>>* val) const;
     status_t            readFloatVector(std::vector<float>* val) const;
     status_t            readDoubleVector(std::unique_ptr<std::vector<double>>* val) const;
