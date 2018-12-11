@@ -40,10 +40,6 @@ cc_library {
     ],
 
     version_script: "libbinder_ndk.map.txt",
-    stubs: {
-        symbol_file: "libbinder_ndk.map.txt",
-        versions: ["29"],
-    },
 }
 
 ndk_headers {
