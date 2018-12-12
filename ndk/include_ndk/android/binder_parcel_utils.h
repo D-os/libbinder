@@ -299,7 +299,7 @@ static inline bool AParcel_stdVectorStringElementAllocator(void* vectorData, siz
  * index.
  */
 static inline const char* AParcel_stdVectorStringElementGetter(const void* vectorData, size_t index,
-                                                               size_t* outLength) {
+                                                               int32_t* outLength) {
     const std::vector<std::string>* vec = static_cast<const std::vector<std::string>*>(vectorData);
     const std::string& element = vec->at(index);
 
@@ -327,7 +327,7 @@ static inline bool AParcel_nullableStdVectorStringElementAllocator(void* vectorD
  */
 static inline const char* AParcel_nullableStdVectorStringElementGetter(const void* vectorData,
                                                                        size_t index,
-                                                                       size_t* outLength) {
+                                                                       int32_t* outLength) {
     const std::optional<std::vector<std::optional<std::string>>>* vec =
             static_cast<const std::optional<std::vector<std::optional<std::string>>>*>(vectorData);
     const std::optional<std::string>& element = vec->value().at(index);
