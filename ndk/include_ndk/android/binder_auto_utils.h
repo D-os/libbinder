@@ -163,9 +163,7 @@ class ScopedAResource {
     ScopedAResource& operator=(ScopedAResource&&) = delete;
 
     // move-constructing is okay
-    ScopedAResource(ScopedAResource&& other) : mT(std::move(other.mT)) {
-      other.mT = DEFAULT;
-    }
+    ScopedAResource(ScopedAResource&& other) : mT(std::move(other.mT)) { other.mT = DEFAULT; }
 
    private:
     T mT;
