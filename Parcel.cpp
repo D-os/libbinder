@@ -878,6 +878,16 @@ status_t Parcel::writeInt64Vector(const std::unique_ptr<std::vector<int64_t>>& v
     return writeNullableTypedVector(val, &Parcel::writeInt64);
 }
 
+status_t Parcel::writeUint64Vector(const std::vector<uint64_t>& val)
+{
+    return writeTypedVector(val, &Parcel::writeUint64);
+}
+
+status_t Parcel::writeUint64Vector(const std::unique_ptr<std::vector<uint64_t>>& val)
+{
+    return writeNullableTypedVector(val, &Parcel::writeUint64);
+}
+
 status_t Parcel::writeFloatVector(const std::vector<float>& val)
 {
     return writeTypedVector(val, &Parcel::writeFloat);
@@ -1737,6 +1747,14 @@ status_t Parcel::readInt64Vector(std::unique_ptr<std::vector<int64_t>>* val) con
 
 status_t Parcel::readInt64Vector(std::vector<int64_t>* val) const {
     return readTypedVector(val, &Parcel::readInt64);
+}
+
+status_t Parcel::readUint64Vector(std::unique_ptr<std::vector<uint64_t>>* val) const {
+    return readNullableTypedVector(val, &Parcel::readUint64);
+}
+
+status_t Parcel::readUint64Vector(std::vector<uint64_t>* val) const {
+    return readTypedVector(val, &Parcel::readUint64);
 }
 
 status_t Parcel::readFloatVector(std::unique_ptr<std::vector<float>>* val) const {

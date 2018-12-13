@@ -72,6 +72,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_GET_PTR_SIZE_TRANSACTION,
     BINDER_LIB_TEST_CREATE_BINDER_TRANSACTION,
     BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION,
+    BINDER_LIB_TEST_ECHO_VECTOR,
 };
 
 pid_t start_server_process(int arg2, bool usePoll = false)
@@ -1060,6 +1061,21 @@ TEST_F(BinderLibTest, WorkSourcePropagatedForAllFollowingBinderCalls)
     EXPECT_EQ(NO_ERROR, ret2);
 }
 
+TEST_F(BinderLibTest, VectorSent) {
+    Parcel data, reply;
+    sp<IBinder> server = addServer();
+    ASSERT_TRUE(server != nullptr);
+
+    std::vector<uint64_t> const testValue = { std::numeric_limits<uint64_t>::max(), 0, 200 };
+    data.writeUint64Vector(testValue);
+
+    status_t ret = server->transact(BINDER_LIB_TEST_ECHO_VECTOR, data, &reply);
+    EXPECT_EQ(NO_ERROR, ret);
+    std::vector<uint64_t> readValue;
+    ret = reply.readUint64Vector(&readValue);
+    EXPECT_EQ(readValue, testValue);
+}
+
 class BinderLibTestService : public BBinder
 {
     public:
@@ -1361,6 +1377,14 @@ class BinderLibTestService : public BBinder
             case BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION: {
                 data.enforceInterface(binderLibTestServiceName);
                 reply->writeInt32(IPCThreadState::self()->getCallingWorkSourceUid());
+                return NO_ERROR;
+            }
+            case BINDER_LIB_TEST_ECHO_VECTOR: {
+                std::vector<uint64_t> vector;
+                auto err = data.readUint64Vector(&vector);
+                if (err != NO_ERROR)
+                    return err;
+                reply->writeUint64Vector(vector);
                 return NO_ERROR;
             }
             default:
