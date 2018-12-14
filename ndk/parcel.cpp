@@ -173,7 +173,7 @@ binder_status_t WriteArray(AParcel* parcel, const void* arrayData, int32_t lengt
 
     Parcel* rawParcel = parcel->get();
 
-    for (size_t i = 0; i < length; i++) {
+    for (int32_t i = 0; i < length; i++) {
         status = (rawParcel->*write)(getter(arrayData, i));
 
         if (status != STATUS_OK) return PruneStatusT(status);
@@ -197,7 +197,7 @@ binder_status_t ReadArray(const AParcel* parcel, void* arrayData, ArrayAllocator
 
     if (length <= 0) return STATUS_OK;
 
-    for (size_t i = 0; i < length; i++) {
+    for (int32_t i = 0; i < length; i++) {
         T readTarget;
         status = (rawParcel->*read)(&readTarget);
         if (status != STATUS_OK) return PruneStatusT(status);
@@ -376,12 +376,12 @@ binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData,
     if (status != STATUS_OK) return status;
     if (length <= 0) return STATUS_OK;
 
-    for (size_t i = 0; i < length; i++) {
-        size_t length = 0;
-        const char* str = getter(arrayData, i, &length);
-        if (str == nullptr && length != -1) return STATUS_BAD_VALUE;
+    for (int32_t i = 0; i < length; i++) {
+        int32_t elementLength = 0;
+        const char* str = getter(arrayData, i, &elementLength);
+        if (str == nullptr && elementLength != -1) return STATUS_BAD_VALUE;
 
-        binder_status_t status = AParcel_writeString(parcel, str, length);
+        binder_status_t status = AParcel_writeString(parcel, str, elementLength);
         if (status != STATUS_OK) return status;
     }
 
@@ -392,7 +392,7 @@ binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData,
 // allocator.
 struct StringArrayElementAllocationAdapter {
     void* arrayData;  // stringData from the NDK
-    size_t index;     // index into the string array
+    int32_t index;    // index into the string array
     AParcel_stringArrayElementAllocator elementAllocator;
 
     static bool Allocator(void* stringData, int32_t length, char** buffer) {
@@ -427,6 +427,45 @@ binder_status_t AParcel_readStringArray(const AParcel* parcel, void* arrayData,
         binder_status_t status = AParcel_readString(parcel, static_cast<void*>(&adapter),
                                                     StringArrayElementAllocationAdapter::Allocator);
 
+        if (status != STATUS_OK) return status;
+    }
+
+    return STATUS_OK;
+}
+
+binder_status_t AParcel_writeParcelableArray(AParcel* parcel, const void* arrayData, int32_t length,
+                                             AParcel_writeParcelableElement elementWriter) {
+    // we have no clue if arrayData represents a null object or not, we can only infer from length
+    bool arrayIsNull = length < 0;
+    binder_status_t status = WriteAndValidateArraySize(parcel, arrayIsNull, length);
+    if (status != STATUS_OK) return status;
+    if (length <= 0) return STATUS_OK;
+
+    for (int32_t i = 0; i < length; i++) {
+        binder_status_t status = elementWriter(parcel, arrayData, i);
+        if (status != STATUS_OK) return status;
+    }
+
+    return STATUS_OK;
+}
+
+binder_status_t AParcel_readParcelableArray(const AParcel* parcel, void* arrayData,
+                                            AParcel_parcelableArrayAllocator allocator,
+                                            AParcel_readParcelableElement elementReader) {
+    const Parcel* rawParcel = parcel->get();
+
+    int32_t length;
+    status_t status = rawParcel->readInt32(&length);
+
+    if (status != STATUS_OK) return PruneStatusT(status);
+    if (length < -1) return STATUS_BAD_VALUE;
+
+    if (!allocator(arrayData, length)) return STATUS_NO_MEMORY;
+
+    if (length == -1) return STATUS_OK;  // null array
+
+    for (int32_t i = 0; i < length; i++) {
+        binder_status_t status = elementReader(parcel, arrayData, i);
         if (status != STATUS_OK) return status;
     }
 

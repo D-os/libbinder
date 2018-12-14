@@ -299,7 +299,7 @@ static inline bool AParcel_stdVectorStringElementAllocator(void* vectorData, siz
  * index.
  */
 static inline const char* AParcel_stdVectorStringElementGetter(const void* vectorData, size_t index,
-                                                               size_t* outLength) {
+                                                               int32_t* outLength) {
     const std::vector<std::string>* vec = static_cast<const std::vector<std::string>*>(vectorData);
     const std::string& element = vec->at(index);
 
@@ -327,7 +327,7 @@ static inline bool AParcel_nullableStdVectorStringElementAllocator(void* vectorD
  */
 static inline const char* AParcel_nullableStdVectorStringElementGetter(const void* vectorData,
                                                                        size_t index,
-                                                                       size_t* outLength) {
+                                                                       int32_t* outLength) {
     const std::optional<std::vector<std::optional<std::string>>>* vec =
             static_cast<const std::optional<std::vector<std::optional<std::string>>>*>(vectorData);
     const std::optional<std::string>& element = vec->value().at(index);
@@ -418,6 +418,46 @@ static inline binder_status_t AParcel_readVector(
             parcel, vectorData,
             AParcel_nullableStdVectorExternalAllocator<std::optional<std::string>>,
             AParcel_nullableStdVectorStringElementAllocator);
+}
+
+/**
+ * Writes a parcelable object of type P inside a std::vector<P> at index 'index' to 'parcel'.
+ */
+template <typename P>
+binder_status_t AParcel_writeStdVectorParcelableElement(AParcel* parcel, const void* vectorData,
+                                                        size_t index) {
+    const std::vector<P>* vector = static_cast<const std::vector<P>*>(vectorData);
+    return vector->at(index).writeToParcel(parcel);
+}
+
+/**
+ * Reads a parcelable object of type P inside a std::vector<P> at index 'index' from 'parcel'.
+ */
+template <typename P>
+binder_status_t AParcel_readStdVectorParcelableElement(const AParcel* parcel, void* vectorData,
+                                                       size_t index) {
+    std::vector<P>* vector = static_cast<std::vector<P>*>(vectorData);
+    return vector->at(index).readFromParcel(parcel);
+}
+
+/**
+ * Convenience API for writing a std::vector<P>
+ */
+template <typename P>
+static inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<P>& vec) {
+    const void* vectorData = static_cast<const void*>(&vec);
+    return AParcel_writeParcelableArray(parcel, vectorData, vec.size(),
+                                        AParcel_writeStdVectorParcelableElement<P>);
+}
+
+/**
+ * Convenience API for reading a std::vector<P>
+ */
+template <typename P>
+static inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<P>* vec) {
+    void* vectorData = static_cast<void*>(vec);
+    return AParcel_readParcelableArray(parcel, vectorData, AParcel_stdVectorExternalAllocator<P>,
+                                       AParcel_readStdVectorParcelableElement<P>);
 }
 
 // @START

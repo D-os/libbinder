@@ -149,7 +149,49 @@ typedef bool (*AParcel_stringArrayElementAllocator)(void* arrayData, size_t inde
  * not required to be null-terminated. If the object at index is null, then this should be null.
  */
 typedef const char* (*AParcel_stringArrayElementGetter)(const void* arrayData, size_t index,
-                                                        size_t* outLength);
+                                                        int32_t* outLength);
+
+/**
+ * This is called to allocate an array of size 'length'. If length is -1, then a 'null' array (or
+ * equivalent) should be created.
+ *
+ * See also AParcel_readParcelableArray
+ *
+ * \param arrayData some external representation of an array
+ * \param length the length to allocate this array to
+ *
+ * \return true if allocation succeeded. If length is -1, a true return here means that a 'null'
+ * value (or equivalent) was successfully stored.
+ */
+typedef bool (*AParcel_parcelableArrayAllocator)(void* arrayData, int32_t length);
+
+/**
+ * This is called to parcel the underlying data from an arrayData object at index.
+ *
+ * See also AParcel_writeParcelableArray
+ *
+ * \param parcel parcel to write the parcelable to
+ * \param arrayData some external representation of an array of parcelables (a user-defined type).
+ * \param index the index of the value to be retrieved.
+ *
+ * \return status (usually returned from other parceling functions). STATUS_OK for success.
+ */
+typedef binder_status_t (*AParcel_writeParcelableElement)(AParcel* parcel, const void* arrayData,
+                                                          size_t index);
+
+/**
+ * This is called to set an underlying value in an arrayData object at index.
+ *
+ * See also AParcel_readParcelableArray
+ *
+ * \param parcel parcel to read the parcelable from
+ * \param arrayData some external representation of an array of parcelables (a user-defined type).
+ * \param index the index of the value to be set.
+ *
+ * \return status (usually returned from other parceling functions). STATUS_OK for success.
+ */
+typedef binder_status_t (*AParcel_readParcelableElement)(const AParcel* parcel, void* arrayData,
+                                                         size_t index);
 
 // @START-PRIMITIVE-VECTOR-GETTERS
 /**
@@ -495,6 +537,40 @@ binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData,
 binder_status_t AParcel_readStringArray(const AParcel* parcel, void* arrayData,
                                         AParcel_stringArrayAllocator allocator,
                                         AParcel_stringArrayElementAllocator elementAllocator)
+        __INTRODUCED_IN(29);
+
+/**
+ * Writes an array of parcelables (user-defined types) to the next location in a non-null parcel.
+ *
+ * \param parcel the parcel to write to.
+ * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
+ * \param length the length of arrayData or -1 if this represents a null array.
+ * \param elementWriter function to be called for every array index to write the user-defined type
+ * at that location.
+ *
+ * \return STATUS_OK on successful write.
+ */
+binder_status_t AParcel_writeParcelableArray(AParcel* parcel, const void* arrayData, int32_t length,
+                                             AParcel_writeParcelableElement elementWriter)
+        __INTRODUCED_IN(29);
+
+/**
+ * Reads an array of parcelables (user-defined types) from the next location in a non-null parcel.
+ *
+ * First, allocator will be called with the length of the array. If the allocation succeeds and the
+ * length is greater than zero, elementReader will be called for every index to read the
+ * corresponding parcelable.
+ *
+ * \param parcel the parcel to read from.
+ * \param arrayData some external representation of an array.
+ * \param allocator the callback that will be called to allocate the array.
+ * \param elementReader the callback that will be called to fill out individual elements.
+ *
+ * \return STATUS_OK on successful read.
+ */
+binder_status_t AParcel_readParcelableArray(const AParcel* parcel, void* arrayData,
+                                            AParcel_parcelableArrayAllocator allocator,
+                                            AParcel_readParcelableElement elementReader)
         __INTRODUCED_IN(29);
 
 // @START-PRIMITIVE-READ-WRITE
