@@ -149,7 +149,7 @@ typedef bool (*AParcel_stringArrayElementAllocator)(void* arrayData, size_t inde
  * not required to be null-terminated. If the object at index is null, then this should be null.
  */
 typedef const char* (*AParcel_stringArrayElementGetter)(const void* arrayData, size_t index,
-                                                        size_t* outLength);
+                                                        int32_t* outLength);
 
 /**
  * This is called to allocate an array of size 'length'. If length is -1, then a 'null' array (or
