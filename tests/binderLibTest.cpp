@@ -1446,7 +1446,7 @@ int run_server(int index, int readypipefd, bool usePoll)
         }
         IPCThreadState::self()->flushCommands(); // flush BC_ENTER_LOOPER
 
-        epoll_fd = epoll_create1(0);
+        epoll_fd = epoll_create1(EPOLL_CLOEXEC);
         if (epoll_fd == -1) {
             return 1;
         }
