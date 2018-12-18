@@ -43,7 +43,7 @@ static inline bool AParcel_stdVectorAllocator(void* vectorData, int32_t length, 
     if (length < 0) return false;
 
     std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
-    if (length > vec->max_size()) return false;
+    if (static_cast<size_t>(length) > vec->max_size()) return false;
 
     vec->resize(length);
     *outBuffer = vec->data();
@@ -65,7 +65,7 @@ static inline bool AParcel_nullableStdVectorAllocator(void* vectorData, int32_t 
 
     *vec = std::optional<std::vector<T>>(std::vector<T>{});
 
-    if (length > (*vec)->max_size()) return false;
+    if (static_cast<size_t>(length) > (*vec)->max_size()) return false;
     (*vec)->resize(length);
 
     *outBuffer = (*vec)->data();
@@ -88,7 +88,7 @@ static inline bool AParcel_stdVectorExternalAllocator(void* vectorData, int32_t 
     if (length < 0) return false;
 
     std::vector<T>* vec = static_cast<std::vector<T>*>(vectorData);
-    if (length > vec->max_size()) return false;
+    if (static_cast<size_t>(length) > vec->max_size()) return false;
 
     vec->resize(length);
     return true;
@@ -116,7 +116,7 @@ static inline bool AParcel_nullableStdVectorExternalAllocator(void* vectorData, 
 
     *vec = std::optional<std::vector<T>>(std::vector<T>{});
 
-    if (length > (*vec)->max_size()) return false;
+    if (static_cast<size_t>(length) > (*vec)->max_size()) return false;
     (*vec)->resize(length);
 
     return true;
