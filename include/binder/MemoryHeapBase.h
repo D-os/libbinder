@@ -47,12 +47,12 @@ public:
     /*
      * maps memory from the given device
      */
-    MemoryHeapBase(const char* device, size_t size = 0, uint32_t flags = 0);
+    explicit MemoryHeapBase(const char* device, size_t size = 0, uint32_t flags = 0);
 
     /*
      * maps memory from ashmem, with the given name for debugging
      */
-    MemoryHeapBase(size_t size, uint32_t flags = 0, char const* name = nullptr);
+    explicit MemoryHeapBase(size_t size, uint32_t flags = 0, char const* name = nullptr);
 
     virtual ~MemoryHeapBase();
 

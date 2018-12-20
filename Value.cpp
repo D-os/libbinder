@@ -97,7 +97,7 @@ public:
 template<typename T> class Value::Content : public Value::ContentBase {
 public:
     Content() = default;
-    Content(const T & value) : mValue(value) { }
+    explicit Content(const T & value) : mValue(value) { }
 
     virtual ~Content() = default;
 
