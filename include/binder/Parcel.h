@@ -27,8 +27,8 @@
 #include <utils/String16.h>
 #include <utils/Vector.h>
 #include <utils/Flattenable.h>
-#include <linux/android/binder.h>
 
+#include <binder/binder_kernel.h>
 #include <binder/IInterface.h>
 #include <binder/Parcelable.h>
 #include <binder/Map.h>
