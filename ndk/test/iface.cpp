@@ -74,7 +74,7 @@ AIBinder_Class* IFoo::kClass = AIBinder_Class_define(kIFooDescriptor, IFoo_Class
 
 class BpFoo : public IFoo {
    public:
-    BpFoo(AIBinder* binder) : mBinder(binder) {}
+    explicit BpFoo(AIBinder* binder) : mBinder(binder) {}
     virtual ~BpFoo() { AIBinder_decStrong(mBinder); }
 
     virtual binder_status_t doubleNumber(int32_t in, int32_t* out) {

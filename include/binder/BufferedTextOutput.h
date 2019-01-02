@@ -32,7 +32,7 @@ public:
         MULTITHREADED = 0x0001
     };
     
-                        BufferedTextOutput(uint32_t flags = 0);
+    explicit            BufferedTextOutput(uint32_t flags = 0);
     virtual             ~BufferedTextOutput();
     
     virtual status_t    print(const char* txt, size_t len);
