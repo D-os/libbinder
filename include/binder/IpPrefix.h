@@ -74,8 +74,8 @@ public:
 private:
     union InternalUnion {
         InternalUnion() = default;
-        InternalUnion(const struct in6_addr &addr):mIn6Addr(addr) { };
-        InternalUnion(const struct in_addr &addr):mInAddr(addr) { };
+        explicit InternalUnion(const struct in6_addr &addr):mIn6Addr(addr) { };
+        explicit InternalUnion(const struct in_addr &addr):mInAddr(addr) { };
         struct in6_addr mIn6Addr;
         struct in_addr mInAddr;
     } mUnion;

@@ -23,7 +23,7 @@
 
 struct AStatus {
     AStatus() {}  // ok
-    AStatus(::android::binder::Status&& status) : mStatus(std::move(status)) {}
+    explicit AStatus(::android::binder::Status&& status) : mStatus(std::move(status)) {}
 
     ::android::binder::Status* get() { return &mStatus; }
     const ::android::binder::Status* get() const { return &mStatus; }
