@@ -233,7 +233,7 @@ class BinderLibTestBundle : public Parcel
 {
     public:
         BinderLibTestBundle(void) {}
-        BinderLibTestBundle(const Parcel *source) : m_isValid(false) {
+        explicit BinderLibTestBundle(const Parcel *source) : m_isValid(false) {
             int32_t mark;
             int32_t bundleLen;
             size_t pos;
@@ -1079,7 +1079,7 @@ TEST_F(BinderLibTest, VectorSent) {
 class BinderLibTestService : public BBinder
 {
     public:
-        BinderLibTestService(int32_t id)
+        explicit BinderLibTestService(int32_t id)
             : m_id(id)
             , m_nextServerId(id + 1)
             , m_serverStartRequested(false)

@@ -51,7 +51,7 @@ class SpAIBinder {
      * Convenience operator for implicitly constructing an SpAIBinder from nullptr. This is not
      * explicit because it is not taking ownership of anything.
      */
-    SpAIBinder(std::nullptr_t) : SpAIBinder() {}
+    SpAIBinder(std::nullptr_t) : SpAIBinder() {}  // NOLINT(google-explicit-constructor)
 
     /**
      * This will delete the underlying object if it exists. See operator=.

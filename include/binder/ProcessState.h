@@ -80,7 +80,7 @@ public:
 private:
     friend class IPCThreadState;
     
-                                ProcessState(const char* driver);
+            explicit            ProcessState(const char* driver);
                                 ~ProcessState();
 
                                 ProcessState(const ProcessState& o);

@@ -27,7 +27,8 @@ struct AParcel {
     const ::android::Parcel* get() const { return mParcel; }
     ::android::Parcel* get() { return mParcel; }
 
-    AParcel(const AIBinder* binder) : AParcel(binder, new ::android::Parcel, true /*owns*/) {}
+    explicit AParcel(const AIBinder* binder)
+        : AParcel(binder, new ::android::Parcel, true /*owns*/) {}
     AParcel(const AIBinder* binder, ::android::Parcel* parcel, bool owns)
         : mBinder(binder), mParcel(parcel), mOwns(owns) {}
 

@@ -74,20 +74,20 @@ public:
     bool operator!=(const Value& rhs) const { return !this->operator==(rhs); }
 
     Value(const Value& value);
-    Value(const bool& value);
-    Value(const int8_t& value);
-    Value(const int32_t& value);
-    Value(const int64_t& value);
-    Value(const double& value);
-    Value(const String16& value);
-    Value(const std::vector<bool>& value);
-    Value(const std::vector<uint8_t>& value);
-    Value(const std::vector<int32_t>& value);
-    Value(const std::vector<int64_t>& value);
-    Value(const std::vector<double>& value);
-    Value(const std::vector<String16>& value);
-    Value(const os::PersistableBundle& value);
-    Value(const binder::Map& value);
+    Value(const bool& value); // NOLINT(google-explicit-constructor)
+    Value(const int8_t& value); // NOLINT(google-explicit-constructor)
+    Value(const int32_t& value); // NOLINT(google-explicit-constructor)
+    Value(const int64_t& value); // NOLINT(google-explicit-constructor)
+    Value(const double& value); // NOLINT(google-explicit-constructor)
+    Value(const String16& value); // NOLINT(google-explicit-constructor)
+    Value(const std::vector<bool>& value); // NOLINT(google-explicit-constructor)
+    Value(const std::vector<uint8_t>& value); // NOLINT(google-explicit-constructor)
+    Value(const std::vector<int32_t>& value); // NOLINT(google-explicit-constructor)
+    Value(const std::vector<int64_t>& value); // NOLINT(google-explicit-constructor)
+    Value(const std::vector<double>& value); // NOLINT(google-explicit-constructor)
+    Value(const std::vector<String16>& value); // NOLINT(google-explicit-constructor)
+    Value(const os::PersistableBundle& value); // NOLINT(google-explicit-constructor)
+    Value(const binder::Map& value); // NOLINT(google-explicit-constructor)
 
     Value& operator=(const Value& rhs);
     Value& operator=(const int8_t& rhs);
@@ -153,8 +153,8 @@ public:
     // String Convenience Adapters
     // ---------------------------
 
-    Value(const String8& value):               Value(String16(value)) { }
-    Value(const ::std::string& value):         Value(String8(value.c_str())) { }
+    explicit Value(const String8& value):               Value(String16(value)) { }
+    explicit Value(const ::std::string& value):         Value(String8(value.c_str())) { }
     void putString(const String8& value)       { return putString(String16(value)); }
     void putString(const ::std::string& value) { return putString(String8(value.c_str())); }
     Value& operator=(const String8& rhs)       { return *this = String16(rhs); }

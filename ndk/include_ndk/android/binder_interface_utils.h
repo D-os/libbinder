@@ -137,7 +137,7 @@ class BnCInterface : public INTERFACE {
 template <typename INTERFACE>
 class BpCInterface : public INTERFACE {
    public:
-    BpCInterface(const SpAIBinder& binder) : mBinder(binder) {}
+    explicit BpCInterface(const SpAIBinder& binder) : mBinder(binder) {}
     virtual ~BpCInterface() {}
 
     SpAIBinder asBinder() override;

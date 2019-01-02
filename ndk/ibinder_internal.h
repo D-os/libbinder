@@ -34,7 +34,7 @@ struct ABBinder;
 struct ABpBinder;
 
 struct AIBinder : public virtual ::android::RefBase {
-    AIBinder(const AIBinder_Class* clazz);
+    explicit AIBinder(const AIBinder_Class* clazz);
     virtual ~AIBinder();
 
     bool associateClass(const AIBinder_Class* clazz);
@@ -97,7 +97,7 @@ struct ABpBinder : public AIBinder, public ::android::BpRefBase {
     ABpBinder* asABpBinder() override { return this; }
 
    private:
-    ABpBinder(const ::android::sp<::android::IBinder>& binder);
+    explicit ABpBinder(const ::android::sp<::android::IBinder>& binder);
 };
 
 struct AIBinder_Class {
@@ -141,7 +141,7 @@ struct AIBinder_DeathRecipient {
         const AIBinder_DeathRecipient_onBinderDied& mOnDied;
     };
 
-    AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied);
+    explicit AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied);
     binder_status_t linkToDeath(AIBinder* binder, void* cookie);
     binder_status_t unlinkToDeath(AIBinder* binder, void* cookie);
 
