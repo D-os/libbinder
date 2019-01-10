@@ -124,7 +124,9 @@ public:                                                                 \
 
 
 #define CHECK_INTERFACE(interface, data, reply)                         \
-    if (!(data).checkInterface(this)) { return PERMISSION_DENIED; }     \
+    do {                                                                \
+      if (!(data).checkInterface(this)) { return PERMISSION_DENIED; }   \
+    } while (false)                                                     \
 
 
 // ----------------------------------------------------------------------
