@@ -87,6 +87,11 @@ LIBBINDER_NDK { # introduced=29
     AStatus_getStatus;
     AStatus_isOk;
     AStatus_newOk;
+    ABinderProcess_joinThreadPool; # apex
+    ABinderProcess_setThreadPoolMaxThreadCount; # apex
+    ABinderProcess_startThreadPool; # apex
+    AServiceManager_addService; # apex
+    AServiceManager_getService; # apex
   local:
     *;
 };
