@@ -158,6 +158,8 @@ private:
             int32_t             mStrictModePolicy;
             int32_t             mLastTransactionBinderFlags;
             IPCThreadStateBase  *mIPCThreadStateBase;
+
+            ProcessState::CallRestriction mCallRestriction;
 };
 
 }; // namespace android

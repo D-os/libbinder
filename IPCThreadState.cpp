@@ -23,7 +23,9 @@
 #include <binder/BpBinder.h>
 #include <binder/TextOutput.h>
 
+#include <android-base/macros.h>
 #include <cutils/sched_policy.h>
+#include <utils/CallStack.h>
 #include <utils/Log.h>
 #include <utils/SystemClock.h>
 #include <utils/threads.h>
@@ -617,6 +619,16 @@ status_t IPCThreadState::transact(int32_t handle,
     }
 
     if ((flags & TF_ONE_WAY) == 0) {
+        if (UNLIKELY(mCallRestriction != ProcessState::CallRestriction::NONE)) {
+            if (mCallRestriction == ProcessState::CallRestriction::ERROR_IF_NOT_ONEWAY) {
+                ALOGE("Process making non-oneway call but is restricted.");
+                CallStack::logStack("non-oneway call", CallStack::getCurrent(10).get(),
+                    ANDROID_LOG_ERROR);
+            } else /* FATAL_IF_NOT_ONEWAY */ {
+                LOG_ALWAYS_FATAL("Process may not make oneway calls.");
+            }
+        }
+
         #if 0
         if (code == 4) { // relayout
             ALOGI(">>>>>> CALLING transaction 4");
@@ -737,7 +749,8 @@ status_t IPCThreadState::clearDeathNotification(int32_t handle, BpBinder* proxy)
 IPCThreadState::IPCThreadState()
     : mProcess(ProcessState::self()),
       mStrictModePolicy(0),
-      mLastTransactionBinderFlags(0)
+      mLastTransactionBinderFlags(0),
+      mCallRestriction(mProcess->mCallRestriction)
 {
     pthread_setspecific(gTLS, this);
     clearCaller();
