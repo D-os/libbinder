@@ -77,6 +77,18 @@ public:
 
             ssize_t             getKernelReferences(size_t count, uintptr_t* buf);
 
+            enum class CallRestriction {
+                // all calls okay
+                NONE,
+                // log when calls are blocking
+                ERROR_IF_NOT_ONEWAY,
+                // abort process on blocking calls
+                FATAL_IF_NOT_ONEWAY,
+            };
+            // Sets calling restrictions for all transactions in this process. This must be called
+            // before any threads are spawned.
+            void setCallRestriction(CallRestriction restriction);
+
 private:
     friend class IPCThreadState;
     
@@ -123,6 +135,8 @@ private:
             String8             mRootDir;
             bool                mThreadPoolStarted;
     volatile int32_t            mThreadPoolSeq;
+
+            CallRestriction     mCallRestriction;
 };
     
 }; // namespace android
