@@ -234,6 +234,12 @@ ssize_t ProcessState::getKernelReferences(size_t buf_count, uintptr_t* buf)
     return count;
 }
 
+void ProcessState::setCallRestriction(CallRestriction restriction) {
+    LOG_ALWAYS_FATAL_IF(IPCThreadState::selfOrNull(), "Call restrictions must be set before the threadpool is started.");
+
+    mCallRestriction = restriction;
+}
+
 ProcessState::handle_entry* ProcessState::lookupHandleLocked(int32_t handle)
 {
     const size_t N=mHandleToObject.size();
@@ -426,6 +432,7 @@ ProcessState::ProcessState(const char *driver)
     , mBinderContextUserData(nullptr)
     , mThreadPoolStarted(false)
     , mThreadPoolSeq(1)
+    , mCallRestriction(CallRestriction::NONE)
 {
     if (mDriverFD >= 0) {
         // mmap the binder, providing a chunk of virtual address space to receive transactions.
