@@ -17,15 +17,68 @@
 #include <android/binder_ibinder_jni.h>
 #include "ibinder_internal.h"
 
-#include <android_util_Binder.h>
+#include <android-base/logging.h>
+#include <binder/IBinder.h>
+
+#include <mutex>
+
+#include <dlfcn.h>
 
 using ::android::IBinder;
-using ::android::ibinderForJavaObject;
-using ::android::javaObjectForIBinder;
 using ::android::sp;
 
+struct LazyAndroidRuntime {
+    typedef sp<IBinder> (*FromJava)(JNIEnv* env, jobject obj);
+    typedef jobject (*ToJava)(JNIEnv* env, const sp<IBinder>& val);
+
+    static FromJava ibinderForJavaObject;
+    static ToJava javaObjectForIBinder;
+
+    static void load() {
+        std::call_once(mLoadFlag, []() {
+            void* handle = dlopen("libandroid_runtime.so", RTLD_LAZY);
+            if (handle == nullptr) {
+                LOG(WARNING) << "Could not open libandroid_runtime.";
+                return;
+            }
+
+            ibinderForJavaObject = reinterpret_cast<FromJava>(
+                    dlsym(handle, "_ZN7android20ibinderForJavaObjectEP7_JNIEnvP8_jobject"));
+            if (ibinderForJavaObject == nullptr) {
+                LOG(WARNING) << "Could not find ibinderForJavaObject.";
+                // no return
+            }
+
+            javaObjectForIBinder = reinterpret_cast<ToJava>(dlsym(
+                    handle, "_ZN7android20javaObjectForIBinderEP7_JNIEnvRKNS_2spINS_7IBinderEEE"));
+            if (javaObjectForIBinder == nullptr) {
+                LOG(WARNING) << "Could not find javaObjectForIBinder.";
+                // no return
+            }
+        });
+    }
+
+   private:
+    static std::once_flag mLoadFlag;
+
+    LazyAndroidRuntime(){};
+};
+
+LazyAndroidRuntime::FromJava LazyAndroidRuntime::ibinderForJavaObject = nullptr;
+LazyAndroidRuntime::ToJava LazyAndroidRuntime::javaObjectForIBinder = nullptr;
+std::once_flag LazyAndroidRuntime::mLoadFlag;
+
 AIBinder* AIBinder_fromJavaBinder(JNIEnv* env, jobject binder) {
-    sp<IBinder> ibinder = ibinderForJavaObject(env, binder);
+    if (binder == nullptr) {
+        return nullptr;
+    }
+
+    LazyAndroidRuntime::load();
+    if (LazyAndroidRuntime::ibinderForJavaObject == nullptr) {
+        return nullptr;
+    }
+
+    sp<IBinder> ibinder = (LazyAndroidRuntime::ibinderForJavaObject)(env, binder);
 
     sp<AIBinder> cbinder = ABpBinder::lookupOrCreateFromBinder(ibinder);
     AIBinder_incStrong(cbinder.get());
@@ -38,5 +91,10 @@ jobject AIBinder_toJavaBinder(JNIEnv* env, AIBinder* binder) {
         return nullptr;
     }
 
-    return javaObjectForIBinder(env, binder->getBinder());
+    LazyAndroidRuntime::load();
+    if (LazyAndroidRuntime::javaObjectForIBinder == nullptr) {
+        return nullptr;
+    }
+
+    return (LazyAndroidRuntime::javaObjectForIBinder)(env, binder->getBinder());
 }
