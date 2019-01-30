@@ -599,15 +599,51 @@ bool Parcel::hasFileDescriptors() const
     return mHasFds;
 }
 
+void Parcel::updateWorkSourceRequestHeaderPosition() const {
+    // Only update the request headers once. We only want to point
+    // to the first headers read/written.
+    if (!mRequestHeaderPresent) {
+        mWorkSourceRequestHeaderPosition = dataPosition();
+        mRequestHeaderPresent = true;
+    }
+}
+
 // Write RPC headers.  (previously just the interface token)
 status_t Parcel::writeInterfaceToken(const String16& interface)
 {
     const IPCThreadState* threadState = IPCThreadState::self();
     writeInt32(threadState->getStrictModePolicy() | STRICT_MODE_PENALTY_GATHER);
+    updateWorkSourceRequestHeaderPosition();
     writeInt32(threadState->shouldPropagateWorkSource() ?
             threadState->getCallingWorkSourceUid() : IPCThreadState::kUnsetWorkSource);
     // currently the interface identification token is just its name as a string
     return writeString16(interface);
+}
+
+bool Parcel::replaceCallingWorkSourceUid(uid_t uid)
+{
+    if (!mRequestHeaderPresent) {
+        return false;
+    }
+
+    const size_t initialPosition = dataPosition();
+    setDataPosition(mWorkSourceRequestHeaderPosition);
+    status_t err = writeInt32(uid);
+    setDataPosition(initialPosition);
+    return err == NO_ERROR;
+}
+
+uid_t Parcel::readCallingWorkSourceUid()
+{
+    if (!mRequestHeaderPresent) {
+        return IPCThreadState::kUnsetWorkSource;
+    }
+
+    const size_t initialPosition = dataPosition();
+    setDataPosition(mWorkSourceRequestHeaderPosition);
+    uid_t uid = readInt32();
+    setDataPosition(initialPosition);
+    return uid;
 }
 
 bool Parcel::checkInterface(IBinder* binder) const
@@ -634,6 +670,7 @@ bool Parcel::enforceInterface(const String16& interface,
       threadState->setStrictModePolicy(strictPolicy);
     }
     // WorkSource.
+    updateWorkSourceRequestHeaderPosition();
     int32_t workSource = readInt32();
     threadState->setCallingWorkSourceUidWithoutPropagation(workSource);
     // Interface descriptor.
@@ -2889,6 +2926,8 @@ void Parcel::initState()
     mAllowFds = true;
     mOwner = nullptr;
     mOpenAshmemSize = 0;
+    mWorkSourceRequestHeaderPosition = 0;
+    mRequestHeaderPresent = false;
 
     // racing multiple init leads only to multiple identical write
     if (gMaxFds == 0) {
