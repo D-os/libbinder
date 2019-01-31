@@ -65,12 +65,10 @@ ndk_headers {
         "include_ndk/android/*.h",
     ],
     license: "NOTICE",
-    draft: true,
 }
 
 ndk_library {
     name: "libbinder_ndk",
     symbol_file: "libbinder_ndk.map.txt",
     first_version: "29",
-    draft: true,
 }
