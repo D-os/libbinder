@@ -152,6 +152,12 @@ public:
         return callParcel("writeParcelableVector",
                           [&]() { return parcel->writeParcelableVector(v); });
     }
+    status_t read(const Parcel& parcel, float* f) const {
+        return callParcel("readFloat", [&]() { return parcel.readFloat(f); });
+    }
+    status_t write(Parcel* parcel, float f) const {
+        return callParcel("writeFloat", [&]() { return parcel->writeFloat(f); });
+    }
 
     // Templates to handle integral types. We use a struct template to require that the called
     // function exactly matches the signedness and size of the argument (e.g., the argument isn't
