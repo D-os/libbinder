@@ -54,6 +54,7 @@ public:
     virtual const String16&     getInterfaceDescriptor() const;
 
 protected:
+    typedef INTERFACE           BaseInterface;
     virtual IBinder*            onAsBinder();
 };
 
@@ -66,6 +67,7 @@ public:
     explicit                    BpInterface(const sp<IBinder>& remote);
 
 protected:
+    typedef INTERFACE           BaseInterface;
     virtual IBinder*            onAsBinder();
 };
 
