@@ -16,7 +16,7 @@
 
 cc_library {
     name: "libbinder_ndk",
-    vendor_available: false,
+    vendor_available: true,
 
     export_include_dirs: [
         "include_ndk",
@@ -48,6 +48,13 @@ cc_library {
         // libbinder_ndk may be used by Java and non-Java things. When lower-level things use it,
         // they shouldn't have to take on the cost of loading libandroid_runtime.
         "libandroid_runtime",
+    ],
+
+    header_libs: [
+        "jni_headers",
+    ],
+    export_header_lib_headers: [
+        "jni_headers",
     ],
 
     version_script: "libbinder_ndk.map.txt",
