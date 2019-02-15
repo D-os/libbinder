@@ -33,6 +33,15 @@ __BEGIN_DECLS
 binder_status_t AServiceManager_addService(AIBinder* binder, const char* instance);
 
 /**
+ * Gets a binder object with this specific instance name. Will return nullptr immediately if the
+ * service is not available This also implicitly calls AIBinder_incStrong (so the caller of this
+ * function is responsible for calling AIBinder_decStrong).
+ *
+ * \param instance identifier of the service used to lookup the service.
+ */
+__attribute__((warn_unused_result)) AIBinder* AServiceManager_checkService(const char* instance);
+
+/**
  * Gets a binder object with this specific instance name. Blocks for a couple of seconds waiting on
  * it. This also implicitly calls AIBinder_incStrong (so the caller of this function is responsible
  * for calling AIBinder_decStrong).
