@@ -91,6 +91,7 @@ LIBBINDER_NDK { # introduced=29
     ABinderProcess_setThreadPoolMaxThreadCount; # apex
     ABinderProcess_startThreadPool; # apex
     AServiceManager_addService; # apex
+    AServiceManager_checkService; # apex
     AServiceManager_getService; # apex
   local:
     *;
