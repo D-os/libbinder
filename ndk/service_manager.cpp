@@ -37,6 +37,18 @@ binder_status_t AServiceManager_addService(AIBinder* binder, const char* instanc
     status_t status = sm->addService(String16(instance), binder->getBinder());
     return PruneStatusT(status);
 }
+AIBinder* AServiceManager_checkService(const char* instance) {
+    if (instance == nullptr) {
+        return nullptr;
+    }
+
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<IBinder> binder = sm->checkService(String16(instance));
+
+    sp<AIBinder> ret = ABpBinder::lookupOrCreateFromBinder(binder);
+    AIBinder_incStrong(ret.get());
+    return ret.get();
+}
 AIBinder* AServiceManager_getService(const char* instance) {
     if (instance == nullptr) {
         return nullptr;

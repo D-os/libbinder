@@ -35,6 +35,19 @@ constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
 //     EXPECT_EQ(nullptr, foo.get());
 // }
 
+TEST(NdkBinder, CheckServiceThatDoesntExist) {
+    AIBinder* binder = AServiceManager_checkService("asdfghkl;");
+    ASSERT_EQ(nullptr, binder);
+}
+
+TEST(NdkBinder, CheckServiceThatDoesExist) {
+    AIBinder* binder = AServiceManager_checkService(kExistingNonNdkService);
+    EXPECT_NE(nullptr, binder);
+    EXPECT_EQ(STATUS_OK, AIBinder_ping(binder));
+
+    AIBinder_decStrong(binder);
+}
+
 TEST(NdkBinder, DoubleNumber) {
     sp<IFoo> foo = IFoo::getService(IFoo::kSomeInstanceName);
     ASSERT_NE(foo, nullptr);
