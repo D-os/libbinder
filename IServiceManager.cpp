@@ -17,6 +17,7 @@
 #define LOG_TAG "ServiceManager"
 
 #include <binder/IServiceManager.h>
+#include <private/binder/Static.h>
 
 #include <utils/Log.h>
 #include <binder/IPCThreadState.h>
@@ -150,9 +151,9 @@ public:
         const long timeout = uptimeMillis() + 5000;
         if (!gSystemBootCompleted && !isVendorService) {
             // Vendor code can't access system properties
-            char bootCompleted[PROPERTY_VALUE_MAX];
-            property_get("sys.boot_completed", bootCompleted, "0");
-            gSystemBootCompleted = strcmp(bootCompleted, "1") == 0 ? true : false;
+            //char bootCompleted[PROPERTY_VALUE_MAX];
+            //property_get("sys.boot_completed", bootCompleted, "0");
+            gSystemBootCompleted = false;//strcmp(bootCompleted, "1") == 0 ? true : false;
         }
         // retry interval in millisecond; note that vendor services stay at 100ms
         const long sleepTime = gSystemBootCompleted ? 1000 : 100;
