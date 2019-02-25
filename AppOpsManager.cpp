@@ -93,6 +93,14 @@ int32_t AppOpsManager::checkOp(int32_t op, int32_t uid, const String16& callingP
             : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 }
 
+int32_t AppOpsManager::checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t uid,
+        const String16& callingPackage) {
+    sp<IAppOpsService> service = getService();
+    return service != nullptr
+           ? service->checkAudioOperation(op, usage, uid, callingPackage)
+           : APP_OPS_MANAGER_UNAVAILABLE_MODE;
+}
+
 int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage) {
     sp<IAppOpsService> service = getService();
     return service != nullptr

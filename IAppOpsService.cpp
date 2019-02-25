@@ -123,6 +123,22 @@ public:
         if (reply.readExceptionCode() != 0) return -1;
         return reply.readInt32();
     }
+
+    virtual int32_t checkAudioOperation(int32_t code, int32_t usage,
+            int32_t uid, const String16& packageName) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
+        data.writeInt32(code);
+        data.writeInt32(usage);
+        data.writeInt32(uid);
+        data.writeString16(packageName);
+        remote()->transact(CHECK_AUDIO_OPERATION_TRANSACTION, data, &reply);
+        // fail on exception
+        if (reply.readExceptionCode() != 0) {
+            return MODE_ERRORED;
+        }
+        return reply.readInt32();
+    }
 };
 
 IMPLEMENT_META_INTERFACE(AppOpsService, "com.android.internal.app.IAppOpsService");
@@ -207,6 +223,17 @@ status_t BnAppOpsService::onTransact(
             const int32_t opCode = permissionToOpCode(permission);
             reply->writeNoException();
             reply->writeInt32(opCode);
+            return NO_ERROR;
+        } break;
+        case CHECK_AUDIO_OPERATION_TRANSACTION: {
+            CHECK_INTERFACE(IAppOpsService, data, reply);
+            const int32_t code = data.readInt32();
+            const int32_t usage = data.readInt32();
+            const int32_t uid = data.readInt32();
+            const String16 packageName = data.readString16();
+            const int32_t res = checkAudioOperation(code, usage, uid, packageName);
+            reply->writeNoException();
+            reply->writeInt32(res);
             return NO_ERROR;
         } break;
         default:
