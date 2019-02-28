@@ -54,4 +54,9 @@ interface IPackageManagerNative {
 
     long getVersionCodeForPackage(in String packageName);
 
+    /**
+     * Return if each app, identified by its package name allows its audio to be recorded.
+     * Unknown packages are mapped to false.
+     */
+    boolean[] isAudioPlaybackCaptureAllowed(in @utf8InCpp String[] packageNames);
 }
