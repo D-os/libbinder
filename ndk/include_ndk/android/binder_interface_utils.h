@@ -104,6 +104,30 @@ class ICInterface : public SharedRefBase {
      * this will be checked using AIBinder_isRemote.
      */
     virtual bool isRemote() = 0;
+
+    /**
+     * Dumps information about the interface.
+     */
+    virtual binder_status_t dump(int /*fd*/, const char** /*args*/, uint32_t /*numArgs*/) {
+        return STATUS_OK;
+    }
+
+    /**
+     * Helper method to create a class
+     */
+    static AIBinder_Class* defineClass(const char* interfaceDescriptor,
+                                       AIBinder_Class_onCreate onCreate,
+                                       AIBinder_Class_onDestroy onDestroy,
+                                       AIBinder_Class_onTransact onTransact,
+                                       AIBinder_onDump onDump = nullptr) {
+        AIBinder_Class* clazz =
+                AIBinder_Class_define(interfaceDescriptor, onCreate, onDestroy, onTransact);
+        if (clazz == nullptr) {
+            return nullptr;
+        }
+        AIBinder_Class_setOnDump(clazz, onDump);
+        return clazz;
+    }
 };
 
 /**
@@ -143,6 +167,10 @@ class BpCInterface : public INTERFACE {
     SpAIBinder asBinder() override;
 
     bool isRemote() override { return AIBinder_isRemote(mBinder.get()); }
+
+    binder_status_t dump(int fd, const char** args, uint32_t numArgs) override {
+        return AIBinder_dump(asBinder().get(), fd, args, numArgs);
+    }
 
    private:
     SpAIBinder mBinder;
