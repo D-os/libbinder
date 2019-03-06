@@ -31,6 +31,7 @@ using ::android::Parcel;
 using ::android::sp;
 using ::android::status_t;
 using ::android::String16;
+using ::android::String8;
 using ::android::wp;
 
 namespace ABBinderTag {
@@ -67,8 +68,6 @@ AIBinder::AIBinder(const AIBinder_Class* clazz) : mClazz(clazz) {}
 AIBinder::~AIBinder() {}
 
 bool AIBinder::associateClass(const AIBinder_Class* clazz) {
-    using ::android::String8;
-
     if (clazz == nullptr) return false;
     if (mClazz == clazz) return true;
 
@@ -117,6 +116,33 @@ ABBinder::~ABBinder() {
 
 const String16& ABBinder::getInterfaceDescriptor() const {
     return getClass()->getInterfaceDescriptor();
+}
+
+status_t ABBinder::dump(int fd, const ::android::Vector<String16>& args) {
+    AIBinder_onDump onDump = getClass()->onDump;
+
+    if (onDump == nullptr) {
+        return STATUS_OK;
+    }
+
+    // technically UINT32_MAX would be okay here, but INT32_MAX is expected since this may be
+    // null in Java
+    if (args.size() > INT32_MAX) {
+        LOG(ERROR) << "ABBinder::dump received too many arguments: " << args.size();
+        return STATUS_BAD_VALUE;
+    }
+
+    std::vector<String8> utf8Args;  // owns memory of utf8s
+    utf8Args.reserve(args.size());
+    std::vector<const char*> utf8Pointers;  // what can be passed over NDK API
+    utf8Pointers.reserve(args.size());
+
+    for (size_t i = 0; i < args.size(); i++) {
+        utf8Args.push_back(String8(args[i]));
+        utf8Pointers.push_back(utf8Args[i].c_str());
+    }
+
+    return onDump(this, fd, utf8Pointers.data(), utf8Pointers.size());
 }
 
 status_t ABBinder::onTransact(transaction_code_t code, const Parcel& data, Parcel* reply,
@@ -232,6 +258,13 @@ AIBinder_Class* AIBinder_Class_define(const char* interfaceDescriptor,
     return new AIBinder_Class(interfaceDescriptor, onCreate, onDestroy, onTransact);
 }
 
+void AIBinder_Class_setOnDump(AIBinder_Class* clazz, AIBinder_onDump onDump) {
+    CHECK(clazz != nullptr) << "setOnDump requires non-null clazz";
+
+    // this is required to be called before instances are instantiated
+    clazz->onDump = onDump;
+}
+
 void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinder>& who) {
     CHECK(who == mWho);
 
@@ -323,6 +356,30 @@ binder_status_t AIBinder_ping(AIBinder* binder) {
     }
 
     return PruneStatusT(binder->getBinder()->pingBinder());
+}
+
+binder_status_t AIBinder_dump(AIBinder* binder, int fd, const char** args, uint32_t numArgs) {
+    if (binder == nullptr) {
+        return STATUS_UNEXPECTED_NULL;
+    }
+
+    ABBinder* bBinder = binder->asABBinder();
+    if (bBinder != nullptr) {
+        AIBinder_onDump onDump = binder->getClass()->onDump;
+        if (onDump == nullptr) {
+            return STATUS_OK;
+        }
+        return PruneStatusT(onDump(bBinder, fd, args, numArgs));
+    }
+
+    ::android::Vector<String16> utf16Args;
+    utf16Args.setCapacity(numArgs);
+    for (uint32_t i = 0; i < numArgs; i++) {
+        utf16Args.push(String16(String8(args[i])));
+    }
+
+    status_t status = binder->getBinder()->dump(fd, utf16Args);
+    return PruneStatusT(status);
 }
 
 binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
