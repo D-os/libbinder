@@ -25,6 +25,7 @@
 
 #include <binder/Binder.h>
 #include <binder/IBinder.h>
+#include <utils/Vector.h>
 
 inline bool isUserCommand(transaction_code_t code) {
     return code >= FIRST_CALL_TRANSACTION && code <= LAST_CALL_TRANSACTION;
@@ -66,6 +67,7 @@ struct ABBinder : public AIBinder, public ::android::BBinder {
     ABBinder* asABBinder() override { return this; }
 
     const ::android::String16& getInterfaceDescriptor() const override;
+    ::android::status_t dump(int fd, const ::android::Vector<::android::String16>& args) override;
     ::android::status_t onTransact(uint32_t code, const ::android::Parcel& data,
                                    ::android::Parcel* reply, binder_flags_t flags) override;
 
@@ -106,9 +108,13 @@ struct AIBinder_Class {
 
     const ::android::String16& getInterfaceDescriptor() const { return mInterfaceDescriptor; }
 
+    // required to be non-null, implemented for every class
     const AIBinder_Class_onCreate onCreate;
     const AIBinder_Class_onDestroy onDestroy;
     const AIBinder_Class_onTransact onTransact;
+
+    // optional methods for a class
+    AIBinder_onDump onDump;
 
    private:
     // This must be a String16 since BBinder virtual getInterfaceDescriptor returns a reference to
