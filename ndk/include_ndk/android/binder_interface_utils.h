@@ -150,7 +150,7 @@ class BnCInterface : public INTERFACE {
 
     SpAIBinder asBinder() override;
 
-    bool isRemote() override { return true; }
+    bool isRemote() override { return false; }
 
    protected:
     /**
