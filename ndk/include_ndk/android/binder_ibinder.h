@@ -301,6 +301,11 @@ binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* 
  * may return a binder transaction failure and in case the death recipient cannot be found, it
  * returns STATUS_NAME_NOT_FOUND.
  *
+ * This only ever needs to be called when the AIBinder_DeathRecipient remains for use with other
+ * AIBinder objects. If the death recipient is deleted, all binders will automatically be unlinked.
+ * If the binder dies, it will automatically unlink. If the binder is deleted, it will be
+ * automatically unlinked.
+ *
  * \param binder the binder object to remove a previously linked death recipient from.
  * \param recipient the callback to remove.
  * \param cookie the cookie used to link to death.
