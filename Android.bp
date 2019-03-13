@@ -121,7 +121,6 @@ cc_library_shared {
         "libcutils",
         "libutils",
         "libbinderthreadstate",
-        "libvndksupport",
     ],
 
     header_libs: [
