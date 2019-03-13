@@ -26,6 +26,7 @@
 #include <utils/String8.h>
 #include <utils/String8.h>
 #include <utils/threads.h>
+#include <vndksupport/linker.h>
 
 #include <private/binder/binder_module.h>
 #include <private/binder/Static.h>
@@ -43,15 +44,21 @@
 #define BINDER_VM_SIZE ((1 * 1024 * 1024) - sysconf(_SC_PAGE_SIZE) * 2)
 #define DEFAULT_MAX_BINDER_THREADS 15
 
-#ifdef __ANDROID_VNDK__
-const char* kDefaultDriver = "/dev/vndbinder";
-#else
+const char* kDefaultVendorDriver = "/dev/vndbinder";
 const char* kDefaultDriver = "/dev/binder";
-#endif
 
 // -------------------------------------------------------------------------
 
 namespace android {
+
+static const char *getDefaultBinderDriver() {
+    // Some libs might have their system variants loaded in a vendor process, so
+    // we cannot depend on a compile time check.
+    if (android_is_in_vendor_process()) {
+        return kDefaultVendorDriver;
+    }
+    return kDefaultDriver;
+}
 
 class PoolThread : public Thread
 {
@@ -77,7 +84,7 @@ sp<ProcessState> ProcessState::self()
     if (gProcess != nullptr) {
         return gProcess;
     }
-    gProcess = new ProcessState(kDefaultDriver);
+    gProcess = new ProcessState(getDefaultBinderDriver());
     return gProcess;
 }
 
