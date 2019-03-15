@@ -133,7 +133,7 @@ struct AIBinder_DeathRecipient {
     // binderDied receipt only gives us information about the IBinder.
     struct TransferDeathRecipient : ::android::IBinder::DeathRecipient {
         TransferDeathRecipient(const ::android::wp<::android::IBinder>& who, void* cookie,
-                               const AIBinder_DeathRecipient_onBinderDied& onDied)
+                               const AIBinder_DeathRecipient_onBinderDied onDied)
             : mWho(who), mCookie(cookie), mOnDied(onDied) {}
 
         void binderDied(const ::android::wp<::android::IBinder>& who) override;
@@ -144,7 +144,7 @@ struct AIBinder_DeathRecipient {
        private:
         ::android::wp<::android::IBinder> mWho;
         void* mCookie;
-        const AIBinder_DeathRecipient_onBinderDied& mOnDied;
+        const AIBinder_DeathRecipient_onBinderDied mOnDied;
     };
 
     explicit AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied);
