@@ -86,12 +86,15 @@ TEST(NdkBinder, DeathRecipient) {
     // the binder driver should return this if the service dies during the transaction
     EXPECT_EQ(STATUS_DEAD_OBJECT, foo->die());
 
+    foo = nullptr;
+    AIBinder_decStrong(binder);
+    binder = nullptr;
+
     std::unique_lock<std::mutex> lock(deathMutex);
     EXPECT_TRUE(deathCv.wait_for(lock, 1s, [&] { return deathRecieved; }));
     EXPECT_TRUE(deathRecieved);
 
     AIBinder_DeathRecipient_delete(recipient);
-    AIBinder_decStrong(binder);
 }
 
 TEST(NdkBinder, RetrieveNonNdkService) {
