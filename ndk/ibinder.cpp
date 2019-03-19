@@ -269,6 +269,18 @@ void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinde
     CHECK(who == mWho);
 
     mOnDied(mCookie);
+
+    sp<AIBinder_DeathRecipient> recipient = mParentRecipient.promote();
+    sp<IBinder> strongWho = who.promote();
+
+    // otherwise this will be cleaned up later with pruneDeadTransferEntriesLocked
+    if (recipient != nullptr && strongWho != nullptr) {
+        status_t result = recipient->unlinkToDeath(strongWho, mCookie);
+        if (result != ::android::DEAD_OBJECT) {
+            LOG(WARNING) << "Unlinking to dead binder resulted in: " << result;
+        }
+    }
+
     mWho = nullptr;
 }
 
@@ -277,24 +289,34 @@ AIBinder_DeathRecipient::AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinde
     CHECK(onDied != nullptr);
 }
 
-binder_status_t AIBinder_DeathRecipient::linkToDeath(AIBinder* binder, void* cookie) {
+void AIBinder_DeathRecipient::pruneDeadTransferEntriesLocked() {
+    mDeathRecipients.erase(std::remove_if(mDeathRecipients.begin(), mDeathRecipients.end(),
+                                          [](const sp<TransferDeathRecipient>& tdr) {
+                                              return tdr->getWho() == nullptr;
+                                          }),
+                           mDeathRecipients.end());
+}
+
+binder_status_t AIBinder_DeathRecipient::linkToDeath(sp<IBinder> binder, void* cookie) {
     CHECK(binder != nullptr);
 
     std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
 
     sp<TransferDeathRecipient> recipient =
-            new TransferDeathRecipient(binder->getBinder(), cookie, mOnDied);
+            new TransferDeathRecipient(binder, cookie, this, mOnDied);
 
-    status_t status = binder->getBinder()->linkToDeath(recipient, cookie, 0 /*flags*/);
+    status_t status = binder->linkToDeath(recipient, cookie, 0 /*flags*/);
     if (status != STATUS_OK) {
         return PruneStatusT(status);
     }
 
     mDeathRecipients.push_back(recipient);
+
+    pruneDeadTransferEntriesLocked();
     return STATUS_OK;
 }
 
-binder_status_t AIBinder_DeathRecipient::unlinkToDeath(AIBinder* binder, void* cookie) {
+binder_status_t AIBinder_DeathRecipient::unlinkToDeath(sp<IBinder> binder, void* cookie) {
     CHECK(binder != nullptr);
 
     std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
@@ -302,10 +324,10 @@ binder_status_t AIBinder_DeathRecipient::unlinkToDeath(AIBinder* binder, void* c
     for (auto it = mDeathRecipients.rbegin(); it != mDeathRecipients.rend(); ++it) {
         sp<TransferDeathRecipient> recipient = *it;
 
-        if (recipient->getCookie() == cookie && recipient->getWho() == binder->getBinder()) {
+        if (recipient->getCookie() == cookie && recipient->getWho() == binder) {
             mDeathRecipients.erase(it.base() - 1);
 
-            status_t status = binder->getBinder()->unlinkToDeath(recipient, cookie, 0 /*flags*/);
+            status_t status = binder->unlinkToDeath(recipient, cookie, 0 /*flags*/);
             if (status != ::android::OK) {
                 LOG(ERROR) << __func__
                            << ": removed reference to death recipient but unlink failed.";
@@ -390,7 +412,7 @@ binder_status_t AIBinder_linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* 
     }
 
     // returns binder_status_t
-    return recipient->linkToDeath(binder, cookie);
+    return recipient->linkToDeath(binder->getBinder(), cookie);
 }
 
 binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
@@ -401,7 +423,7 @@ binder_status_t AIBinder_unlinkToDeath(AIBinder* binder, AIBinder_DeathRecipient
     }
 
     // returns binder_status_t
-    return recipient->unlinkToDeath(binder, cookie);
+    return recipient->unlinkToDeath(binder->getBinder(), cookie);
 }
 
 uid_t AIBinder_getCallingUid() {
@@ -555,9 +577,15 @@ AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
         LOG(ERROR) << __func__ << ": requires non-null onBinderDied parameter.";
         return nullptr;
     }
-    return new AIBinder_DeathRecipient(onBinderDied);
+    auto ret = new AIBinder_DeathRecipient(onBinderDied);
+    ret->incStrong(nullptr);
+    return ret;
 }
 
 void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) {
-    delete recipient;
+    if (recipient == nullptr) {
+        return;
+    }
+
+    recipient->decStrong(nullptr);
 }
