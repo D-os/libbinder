@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+#include <linux/android/binder.h>
+
 #include <android-base/unique_fd.h>
 #include <cutils/native_handle.h>
 #include <utils/Errors.h>
@@ -28,7 +30,6 @@
 #include <utils/Vector.h>
 #include <utils/Flattenable.h>
 
-#include <binder/binder_kernel.h>
 #include <binder/IInterface.h>
 #include <binder/Parcelable.h>
 #include <binder/Map.h>
