@@ -76,14 +76,6 @@ static size_t pad_size(size_t s) {
 // Note: must be kept in sync with android/os/StrictMode.java's PENALTY_GATHER
 #define STRICT_MODE_PENALTY_GATHER (0x40 << 16)
 
-// XXX This can be made public if we want to provide
-// support for typed data.
-struct small_flat_data
-{
-    uint32_t type;
-    uint32_t data;
-};
-
 namespace android {
 
 static pthread_mutex_t gParcelGlobalAllocSizeLock = PTHREAD_MUTEX_INITIALIZER;
