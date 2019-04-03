@@ -215,7 +215,7 @@ status_t flatten_binder(const sp<ProcessState>& /*proc*/,
     }
 
     if (binder != nullptr) {
-        IBinder *local = binder->localBinder();
+        BBinder *local = binder->localBinder();
         if (!local) {
             BpBinder *proxy = binder->remoteBinder();
             if (proxy == nullptr) {
@@ -227,6 +227,9 @@ status_t flatten_binder(const sp<ProcessState>& /*proc*/,
             obj.handle = handle;
             obj.cookie = 0;
         } else {
+            if (local->isRequestingSid()) {
+                obj.flags |= FLAT_BINDER_FLAG_TXN_SECURITY_CTX;
+            }
             obj.hdr.type = BINDER_TYPE_BINDER;
             obj.binder = reinterpret_cast<uintptr_t>(local->getWeakRefs());
             obj.cookie = reinterpret_cast<uintptr_t>(local);
