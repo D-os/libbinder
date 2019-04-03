@@ -43,6 +43,8 @@ public:
     virtual void stopWatchingMode(const sp<IAppOpsCallback>& callback) = 0;
     virtual sp<IBinder> getToken(const sp<IBinder>& clientToken) = 0;
     virtual int32_t permissionToOpCode(const String16& permission) = 0;
+    virtual int32_t checkAudioOperation(int32_t code, int32_t usage,int32_t uid,
+            const String16& packageName) = 0;
 
     enum {
         CHECK_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
@@ -53,6 +55,7 @@ public:
         STOP_WATCHING_MODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+5,
         GET_TOKEN_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+6,
         PERMISSION_TO_OP_CODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+7,
+        CHECK_AUDIO_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+8,
     };
 
     enum {

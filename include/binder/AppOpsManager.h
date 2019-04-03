@@ -114,6 +114,8 @@ public:
     AppOpsManager();
 
     int32_t checkOp(int32_t op, int32_t uid, const String16& callingPackage);
+    int32_t checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t uid,
+            const String16& callingPackage);
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
             bool startIfModeDefault);
