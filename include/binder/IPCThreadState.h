@@ -42,6 +42,11 @@ public:
             status_t            clearLastError();
 
             pid_t               getCallingPid() const;
+            // nullptr if unavailable
+            //
+            // this can't be restored once it's cleared, and it does not return the
+            // context of the current process when not in a binder call.
+            const char*         getCallingSid() const;
             uid_t               getCallingUid() const;
 
             void                setStrictModePolicy(int32_t policy);
@@ -51,6 +56,7 @@ public:
             int32_t             getLastTransactionBinderFlags() const;
 
             int64_t             clearCallingIdentity();
+            // Restores PID/UID (not SID)
             void                restoreCallingIdentity(int64_t token);
             
             int                 setupPolling(int* fd);
@@ -154,6 +160,7 @@ private:
             Parcel              mOut;
             status_t            mLastError;
             pid_t               mCallingPid;
+            const char*         mCallingSid;
             uid_t               mCallingUid;
             int32_t             mStrictModePolicy;
             int32_t             mLastTransactionBinderFlags;

@@ -181,8 +181,20 @@ bool ProcessState::becomeContextManager(context_check_func checkFunc, void* user
         mBinderContextCheckFunc = checkFunc;
         mBinderContextUserData = userData;
 
-        int dummy = 0;
-        status_t result = ioctl(mDriverFD, BINDER_SET_CONTEXT_MGR, &dummy);
+        flat_binder_object obj {
+            .flags = FLAT_BINDER_FLAG_TXN_SECURITY_CTX,
+        };
+
+        status_t result = ioctl(mDriverFD, BINDER_SET_CONTEXT_MGR_EXT, &obj);
+
+        // fallback to original method
+        if (result != 0) {
+            android_errorWriteLog(0x534e4554, "121035042");
+
+            int dummy = 0;
+            result = ioctl(mDriverFD, BINDER_SET_CONTEXT_MGR, &dummy);
+        }
+
         if (result == 0) {
             mManagesContexts = true;
         } else if (result == -1) {
