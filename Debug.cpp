@@ -221,7 +221,11 @@ void printHexData(int32_t indent, const void *buf, size_t length,
 
         for (word = 0; word < bytesPerLine; ) {
 
-            const size_t startIndex = word+(alignment-(alignment?1:0));
+            size_t align_offset = alignment-(alignment?1:0);
+            if (remain > 0 && (size_t)remain <= align_offset) {
+                align_offset = remain - 1;
+            }
+            const size_t startIndex = word+align_offset;
 
             for (index = 0; index < alignment || (alignment == 0 && index < bytesPerLine); index++) {
 
