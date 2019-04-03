@@ -202,15 +202,6 @@ bool ProcessState::becomeContextManager(context_check_func checkFunc, void* user
 // already be invalid.
 ssize_t ProcessState::getKernelReferences(size_t buf_count, uintptr_t* buf)
 {
-    // TODO: remove these when they are defined by bionic's binder.h
-    struct binder_node_debug_info {
-        binder_uintptr_t ptr;
-        binder_uintptr_t cookie;
-        __u32 has_strong_ref;
-        __u32 has_weak_ref;
-    };
-#define BINDER_GET_NODE_DEBUG_INFO _IOWR('b', 11, struct binder_node_debug_info)
-
     binder_node_debug_info info = {};
 
     uintptr_t* end = buf ? buf + buf_count : nullptr;
