@@ -21,10 +21,6 @@
 
 #include <binder/IBinder.h>
 #include <binder/ProcessState.h>
-#ifndef __ANDROID_VNDK__
-#include <binder/IPermissionController.h>
-#endif
-#include <binder/IServiceManager.h>
 
 namespace android {
 
@@ -34,13 +30,5 @@ extern Vector<int32_t> gTextBuffers;
 // For ProcessState.cpp
 extern Mutex& gProcessMutex;
 extern sp<ProcessState> gProcess;
-
-// For IServiceManager.cpp
-extern Mutex gDefaultServiceManagerLock;
-extern sp<IServiceManager> gDefaultServiceManager;
-#ifndef __ANDROID_VNDK__
-extern sp<IPermissionController> gPermissionController;
-#endif
-extern bool gSystemBootCompleted;
 
 }   // namespace android
