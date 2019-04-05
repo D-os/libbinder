@@ -116,7 +116,7 @@ static const int64_t kWorkSourcePropagatedBitIndex = 32;
 
 static const char* getReturnString(uint32_t cmd)
 {
-    size_t idx = cmd & 0xff;
+    size_t idx = cmd & _IOC_NRMASK;
     if (idx < sizeof(kReturnStrings) / sizeof(kReturnStrings[0]))
         return kReturnStrings[idx];
     else
