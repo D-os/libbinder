@@ -918,23 +918,6 @@ inline TextOutput& operator<<(TextOutput& to, const Parcel& parcel)
     return to;
 }
 
-// ---------------------------------------------------------------------------
-
-// Generic acquire and release of objects.
-void acquire_object(const sp<ProcessState>& proc,
-                    const flat_binder_object& obj, const void* who);
-void release_object(const sp<ProcessState>& proc,
-                    const flat_binder_object& obj, const void* who);
-
-void flatten_binder(const sp<ProcessState>& proc,
-                    const sp<IBinder>& binder, flat_binder_object* out);
-void flatten_binder(const sp<ProcessState>& proc,
-                    const wp<IBinder>& binder, flat_binder_object* out);
-status_t unflatten_binder(const sp<ProcessState>& proc,
-                          const flat_binder_object& flat, sp<IBinder>* out);
-status_t unflatten_binder(const sp<ProcessState>& proc,
-                          const flat_binder_object& flat, wp<IBinder>* out);
-
 }; // namespace android
 
 // ---------------------------------------------------------------------------
