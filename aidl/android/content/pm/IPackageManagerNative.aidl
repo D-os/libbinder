@@ -60,15 +60,12 @@ interface IPackageManagerNative {
     const int LOCATION_VENDOR = 0x2;
     /*  ApplicationInfo.isProduct() == true */
     const int LOCATION_PRODUCT = 0x4;
-    /*  ApplicationInfo.isProductServices() == true */
-    const int LOCATION_PRODUCT_SERVICES = 0x8;
 
     /**
      * Returns a set of bitflags about package location.
      * LOCATION_SYSTEM: getApplicationInfo(packageName).isSystemApp()
      * LOCATION_VENDOR: getApplicationInfo(packageName).isVendor()
      * LOCATION_PRODUCT: getApplicationInfo(packageName).isProduct()
-     * LOCATION_PRODUCT_SERVICES: getApplicationInfo(packageName).isProductService()
      */
     int getLocationFlags(in @utf8InCpp String packageName);
 }
