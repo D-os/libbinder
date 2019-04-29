@@ -57,7 +57,8 @@ status_t BnAppOpsCallback::onTransact(
         case OP_CHANGED_TRANSACTION: {
             CHECK_INTERFACE(IAppOpsCallback, data, reply);
             int32_t op = data.readInt32();
-            String16 packageName = data.readString16();
+            String16 packageName;
+            (void)data.readString16(&packageName);
             opChanged(op, packageName);
             reply->writeNoException();
             return NO_ERROR;
