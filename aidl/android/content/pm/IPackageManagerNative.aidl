@@ -74,4 +74,11 @@ interface IPackageManagerNative {
      * LOCATION_PRODUCT: getApplicationInfo(packageName).isProduct()
      */
     int getLocationFlags(in @utf8InCpp String packageName);
+
+    /**
+     * Returns the target SDK version for the given package.
+     * Unknown packages will cause the call to fail. The caller must check the
+     * returned Status before using the result of this function.
+     */
+    int getTargetSdkVersionForPackage(in String packageName);
 }
