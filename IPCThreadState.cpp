@@ -632,11 +632,11 @@ status_t IPCThreadState::transact(int32_t handle,
     if ((flags & TF_ONE_WAY) == 0) {
         if (UNLIKELY(mCallRestriction != ProcessState::CallRestriction::NONE)) {
             if (mCallRestriction == ProcessState::CallRestriction::ERROR_IF_NOT_ONEWAY) {
-                ALOGE("Process making non-oneway call but is restricted.");
+                ALOGE("Process making non-oneway call (code: %u) but is restricted.", code);
                 CallStack::logStack("non-oneway call", CallStack::getCurrent(10).get(),
                     ANDROID_LOG_ERROR);
             } else /* FATAL_IF_NOT_ONEWAY */ {
-                LOG_ALWAYS_FATAL("Process may not make oneway calls.");
+                LOG_ALWAYS_FATAL("Process may not make oneway calls (code: %u).", code);
             }
         }
 
