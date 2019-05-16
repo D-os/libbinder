@@ -81,4 +81,10 @@ interface IPackageManagerNative {
      * returned Status before using the result of this function.
      */
     int getTargetSdkVersionForPackage(in String packageName);
+
+    /**
+     * Returns the name of module metadata package, or empty string if device doesn't have such
+     * package.
+     */
+    @utf8InCpp String getModuleMetadataPackageName();
 }
