@@ -110,6 +110,8 @@ public:
             // the maximum number of binder threads threads allowed for this process.
             void                blockUntilThreadAvailable();
 
+            // Service manager registration
+            void                setTheContextObject(sp<BBinder> obj);
 
             // Is this thread currently serving a binder call. This method
             // returns true if while traversing backwards from the function call
