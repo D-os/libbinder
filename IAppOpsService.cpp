@@ -34,6 +34,7 @@ public:
     {
     }
 
+#ifndef __ANDROID_VNDK__
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
@@ -111,7 +112,6 @@ public:
         return reply.readStrongBinder();
     }
 
-
     virtual int32_t permissionToOpCode(const String16& permission) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
@@ -137,6 +137,45 @@ public:
         }
         return reply.readInt32();
     }
+
+#endif
+    virtual void noteAsyncOp(const String16& callingPackageName, int32_t uid,
+            const String16& packageName, int32_t opCode, const String16& message) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
+
+        // Convert empty callingPackage into null string
+        if (callingPackageName.size() != 0) {
+            data.writeString16(callingPackageName);
+        } else {
+            data.writeString16(nullptr, 0);
+        }
+
+        data.writeInt32(uid);
+
+        // Convert empty packageName into null string
+        if (packageName.size() != 0) {
+            data.writeString16(packageName);
+        } else {
+            data.writeString16(nullptr, 0);
+        }
+
+        data.writeInt32(opCode);
+        data.writeString16(message);
+        remote()->transact(NOTE_ASYNC_OP_TRANSACTION, data, &reply);
+    }
+
+    virtual bool shouldCollectNotes(int32_t opCode) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
+        data.writeInt32(opCode);
+        remote()->transact(SHOULD_COLLECT_NOTES_TRANSACTION, data, &reply);
+        // fail on exception
+        if (reply.readExceptionCode() != 0) {
+            return false;
+        }
+        return reply.readBool();
+    }
 };
 
 IMPLEMENT_META_INTERFACE(AppOpsService, "com.android.internal.app.IAppOpsService");
@@ -149,6 +188,7 @@ status_t BnAppOpsService::onTransact(
 {
     //printf("AppOpsService received: "); data.print();
     switch(code) {
+#ifndef __ANDROID_VNDK__
         case CHECK_OPERATION_TRANSACTION: {
             CHECK_INTERFACE(IAppOpsService, data, reply);
             int32_t code = data.readInt32();
@@ -232,6 +272,26 @@ status_t BnAppOpsService::onTransact(
             const int32_t res = checkAudioOperation(code, usage, uid, packageName);
             reply->writeNoException();
             reply->writeInt32(res);
+            return NO_ERROR;
+        } break;
+#endif // __ANDROID_VNDK__
+        case NOTE_ASYNC_OP_TRANSACTION: {
+            CHECK_INTERFACE(IAppOpsService, data, reply);
+            String16 callingPackageName = data.readString16();
+            int32_t uid = data.readInt32();
+            String16 packageName = data.readString16();
+            int32_t opCode = data.readInt32();
+            String16 message = data.readString16();
+            noteAsyncOp(callingPackageName, uid, packageName, opCode, message);
+            reply->writeNoException();
+            return NO_ERROR;
+        } break;
+        case SHOULD_COLLECT_NOTES_TRANSACTION: {
+            CHECK_INTERFACE(IAppOpsService, data, reply);
+            int32_t opCode = data.readInt32();
+            bool shouldCollect = shouldCollectNotes(opCode);
+            reply->writeNoException();
+            reply->writeBool(shouldCollect);
             return NO_ERROR;
         } break;
         default:

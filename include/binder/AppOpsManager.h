@@ -17,8 +17,6 @@
 #ifndef ANDROID_APP_OPS_MANAGER_H
 #define ANDROID_APP_OPS_MANAGER_H
 
-#ifndef __ANDROID_VNDK__
-
 #include <binder/IAppOpsService.h>
 
 #include <utils/threads.h>
@@ -35,6 +33,7 @@ public:
         MODE_ERRORED = IAppOpsService::MODE_ERRORED
     };
 
+#ifndef __ANDROID_VNDK__
     enum {
         OP_NONE = -1,
         OP_COARSE_LOCATION = 0,
@@ -109,34 +108,58 @@ public:
         OP_START_FOREGROUND = 76,
         OP_BLUETOOTH_SCAN = 77,
         OP_USE_BIOMETRIC = 78,
+        OP_ACTIVITY_RECOGNITION = 79,
+        OP_SMS_FINANCIAL_TRANSACTIONS = 80,
+        OP_READ_MEDIA_AUDIO = 81,
+        OP_WRITE_MEDIA_AUDIO = 82,
+        OP_READ_MEDIA_VIDEO = 83,
+        OP_WRITE_MEDIA_VIDEO = 84,
+        OP_READ_MEDIA_IMAGES = 85,
+        OP_WRITE_MEDIA_IMAGES = 86,
+        OP_LEGACY_STORAGE = 87,
+        OP_ACCESS_ACCESSIBILITY = 88,
+        OP_READ_DEVICE_IDENTIFIERS = 89,
+        _NUM_OP = 90
     };
+#endif // __ANDROID_VNDK__
 
     AppOpsManager();
 
+#ifndef __ANDROID_VNDK__
     int32_t checkOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t uid,
             const String16& callingPackage);
+    // @Deprecated, use noteOp(int32_t, int32_t uid, const String16&, const String16&) instead
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage);
+    int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage,
+            const String16& message);
+    // @Deprecated, use startOpNoThrow(int32_t, int32_t, const String16&, bool, const String16&)
+    // instead
     int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
             bool startIfModeDefault);
+    int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
+            bool startIfModeDefault, const String16& message);
     void finishOp(int32_t op, int32_t uid, const String16& callingPackage);
     void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback);
     void stopWatchingMode(const sp<IAppOpsCallback>& callback);
     int32_t permissionToOpCode(const String16& permission);
-
+#endif // __ANDROID_VNDK__
+    void noteAsyncOp(const String16& callingPackageName, int32_t uid, const String16& packageName,
+            int32_t opCode, const String16& message);
 private:
     Mutex mLock;
     sp<IAppOpsService> mService;
 
     sp<IAppOpsService> getService();
+    void markAppOpNoted(int32_t uid, const String16& packageName, int32_t opCode,
+            const String16& message);
+    bool shouldCollectNotes(int32_t opCode);
 };
 
 
 }; // namespace android
+
 // ---------------------------------------------------------------------------
-#else // __ANDROID_VNDK__
-#error "This header is not visible to vendors"
-#endif // __ANDROID_VNDK__
 
 #endif // ANDROID_APP_OPS_MANAGER_H
