@@ -286,7 +286,13 @@ TEST_F(BinderDriverInterfaceTest, Transaction) {
         EXPECT_EQ(0u, br.arg2.cookie);
         EXPECT_EQ(0u, br.arg2.code);
         EXPECT_EQ(0u, br.arg2.flags);
-        EXPECT_EQ(0u, br.arg2.data_size);
+
+        // ping returns a 4 byte header in libbinder, but the original
+        // C implementation of servicemanager returns a 0 byte header
+        if (br.arg2.data_size != 0 && br.arg2.data_size != 4) {
+            ADD_FAILURE() << br.arg2.data_size << " is expected to be 0 or 4";
+        }
+
         EXPECT_EQ(0u, br.arg2.offsets_size);
 
         SCOPED_TRACE("3rd WriteRead");
