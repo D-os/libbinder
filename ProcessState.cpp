@@ -466,7 +466,7 @@ ProcessState::ProcessState(const char *driver, size_t mmap_size)
         }
     }
 
-    LOG_ALWAYS_FATAL_IF(mDriverFD < 0, "Binder driver could not be opened.  Terminating.");
+    LOG_ALWAYS_FATAL_IF(mDriverFD < 0, "Binder driver '%s' could not be opened.  Terminating.", driver);
 }
 
 ProcessState::~ProcessState()
