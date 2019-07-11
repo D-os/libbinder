@@ -26,28 +26,28 @@ cc_defaults {
 
 cc_test {
     name: "binderDriverInterfaceTest_IPC_32",
-    srcs: ["binderDriverInterfaceTest.cpp"],
     defaults: ["binder_test_defaults"],
+    srcs: ["binderDriverInterfaceTest.cpp"],
     compile_multilib: "32",
     cflags: ["-DBINDER_IPC_32BIT=1"],
 }
 
 cc_test {
+    name: "binderDriverInterfaceTest",
+    defaults: ["binder_test_defaults"],
     product_variables: {
         binder32bit: {
             cflags: ["-DBINDER_IPC_32BIT=1"],
         },
     },
 
-    name: "binderDriverInterfaceTest",
     srcs: ["binderDriverInterfaceTest.cpp"],
-    defaults: ["binder_test_defaults"],
 }
 
 cc_test {
     name: "binderValueTypeTest",
-    srcs: ["binderValueTypeTest.cpp"],
     defaults: ["binder_test_defaults"],
+    srcs: ["binderValueTypeTest.cpp"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -56,8 +56,8 @@ cc_test {
 
 cc_test {
     name: "binderLibTest_IPC_32",
-    srcs: ["binderLibTest.cpp"],
     defaults: ["binder_test_defaults"],
+    srcs: ["binderLibTest.cpp"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -67,14 +67,14 @@ cc_test {
 }
 
 cc_test {
+    name: "binderLibTest",
+    defaults: ["binder_test_defaults"],
     product_variables: {
         binder32bit: {
             cflags: ["-DBINDER_IPC_32BIT=1"],
         },
     },
 
-    defaults: ["binder_test_defaults"],
-    name: "binderLibTest",
     srcs: ["binderLibTest.cpp"],
     shared_libs: [
         "libbinder",
@@ -84,8 +84,8 @@ cc_test {
 
 cc_test {
     name: "binderThroughputTest",
-    srcs: ["binderThroughputTest.cpp"],
     defaults: ["binder_test_defaults"],
+    srcs: ["binderThroughputTest.cpp"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -101,8 +101,8 @@ cc_test {
 
 cc_test {
     name: "binderTextOutputTest",
-    srcs: ["binderTextOutputTest.cpp"],
     defaults: ["binder_test_defaults"],
+    srcs: ["binderTextOutputTest.cpp"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -112,8 +112,8 @@ cc_test {
 
 cc_test {
     name: "schd-dbg",
-    srcs: ["schd-dbg.cpp"],
     defaults: ["binder_test_defaults"],
+    srcs: ["schd-dbg.cpp"],
     shared_libs: [
         "libbinder",
         "libutils",
@@ -123,8 +123,8 @@ cc_test {
 
 cc_test {
     name: "binderSafeInterfaceTest",
-    srcs: ["binderSafeInterfaceTest.cpp"],
     defaults: ["binder_test_defaults"],
+    srcs: ["binderSafeInterfaceTest.cpp"],
 
     cppflags: [
         "-Weverything",
