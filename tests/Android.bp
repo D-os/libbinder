@@ -42,6 +42,7 @@ cc_test {
     },
 
     srcs: ["binderDriverInterfaceTest.cpp"],
+    test_suites: ["device-tests"],
 }
 
 cc_test {
@@ -52,6 +53,7 @@ cc_test {
         "libbinder",
         "libutils",
     ],
+    test_suites: ["device-tests"],
 }
 
 cc_test {
@@ -108,6 +110,7 @@ cc_test {
         "libutils",
         "libbase",
     ],
+    test_suites: ["device-tests"],
 }
 
 cc_test {
