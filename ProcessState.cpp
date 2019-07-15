@@ -28,7 +28,7 @@
 #include <utils/threads.h>
 
 #include <private/binder/binder_module.h>
-#include <private/binder/Static.h>
+#include "Static.h"
 
 #include <errno.h>
 #include <fcntl.h>

@@ -23,11 +23,11 @@
 #include <utils/RefBase.h>
 #include <utils/Vector.h>
 
-#include <private/binder/Static.h>
-
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "Static.h"
 
 // ---------------------------------------------------------------------------
 
