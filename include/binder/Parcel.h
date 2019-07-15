@@ -237,8 +237,6 @@ public:
     // Currently the native implementation doesn't do any of the StrictMode
     // stack gathering and serialization that the Java implementation does.
     status_t            writeNoException();
-
-    void                remove(size_t start, size_t amt);
     
     status_t            read(void* outData, size_t len) const;
     const void*         readInplace(size_t len) const;
