@@ -45,21 +45,14 @@ public:
      */
     static  sp<ProcessState>    initWithDriver(const char *driver);
 
-            void                setContextObject(const sp<IBinder>& object);
             sp<IBinder>         getContextObject(const sp<IBinder>& caller);
-        
-            void                setContextObject(const sp<IBinder>& object,
-                                                 const String16& name);
-            sp<IBinder>         getContextObject(const String16& name,
-                                                 const sp<IBinder>& caller);
 
             void                startThreadPool();
                         
     typedef bool (*context_check_func)(const String16& name,
                                        const sp<IBinder>& caller,
                                        void* userData);
-        
-            bool                isContextManager(void) const;
+
             bool                becomeContextManager(
                                     context_check_func checkFunc,
                                     void* userData);
@@ -121,18 +114,11 @@ private:
             int64_t             mStarvationStartTimeMs;
 
     mutable Mutex               mLock;  // protects everything below.
-            // TODO: mManagesContexts is often accessed without the lock.
-            //       Explain why that's safe.
 
             Vector<handle_entry>mHandleToObject;
 
-            bool                mManagesContexts;
             context_check_func  mBinderContextCheckFunc;
             void*               mBinderContextUserData;
-
-            KeyedVector<String16, sp<IBinder> >
-                                mContexts;
-
 
             String8             mRootDir;
             bool                mThreadPoolStarted;
