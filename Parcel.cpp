@@ -48,7 +48,7 @@
 #include <utils/String16.h>
 
 #include <private/binder/binder_module.h>
-#include <private/binder/Static.h>
+#include "Static.h"
 
 #ifndef INT32_MAX
 #define INT32_MAX ((int32_t)(2147483647))
