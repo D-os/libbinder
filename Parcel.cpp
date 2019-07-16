@@ -666,11 +666,6 @@ bool Parcel::enforceInterface(const String16& interface,
     }
 }
 
-const binder_size_t* Parcel::objects() const
-{
-    return mObjects;
-}
-
 size_t Parcel::objectsCount() const
 {
     return mObjectsSize;
@@ -2459,7 +2454,7 @@ void Parcel::print(TextOutput& to, uint32_t /*flags*/) const
     } else if (dataSize() > 0) {
         const uint8_t* DATA = data();
         to << indent << HexDump(DATA, dataSize()) << dedent;
-        const binder_size_t* OBJS = objects();
+        const binder_size_t* OBJS = mObjects;
         const size_t N = objectsCount();
         for (size_t i=0; i<N; i++) {
             const flat_binder_object* flat

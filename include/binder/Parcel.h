@@ -97,10 +97,6 @@ public:
 
     void                freeData();
 
-private:
-    const binder_size_t* objects() const;
-
-public:
     size_t              objectsCount() const;
     
     status_t            errorCheck() const;
