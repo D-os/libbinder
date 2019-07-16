@@ -34,7 +34,7 @@ class BpBinder : public IBinder
 public:
     static BpBinder*    create(int32_t handle);
 
-    inline  int32_t     handle() const { return mHandle; }
+    int32_t             handle() const;
 
     virtual const String16&    getInterfaceDescriptor() const;
     virtual bool        isBinderAlive() const;
