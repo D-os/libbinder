@@ -46,17 +46,6 @@ cc_test {
 }
 
 cc_test {
-    name: "binderValueTypeTest",
-    defaults: ["binder_test_defaults"],
-    srcs: ["binderValueTypeTest.cpp"],
-    shared_libs: [
-        "libbinder",
-        "libutils",
-    ],
-    test_suites: ["device-tests"],
-}
-
-cc_test {
     name: "binderLibTest_IPC_32",
     defaults: ["binder_test_defaults"],
     srcs: ["binderLibTest.cpp"],
