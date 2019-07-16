@@ -71,6 +71,7 @@ cc_test {
         "libbinder",
         "libutils",
     ],
+    test_suites: ["device-tests"],
 }
 
 cc_test {
