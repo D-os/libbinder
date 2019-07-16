@@ -1394,11 +1394,6 @@ status_t Parcel::writeNoException()
     return status.writeToParcel(this);
 }
 
-void Parcel::remove(size_t /*start*/, size_t /*amt*/)
-{
-    LOG_ALWAYS_FATAL("Parcel::remove() not yet implemented!");
-}
-
 status_t Parcel::validateReadData(size_t upperBound) const
 {
     // Don't allow non-object reads on object data
