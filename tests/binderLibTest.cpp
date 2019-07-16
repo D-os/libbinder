@@ -550,50 +550,6 @@ TEST_F(BinderLibTest, AddServer)
     ASSERT_TRUE(server != nullptr);
 }
 
-TEST_F(BinderLibTest, DeathNotificationNoRefs)
-{
-    status_t ret;
-
-    sp<TestDeathRecipient> testDeathRecipient = new TestDeathRecipient();
-
-    {
-        sp<IBinder> binder = addServer();
-        ASSERT_TRUE(binder != nullptr);
-        ret = binder->linkToDeath(testDeathRecipient);
-        EXPECT_EQ(NO_ERROR, ret);
-    }
-    IPCThreadState::self()->flushCommands();
-    ret = testDeathRecipient->waitEvent(5);
-    EXPECT_EQ(NO_ERROR, ret);
-#if 0 /* Is there an unlink api that does not require a strong reference? */
-    ret = binder->unlinkToDeath(testDeathRecipient);
-    EXPECT_EQ(NO_ERROR, ret);
-#endif
-}
-
-TEST_F(BinderLibTest, DeathNotificationWeakRef)
-{
-    status_t ret;
-    wp<IBinder> wbinder;
-
-    sp<TestDeathRecipient> testDeathRecipient = new TestDeathRecipient();
-
-    {
-        sp<IBinder> binder = addServer();
-        ASSERT_TRUE(binder != nullptr);
-        ret = binder->linkToDeath(testDeathRecipient);
-        EXPECT_EQ(NO_ERROR, ret);
-        wbinder = binder;
-    }
-    IPCThreadState::self()->flushCommands();
-    ret = testDeathRecipient->waitEvent(5);
-    EXPECT_EQ(NO_ERROR, ret);
-#if 0 /* Is there an unlink api that does not require a strong reference? */
-    ret = binder->unlinkToDeath(testDeathRecipient);
-    EXPECT_EQ(NO_ERROR, ret);
-#endif
-}
-
 TEST_F(BinderLibTest, DeathNotificationStrongRef)
 {
     status_t ret;
