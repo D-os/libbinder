@@ -1,6 +1,9 @@
 {
   "presubmit": [
     {
+      "name": "binderSafeInterfaceTest"
+    },
+    {
       "name": "binderDriverInterfaceTest"
     },
     {
