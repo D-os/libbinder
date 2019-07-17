@@ -70,6 +70,7 @@ cc_library_shared {
         "ProcessInfoService.cpp",
         "ProcessState.cpp",
         "Static.cpp",
+        "Stability.cpp",
         "Status.cpp",
         "TextOutput.cpp",
         "IpPrefix.cpp",
