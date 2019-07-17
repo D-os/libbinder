@@ -210,8 +210,12 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
 
     if (e != nullptr) {
         // We need to create a new BpBinder if there isn't currently one, OR we
-        // are unable to acquire a weak reference on this current one.  See comment
-        // in getWeakProxyForHandle() for more info about this.
+        // are unable to acquire a weak reference on this current one.  The
+        // attemptIncWeak() is safe because we know the BpBinder destructor will always
+        // call expungeHandle(), which acquires the same lock we are holding now.
+        // We need to do this because there is a race condition between someone
+        // releasing a reference on this BpBinder, and a new reference on its handle
+        // arriving from the driver.
         IBinder* b = e->binder;
         if (b == nullptr || !e->refs->attemptIncWeak(this)) {
             if (handle == 0) {
@@ -250,37 +254,6 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
             // reference to the remote proxy when this team doesn't have one
             // but another team is sending the handle to us.
             result.force_set(b);
-            e->refs->decWeak(this);
-        }
-    }
-
-    return result;
-}
-
-wp<IBinder> ProcessState::getWeakProxyForHandle(int32_t handle)
-{
-    wp<IBinder> result;
-
-    AutoMutex _l(mLock);
-
-    handle_entry* e = lookupHandleLocked(handle);
-
-    if (e != nullptr) {        
-        // We need to create a new BpBinder if there isn't currently one, OR we
-        // are unable to acquire a weak reference on this current one.  The
-        // attemptIncWeak() is safe because we know the BpBinder destructor will always
-        // call expungeHandle(), which acquires the same lock we are holding now.
-        // We need to do this because there is a race condition between someone
-        // releasing a reference on this BpBinder, and a new reference on its handle
-        // arriving from the driver.
-        IBinder* b = e->binder;
-        if (b == nullptr || !e->refs->attemptIncWeak(this)) {
-            b = BpBinder::create(handle);
-            result = b;
-            e->binder = b;
-            if (b) e->refs = b->getWeakRefs();
-        } else {
-            result = b;
             e->refs->decWeak(this);
         }
     }
