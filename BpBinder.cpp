@@ -148,6 +148,10 @@ BpBinder::BpBinder(int32_t handle, int32_t trackedUid)
     IPCThreadState::self()->incWeakHandle(handle, this);
 }
 
+int32_t BpBinder::handle() const {
+    return mHandle;
+}
+
 bool BpBinder::isDescriptorCached() const {
     Mutex::Autolock _l(mLock);
     return mDescriptorCache.size() ? true : false;
