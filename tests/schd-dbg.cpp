@@ -290,6 +290,7 @@ static void* thread_start(void* p) {
 
   sta = tickNow();
   status_t ret = workers[target]->transact(BINDER_NOP, data, &reply);
+  ASSERT(ret == NO_ERROR);
   end = tickNow();
   results_fifo->add_time(tickNano(sta, end));
 

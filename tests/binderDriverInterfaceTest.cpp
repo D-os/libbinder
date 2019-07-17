@@ -230,7 +230,6 @@ TEST_F(BinderDriverInterfaceTest, IncRefsAcquireReleaseDecRefs) {
 }
 
 TEST_F(BinderDriverInterfaceTest, Transaction) {
-    binder_uintptr_t cookie = 1234;
     struct {
         uint32_t cmd1;
         struct binder_transaction_data arg1;

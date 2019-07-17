@@ -75,7 +75,7 @@ public:
 
 private:
     int32_t mValue = 0;
-    uint8_t mPadding[4] = {}; // Avoids a warning from -Wpadded
+    __attribute__((unused)) uint8_t mPadding[4] = {}; // Avoids a warning from -Wpadded
 };
 
 struct TestFlattenable : Flattenable<TestFlattenable> {
@@ -727,6 +727,7 @@ TEST_F(SafeInterfaceTest, TestIncremementParcelableVector) {
     const std::vector<TestParcelable> a{TestParcelable{1}, TestParcelable{2}};
     std::vector<TestParcelable> aPlusOne;
     status_t result = mSafeInterfaceTest->increment(a, &aPlusOne);
+    ASSERT_EQ(NO_ERROR, result);
     ASSERT_EQ(a.size(), aPlusOne.size());
     for (size_t i = 0; i < a.size(); ++i) {
         ASSERT_EQ(a[i].getValue() + 1, aPlusOne[i].getValue());
