@@ -19,8 +19,6 @@ cc_defaults {
     cflags: [
         "-Wall",
         "-Werror",
-        "-Wno-unused-private-field",
-        "-Wno-unused-variable",
     ],
 }
 
