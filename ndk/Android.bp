@@ -16,7 +16,6 @@
 
 cc_library {
     name: "libbinder_ndk",
-    vendor_available: true,
 
     export_include_dirs: [
         "include_ndk",
@@ -73,4 +72,13 @@ ndk_library {
     name: "libbinder_ndk",
     symbol_file: "libbinder_ndk.map.txt",
     first_version: "29",
+}
+
+llndk_library {
+    name: "libbinder_ndk",
+    symbol_file: "libbinder_ndk.map.txt",
+    export_include_dirs: [
+        "include_ndk",
+        "include_apex",
+    ],
 }
