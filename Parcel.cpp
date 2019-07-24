@@ -2354,6 +2354,22 @@ void Parcel::ipcSetDataReference(const uint8_t* data, size_t dataSize,
             mObjectsSize = 0;
             break;
         }
+        const flat_binder_object* flat
+            = reinterpret_cast<const flat_binder_object*>(mData + offset);
+        uint32_t type = flat->hdr.type;
+        if (!(type == BINDER_TYPE_BINDER || type == BINDER_TYPE_HANDLE ||
+              type == BINDER_TYPE_FD)) {
+            // We should never receive other types (eg BINDER_TYPE_FDA) as long as we don't support
+            // them in libbinder. If we do receive them, it probably means a kernel bug; try to
+            // recover gracefully by clearing out the objects, and releasing the objects we do
+            // know about.
+            android_errorWriteLog(0x534e4554, "135930648");
+            ALOGE("%s: unsupported type object (%" PRIu32 ") at offset %" PRIu64 "\n",
+                  __func__, type, (uint64_t)offset);
+            releaseObjects();
+            mObjectsSize = 0;
+            break;
+        }
         minOffset = offset + sizeof(flat_binder_object);
     }
     scanForFds();
