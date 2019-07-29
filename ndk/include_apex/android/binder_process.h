@@ -27,7 +27,7 @@ __BEGIN_DECLS
 void ABinderProcess_startThreadPool();
 /**
  * This sets the maximum number of threads that can be started in the threadpool. By default, after
- * startThreadPool is called, this is one. If it is called additional times, it will only prevent
+ * startThreadPool is called, this is 15. If it is called additional times, it will only prevent
  * the kernel from starting new threads and will not delete already existing threads.
  */
 bool ABinderProcess_setThreadPoolMaxThreadCount(uint32_t numThreads);
