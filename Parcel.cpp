@@ -590,6 +590,12 @@ void Parcel::updateWorkSourceRequestHeaderPosition() const {
     }
 }
 
+#ifdef __ANDROID_VNDK__
+constexpr int32_t kHeader = B_PACK_CHARS('V', 'N', 'D', 'R');
+#else
+constexpr int32_t kHeader = B_PACK_CHARS('S', 'Y', 'S', 'T');
+#endif
+
 // Write RPC headers.  (previously just the interface token)
 status_t Parcel::writeInterfaceToken(const String16& interface)
 {
@@ -598,6 +604,7 @@ status_t Parcel::writeInterfaceToken(const String16& interface)
     updateWorkSourceRequestHeaderPosition();
     writeInt32(threadState->shouldPropagateWorkSource() ?
             threadState->getCallingWorkSourceUid() : IPCThreadState::kUnsetWorkSource);
+    writeInt32(kHeader);
     // currently the interface identification token is just its name as a string
     return writeString16(interface);
 }
@@ -655,6 +662,12 @@ bool Parcel::enforceInterface(const String16& interface,
     updateWorkSourceRequestHeaderPosition();
     int32_t workSource = readInt32();
     threadState->setCallingWorkSourceUidWithoutPropagation(workSource);
+    // vendor header
+    int32_t header = readInt32();
+    if (header != kHeader) {
+        ALOGE("Expecting header 0x%x but found 0x%x. Mixing copies of libbinder?", kHeader, header);
+        return false;
+    }
     // Interface descriptor.
     const String16 str(readString16());
     if (str == interface) {
