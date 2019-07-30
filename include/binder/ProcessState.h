@@ -58,7 +58,6 @@ public:
                                     void* userData);
 
             sp<IBinder>         getStrongProxyForHandle(int32_t handle);
-            wp<IBinder>         getWeakProxyForHandle(int32_t handle);
             void                expungeHandle(int32_t handle, IBinder* binder);
 
             void                spawnPooledThread(bool isMain);
