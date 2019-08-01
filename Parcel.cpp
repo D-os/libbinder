@@ -77,6 +77,9 @@ static size_t pad_size(size_t s) {
 
 namespace android {
 
+// many things compile this into prebuilts on the stack
+static_assert(sizeof(Parcel) == 60 || sizeof(Parcel) == 120);
+
 static pthread_mutex_t gParcelGlobalAllocSizeLock = PTHREAD_MUTEX_INITIALIZER;
 static size_t gParcelGlobalAllocSize = 0;
 static size_t gParcelGlobalAllocCount = 0;

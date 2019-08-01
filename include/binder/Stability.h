@@ -45,7 +45,7 @@ private:
     // up the efficiency level of a binder object. So, we expose the underlying type.
     friend ::android::Parcel;
 
-    enum Level : int32_t {
+    enum Level : int16_t {
         UNDECLARED = 0,
 
         VENDOR = 0b000011,
