@@ -87,30 +87,16 @@ public:
     }
 };
 
-void checkNoStabilityServer(const sp<IBinderStabilityTest>& unkemptServer) {
-    EXPECT_TRUE(unkemptServer->sendBinder(new BBinder()).isOk());
-    EXPECT_TRUE(unkemptServer->sendBinder(getCompilationUnitStability()).isOk());
-    EXPECT_TRUE(unkemptServer->sendBinder(getVintfStability()).isOk());
-
-    sp<IBinder> out;
-    EXPECT_TRUE(unkemptServer->returnNoStabilityBinder(&out).isOk());
-    EXPECT_NE(nullptr, out.get());
-
-    EXPECT_TRUE(unkemptServer->returnLocalStabilityBinder(&out).isOk());
-    EXPECT_NE(nullptr, out.get());
-
-    EXPECT_TRUE(unkemptServer->returnVintfStabilityBinder(&out).isOk());
-    EXPECT_NE(nullptr, out.get());
-}
-
-void checkLowStabilityServer(const sp<IBinderStabilityTest>& complServer) {
-    EXPECT_FALSE(complServer->sendBinder(new BBinder()).isOk());
+void checkLocalStabilityBinder(const sp<IBinderStabilityTest>& complServer) {
+    // this binder should automatically be set to local stability
+    EXPECT_TRUE(complServer->sendBinder(new BBinder()).isOk());
     EXPECT_TRUE(complServer->sendBinder(getCompilationUnitStability()).isOk());
     EXPECT_TRUE(complServer->sendBinder(getVintfStability()).isOk());
 
     sp<IBinder> out;
-    EXPECT_FALSE(complServer->returnNoStabilityBinder(&out).isOk());
-    EXPECT_EQ(nullptr, out.get());
+    // should automatically be set to local stability
+    EXPECT_TRUE(complServer->returnNoStabilityBinder(&out).isOk());
+    EXPECT_NE(nullptr, out.get());
 
     EXPECT_TRUE(complServer->returnLocalStabilityBinder(&out).isOk());
     EXPECT_NE(nullptr, out.get());
@@ -140,13 +126,15 @@ TEST(BinderStability, LocalNoStabilityServer) {
     // or was written by hand.
     auto server = BadStabilityTester::getNoStabilityServer();
     ASSERT_NE(nullptr, IInterface::asBinder(server)->localBinder());
-    checkNoStabilityServer(server);
+
+    // it should be considered to have local stability
+    checkLocalStabilityBinder(server);
 }
 
 TEST(BinderStability, LocalLowStabilityServer) {
     auto server = BadStabilityTester::getCompilationUnitStabilityServer();
     ASSERT_NE(nullptr, IInterface::asBinder(server)->localBinder());
-    checkLowStabilityServer(server);
+    checkLocalStabilityBinder(server);
 }
 
 TEST(BinderStability, LocalHighStabilityServer) {
@@ -162,7 +150,8 @@ TEST(BinderStability, RemoteNoStabilityServer) {
     ASSERT_NE(nullptr, remoteServer.get());
     ASSERT_NE(nullptr, IInterface::asBinder(remoteServer)->remoteBinder());
 
-    checkNoStabilityServer(remoteServer);
+    // it should be considered to have local stability
+    checkLocalStabilityBinder(remoteServer);
 }
 
 TEST(BinderStability, RemoteLowStabilityServer) {
@@ -172,7 +161,7 @@ TEST(BinderStability, RemoteLowStabilityServer) {
     ASSERT_NE(nullptr, remoteServer.get());
     ASSERT_NE(nullptr, IInterface::asBinder(remoteServer)->remoteBinder());
 
-    checkLowStabilityServer(remoteServer);
+    checkLocalStabilityBinder(remoteServer);
 }
 
 TEST(BinderStability, RemoteVintfServer) {
