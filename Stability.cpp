@@ -13,29 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <binder/Stability.h>
 
 namespace android {
 namespace internal {
 
 void Stability::markCompilationUnit(IBinder* binder) {
-#ifdef __ANDROID_VNDK__
-constexpr Stability::Level kLocalStability = Stability::Level::VENDOR;
-#else
-constexpr Stability::Level kLocalStability = Stability::Level::SYSTEM;
-#endif
-
-    status_t result = set(binder, kLocalStability);
+    status_t result = set(binder, kLocalStability, true /*log*/);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
 void Stability::markVintf(IBinder* binder) {
-    status_t result = set(binder, Level::VINTF);
+    status_t result = set(binder, Level::VINTF, true /*log*/);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
-status_t Stability::set(IBinder* binder, int32_t stability) {
+void Stability::tryMarkCompilationUnit(IBinder* binder) {
+    (void) set(binder, kLocalStability, false /*log*/);
+}
+
+status_t Stability::set(IBinder* binder, int32_t stability, bool log) {
     Level currentStability = get(binder);
 
     // null binder is always written w/ 'UNDECLARED' stability
@@ -43,23 +40,26 @@ status_t Stability::set(IBinder* binder, int32_t stability) {
         if (stability == UNDECLARED) {
             return OK;
         } else {
-            ALOGE("Null binder written with stability %s.", stabilityString(stability).c_str());
+            if (log) {
+                ALOGE("Null binder written with stability %s.",
+                    stabilityString(stability).c_str());
+            }
             return BAD_TYPE;
         }
     }
 
     if (!isDeclaredStability(stability)) {
-        // There are UNDECLARED sets because some binder interfaces don't set their stability, and
-        // then UNDECLARED stability is sent on the other side.
-        if (stability != UNDECLARED) {
+        if (log) {
             ALOGE("Can only set known stability, not %d.", stability);
-            return BAD_TYPE;
         }
+        return BAD_TYPE;
     }
 
     if (currentStability != Level::UNDECLARED && currentStability != stability) {
-        ALOGE("Interface being set with %s but it is already marked as %s.",
-            stabilityString(stability).c_str(), stabilityString(stability).c_str());
+        if (log) {
+            ALOGE("Interface being set with %s but it is already marked as %s.",
+                stabilityString(stability).c_str(), stabilityString(stability).c_str());
+        }
         return BAD_TYPE;
     }
 
