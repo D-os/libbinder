@@ -61,9 +61,9 @@ public:
     virtual void        attachObject(   const void* objectID,
                                         void* object,
                                         void* cleanupCookie,
-                                        object_cleanup_func func);
-    virtual void*       findObject(const void* objectID) const;
-    virtual void        detachObject(const void* objectID);
+                                        object_cleanup_func func) final;
+    virtual void*       findObject(const void* objectID) const final;
+    virtual void        detachObject(const void* objectID) final;
 
     virtual BpBinder*   remoteBinder();
 
