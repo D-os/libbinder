@@ -33,7 +33,6 @@
 
 #include <binder/IInterface.h>
 #include <binder/Parcelable.h>
-#include <binder/Stability.h>
 
 // ---------------------------------------------------------------------------
 namespace android {
@@ -68,9 +67,7 @@ public:
     status_t            setDataSize(size_t size);
     void                setDataPosition(size_t pos) const;
     status_t            setDataCapacity(size_t size);
-
-    void                setTransactingBinder(const sp<IBinder>& binder) const;
-
+    
     status_t            setData(const uint8_t* buffer, size_t len);
 
     status_t            appendFrom(const Parcel *parcel,
@@ -422,13 +419,7 @@ private:
     void                scanForFds() const;
     status_t            validateReadData(size_t len) const;
     void                updateWorkSourceRequestHeaderPosition() const;
-
-    status_t            finishFlattenBinder(const sp<IBinder>& binder,
-                                            const flat_binder_object& flat);
-    status_t            finishUnflattenBinder(const sp<IBinder>& binder, sp<IBinder>* out) const;
-    status_t            flattenBinder(const sp<IBinder>& binder);
-    status_t            unflattenBinder(sp<IBinder>* out) const;
-
+                        
     template<class T>
     status_t            readAligned(T *pArg) const;
 
@@ -475,15 +466,13 @@ private:
     size_t              mObjectsCapacity;
     mutable size_t      mNextObjectHint;
     mutable bool        mObjectsSorted;
-    bool                mAllowFds;
 
     mutable bool        mRequestHeaderPresent;
     mutable size_t      mWorkSourceRequestHeaderPosition;
 
     mutable bool        mFdsKnown;
     mutable bool        mHasFds;
-
-    mutable internal::Stability::Level mRequiredStability;
+    bool                mAllowFds;
 
     release_func        mOwner;
     void*               mOwnerCookie;

@@ -164,34 +164,14 @@ static void release_object(const sp<ProcessState>& proc,
     ALOGE("Invalid object type 0x%08x", obj.hdr.type);
 }
 
-status_t Parcel::finishFlattenBinder(
-    const sp<IBinder>& binder, const flat_binder_object& flat)
+inline static status_t finish_flatten_binder(
+    const sp<IBinder>& /*binder*/, const flat_binder_object& flat, Parcel* out)
 {
-    status_t status = writeObject(flat, false);
-    if (status != OK) return status;
-
-    return writeInt32(internal::Stability::get(binder.get()));
+    return out->writeObject(flat, false);
 }
 
-status_t Parcel::finishUnflattenBinder(
-    const sp<IBinder>& binder, sp<IBinder>* out) const
-{
-    int32_t stability;
-    status_t status = readInt32(&stability);
-    if (status != OK) return status;
-
-    if (!internal::Stability::check(stability, mRequiredStability)) {
-        return BAD_TYPE;
-    }
-
-    status = internal::Stability::set(binder.get(), stability);
-    if (status != OK) return status;
-
-    *out = binder;
-    return OK;
-}
-
-status_t Parcel::flattenBinder(const sp<IBinder>& binder)
+static status_t flatten_binder(const sp<ProcessState>& /*proc*/,
+    const sp<IBinder>& binder, Parcel* out)
 {
     flat_binder_object obj;
 
@@ -229,24 +209,30 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
         obj.cookie = 0;
     }
 
-    return finishFlattenBinder(binder, obj);
+    return finish_flatten_binder(binder, obj, out);
 }
 
-status_t Parcel::unflattenBinder(sp<IBinder>* out) const
+inline static status_t finish_unflatten_binder(
+    BpBinder* /*proxy*/, const flat_binder_object& /*flat*/,
+    const Parcel& /*in*/)
 {
-    const flat_binder_object* flat = readObject(false);
+    return NO_ERROR;
+}
+
+static status_t unflatten_binder(const sp<ProcessState>& proc,
+    const Parcel& in, sp<IBinder>* out)
+{
+    const flat_binder_object* flat = in.readObject(false);
 
     if (flat) {
         switch (flat->hdr.type) {
-            case BINDER_TYPE_BINDER: {
-                sp<IBinder> binder = reinterpret_cast<IBinder*>(flat->cookie);
-                return finishUnflattenBinder(binder, out);
-            }
-            case BINDER_TYPE_HANDLE: {
-                sp<IBinder> binder =
-                    ProcessState::self()->getStrongProxyForHandle(flat->handle);
-                return finishUnflattenBinder(binder, out);
-            }
+            case BINDER_TYPE_BINDER:
+                *out = reinterpret_cast<IBinder*>(flat->cookie);
+                return finish_unflatten_binder(nullptr, *flat, in);
+            case BINDER_TYPE_HANDLE:
+                *out = proc->getStrongProxyForHandle(flat->handle);
+                return finish_unflatten_binder(
+                    static_cast<BpBinder*>(out->get()), *flat, in);
         }
     }
     return BAD_TYPE;
@@ -349,10 +335,6 @@ status_t Parcel::setDataCapacity(size_t size)
 
     if (size > mDataCapacity) return continueWrite(size);
     return NO_ERROR;
-}
-
-void Parcel::setTransactingBinder(const sp<IBinder>& binder) const {
-    mRequiredStability = internal::Stability::get(binder.get());
 }
 
 status_t Parcel::setData(const uint8_t* buffer, size_t len)
@@ -1050,7 +1032,7 @@ status_t Parcel::writeString16(const char16_t* str, size_t len)
 
 status_t Parcel::writeStrongBinder(const sp<IBinder>& val)
 {
-    return flattenBinder(val);
+    return flatten_binder(ProcessState::self(), val, this);
 }
 
 status_t Parcel::writeStrongBinderVector(const std::vector<sp<IBinder>>& val)
@@ -1996,7 +1978,7 @@ status_t Parcel::readStrongBinder(sp<IBinder>* val) const
 
 status_t Parcel::readNullableStrongBinder(sp<IBinder>* val) const
 {
-    return unflattenBinder(val);
+    return unflatten_binder(ProcessState::self(), *this, val);
 }
 
 sp<IBinder> Parcel::readStrongBinder() const
@@ -2700,10 +2682,9 @@ void Parcel::initState()
     mObjectsCapacity = 0;
     mNextObjectHint = 0;
     mObjectsSorted = false;
-    mAllowFds = true;
     mHasFds = false;
     mFdsKnown = true;
-    mRequiredStability = internal::Stability::UNDECLARED;
+    mAllowFds = true;
     mOwner = nullptr;
     mOpenAshmemSize = 0;
     mWorkSourceRequestHeaderPosition = 0;
