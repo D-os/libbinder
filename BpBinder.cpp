@@ -216,11 +216,6 @@ status_t BpBinder::transact(
         status_t status = IPCThreadState::self()->transact(
             mHandle, code, data, reply, flags);
         if (status == DEAD_OBJECT) mAlive = 0;
-
-        if (reply != nullptr) {
-            reply->setTransactingBinder(this);
-        }
-
         return status;
     }
 
