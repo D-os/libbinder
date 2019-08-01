@@ -11,9 +11,6 @@
     },
     {
       "name": "binderLibTest"
-    },
-    {
-      "name": "binderStabilityTest"
     }
   ]
 }
