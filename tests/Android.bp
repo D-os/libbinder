@@ -138,18 +138,31 @@ cc_test {
     test_suites: ["device-tests"],
 }
 
+aidl_interface {
+    name: "binderStabilityTestIface",
+    srcs: [
+        "IBinderStabilityTest.aidl",
+        "IBinderStabilityTestSub.aidl",
+    ],
+}
+
 cc_test {
     name: "binderStabilityTest",
     defaults: ["binder_test_defaults"],
     srcs: [
         "binderStabilityTest.cpp",
-        "IBinderStabilityTest.aidl",
-        "IBinderStabilityTestSub.aidl",
     ],
 
     shared_libs: [
+        "libbinder_ndk",
         "libbinder",
+        "liblog",
         "libutils",
     ],
+    static_libs: [
+        "binderStabilityTestIface-cpp",
+        "binderStabilityTestIface-ndk_platform",
+    ],
+
     test_suites: ["device-tests"],
 }

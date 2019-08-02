@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <android/binder_manager.h>
+#include <android/binder_stability.h>
 #include <binder/Binder.h>
 #include <binder/IBinder.h>
 #include <binder/IPCThreadState.h>
@@ -24,46 +26,52 @@
 
 #include <sys/prctl.h>
 
+#include "aidl/BnBinderStabilityTestSub.h"
+#include "aidl/BnBinderStabilityTest.h"
 #include "BnBinderStabilityTestSub.h"
 #include "BnBinderStabilityTest.h"
-#include "BpBinderStabilityTest.h"
 
 using namespace android;
+using namespace ndk;
 using android::binder::Status;
+using android::internal::Stability; // for testing only!
 
 const String16 kNoStabilityServer = String16("binder_stability_test_service_low");
 const String16 kCompilationUnitServer = String16("binder_stability_test_service_compl");
 const String16 kVintfServer = String16("binder_stability_test_service_vintf");
 
+const String16 kCompilationUnitNdkServer = String16("binder_stability_test_service_compl");
+
 class BadStabilityTestSub : public BnBinderStabilityTestSub {
+public:
     Status userDefinedTransaction() {
         return Status::ok();
     }
+
+    static sp<IBinderStabilityTestSub> system() {
+        sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
+        // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
+        // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
+        Stability::markCompilationUnit(iface.get()); // <- BAD, NO! DO NOT COPY
+        return iface;
+    }
+
+    static sp<IBinderStabilityTestSub> vintf() {
+        sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
+        // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
+        // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
+        Stability::markVintf(iface.get()); // <- BAD, NO! DO NOT COPY
+        return iface;
+    }
+
+    static sp<IBinderStabilityTestSub> vendor() {
+        sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
+        // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
+        // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
+        Stability::markVndk(iface.get()); // <- BAD, NO! DO NOT COPY
+        return iface;
+    }
 };
-
-sp<IBinderStabilityTestSub> getCompilationUnitStability() {
-    sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
-    // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
-    // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
-    internal::Stability::markCompilationUnit(iface.get()); // <- BAD, NO! DO NOT COPY
-    return iface;
-}
-
-sp<IBinderStabilityTestSub> getVintfStability() {
-    sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
-    // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
-    // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
-    internal::Stability::markVintf(iface.get()); // <- BAD, NO! DO NOT COPY
-    return iface;
-}
-
-sp<IBinderStabilityTestSub> getVendorStability() {
-    sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
-    // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
-    // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
-    internal::Stability::markVndk(iface.get()); // <- BAD, NO! DO NOT COPY
-    return iface;
-}
 
 // NO! NO! NO! Do not even think of doing something like this!
 // This is for testing! If a class like this was actually used in production,
@@ -74,6 +82,7 @@ public:
         return Status::ok();
     }
     Status sendAndCallBinder(const sp<IBinderStabilityTestSub>& binder) override {
+        Stability::debugLogStability("sendAndCallBinder got binder", IInterface::asBinder(binder));
         return binder->userDefinedTransaction();
     }
     Status returnNoStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
@@ -81,31 +90,31 @@ public:
         return Status::ok();
     }
     Status returnLocalStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
-        *_aidl_return = getCompilationUnitStability();
+        *_aidl_return = BadStabilityTestSub::system();
         return Status::ok();
     }
     Status returnVintfStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
-        *_aidl_return = getVintfStability();
+        *_aidl_return = BadStabilityTestSub::vintf();
         return Status::ok();
     }
     Status returnVendorStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
-        *_aidl_return = getVendorStability();
+        *_aidl_return = BadStabilityTestSub::vendor();
         return Status::ok();
     }
 };
 
 void checkSystemStabilityBinder(const sp<IBinderStabilityTest>& complServer) {
     EXPECT_TRUE(complServer->sendBinder(new BadStabilityTestSub()).isOk());
-    EXPECT_TRUE(complServer->sendBinder(getCompilationUnitStability()).isOk());
-    EXPECT_TRUE(complServer->sendBinder(getVintfStability()).isOk());
-    EXPECT_TRUE(complServer->sendBinder(getVendorStability()).isOk());
+    EXPECT_TRUE(complServer->sendBinder(BadStabilityTestSub::system()).isOk());
+    EXPECT_TRUE(complServer->sendBinder(BadStabilityTestSub::vintf()).isOk());
+    EXPECT_TRUE(complServer->sendBinder(BadStabilityTestSub::vendor()).isOk());
 
     EXPECT_TRUE(complServer->sendAndCallBinder(new BadStabilityTestSub()).isOk());
-    EXPECT_TRUE(complServer->sendAndCallBinder(getCompilationUnitStability()).isOk());
-    EXPECT_TRUE(complServer->sendAndCallBinder(getVintfStability()).isOk());
+    EXPECT_TRUE(complServer->sendAndCallBinder(BadStabilityTestSub::system()).isOk());
+    EXPECT_TRUE(complServer->sendAndCallBinder(BadStabilityTestSub::vintf()).isOk());
 
     // !!! user-defined transaction may not be stable for remote server !!!
-    EXPECT_FALSE(complServer->sendAndCallBinder(getVendorStability()).isOk());
+    EXPECT_FALSE(complServer->sendAndCallBinder(BadStabilityTestSub::vendor()).isOk());
 
     sp<IBinderStabilityTestSub> out;
     EXPECT_TRUE(complServer->returnNoStabilityBinder(&out).isOk());
@@ -163,12 +172,39 @@ TEST(BinderStability, RemoteVintfServer) {
     checkSystemStabilityBinder(remoteServer);
 }
 
+class NdkBadStabilityTestSub : public aidl::BnBinderStabilityTestSub {
+    ScopedAStatus userDefinedTransaction() {
+        return ScopedAStatus::ok();
+    }
+};
+// for testing only to get around __ANDROID_VNDK__ guard.
+extern "C" void AIBinder_markVendorStability(AIBinder* binder); // <- BAD DO NOT COPY
+
+TEST(BinderStability, NdkClientOfRemoteServer) {
+    SpAIBinder binder = SpAIBinder(AServiceManager_getService(
+        String8(kCompilationUnitServer).c_str()));
+
+    std::shared_ptr<aidl::IBinderStabilityTest> remoteServer =
+        aidl::IBinderStabilityTest::fromBinder(binder);
+
+    ASSERT_NE(nullptr, remoteServer.get());
+
+    std::shared_ptr<aidl::IBinderStabilityTestSub> vendor = SharedRefBase::make<NdkBadStabilityTestSub>();
+
+    // TODO: not ideal: binder must be held once it is marked
+    SpAIBinder vendorBinder = vendor->asBinder();
+    AIBinder_markVendorStability(vendorBinder.get());
+
+    EXPECT_TRUE(remoteServer->sendBinder(vendor).isOk());
+    EXPECT_FALSE(remoteServer->sendAndCallBinder(vendor).isOk());
+}
+
 class MarksStabilityInConstructor : public BBinder {
 public:
     static bool gDestructed;
 
     MarksStabilityInConstructor() {
-        internal::Stability::markCompilationUnit(this);
+        Stability::markCompilationUnit(this);
     }
     ~MarksStabilityInConstructor() {
         gDestructed = true;
@@ -202,11 +238,11 @@ int main(int argc, char** argv) {
         android::defaultServiceManager()->addService(kNoStabilityServer, noStability);
 
         sp<IBinder> compil = new BadStabilityTester;
-        internal::Stability::markCompilationUnit(compil.get());
+        Stability::markCompilationUnit(compil.get());
         android::defaultServiceManager()->addService(kCompilationUnitServer, compil);
 
         sp<IBinder> vintf = new BadStabilityTester;
-        internal::Stability::markVintf(vintf.get());
+        Stability::markVintf(vintf.get());
         android::defaultServiceManager()->addService(kVintfServer, vintf);
 
         IPCThreadState::self()->joinThreadPool(true);
