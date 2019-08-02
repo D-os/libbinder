@@ -71,13 +71,6 @@ public:
      */
     // NOLINTNEXTLINE(google-default-arguments)
     virtual Vector<String16> listServices(int dumpsysFlags = DUMP_FLAG_PRIORITY_ALL) = 0;
-
-    enum {
-        GET_SERVICE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
-        CHECK_SERVICE_TRANSACTION,
-        ADD_SERVICE_TRANSACTION,
-        LIST_SERVICES_TRANSACTION,
-    };
 };
 
 sp<IServiceManager> defaultServiceManager();
