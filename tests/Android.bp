@@ -137,3 +137,18 @@ cc_test {
     ],
     test_suites: ["device-tests"],
 }
+
+cc_test {
+    name: "binderStabilityTest",
+    defaults: ["binder_test_defaults"],
+    srcs: [
+        "binderStabilityTest.cpp",
+        "IBinderStabilityTest.aidl",
+    ],
+
+    shared_libs: [
+        "libbinder",
+        "libutils",
+    ],
+    test_suites: ["device-tests"],
+}
