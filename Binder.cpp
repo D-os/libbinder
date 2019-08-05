@@ -124,6 +124,7 @@ status_t BBinder::transact(
     uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags)
 {
     data.setDataPosition(0);
+    data.setTransactingBinder(this);
 
     status_t err = NO_ERROR;
     switch (code) {
@@ -135,8 +136,10 @@ status_t BBinder::transact(
             break;
     }
 
+    // In case this is being transacted on in the same process.
     if (reply != nullptr) {
         reply->setDataPosition(0);
+        reply->setTransactingBinder(this);
     }
 
     return err;
