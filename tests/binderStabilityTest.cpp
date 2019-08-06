@@ -24,6 +24,7 @@
 
 #include <sys/prctl.h>
 
+#include "BnBinderStabilityTestSub.h"
 #include "BnBinderStabilityTest.h"
 #include "BpBinderStabilityTest.h"
 
@@ -34,20 +35,34 @@ const String16 kNoStabilityServer = String16("binder_stability_test_service_low"
 const String16 kCompilationUnitServer = String16("binder_stability_test_service_compl");
 const String16 kVintfServer = String16("binder_stability_test_service_vintf");
 
-sp<IBinder> getCompilationUnitStability() {
-    sp<IBinder> binder = new BBinder();
+class BadStabilityTestSub : public BnBinderStabilityTestSub {
+    Status userDefinedTransaction() {
+        return Status::ok();
+    }
+};
+
+sp<IBinderStabilityTestSub> getCompilationUnitStability() {
+    sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
     // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
     // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
-    internal::Stability::markCompilationUnit(binder.get()); // <- BAD, NO! DO NOT COPY
-    return binder;
+    internal::Stability::markCompilationUnit(iface.get()); // <- BAD, NO! DO NOT COPY
+    return iface;
 }
 
-sp<IBinder> getVintfStability() {
-    sp<IBinder> binder = new BBinder();
+sp<IBinderStabilityTestSub> getVintfStability() {
+    sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
     // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
     // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
-    internal::Stability::markVintf(binder.get()); // <- BAD, NO! DO NOT COPY
-    return binder;
+    internal::Stability::markVintf(iface.get()); // <- BAD, NO! DO NOT COPY
+    return iface;
+}
+
+sp<IBinderStabilityTestSub> getVendorStability() {
+    sp<BnBinderStabilityTestSub> iface = new BadStabilityTestSub();
+    // NO! NO! NO! NO! DO NOT EVERY DO SOMETHING LIKE THIS?
+    // WHAT ARE YOU CRAZY? IT'S VERY DANGEROUS
+    internal::Stability::markVndk(iface.get()); // <- BAD, NO! DO NOT COPY
+    return iface;
 }
 
 // NO! NO! NO! Do not even think of doing something like this!
@@ -55,92 +70,67 @@ sp<IBinder> getVintfStability() {
 // it would ruin everything!
 class BadStabilityTester : public BnBinderStabilityTest {
 public:
-    Status sendBinder(const sp<IBinder>& /*binder*/) override {
+    Status sendBinder(const sp<IBinderStabilityTestSub>& /*binder*/) override {
         return Status::ok();
     }
-    Status returnNoStabilityBinder(sp<IBinder>* _aidl_return) override {
-        *_aidl_return = new BBinder();
+    Status sendAndCallBinder(const sp<IBinderStabilityTestSub>& binder) override {
+        return binder->userDefinedTransaction();
+    }
+    Status returnNoStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
+        *_aidl_return = new BadStabilityTestSub();
         return Status::ok();
     }
-    Status returnLocalStabilityBinder(sp<IBinder>* _aidl_return) override {
+    Status returnLocalStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
         *_aidl_return = getCompilationUnitStability();
         return Status::ok();
     }
-    Status returnVintfStabilityBinder(sp<IBinder>* _aidl_return) override {
+    Status returnVintfStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
         *_aidl_return = getVintfStability();
         return Status::ok();
     }
-
-    static sp<IBinderStabilityTest> getNoStabilityServer() {
-        sp<IBinder> remote = new BadStabilityTester;
-        return new BpBinderStabilityTest(remote);
-    }
-    static sp<IBinderStabilityTest> getCompilationUnitStabilityServer() {
-        sp<IBinder> remote = new BadStabilityTester;
-        internal::Stability::markCompilationUnit(remote.get());
-        return new BpBinderStabilityTest(remote);
-    }
-    static sp<IBinderStabilityTest> getVintfStabilityServer() {
-        sp<IBinder> remote = new BadStabilityTester;
-        internal::Stability::markVintf(remote.get()); // <- BAD, NO! DO NOT COPY
-        return new BpBinderStabilityTest(remote);
+    Status returnVendorStabilityBinder(sp<IBinderStabilityTestSub>* _aidl_return) override {
+        *_aidl_return = getVendorStability();
+        return Status::ok();
     }
 };
 
-void checkLocalStabilityBinder(const sp<IBinderStabilityTest>& complServer) {
-    // this binder should automatically be set to local stability
-    EXPECT_TRUE(complServer->sendBinder(new BBinder()).isOk());
+void checkSystemStabilityBinder(const sp<IBinderStabilityTest>& complServer) {
+    EXPECT_TRUE(complServer->sendBinder(new BadStabilityTestSub()).isOk());
     EXPECT_TRUE(complServer->sendBinder(getCompilationUnitStability()).isOk());
     EXPECT_TRUE(complServer->sendBinder(getVintfStability()).isOk());
+    EXPECT_TRUE(complServer->sendBinder(getVendorStability()).isOk());
 
-    sp<IBinder> out;
-    // should automatically be set to local stability
+    EXPECT_TRUE(complServer->sendAndCallBinder(new BadStabilityTestSub()).isOk());
+    EXPECT_TRUE(complServer->sendAndCallBinder(getCompilationUnitStability()).isOk());
+    EXPECT_TRUE(complServer->sendAndCallBinder(getVintfStability()).isOk());
+
+    // !!! user-defined transaction may not be stable for remote server !!!
+    EXPECT_FALSE(complServer->sendAndCallBinder(getVendorStability()).isOk());
+
+    sp<IBinderStabilityTestSub> out;
     EXPECT_TRUE(complServer->returnNoStabilityBinder(&out).isOk());
-    EXPECT_NE(nullptr, out.get());
+    ASSERT_NE(nullptr, out.get());
+    EXPECT_EQ(OK, IInterface::asBinder(out)->pingBinder());
+    EXPECT_TRUE(out->userDefinedTransaction().isOk());
 
     EXPECT_TRUE(complServer->returnLocalStabilityBinder(&out).isOk());
-    EXPECT_NE(nullptr, out.get());
+    ASSERT_NE(nullptr, out.get());
+    EXPECT_EQ(OK, IInterface::asBinder(out)->pingBinder());
+    EXPECT_TRUE(out->userDefinedTransaction().isOk());
 
     EXPECT_TRUE(complServer->returnVintfStabilityBinder(&out).isOk());
-    EXPECT_NE(nullptr, out.get());
-}
+    ASSERT_NE(nullptr, out.get());
+    EXPECT_EQ(OK, IInterface::asBinder(out)->pingBinder());
+    EXPECT_TRUE(out->userDefinedTransaction().isOk());
 
-void checkHighStabilityServer(const sp<IBinderStabilityTest>& highStability) {
-    EXPECT_FALSE(highStability->sendBinder(new BBinder()).isOk());
-    EXPECT_FALSE(highStability->sendBinder(getCompilationUnitStability()).isOk());
-    EXPECT_TRUE(highStability->sendBinder(getVintfStability()).isOk());
+    EXPECT_TRUE(complServer->returnVendorStabilityBinder(&out).isOk());
+    ASSERT_NE(nullptr, out.get());
 
-    sp<IBinder> out;
-    EXPECT_FALSE(highStability->returnNoStabilityBinder(&out).isOk());
-    EXPECT_EQ(nullptr, out.get());
+    // !!! libbinder-defined transaction works !!!
+    EXPECT_EQ(OK, IInterface::asBinder(out)->pingBinder());
 
-    EXPECT_FALSE(highStability->returnLocalStabilityBinder(&out).isOk());
-    EXPECT_EQ(nullptr, out.get());
-
-    EXPECT_TRUE(highStability->returnVintfStabilityBinder(&out).isOk());
-    EXPECT_NE(nullptr, out.get());
-}
-
-TEST(BinderStability, LocalNoStabilityServer) {
-    // in practice, a low stability server is probably one that hasn't been rebuilt
-    // or was written by hand.
-    auto server = BadStabilityTester::getNoStabilityServer();
-    ASSERT_NE(nullptr, IInterface::asBinder(server)->localBinder());
-
-    // it should be considered to have local stability
-    checkLocalStabilityBinder(server);
-}
-
-TEST(BinderStability, LocalLowStabilityServer) {
-    auto server = BadStabilityTester::getCompilationUnitStabilityServer();
-    ASSERT_NE(nullptr, IInterface::asBinder(server)->localBinder());
-    checkLocalStabilityBinder(server);
-}
-
-TEST(BinderStability, LocalHighStabilityServer) {
-    auto server = BadStabilityTester::getVintfStabilityServer();
-    ASSERT_NE(nullptr, IInterface::asBinder(server)->localBinder());
-    checkHighStabilityServer(server);
+    // !!! user-defined transaction may not be stable !!!
+    EXPECT_FALSE(out->userDefinedTransaction().isOk());
 }
 
 TEST(BinderStability, RemoteNoStabilityServer) {
@@ -150,8 +140,7 @@ TEST(BinderStability, RemoteNoStabilityServer) {
     ASSERT_NE(nullptr, remoteServer.get());
     ASSERT_NE(nullptr, IInterface::asBinder(remoteServer)->remoteBinder());
 
-    // it should be considered to have local stability
-    checkLocalStabilityBinder(remoteServer);
+    checkSystemStabilityBinder(remoteServer);
 }
 
 TEST(BinderStability, RemoteLowStabilityServer) {
@@ -161,7 +150,7 @@ TEST(BinderStability, RemoteLowStabilityServer) {
     ASSERT_NE(nullptr, remoteServer.get());
     ASSERT_NE(nullptr, IInterface::asBinder(remoteServer)->remoteBinder());
 
-    checkLocalStabilityBinder(remoteServer);
+    checkSystemStabilityBinder(remoteServer);
 }
 
 TEST(BinderStability, RemoteVintfServer) {
@@ -171,7 +160,7 @@ TEST(BinderStability, RemoteVintfServer) {
     ASSERT_NE(nullptr, remoteServer.get());
     ASSERT_NE(nullptr, IInterface::asBinder(remoteServer)->remoteBinder());
 
-    checkHighStabilityServer(remoteServer);
+    checkSystemStabilityBinder(remoteServer);
 }
 
 class MarksStabilityInConstructor : public BBinder {

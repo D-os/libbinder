@@ -20,6 +20,10 @@
 #include <string>
 
 namespace android {
+
+class BpBinder;
+class ProcessState;
+
 namespace internal {
 
 // WARNING: These APIs are only ever expected to be called by auto-generated code.
@@ -43,14 +47,30 @@ public:
     // WARNING: for debugging only
     static void debugLogStability(const std::string& tag, const sp<IBinder>& binder);
 
+    // WARNING: This is only ever expected to be called by auto-generated code or tests.
+    // You likely want to change or modify the stability of the interface you are using.
+    // This must be called as soon as the binder in question is constructed. No thread safety
+    // is provided.
+    // E.g. stability is according to libbinder_ndk or Java SDK AND the interface
+    //     expressed here is guaranteed to be stable for multiple years (Stable AIDL)
+    // If this is called when __ANDROID_VNDK__ is not defined, then it is UB and will likely
+    // break the device during GSI or other tests.
+    static void markVndk(IBinder* binder);
+
 private:
-    // Parcel needs to store stability level since this is more efficient than storing and looking
-    // up the efficiency level of a binder object. So, we expose the underlying type.
+    // Parcel needs to read/write stability level in an unstable format.
     friend ::android::Parcel;
+
+    // only expose internal APIs inside of libbinder, for checking stability
+    friend ::android::BpBinder;
+
+    // so that it can mark the context object (only the root object doesn't go
+    // through Parcel)
+    friend ::android::ProcessState;
 
     static void tryMarkCompilationUnit(IBinder* binder);
 
-    enum Level : int16_t {
+    enum Level : int32_t {
         UNDECLARED = 0,
 
         VENDOR = 0b000011,

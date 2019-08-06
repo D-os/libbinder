@@ -21,6 +21,7 @@
 
 #include <binder/IPCThreadState.h>
 #include <binder/IResultReceiver.h>
+#include <binder/Stability.h>
 #include <cutils/compiler.h>
 #include <utils/Log.h>
 
@@ -213,13 +214,21 @@ status_t BpBinder::transact(
 {
     // Once a binder has died, it will never come back to life.
     if (mAlive) {
+        // user transactions require a given stability level
+        // Cannot add requirement w/o SM update
+        // if (code >= FIRST_CALL_TRANSACTION && code <= LAST_CALL_TRANSACTION) {
+        //     using android::internal::Stability;
+
+        //     auto stability = Stability::get(this);
+
+        //     if (CC_UNLIKELY(!Stability::check(stability, Stability::kLocalStability))) {
+        //         return BAD_TYPE;
+        //     }
+        // }
+
         status_t status = IPCThreadState::self()->transact(
             mHandle, code, data, reply, flags);
         if (status == DEAD_OBJECT) mAlive = 0;
-
-        if (reply != nullptr) {
-            reply->setTransactingBinder(this);
-        }
 
         return status;
     }
