@@ -40,6 +40,9 @@ public:
     //     expressed here is guaranteed to be stable for multiple years (Stable AIDL)
     static void markVintf(IBinder* binder);
 
+    // WARNING: for debugging only
+    static void debugLogStability(const std::string& tag, const sp<IBinder>& binder);
+
 private:
     // Parcel needs to store stability level since this is more efficient than storing and looking
     // up the efficiency level of a binder object. So, we expose the underlying type.
