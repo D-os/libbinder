@@ -28,6 +28,10 @@ void Stability::markVintf(IBinder* binder) {
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
+void Stability::debugLogStability(const std::string& tag, const sp<IBinder>& binder) {
+    ALOGE("%s: stability is %s", tag.c_str(), stabilityString(get(binder.get())).c_str());
+}
+
 void Stability::tryMarkCompilationUnit(IBinder* binder) {
     (void) set(binder, kLocalStability, false /*log*/);
 }
