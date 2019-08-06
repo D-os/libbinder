@@ -32,6 +32,11 @@ void Stability::debugLogStability(const std::string& tag, const sp<IBinder>& bin
     ALOGE("%s: stability is %s", tag.c_str(), stabilityString(get(binder.get())).c_str());
 }
 
+void Stability::markVndk(IBinder* binder) {
+    status_t result = set(binder, Level::VENDOR, true /*log*/);
+    LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
+}
+
 void Stability::tryMarkCompilationUnit(IBinder* binder) {
     (void) set(binder, kLocalStability, false /*log*/);
 }
@@ -95,9 +100,9 @@ bool Stability::check(int32_t provided, Level required) {
     }
 
     if (!stable) {
-        ALOGE("Interface with %s cannot accept interface with %s.",
-            stabilityString(required).c_str(),
-            stabilityString(provided).c_str());
+        ALOGE("Cannot do a user transaction on a %s binder in a %s context.",
+            stabilityString(provided).c_str(),
+            stabilityString(required).c_str());
     }
 
     return stable;
