@@ -14,24 +14,34 @@
  * limitations under the License.
  */
 
+import IBinderStabilityTestSub;
+
 // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
 // THIS IS ONLY FOR TESTING!
 interface IBinderStabilityTest {
     // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
     // THIS IS ONLY FOR TESTING!
-    void sendBinder(IBinder binder);
+    void sendBinder(IBinderStabilityTestSub binder);
 
     // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
     // THIS IS ONLY FOR TESTING!
-    IBinder returnNoStabilityBinder();
+    void sendAndCallBinder(IBinderStabilityTestSub binder);
 
     // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
     // THIS IS ONLY FOR TESTING!
-    IBinder returnLocalStabilityBinder();
+    IBinderStabilityTestSub returnNoStabilityBinder();
 
     // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
     // THIS IS ONLY FOR TESTING!
-    IBinder returnVintfStabilityBinder();
+    IBinderStabilityTestSub returnLocalStabilityBinder();
+
+    // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
+    // THIS IS ONLY FOR TESTING!
+    IBinderStabilityTestSub returnVintfStabilityBinder();
+
+    // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
+    // THIS IS ONLY FOR TESTING!
+    IBinderStabilityTestSub returnVendorStabilityBinder();
 }
 // DO NOT EVER IN A MILLION YEARS WRITE AN INTERFACE LIKE THIS!
 // THIS IS ONLY FOR TESTING!

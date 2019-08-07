@@ -21,6 +21,7 @@
 #include <binder/BpBinder.h>
 #include <binder/IPCThreadState.h>
 #include <binder/IServiceManager.h>
+#include <binder/Stability.h>
 #include <cutils/atomic.h>
 #include <utils/Log.h>
 #include <utils/String8.h>
@@ -109,7 +110,13 @@ sp<ProcessState> ProcessState::selfOrNull()
 
 sp<IBinder> ProcessState::getContextObject(const sp<IBinder>& /*caller*/)
 {
-    return getStrongProxyForHandle(0);
+    sp<IBinder> context = getStrongProxyForHandle(0);
+
+    // The root object is special since we get it directly from the driver, it is never
+    // written by Parcell::writeStrongBinder.
+    internal::Stability::tryMarkCompilationUnit(context.get());
+
+    return context;
 }
 
 void ProcessState::startThreadPool()
