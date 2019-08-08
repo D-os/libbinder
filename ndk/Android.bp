@@ -33,6 +33,7 @@ cc_library {
         "ibinder_jni.cpp",
         "parcel.cpp",
         "process.cpp",
+        "stability.cpp",
         "status.cpp",
         "service_manager.cpp",
     ],
@@ -54,7 +55,7 @@ cc_library {
     version_script: "libbinder_ndk.map.txt",
     stubs: {
         symbol_file: "libbinder_ndk.map.txt",
-        versions: ["29"],
+        versions: ["29", "30"],
     },
 }
 
