@@ -27,6 +27,10 @@ using ::android::internal::Stability;
 #error libbinder_ndk should only be built in a system context
 #endif
 
+#ifdef __ANDROID_NDK__
+#error libbinder_ndk should only be built in a system context
+#endif
+
 // explicit extern because symbol is only declared in header when __ANDROID_VNDK__
 extern "C" void AIBinder_markVendorStability(AIBinder* binder) {
     Stability::markVndk(binder->getBinder().get());
