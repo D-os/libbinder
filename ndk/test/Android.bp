@@ -44,10 +44,10 @@ cc_defaults {
         "libandroid_runtime_lazy",
         "libbase",
         "libbinder",
+        "libbinder_ndk",
         "libutils",
     ],
     static_libs: [
-        "libbinder_ndk",
         "test_libbinder_ndk_library",
     ],
 }

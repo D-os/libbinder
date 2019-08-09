@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-cc_library {
+cc_library_shared {
     name: "libbinder_ndk",
 
     export_include_dirs: [
