@@ -19,7 +19,7 @@ cc_library_shared {
 
     export_include_dirs: [
         "include_ndk",
-        "include_apex",
+        "include_platform",
     ],
 
     cflags: [
@@ -80,6 +80,6 @@ llndk_library {
     symbol_file: "libbinder_ndk.map.txt",
     export_include_dirs: [
         "include_ndk",
-        "include_apex",
+        "include_platform",
     ],
 }
