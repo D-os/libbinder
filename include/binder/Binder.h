@@ -38,7 +38,7 @@ public:
     virtual status_t    transact(   uint32_t code,
                                     const Parcel& data,
                                     Parcel* reply,
-                                    uint32_t flags = 0);
+                                    uint32_t flags = 0) final;
 
     // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t    linkToDeath(const sp<DeathRecipient>& recipient,
