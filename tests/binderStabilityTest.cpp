@@ -275,6 +275,14 @@ TEST(BinderStability, MarkingObjectNoDestructTest) {
     ASSERT_TRUE(MarksStabilityInConstructor::gDestructed);
 }
 
+TEST(BinderStability, RemarkDies) {
+    ASSERT_DEATH({
+        sp<IBinder> binder = new BBinder();
+        Stability::markCompilationUnit(binder.get()); // <-- only called for tests
+        Stability::markVndk(binder.get()); // <-- only called for tests
+    }, "Should only mark known object.");
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
 
