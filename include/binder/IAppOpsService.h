@@ -46,6 +46,7 @@ public:
     virtual int32_t permissionToOpCode(const String16& permission) = 0;
     virtual int32_t checkAudioOperation(int32_t code, int32_t usage,int32_t uid,
             const String16& packageName) = 0;
+    virtual void setCameraAudioRestriction(int32_t mode) = 0;
 #endif // __ANDROID_VNDK__
     virtual void noteAsyncOp(const String16& callingPackageName, int32_t uid,
             const String16& packageName, int32_t opCode, const String16& message) = 0;
@@ -65,6 +66,10 @@ public:
 #endif // __ANDROID_VNDK__
         NOTE_ASYNC_OP_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+9,
         SHOULD_COLLECT_NOTES_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+10,
+#ifndef __ANDROID_VNDK__
+        SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+11,
+#endif // __ANDROID_VNDK__
+
     };
 
     enum {

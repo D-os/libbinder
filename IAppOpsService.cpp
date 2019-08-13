@@ -138,6 +138,13 @@ public:
         return reply.readInt32();
     }
 
+    virtual void setCameraAudioRestriction(int32_t mode) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
+        data.writeInt32(mode);
+        remote()->transact(SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION, data, &reply);
+    }
+
 #endif
     virtual void noteAsyncOp(const String16& callingPackageName, int32_t uid,
             const String16& packageName, int32_t opCode, const String16& message) {
@@ -272,6 +279,13 @@ status_t BnAppOpsService::onTransact(
             const int32_t res = checkAudioOperation(code, usage, uid, packageName);
             reply->writeNoException();
             reply->writeInt32(res);
+            return NO_ERROR;
+        } break;
+        case SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION: {
+            CHECK_INTERFACE(IAppOpsService, data, reply);
+            const int32_t mode = data.readInt32();
+            setCameraAudioRestriction(mode);
+            reply->writeNoException();
             return NO_ERROR;
         } break;
 #endif // __ANDROID_VNDK__

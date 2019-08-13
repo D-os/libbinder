@@ -193,6 +193,13 @@ int32_t AppOpsManager::permissionToOpCode(const String16& permission) {
     return -1;
 }
 
+void AppOpsManager::setCameraAudioRestriction(int32_t mode) {
+    sp<IAppOpsService> service = getService();
+    if (service != nullptr) {
+        service->setCameraAudioRestriction(mode);
+    }
+}
+
 #endif // __ANDROID_VNDK__
 
 bool AppOpsManager::shouldCollectNotes(int32_t opcode) {
