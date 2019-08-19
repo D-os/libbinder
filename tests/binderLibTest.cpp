@@ -769,6 +769,24 @@ TEST_F(BinderLibTest, PromoteLocal) {
     EXPECT_TRUE(strong_from_weak == nullptr);
 }
 
+TEST_F(BinderLibTest, LocalGetExtension) {
+    sp<BBinder> binder = new BBinder();
+    sp<IBinder> ext = new BBinder();
+    binder->setExtension(ext);
+    EXPECT_EQ(ext, binder->getExtension());
+}
+
+TEST_F(BinderLibTest, RemoteGetExtension) {
+    sp<IBinder> server = addServer();
+    ASSERT_TRUE(server != nullptr);
+
+    sp<IBinder> extension;
+    EXPECT_EQ(NO_ERROR, server->getExtension(&extension));
+    ASSERT_NE(nullptr, extension.get());
+
+    EXPECT_EQ(NO_ERROR, extension->pingBinder());
+}
+
 TEST_F(BinderLibTest, CheckHandleZeroBinderHighBitsZeroCookie) {
     status_t ret;
     Parcel data, reply;
@@ -1312,6 +1330,13 @@ int run_server(int index, int readypipefd, bool usePoll)
     BinderLibTestService* testServicePtr;
     {
         sp<BinderLibTestService> testService = new BinderLibTestService(index);
+
+        /*
+         * Normally would also contain functionality as well, but we are only
+         * testing the extension mechanism.
+         */
+        testService->setExtension(new BBinder());
+
         /*
          * We need this below, but can't hold a sp<> because it prevents the
          * node from being cleaned up automatically. It's safe in this case
