@@ -81,6 +81,24 @@ status_t IBinder::shellCommand(const sp<IBinder>& target, int in, int out, int e
     return target->transact(SHELL_COMMAND_TRANSACTION, send, &reply);
 }
 
+status_t IBinder::getExtension(sp<IBinder>* out) {
+    BBinder* local = this->localBinder();
+    if (local != nullptr) {
+        *out = local->getExtension();
+        return OK;
+    }
+
+    BpBinder* proxy = this->remoteBinder();
+    LOG_ALWAYS_FATAL_IF(proxy == nullptr);
+
+    Parcel data;
+    Parcel reply;
+    status_t status = transact(EXTENSION_TRANSACTION, data, &reply);
+    if (status != OK) return status;
+
+    return reply.readNullableStrongBinder(out);
+}
+
 // ---------------------------------------------------------------------------
 
 class BBinder::Extras
@@ -88,6 +106,7 @@ class BBinder::Extras
 public:
     // unlocked objects
     bool mRequestingSid = false;
+    sp<IBinder> mExtension;
 
     // for below objects
     Mutex mLock;
@@ -129,6 +148,9 @@ status_t BBinder::transact(
     switch (code) {
         case PING_TRANSACTION:
             err = pingBinder();
+            break;
+        case EXTENSION_TRANSACTION:
+            err = reply->writeStrongBinder(getExtension());
             break;
         default:
             err = onTransact(code, data, reply, flags);
@@ -220,6 +242,17 @@ void BBinder::setRequestingSid(bool requestingSid)
     }
 
     e->mRequestingSid = requestingSid;
+}
+
+sp<IBinder> BBinder::getExtension() {
+    Extras* e = mExtras.load(std::memory_order_acquire);
+    if (e == nullptr) return nullptr;
+    return e->mExtension;
+}
+
+void BBinder::setExtension(const sp<IBinder>& extension) {
+    Extras* e = getOrCreateExtras();
+    e->mExtension = extension;
 }
 
 BBinder::~BBinder()
