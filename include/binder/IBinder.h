@@ -59,6 +59,7 @@ public:
         SHELL_COMMAND_TRANSACTION = B_PACK_CHARS('_','C','M','D'),
         INTERFACE_TRANSACTION   = B_PACK_CHARS('_', 'N', 'T', 'F'),
         SYSPROPS_TRANSACTION    = B_PACK_CHARS('_', 'S', 'P', 'R'),
+        EXTENSION_TRANSACTION   = B_PACK_CHARS('_', 'E', 'X', 'T'),
 
         // Corresponds to TF_ONE_WAY -- an asynchronous call.
         FLAG_ONEWAY             = 0x00000001
@@ -85,6 +86,49 @@ public:
     static  status_t        shellCommand(const sp<IBinder>& target, int in, int out, int err,
                                          Vector<String16>& args, const sp<IShellCallback>& callback,
                                          const sp<IResultReceiver>& resultReceiver);
+
+    /**
+     * This allows someone to add their own additions to an interface without
+     * having to modify the original interface.
+     *
+     * For instance, imagine if we have this interface:
+     *     interface IFoo { void doFoo(); }
+     *
+     * If an unrelated owner (perhaps in a downstream codebase) wants to make a
+     * change to the interface, they have two options:
+     *
+     * A). Historical option that has proven to be BAD! Only the original
+     *     author of an interface should change an interface. If someone
+     *     downstream wants additional functionality, they should not ever
+     *     change the interface or use this method.
+     *
+     *    BAD TO DO:  interface IFoo {                       BAD TO DO
+     *    BAD TO DO:      void doFoo();                      BAD TO DO
+     *    BAD TO DO: +    void doBar(); // adding a method   BAD TO DO
+     *    BAD TO DO:  }                                      BAD TO DO
+     *
+     * B). Option that this method enables!
+     *     Leave the original interface unchanged (do not change IFoo!).
+     *     Instead, create a new interface in a downstream package:
+     *
+     *         package com.<name>; // new functionality in a new package
+     *         interface IBar { void doBar(); }
+     *
+     *     When registering the interface, add:
+     *         sp<MyFoo> foo = new MyFoo; // class in AOSP codebase
+     *         sp<MyBar> bar = new MyBar; // custom extension class
+     *         foo->setExtension(bar);    // use method in BBinder
+     *
+     *     Then, clients of IFoo can get this extension:
+     *         sp<IBinder> binder = ...;
+     *         sp<IFoo> foo = interface_cast<IFoo>(binder); // handle if null
+     *         sp<IBinder> barBinder;
+     *         ... handle error ... = binder->getExtension(&barBinder);
+     *         sp<IBar> bar = interface_cast<IBar>(barBinder);
+     *         // if bar is null, then there is no extension or a different
+     *         // type of extension
+     */
+    status_t                getExtension(sp<IBinder>* out);
 
     // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t        transact(   uint32_t code,
