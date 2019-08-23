@@ -510,6 +510,76 @@ __attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecip
 void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) __INTRODUCED_IN(29);
 
 #endif  //__ANDROID_API__ >= __ANDROID_API_Q__
+
+#if __ANDROID_API__ >= __ANDROID_API_R__
+
+/**
+ * Gets the extension registered with AIBinder_setExtension.
+ *
+ * See AIBinder_setExtension.
+ *
+ * \param binder the object to get the extension of.
+ * \param outExt the returned extension object. Will be null if there is no extension set or
+ * non-null with one strong ref count.
+ *
+ * \return error of getting the interface (may be a transaction error if this is
+ * remote binder). STATUS_UNEXPECTED_NULL if binder is null.
+ */
+binder_status_t AIBinder_getExtension(AIBinder* binder, AIBinder** outExt) __INTRODUCED_IN(30);
+
+/**
+ * Gets the extension of a binder interface. This allows a downstream developer to add
+ * an extension to an interface without modifying its interface file. This should be
+ * called immediately when the object is created before it is passed to another thread.
+ * No thread safety is required.
+ *
+ * For instance, imagine if we have this interface:
+ *     interface IFoo { void doFoo(); }
+ *
+ * A). Historical option that has proven to be BAD! Only the original
+ *     author of an interface should change an interface. If someone
+ *     downstream wants additional functionality, they should not ever
+ *     change the interface or use this method.
+ *
+ *    BAD TO DO:  interface IFoo {                       BAD TO DO
+ *    BAD TO DO:      void doFoo();                      BAD TO DO
+ *    BAD TO DO: +    void doBar(); // adding a method   BAD TO DO
+ *    BAD TO DO:  }                                      BAD TO DO
+ *
+ * B). Option that this method enables.
+ *     Leave the original interface unchanged (do not change IFoo!).
+ *     Instead, create a new interface in a downstream package:
+ *
+ *         package com.<name>; // new functionality in a new package
+ *         interface IBar { void doBar(); }
+ *
+ *     When registering the interface, add:
+ *         std::shared_ptr<MyFoo> foo = new MyFoo; // class in AOSP codebase
+ *         std::shared_ptr<MyBar> bar = new MyBar; // custom extension class
+ *         ... = AIBinder_setExtension(foo->asBinder().get(), bar->asBinder().get());
+ *         // handle error
+ *
+ *     Then, clients of IFoo can get this extension:
+ *         SpAIBinder binder = ...;
+ *         std::shared_ptr<IFoo> foo = IFoo::fromBinder(binder); // handle if null
+ *         SpAIBinder barBinder;
+ *         ... = AIBinder_getExtension(barBinder.get());
+ *         // handle error
+ *         std::shared_ptr<IBar> bar = IBar::fromBinder(barBinder);
+ *         // type is checked with AIBinder_associateClass
+ *         // if bar is null, then there is no extension or a different
+ *         // type of extension
+ *
+ * \param binder the object to get the extension on. Must be local.
+ * \param ext the extension to set (binder will hold a strong reference to this)
+ *
+ * \return OK on success, STATUS_INVALID_OPERATION if binder is not local, STATUS_UNEXPECTED_NULL
+ * if either binder is null.
+ */
+binder_status_t AIBinder_setExtension(AIBinder* binder, AIBinder* ext) __INTRODUCED_IN(30);
+
+#endif  //__ANDROID_API__ >= __ANDROID_API_R__
+
 __END_DECLS
 
 /** @} */

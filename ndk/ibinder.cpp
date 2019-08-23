@@ -589,3 +589,40 @@ void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) {
 
     recipient->decStrong(nullptr);
 }
+
+binder_status_t AIBinder_getExtension(AIBinder* binder, AIBinder** outExt) {
+    if (binder == nullptr || outExt == nullptr) {
+        if (outExt != nullptr) {
+            *outExt = nullptr;
+        }
+        return STATUS_UNEXPECTED_NULL;
+    }
+
+    sp<IBinder> ext;
+    status_t res = binder->getBinder()->getExtension(&ext);
+
+    if (res != android::OK) {
+        *outExt = nullptr;
+        return PruneStatusT(res);
+    }
+
+    sp<AIBinder> ret = ABpBinder::lookupOrCreateFromBinder(ext);
+    if (ret != nullptr) ret->incStrong(binder);
+
+    *outExt = ret.get();
+    return STATUS_OK;
+}
+
+binder_status_t AIBinder_setExtension(AIBinder* binder, AIBinder* ext) {
+    if (binder == nullptr || ext == nullptr) {
+        return STATUS_UNEXPECTED_NULL;
+    }
+
+    ABBinder* rawBinder = binder->asABBinder();
+    if (rawBinder == nullptr) {
+        return STATUS_INVALID_OPERATION;
+    }
+
+    rawBinder->setExtension(ext->getBinder());
+    return STATUS_OK;
+}
