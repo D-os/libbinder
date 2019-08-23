@@ -101,6 +101,9 @@ LIBBINDER_NDK { # introduced=29
 
 LIBBINDER_NDK30 { # introduced=30
   global:
+    AIBinder_getExtension;
+    AIBinder_setExtension;
+
     AIBinder_markSystemStability; # apex
     AIBinder_markVendorStability; # vndk
     AIBinder_markVintfStability; # apex vndk
