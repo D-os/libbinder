@@ -37,6 +37,10 @@ cc_library_shared {
         enabled: true,
     },
     double_loadable: true,
+
+    // libbinder does not offer a stable wire protocol.
+    // if a second copy of it is installed, then it may break after security
+    // or dessert updates. Instead, apex users should use libbinder_ndk.
     no_apex: true,
 
     srcs: [
