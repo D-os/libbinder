@@ -71,9 +71,22 @@ public:
      */
     // NOLINTNEXTLINE(google-default-arguments)
     virtual Vector<String16> listServices(int dumpsysFlags = DUMP_FLAG_PRIORITY_ALL) = 0;
+
+    /**
+     * Efficiently wait for a service.
+     *
+     * Returns nullptr only for permission problem or fatal error.
+     */
+    virtual sp<IBinder> waitForService(const String16& name) = 0;
 };
 
 sp<IServiceManager> defaultServiceManager();
+
+template<typename INTERFACE>
+sp<INTERFACE> waitForService(const String16& name) {
+    const sp<IServiceManager> sm = defaultServiceManager();
+    return interface_cast<INTERFACE>(sm->waitForService(name));
+}
 
 template<typename INTERFACE>
 status_t getService(const String16& name, sp<INTERFACE>* outService)
