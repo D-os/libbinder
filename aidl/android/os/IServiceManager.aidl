@@ -16,6 +16,8 @@
 
 package android.os;
 
+import android.os.IServiceCallback;
+
 /**
  * Basic interface for finding and publishing system services.
  *
@@ -77,4 +79,14 @@ interface IServiceManager {
      * Return a list of all currently running services.
      */
     @utf8InCpp String[] listServices(int dumpPriority);
+
+    /**
+     * Request a callback when a service is registered.
+     */
+    void registerForNotifications(@utf8InCpp String name, IServiceCallback callback);
+
+    /**
+     * Unregisters all requests for notifications for a specific callback.
+     */
+    void unregisterForNotifications(@utf8InCpp String name, IServiceCallback callback);
 }
