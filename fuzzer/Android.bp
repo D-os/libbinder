@@ -1,0 +1,31 @@
+cc_fuzz {
+    name: "binder_parcel_fuzzer",
+    host_supported: true,
+    srcs: [
+        "binder.cpp",
+        "hwbinder.cpp",
+        "main.cpp",
+        "util.cpp",
+    ],
+    static_libs: [
+        "libbase",
+        "libbinderthreadstate",
+        "libcgrouprc",
+        "libcgrouprc_format",
+        "libcutils",
+        "libhidlbase",
+        "liblog",
+        "libprocessgroup",
+        "libjsoncpp",
+        "libutils",
+    ],
+
+    target: {
+        android: {
+            shared_libs: ["libbinder"],
+        },
+        host: {
+            static_libs: ["libbinder"],
+        },
+    },
+}
