@@ -45,10 +45,6 @@ class ProcessState;
 class String8;
 class TextOutput;
 
-namespace binder {
-class Value;
-};
-
 class Parcel {
     friend class IPCThreadState;
 public:

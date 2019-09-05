@@ -30,7 +30,6 @@ using android::NO_ERROR;
 using android::Parcel;
 using android::status_t;
 using android::UNEXPECTED_NULL;
-using namespace ::android::binder;
 
 namespace android {
 
