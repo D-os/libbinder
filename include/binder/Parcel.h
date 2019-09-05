@@ -382,7 +382,6 @@ public:
     // Returns the work source provided by the caller. This can only be trusted for trusted calling
     // uid.
     uid_t               readCallingWorkSourceUid() const;
-    void                readRequestHeaders() const;
 
 private:
     typedef void        (*release_func)(Parcel* parcel,
