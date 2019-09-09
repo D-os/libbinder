@@ -21,6 +21,10 @@
 
 #include <utils/threads.h>
 
+#ifdef __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif
+
 // ---------------------------------------------------------------------------
 namespace android {
 
@@ -33,7 +37,6 @@ public:
         MODE_ERRORED = IAppOpsService::MODE_ERRORED
     };
 
-#ifndef __ANDROID_VNDK__
     enum {
         OP_NONE = -1,
         OP_COARSE_LOCATION = 0,
@@ -121,11 +124,9 @@ public:
         OP_READ_DEVICE_IDENTIFIERS = 89,
         _NUM_OP = 90
     };
-#endif // __ANDROID_VNDK__
 
     AppOpsManager();
 
-#ifndef __ANDROID_VNDK__
     int32_t checkOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t uid,
             const String16& callingPackage);
@@ -145,7 +146,6 @@ public:
     void stopWatchingMode(const sp<IAppOpsCallback>& callback);
     int32_t permissionToOpCode(const String16& permission);
     void setCameraAudioRestriction(int32_t mode);
-#endif // __ANDROID_VNDK__
     void noteAsyncOp(const String16& callingPackageName, int32_t uid, const String16& packageName,
             int32_t opCode, const String16& message);
 
