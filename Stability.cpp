@@ -37,6 +37,10 @@ void Stability::markVndk(IBinder* binder) {
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
+bool Stability::requiresVintfDeclaration(const sp<IBinder>& binder) {
+    return check(get(binder.get()), Level::VINTF);
+}
+
 void Stability::tryMarkCompilationUnit(IBinder* binder) {
     (void) set(binder, kLocalStability, false /*log*/);
 }
@@ -97,12 +101,6 @@ bool Stability::check(int32_t provided, Level required) {
         ALOGE("Unknown stability when checking interface stability %d.", provided);
 
         stable = false;
-    }
-
-    if (!stable) {
-        ALOGE("Cannot do a user transaction on a %s binder in a %s context.",
-            stabilityString(provided).c_str(),
-            stabilityString(required).c_str());
     }
 
     return stable;
