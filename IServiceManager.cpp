@@ -232,7 +232,7 @@ public:
         const std::string name = String8(name16).c_str();
 
         sp<IBinder> out;
-        if(!mTheRealServiceManager->checkService(name, &out).isOk()) {
+        if (!mTheRealServiceManager->getService(name, &out).isOk()) {
             return nullptr;
         }
         if(out != nullptr) return out;
@@ -256,13 +256,13 @@ public:
             // Handle race condition for lazy services. Here is what can happen:
             // - the service dies (not processed by init yet).
             // - sm processes death notification.
-            // - sm gets checkService and calls init to start service.
+            // - sm gets getService and calls init to start service.
             // - init gets the start signal, but the service already appears
             //   started, so it does nothing.
             // - init gets death signal, but doesn't know it needs to restart
             //   the service
             // - we need to request service again to get it to start
-            if(!mTheRealServiceManager->checkService(name, &out).isOk()) {
+            if (!mTheRealServiceManager->getService(name, &out).isOk()) {
                 return nullptr;
             }
             if(out != nullptr) return out;
