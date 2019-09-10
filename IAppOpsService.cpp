@@ -34,7 +34,6 @@ public:
     {
     }
 
-#ifndef __ANDROID_VNDK__
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
@@ -145,7 +144,6 @@ public:
         remote()->transact(SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION, data, &reply);
     }
 
-#endif
     virtual void noteAsyncOp(const String16& callingPackageName, int32_t uid,
             const String16& packageName, int32_t opCode, const String16& message) {
         Parcel data, reply;
@@ -195,7 +193,6 @@ status_t BnAppOpsService::onTransact(
 {
     //printf("AppOpsService received: "); data.print();
     switch(code) {
-#ifndef __ANDROID_VNDK__
         case CHECK_OPERATION_TRANSACTION: {
             CHECK_INTERFACE(IAppOpsService, data, reply);
             int32_t code = data.readInt32();
@@ -288,7 +285,6 @@ status_t BnAppOpsService::onTransact(
             reply->writeNoException();
             return NO_ERROR;
         } break;
-#endif // __ANDROID_VNDK__
         case NOTE_ASYNC_OP_TRANSACTION: {
             CHECK_INTERFACE(IAppOpsService, data, reply);
             String16 callingPackageName = data.readString16();

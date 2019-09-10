@@ -18,10 +18,12 @@
 #ifndef ANDROID_IAPP_OPS_SERVICE_H
 #define ANDROID_IAPP_OPS_SERVICE_H
 
-#ifndef __ANDROID_VNDK__
 #include <binder/IAppOpsCallback.h>
-#endif
 #include <binder/IInterface.h>
+
+#ifdef __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif
 
 namespace android {
 
@@ -32,7 +34,6 @@ class IAppOpsService : public IInterface
 public:
     DECLARE_META_INTERFACE(AppOpsService)
 
-#ifndef __ANDROID_VNDK__
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
     virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
@@ -47,13 +48,11 @@ public:
     virtual int32_t checkAudioOperation(int32_t code, int32_t usage,int32_t uid,
             const String16& packageName) = 0;
     virtual void setCameraAudioRestriction(int32_t mode) = 0;
-#endif // __ANDROID_VNDK__
     virtual void noteAsyncOp(const String16& callingPackageName, int32_t uid,
             const String16& packageName, int32_t opCode, const String16& message) = 0;
     virtual bool shouldCollectNotes(int32_t opCode) = 0;
 
     enum {
-#ifndef __ANDROID_VNDK__
         CHECK_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
         NOTE_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+1,
         START_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+2,
@@ -63,13 +62,9 @@ public:
         GET_TOKEN_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+6,
         PERMISSION_TO_OP_CODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+7,
         CHECK_AUDIO_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+8,
-#endif // __ANDROID_VNDK__
         NOTE_ASYNC_OP_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+9,
         SHOULD_COLLECT_NOTES_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+10,
-#ifndef __ANDROID_VNDK__
         SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+11,
-#endif // __ANDROID_VNDK__
-
     };
 
     enum {

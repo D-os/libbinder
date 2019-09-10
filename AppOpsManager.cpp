@@ -32,7 +32,6 @@ namespace android {
 
 namespace {
 
-#ifndef __ANDROID_VNDK__
 #if defined(__BRILLO__)
 // Because Brillo has no application model, security policy is managed
 // statically (at build time) with SELinux controls.
@@ -41,17 +40,13 @@ const int APP_OPS_MANAGER_UNAVAILABLE_MODE = AppOpsManager::MODE_ALLOWED;
 #else
 const int APP_OPS_MANAGER_UNAVAILABLE_MODE = AppOpsManager::MODE_IGNORED;
 #endif  // defined(__BRILLO__)
-#endif // __ANDROID_VNDK__
 
 }  // namespace
 
 static String16 _appops("appops");
-#ifndef __ANDROID_VNDK__
 static pthread_mutex_t gTokenMutex = PTHREAD_MUTEX_INITIALIZER;
-#endif // __ANDROID_VNDK__
 static sp<IBinder> gToken;
 
-#ifndef __ANDROID_VNDK__
 static const sp<IBinder>& getToken(const sp<IAppOpsService>& service) {
     pthread_mutex_lock(&gTokenMutex);
     if (gToken == nullptr || gToken->pingBinder() != NO_ERROR) {
@@ -60,17 +55,12 @@ static const sp<IBinder>& getToken(const sp<IAppOpsService>& service) {
     pthread_mutex_unlock(&gTokenMutex);
     return gToken;
 }
-#endif // __ANDROID_VNDK__
 
 thread_local uint64_t notedAppOpsInThisBinderTransaction[2];
 thread_local int32_t uidOfThisBinderTransaction = -1;
 
 // Whether an appop should be collected: 0 == not initialized, 1 == don't note, 2 == note
-#ifndef __ANDROID_VNDK__
 uint8_t appOpsToNote[AppOpsManager::_NUM_OP] = {0};
-#else
-uint8_t appOpsToNote[128] = {0};
-#endif // __ANDROID_VNDK__
 
 AppOpsManager::AppOpsManager()
 {
@@ -108,7 +98,6 @@ sp<IAppOpsService> AppOpsManager::getService()
 }
 #endif  // defined(__BRILLO__)
 
-#ifndef __ANDROID_VNDK__
 int32_t AppOpsManager::checkOp(int32_t op, int32_t uid, const String16& callingPackage)
 {
     sp<IAppOpsService> service = getService();
@@ -199,8 +188,6 @@ void AppOpsManager::setCameraAudioRestriction(int32_t mode) {
         service->setCameraAudioRestriction(mode);
     }
 }
-
-#endif // __ANDROID_VNDK__
 
 bool AppOpsManager::shouldCollectNotes(int32_t opcode) {
     sp<IAppOpsService> service = getService();

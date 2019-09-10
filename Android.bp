@@ -86,8 +86,10 @@ cc_library_shared {
         vendor: {
             exclude_srcs: [
                 "ActivityManager.cpp",
+                "AppOpsManager.cpp",
                 "IActivityManager.cpp",
                 "IAppOpsCallback.cpp",
+                "IAppOpsService.cpp",
                 "IBatteryStats.cpp",
                 "IMediaResourceMonitor.cpp",
                 "IPermissionController.cpp",
