@@ -33,9 +33,9 @@
 #include <binder/Parcelable.h>
 
 #ifdef BINDER_IPC_32BIT
-typedef __u32 binder_size_t;
+typedef unsigned int binder_size_t;
 #else
-typedef __u64 binder_size_t;
+typedef unsigned long long binder_size_t;
 #endif
 
 
