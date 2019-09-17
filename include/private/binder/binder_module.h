@@ -23,6 +23,16 @@ namespace android {
 
 /* obtain structures and constants from the kernel header */
 
+// TODO(b/31559095): bionic on host
+#ifdef __ANDROID_HOST__
+#define __packed __attribute__((__packed__))
+#endif
+
+// TODO(b/31559095): bionic on host
+#if defined(B_PACK_CHARS) && !defined(_UAPI_LINUX_BINDER_H)
+#undef B_PACK_CHARS
+#endif
+
 #include <sys/ioctl.h>
 #include <linux/android/binder.h>
 

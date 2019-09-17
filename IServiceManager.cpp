@@ -20,15 +20,19 @@
 
 #include <android/os/BnServiceCallback.h>
 #include <android/os/IServiceManager.h>
-#include <utils/Log.h>
 #include <binder/IPCThreadState.h>
+#include <binder/Parcel.h>
+#include <utils/Log.h>
+#include <utils/String8.h>
+#include <utils/SystemClock.h>
+
 #ifndef __ANDROID_VNDK__
 #include <binder/IPermissionController.h>
 #endif
-#include <binder/Parcel.h>
+
+#ifndef __ANDROID_HOST__
 #include <cutils/properties.h>
-#include <utils/String8.h>
-#include <utils/SystemClock.h>
+#endif
 
 #include "Static.h"
 
@@ -59,7 +63,7 @@ sp<IServiceManager> defaultServiceManager()
     return gDefaultServiceManager;
 }
 
-#ifndef __ANDROID_VNDK__
+#if !defined(__ANDROID_VNDK__) && !defined(__ANDROID_HOST__)
 // IPermissionController is not accessible to vendors
 
 bool checkCallingPermission(const String16& permission)
@@ -163,10 +167,14 @@ public:
             strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
         const long timeout = uptimeMillis() + 5000;
         if (!gSystemBootCompleted && !isVendorService) {
+#ifdef __ANDROID_HOST__
+            gSystemBootCompleted = true;
+#else
             // Vendor code can't access system properties
             char bootCompleted[PROPERTY_VALUE_MAX];
             property_get("sys.boot_completed", bootCompleted, "0");
             gSystemBootCompleted = strcmp(bootCompleted, "1") == 0 ? true : false;
+#endif
         }
         // retry interval in millisecond; note that vendor services stay at 100ms
         const long sleepTime = gSystemBootCompleted ? 1000 : 100;
