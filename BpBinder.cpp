@@ -221,6 +221,9 @@ status_t BpBinder::transact(
             auto stability = Stability::get(this);
 
             if (CC_UNLIKELY(!Stability::check(stability, Stability::kLocalStability))) {
+                ALOGE("Cannot do a user transaction on a %s binder in a %s context.",
+                    Stability::stabilityString(stability).c_str(),
+                    Stability::stabilityString(Stability::kLocalStability).c_str());
                 return BAD_TYPE;
             }
         }
