@@ -102,9 +102,6 @@ cc_library_shared {
         android: {
             srcs: libbinder_device_interface_sources,
         },
-        host: {
-            cflags: ["-D__ANDROID_HOST__"],
-        },
         vendor: {
             exclude_srcs: libbinder_device_interface_sources,
         },

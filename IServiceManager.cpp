@@ -30,7 +30,7 @@
 #include <binder/IPermissionController.h>
 #endif
 
-#ifndef __ANDROID_HOST__
+#ifdef __ANDROID__
 #include <cutils/properties.h>
 #endif
 
@@ -63,7 +63,7 @@ sp<IServiceManager> defaultServiceManager()
     return gDefaultServiceManager;
 }
 
-#if !defined(__ANDROID_VNDK__) && !defined(__ANDROID_HOST__)
+#if !defined(__ANDROID_VNDK__) && defined(__ANDROID__)
 // IPermissionController is not accessible to vendors
 
 bool checkCallingPermission(const String16& permission)
@@ -166,14 +166,14 @@ public:
         const bool isVendorService =
             strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
         const long timeout = uptimeMillis() + 5000;
+        // Vendor code can't access system properties
         if (!gSystemBootCompleted && !isVendorService) {
-#ifdef __ANDROID_HOST__
-            gSystemBootCompleted = true;
-#else
-            // Vendor code can't access system properties
+#ifdef __ANDROID__
             char bootCompleted[PROPERTY_VALUE_MAX];
             property_get("sys.boot_completed", bootCompleted, "0");
             gSystemBootCompleted = strcmp(bootCompleted, "1") == 0 ? true : false;
+#else
+            gSystemBootCompleted = true;
 #endif
         }
         // retry interval in millisecond; note that vendor services stay at 100ms
