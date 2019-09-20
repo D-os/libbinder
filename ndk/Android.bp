@@ -14,8 +14,24 @@
  * limitations under the License.
  */
 
+// TODO(b/31559095): bionic on host should define this
+cc_defaults {
+    name: "libbinder_ndk_host_user",
+    target: {
+        host: {
+            cflags: [
+                "-D__INTRODUCED_IN(n)=",
+                "-D__assert(a,b,c)=",
+            ],
+        },
+    },
+}
+
 cc_library_shared {
     name: "libbinder_ndk",
+
+    defaults: ["libbinder_ndk_host_user"],
+    host_supported: true,
 
     export_include_dirs: [
         "include_ndk",
@@ -52,10 +68,17 @@ cc_library_shared {
         "jni_headers",
     ],
 
-    version_script: "libbinder_ndk.map.txt",
+    target: {
+        linux: {
+            version_script: "libbinder_ndk.map.txt",
+        },
+    },
     stubs: {
         symbol_file: "libbinder_ndk.map.txt",
-        versions: ["29", "30"],
+        versions: [
+            "29",
+            "30",
+        ],
     },
 }
 
