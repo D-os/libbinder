@@ -166,4 +166,5 @@ cc_test {
     ],
 
     test_suites: ["device-tests"],
+    require_root: true,
 }
