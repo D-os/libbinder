@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include <stddef.h>
 #include <sys/cdefs.h>
 
 #include <android/binder_status.h>
