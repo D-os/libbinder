@@ -99,6 +99,32 @@ status_t IBinder::getExtension(sp<IBinder>* out) {
     return reply.readNullableStrongBinder(out);
 }
 
+status_t IBinder::getDebugPid(pid_t* out) {
+    BBinder* local = this->localBinder();
+    if (local != nullptr) {
+      *out = local->getDebugPid();
+      return OK;
+    }
+
+    BpBinder* proxy = this->remoteBinder();
+    LOG_ALWAYS_FATAL_IF(proxy == nullptr);
+
+    Parcel data;
+    Parcel reply;
+    status_t status = transact(DEBUG_PID_TRANSACTION, data, &reply);
+    if (status != OK) return status;
+
+    int32_t pid;
+    status = reply.readInt32(&pid);
+    if (status != OK) return status;
+
+    if (pid < 0 || pid > std::numeric_limits<pid_t>::max()) {
+        return BAD_VALUE;
+    }
+    *out = pid;
+    return OK;
+}
+
 // ---------------------------------------------------------------------------
 
 class BBinder::Extras
@@ -151,6 +177,9 @@ status_t BBinder::transact(
             break;
         case EXTENSION_TRANSACTION:
             err = reply->writeStrongBinder(getExtension());
+            break;
+        case DEBUG_PID_TRANSACTION:
+            err = reply->writeInt32(getDebugPid());
             break;
         default:
             err = onTransact(code, data, reply, flags);
@@ -248,6 +277,10 @@ sp<IBinder> BBinder::getExtension() {
     Extras* e = mExtras.load(std::memory_order_acquire);
     if (e == nullptr) return nullptr;
     return e->mExtension;
+}
+
+pid_t BBinder::getDebugPid() {
+    return getpid();
 }
 
 void BBinder::setExtension(const sp<IBinder>& extension) {
