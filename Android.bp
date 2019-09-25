@@ -51,7 +51,7 @@ libbinder_device_interface_sources = [
     "IpPrefix.cpp",
 ]
 
-cc_library_shared {
+cc_library {
     name: "libbinder",
 
     // for vndbinder
@@ -101,6 +101,11 @@ cc_library_shared {
     target: {
         android: {
             srcs: libbinder_device_interface_sources,
+
+            // NOT static to keep the wire protocol unfrozen
+            static: {
+                enabled: false,
+            },
         },
         vendor: {
             exclude_srcs: libbinder_device_interface_sources,
