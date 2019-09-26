@@ -172,4 +172,4 @@ status_t BnPermissionController::onTransact(
     }
 }
 
-}; // namespace android
+} // namespace android

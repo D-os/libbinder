@@ -112,4 +112,4 @@ status_t BnUidObserver::onTransact(
     }
 }
 
-}; // namespace android
+} // namespace android

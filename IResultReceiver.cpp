@@ -65,4 +65,4 @@ status_t BnResultReceiver::onTransact(
     }
 }
 
-}; // namespace android
+} // namespace android

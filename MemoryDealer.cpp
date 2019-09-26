@@ -481,4 +481,4 @@ void SimpleBestFitAllocator::dump_l(String8& result,
 }
 
 
-}; // namespace android
+} // namespace android

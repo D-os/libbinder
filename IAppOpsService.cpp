@@ -239,4 +239,4 @@ status_t BnAppOpsService::onTransact(
     }
 }
 
-}; // namespace android
+} // namespace android

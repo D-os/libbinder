@@ -114,4 +114,4 @@ status_t ActivityManager::unlinkToDeath(const sp<IBinder::DeathRecipient>& recip
     return INVALID_OPERATION;
 }
 
-}; // namespace android
+} // namespace android

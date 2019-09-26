@@ -147,4 +147,4 @@ int32_t AppOpsManager::permissionToOpCode(const String16& permission) {
 }
 
 
-}; // namespace android
+} // namespace android

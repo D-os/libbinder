@@ -196,7 +196,7 @@ private:
             ProcessState::CallRestriction mCallRestriction;
 };
 
-}; // namespace android
+} // namespace android
 
 // ---------------------------------------------------------------------------
 

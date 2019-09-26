@@ -66,4 +66,4 @@ status_t BnAppOpsCallback::onTransact(
     }
 }
 
-}; // namespace android
+} // namespace android
