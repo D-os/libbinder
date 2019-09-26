@@ -68,7 +68,7 @@
 
 static size_t pad_size(size_t s) {
     if (s > (std::numeric_limits<size_t>::max() - 3)) {
-        abort();
+        LOG_ALWAYS_FATAL("pad size too big %zu", s);
     }
     return PAD_SIZE_UNSAFE(s);
 }
@@ -295,7 +295,7 @@ size_t Parcel::dataAvail() const
 {
     size_t result = dataSize() - dataPosition();
     if (result > INT32_MAX) {
-        abort();
+        LOG_ALWAYS_FATAL("result too big: %zu", result);
     }
     return result;
 }
@@ -332,7 +332,7 @@ void Parcel::setDataPosition(size_t pos) const
     if (pos > INT32_MAX) {
         // don't accept size_t values which may have come from an
         // inadvertent conversion from a negative int.
-        abort();
+        LOG_ALWAYS_FATAL("pos too big: %zu", pos);
     }
 
     mDataPos = pos;
