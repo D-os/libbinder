@@ -491,4 +491,4 @@ void BpBinder::setBinderProxyCountWatermarks(int high, int low) {
 
 // ---------------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android

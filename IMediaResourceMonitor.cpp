@@ -59,4 +59,4 @@ status_t BnMediaResourceMonitor::onTransact( uint32_t code, const Parcel& data, 
 
 // ----------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android

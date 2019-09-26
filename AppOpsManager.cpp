@@ -223,4 +223,4 @@ void AppOpsManager::noteAsyncOp(const String16& callingPackageName, int32_t uid,
     }
 }
 
-}; // namespace android
+} // namespace android

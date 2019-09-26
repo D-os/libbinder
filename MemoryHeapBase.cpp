@@ -181,4 +181,4 @@ off_t MemoryHeapBase::getOffset() const {
 }
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android

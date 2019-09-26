@@ -126,7 +126,7 @@ private:
             CallRestriction     mCallRestriction;
 };
     
-}; // namespace android
+} // namespace android
 
 // ---------------------------------------------------------------------------
 

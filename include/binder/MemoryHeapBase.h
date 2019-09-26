@@ -98,6 +98,6 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_MEMORY_HEAP_BASE_H

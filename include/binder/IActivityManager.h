@@ -51,7 +51,7 @@ public:
 
 // ------------------------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android
 
 #else // __ANDROID_VNDK__
 #error "This header is not visible to vendors"
