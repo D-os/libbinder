@@ -512,4 +512,4 @@ void HeapCache::dump_heaps()
 
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android

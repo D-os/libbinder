@@ -50,7 +50,7 @@ public:
 
 // ----------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_IRESULT_RECEIVER_H
 

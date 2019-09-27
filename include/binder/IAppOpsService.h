@@ -88,6 +88,6 @@ public:
 
 // ----------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_IAPP_OPS_SERVICE_H

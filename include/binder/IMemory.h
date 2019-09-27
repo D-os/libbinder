@@ -123,6 +123,6 @@ protected:
 
 // ----------------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_IMEMORY_H

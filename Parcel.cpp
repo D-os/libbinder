@@ -2793,4 +2793,4 @@ void Parcel::Blob::clear() {
     mMutable = false;
 }
 
-}; // namespace android
+} // namespace android

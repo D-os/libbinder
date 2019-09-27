@@ -242,7 +242,7 @@ protected:
 private:
 };
 
-}; // namespace android
+} // namespace android
 
 // ---------------------------------------------------------------------------
 

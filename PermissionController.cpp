@@ -85,4 +85,4 @@ int PermissionController::getPackageUid(const String16& package, int flags)
     return service != nullptr ? service->getPackageUid(package, flags) : -1;
 }
 
-}; // namespace android
+} // namespace android

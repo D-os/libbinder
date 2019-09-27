@@ -43,4 +43,4 @@ MemoryBase::~MemoryBase()
 }
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android

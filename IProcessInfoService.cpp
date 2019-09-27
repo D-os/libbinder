@@ -88,4 +88,4 @@ IMPLEMENT_META_INTERFACE(ProcessInfoService, "android.os.IProcessInfoService");
 
 // ----------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android

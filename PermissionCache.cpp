@@ -110,4 +110,4 @@ bool PermissionCache::checkPermission(
 }
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android

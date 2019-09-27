@@ -1325,4 +1325,4 @@ void IPCThreadState::freeBuffer(Parcel* parcel, const uint8_t* data,
     state->mOut.writePointer((uintptr_t)data);
 }
 
-}; // namespace android
+} // namespace android
