@@ -62,6 +62,6 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_BUFFEREDTEXTOUTPUT_H

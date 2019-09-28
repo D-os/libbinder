@@ -285,4 +285,4 @@ private:
 
 IMPLEMENT_META_INTERFACE(ServiceManager, "android.os.IServiceManager");
 
-}; // namespace android
+} // namespace android

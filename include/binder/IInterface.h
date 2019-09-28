@@ -168,6 +168,6 @@ inline IBinder* BpInterface<INTERFACE>::onAsBinder()
 
 // ----------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_IINTERFACE_H

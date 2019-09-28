@@ -44,6 +44,6 @@ ssize_t getBinderKernelReferences(size_t count, uintptr_t* buf);
 __END_DECLS
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_BINDER_DEBUG_H

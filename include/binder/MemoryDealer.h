@@ -59,6 +59,6 @@ private:
 
 
 // ----------------------------------------------------------------------------
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_MEMORY_DEALER_H

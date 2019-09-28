@@ -419,4 +419,4 @@ bool BpRefBase::onIncStrongAttempted(uint32_t /*flags*/, const void* /*id*/)
 
 // ---------------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android

@@ -240,4 +240,4 @@ status_t BnBatteryStats::onTransact(
     }
 }
 
-}; // namespace android
+} // namespace android
