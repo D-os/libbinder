@@ -308,5 +308,5 @@ ssize_t getBinderKernelReferences(size_t count, uintptr_t* buf) {
     return proc->getKernelReferences(count, buf);
 }
 
-}; // namespace android
+} // namespace android
 

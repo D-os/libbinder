@@ -144,7 +144,7 @@ private:
     static bool                                 sBinderProxyThrottleCreate;
 };
 
-}; // namespace android
+} // namespace android
 
 // ---------------------------------------------------------------------------
 

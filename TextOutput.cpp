@@ -69,4 +69,4 @@ TextOutput& operator<<(TextOutput& to, const HexDump& val)
     return to;
 }
 
-}; // namespace android
+} // namespace android

@@ -51,7 +51,7 @@ public:
 
 // ----------------------------------------------------------------------
 
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_ISHELL_CALLBACK_H
 

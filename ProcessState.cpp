@@ -387,4 +387,4 @@ ProcessState::~ProcessState()
     mDriverFD = -1;
 }
         
-}; // namespace android
+} // namespace android

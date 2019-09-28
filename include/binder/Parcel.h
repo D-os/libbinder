@@ -921,7 +921,7 @@ inline TextOutput& operator<<(TextOutput& to, const Parcel& parcel)
     return to;
 }
 
-}; // namespace android
+} // namespace android
 
 // ---------------------------------------------------------------------------
 

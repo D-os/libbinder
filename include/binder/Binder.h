@@ -114,7 +114,7 @@ private:
     std::atomic<int32_t>    mState;
 };
 
-}; // namespace android
+} // namespace android
 
 // ---------------------------------------------------------------------------
 

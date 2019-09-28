@@ -110,4 +110,4 @@ public:
 
 IMPLEMENT_META_INTERFACE(ActivityManager, "android.app.IActivityManager");
 
-}; // namespace android
+} // namespace android

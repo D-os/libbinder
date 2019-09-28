@@ -46,6 +46,6 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-}; // namespace android
+} // namespace android
 
 #endif // ANDROID_MEMORY_BASE_H

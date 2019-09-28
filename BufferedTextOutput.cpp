@@ -280,4 +280,4 @@ BufferedTextOutput::BufferState* BufferedTextOutput::getBuffer() const
     return mGlobalState;
 }
 
-}; // namespace android
+} // namespace android
