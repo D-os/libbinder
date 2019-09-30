@@ -18,7 +18,24 @@
 #include "binder.h"
 #include "util.h"
 
+#include <android/os/IServiceManager.h>
+
 using ::android::status_t;
+
+class ExampleParcelable : public android::Parcelable {
+public:
+    status_t writeToParcel(android::Parcel* /*parcel*/) const override {
+        FUZZ_LOG() << "should not reach";
+        abort();
+    }
+    status_t readFromParcel(const android::Parcel* parcel) override {
+        mExampleExtraField++;
+        return parcel->readInt64(&(this->mExampleUsedData));
+    }
+private:
+    int64_t mExampleExtraField = 0;
+    int64_t mExampleUsedData = 0;
+};
 
 #define PARCEL_READ_WITH_STATUS(T, FUN) \
     [] (const ::android::Parcel& p, uint8_t /*data*/) {\
@@ -108,13 +125,25 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_OPT_STATUS(android::String8, readString8),
     PARCEL_READ_OPT_STATUS(android::String16, readString16),
     PARCEL_READ_WITH_STATUS(std::unique_ptr<android::String16>, readString16),
-    // TODO: readString16Inplace
+    [] (const ::android::Parcel& p, uint8_t /*data*/) {
+        FUZZ_LOG() << "about to readString16Inplace";
+        size_t outLen = 0;
+        const char16_t* str = p.readString16Inplace(&outLen);
+        FUZZ_LOG() << "readString16Inplace: " << (str ? "non-null" : "null") << " size: " << outLen;
+    },
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readStrongBinder),
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readNullableStrongBinder),
 
-    // TODO: all templated versions of readParcelableVector, readParcelable
-    // TODO: readParcelable
-    // TODO: templated versions of readStrongBinder, readNullableStrongBinder
+    // only reading one parcelable type for now
+    // TODO(b/131868573): can force read of arbitrarily sized vector
+    // PARCEL_READ_WITH_STATUS(std::unique_ptr<std::vector<std::unique_ptr<ExampleParcelable>>>, readParcelableVector),
+    // PARCEL_READ_WITH_STATUS(std::vector<ExampleParcelable>, readParcelableVector),
+    PARCEL_READ_WITH_STATUS(ExampleParcelable, readParcelable),
+    PARCEL_READ_WITH_STATUS(std::unique_ptr<ExampleParcelable>, readParcelable),
+
+    // only reading one binder type for now
+    PARCEL_READ_WITH_STATUS(android::sp<android::os::IServiceManager>, readStrongBinder),
+    PARCEL_READ_WITH_STATUS(android::sp<android::os::IServiceManager>, readNullableStrongBinder),
 
     // TODO(b/131868573): can force read of arbitrarily sized vector
     // PARCEL_READ_WITH_STATUS(::std::unique_ptr<std::vector<android::sp<android::IBinder>>>, readStrongBinderVector),
@@ -146,10 +175,22 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
 
     // TODO: read(Flattenable<T>)
     // TODO: read(LightFlattenable<T>)
+
+    // TODO(b/131868573): can force read of arbitrarily sized vector
     // TODO: resizeOutVector
 
     PARCEL_READ_NO_STATUS(int32_t, readExceptionCode),
-    // TODO: readNativeHandle
+    [] (const android::Parcel& p, uint8_t /*len*/) {
+        FUZZ_LOG() << "about to readNativeHandle";
+        native_handle_t* t = p.readNativeHandle();
+        FUZZ_LOG() << "readNativeHandle: " << t;
+        if (t != nullptr) {
+            FUZZ_LOG() << "about to free readNativeHandle";
+            native_handle_close(t);
+            native_handle_delete(t);
+            FUZZ_LOG() << "readNativeHandle freed";
+        }
+    },
     PARCEL_READ_NO_STATUS(int, readFileDescriptor),
     PARCEL_READ_NO_STATUS(int, readParcelFileDescriptor),
     PARCEL_READ_WITH_STATUS(android::base::unique_fd, readUniqueFileDescriptor),
@@ -164,7 +205,12 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         status_t status = p.readBlob(len, &blob);
         FUZZ_LOG() << "readBlob status: " << status;
     },
-    // TODO: readObject
+    [] (const android::Parcel& p, uint8_t options) {
+        FUZZ_LOG() << "about to readObject";
+        bool nullMetaData = options & 0x1;
+        const void* obj = static_cast<const void*>(p.readObject(nullMetaData));
+        FUZZ_LOG() << "readObject: " << obj;
+    },
     PARCEL_READ_NO_STATUS(uid_t, readCallingWorkSourceUid),
     PARCEL_READ_NO_STATUS(size_t, getBlobAshmemSize),
     PARCEL_READ_NO_STATUS(size_t, getOpenAshmemSize),
