@@ -20,7 +20,7 @@
 
 __BEGIN_DECLS
 
-#ifdef __ANDROID_VNDK__
+#if defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
 
 /**
  * This interface has the stability of the vendor image.
@@ -31,7 +31,7 @@ static inline void AIBinder_markCompilationUnitStability(AIBinder* binder) {
     AIBinder_markVendorStability(binder);
 }
 
-#else  // ndef defined __ANDROID_VNDK__
+#else  // defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
 
 /**
  * This interface has the stability of the system image.
@@ -42,7 +42,7 @@ static inline void AIBinder_markCompilationUnitStability(AIBinder* binder) {
     AIBinder_markSystemStability(binder);
 }
 
-#endif  // ifdef __ANDROID_VNDK__
+#endif  // defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
 
 /**
  * This interface has system<->vendor stability
