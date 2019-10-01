@@ -37,6 +37,29 @@ private:
     int64_t mExampleUsedData = 0;
 };
 
+struct ExampleFlattenable : public android::Flattenable<ExampleFlattenable> {
+public:
+    size_t getFlattenedSize() const { return sizeof(mValue); }
+    size_t getFdCount() const { return 0; }
+    status_t flatten(void*& /*buffer*/, size_t& /*size*/, int*& /*fds*/, size_t& /*count*/) const {
+        FUZZ_LOG() << "should not reach";
+        abort();
+    }
+    status_t unflatten(void const*& buffer, size_t& size, int const*& /*fds*/, size_t& /*count*/) {
+        if (size < sizeof(mValue)) {
+            return android::NO_MEMORY;
+        }
+        android::FlattenableUtils::read(buffer, size, mValue);
+        return android::OK;
+    }
+private:
+    int32_t mValue = 0xFEEDBEEF;
+};
+
+struct ExampleLightFlattenable : public android::LightFlattenablePod<ExampleLightFlattenable> {
+    int32_t mValue = 0;
+};
+
 #define PARCEL_READ_WITH_STATUS(T, FUN) \
     [] (const ::android::Parcel& p, uint8_t /*data*/) {\
         FUZZ_LOG() << "about to read " #T " using " #FUN " with status";\
@@ -102,7 +125,7 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     [] (const ::android::Parcel& p, uint8_t len) {
         FUZZ_LOG() << "about to readInplace";
         const void* r = p.readInplace(len);
-        FUZZ_LOG() << "readInplace done. pointer: " << r;
+        FUZZ_LOG() << "readInplace done. pointer: " << r << " bytes: " << hexString(r, len);
     },
     PARCEL_READ_OPT_STATUS(int32_t, readInt32),
     PARCEL_READ_OPT_STATUS(uint32_t, readUint32),
@@ -129,7 +152,8 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         FUZZ_LOG() << "about to readString16Inplace";
         size_t outLen = 0;
         const char16_t* str = p.readString16Inplace(&outLen);
-        FUZZ_LOG() << "readString16Inplace: " << (str ? "non-null" : "null") << " size: " << outLen;
+        FUZZ_LOG() << "readString16Inplace: " << hexString(str, sizeof(char16_t) * outLen)
+                   << " size: " << outLen;
     },
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readStrongBinder),
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readNullableStrongBinder),
@@ -173,8 +197,18 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     // PARCEL_READ_WITH_STATUS(std::unique_ptr<std::vector<std::unique_ptr<std::string>>>, readUtf8VectorFromUtf16Vector),
     // PARCEL_READ_WITH_STATUS(std::vector<std::string>, readUtf8VectorFromUtf16Vector),
 
-    // TODO: read(Flattenable<T>)
-    // TODO: read(LightFlattenable<T>)
+    [] (const android::Parcel& p, uint8_t /*len*/) {
+        FUZZ_LOG() << "about to read flattenable";
+        ExampleFlattenable f;
+        status_t status = p.read(f);
+        FUZZ_LOG() << "read flattenable: " << status;
+    },
+    [] (const android::Parcel& p, uint8_t /*len*/) {
+        FUZZ_LOG() << "about to read lite flattenable";
+        ExampleLightFlattenable f;
+        status_t status = p.read(f);
+        FUZZ_LOG() << "read lite flattenable: " << status;
+    },
 
     // TODO(b/131868573): can force read of arbitrarily sized vector
     // TODO: resizeOutVector

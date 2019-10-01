@@ -45,4 +45,5 @@ private:
     std::stringstream mOs;
 };
 
-std::string hexString(const std::vector<uint8_t>& hash);
+std::string hexString(const void* bytes, size_t len);
+std::string hexString(const std::vector<uint8_t>& bytes);
