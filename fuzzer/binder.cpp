@@ -125,7 +125,7 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     [] (const ::android::Parcel& p, uint8_t len) {
         FUZZ_LOG() << "about to readInplace";
         const void* r = p.readInplace(len);
-        FUZZ_LOG() << "readInplace done. pointer: " << r;
+        FUZZ_LOG() << "readInplace done. pointer: " << r << " bytes: " << hexString(r, len);
     },
     PARCEL_READ_OPT_STATUS(int32_t, readInt32),
     PARCEL_READ_OPT_STATUS(uint32_t, readUint32),
@@ -152,7 +152,8 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         FUZZ_LOG() << "about to readString16Inplace";
         size_t outLen = 0;
         const char16_t* str = p.readString16Inplace(&outLen);
-        FUZZ_LOG() << "readString16Inplace: " << (str ? "non-null" : "null") << " size: " << outLen;
+        FUZZ_LOG() << "readString16Inplace: " << hexString(str, sizeof(char16_t) * outLen)
+                   << " size: " << outLen;
     },
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readStrongBinder),
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readNullableStrongBinder),
