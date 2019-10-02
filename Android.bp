@@ -74,7 +74,6 @@ cc_library {
     apex_available: [
         "//apex_available:platform",
         // TODO(b/139016109) remove these three
-        "apex_test_build_features",
         "com.android.media.swcodec",
         "test_com.android.media.swcodec",
     ],
