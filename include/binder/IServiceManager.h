@@ -31,7 +31,7 @@ class IServiceManager : public IInterface
 public:
     DECLARE_META_INTERFACE(ServiceManager)
     /**
-     * Must match values in IServiceManager.java
+     * Must match values in IServiceManager.aidl
      */
     /* Allows services to dump sections according to priorities. */
     static const int DUMP_FLAG_PRIORITY_CRITICAL = 1 << 0;
