@@ -16,6 +16,7 @@
 #define FUZZ_LOG_TAG "main"
 
 #include "binder.h"
+#include "binder_ndk.h"
 #include "hwbinder.h"
 #include "util.h"
 
@@ -50,6 +51,7 @@ void fuzz(uint8_t options, const std::vector<uint8_t>& input, const std::vector<
     // although they will do completely different things, might as well fuzz both
     doFuzz<::android::hardware::Parcel>(HWBINDER_PARCEL_READ_FUNCTIONS, input, instructions);
     doFuzz<::android::Parcel>(BINDER_PARCEL_READ_FUNCTIONS, input, instructions);
+    doFuzz<NdkParcelAdapter>(BINDER_NDK_PARCEL_READ_FUNCTIONS, input, instructions);
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {

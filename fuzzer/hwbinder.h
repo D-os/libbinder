@@ -17,6 +17,6 @@
 #include <hwbinder/Parcel.h>
 #include <vector>
 
-#include "parcel.h"
+#include "parcel_fuzzer.h"
 
 extern std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTIONS;

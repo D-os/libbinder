@@ -17,6 +17,6 @@
 #include <binder/Parcel.h>
 #include <vector>
 
-#include "parcel.h"
+#include "parcel_fuzzer.h"
 
 extern std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS;
