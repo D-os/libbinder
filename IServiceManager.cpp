@@ -54,6 +54,36 @@ static_assert(AidlServiceManager::DUMP_FLAG_PRIORITY_DEFAULT == IServiceManager:
 static_assert(AidlServiceManager::DUMP_FLAG_PRIORITY_ALL == IServiceManager::DUMP_FLAG_PRIORITY_ALL);
 static_assert(AidlServiceManager::DUMP_FLAG_PROTO == IServiceManager::DUMP_FLAG_PROTO);
 
+const String16& IServiceManager::getInterfaceDescriptor() const {
+    return AidlServiceManager::descriptor;
+}
+IServiceManager::IServiceManager() {}
+IServiceManager::~IServiceManager() {}
+
+// From the old libbinder IServiceManager interface to IServiceManager.
+class ServiceManagerShim : public IServiceManager
+{
+public:
+    explicit ServiceManagerShim (const sp<AidlServiceManager>& impl);
+
+    sp<IBinder> getService(const String16& name) const override;
+    sp<IBinder> checkService(const String16& name) const override;
+    status_t addService(const String16& name, const sp<IBinder>& service,
+                        bool allowIsolated, int dumpsysPriority) override;
+    Vector<String16> listServices(int dumpsysPriority) override;
+    sp<IBinder> waitForService(const String16& name16) override;
+
+    // for legacy ABI
+    const String16& getInterfaceDescriptor() const override {
+        return mTheRealServiceManager->getInterfaceDescriptor();
+    }
+    IBinder* onAsBinder() override {
+        return IInterface::asBinder(mTheRealServiceManager).get();
+    }
+private:
+    sp<AidlServiceManager> mTheRealServiceManager;
+};
+
 sp<IServiceManager> defaultServiceManager()
 {
     static Mutex gDefaultServiceManagerLock;
@@ -64,8 +94,9 @@ sp<IServiceManager> defaultServiceManager()
     {
         AutoMutex _l(gDefaultServiceManagerLock);
         while (gDefaultServiceManager == nullptr) {
-            gDefaultServiceManager = interface_cast<IServiceManager>(
-                ProcessState::self()->getContextObject(nullptr));
+            gDefaultServiceManager = new ServiceManagerShim(
+                interface_cast<AidlServiceManager>(
+                    ProcessState::self()->getContextObject(nullptr)));
             if (gDefaultServiceManager == nullptr)
                 sleep(1);
         }
@@ -158,142 +189,136 @@ bool checkPermission(const String16& permission, pid_t pid, uid_t uid)
 
 // ----------------------------------------------------------------------
 
-class BpServiceManager : public BpInterface<IServiceManager>
-{
-public:
-    explicit BpServiceManager(const sp<IBinder>& impl)
-        : BpInterface<IServiceManager>(impl),
-          mTheRealServiceManager(interface_cast<AidlServiceManager>(impl))
-    {
-    }
+ServiceManagerShim::ServiceManagerShim(const sp<AidlServiceManager>& impl)
+ : mTheRealServiceManager(impl)
+{}
 
-    sp<IBinder> getService(const String16& name) const override
-    {
-        static bool gSystemBootCompleted = false;
+sp<IBinder> ServiceManagerShim::getService(const String16& name) const
+{
+    static bool gSystemBootCompleted = false;
+
+    sp<IBinder> svc = checkService(name);
+    if (svc != nullptr) return svc;
+
+    const bool isVendorService =
+        strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
+    const long timeout = uptimeMillis() + 5000;
+    // Vendor code can't access system properties
+    if (!gSystemBootCompleted && !isVendorService) {
+#ifdef __ANDROID__
+        char bootCompleted[PROPERTY_VALUE_MAX];
+        property_get("sys.boot_completed", bootCompleted, "0");
+        gSystemBootCompleted = strcmp(bootCompleted, "1") == 0 ? true : false;
+#else
+        gSystemBootCompleted = true;
+#endif
+    }
+    // retry interval in millisecond; note that vendor services stay at 100ms
+    const long sleepTime = gSystemBootCompleted ? 1000 : 100;
+
+    int n = 0;
+    while (uptimeMillis() < timeout) {
+        n++;
+        ALOGI("Waiting for service '%s' on '%s'...", String8(name).string(),
+            ProcessState::self()->getDriverName().c_str());
+        usleep(1000*sleepTime);
 
         sp<IBinder> svc = checkService(name);
         if (svc != nullptr) return svc;
+    }
+    ALOGW("Service %s didn't start. Returning NULL", String8(name).string());
+    return nullptr;
+}
 
-        const bool isVendorService =
-            strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
-        const long timeout = uptimeMillis() + 5000;
-        // Vendor code can't access system properties
-        if (!gSystemBootCompleted && !isVendorService) {
-#ifdef __ANDROID__
-            char bootCompleted[PROPERTY_VALUE_MAX];
-            property_get("sys.boot_completed", bootCompleted, "0");
-            gSystemBootCompleted = strcmp(bootCompleted, "1") == 0 ? true : false;
-#else
-            gSystemBootCompleted = true;
-#endif
+sp<IBinder> ServiceManagerShim::checkService(const String16& name) const
+{
+    sp<IBinder> ret;
+    if (!mTheRealServiceManager->checkService(String8(name).c_str(), &ret).isOk()) {
+        return nullptr;
+    }
+    return ret;
+}
+
+status_t ServiceManagerShim::addService(const String16& name, const sp<IBinder>& service,
+                                        bool allowIsolated, int dumpsysPriority)
+{
+    Status status = mTheRealServiceManager->addService(
+        String8(name).c_str(), service, allowIsolated, dumpsysPriority);
+    return status.exceptionCode();
+}
+
+Vector<String16> ServiceManagerShim::listServices(int dumpsysPriority)
+{
+    std::vector<std::string> ret;
+    if (!mTheRealServiceManager->listServices(dumpsysPriority, &ret).isOk()) {
+        return {};
+    }
+
+    Vector<String16> res;
+    res.setCapacity(ret.size());
+    for (const std::string& name : ret) {
+        res.push(String16(name.c_str()));
+    }
+    return res;
+}
+
+sp<IBinder> ServiceManagerShim::waitForService(const String16& name16)
+{
+    class Waiter : public android::os::BnServiceCallback {
+        Status onRegistration(const std::string& /*name*/,
+                              const sp<IBinder>& binder) override {
+            std::unique_lock<std::mutex> lock(mMutex);
+            mBinder = binder;
+            lock.unlock();
+            mCv.notify_one();
+            return Status::ok();
         }
-        // retry interval in millisecond; note that vendor services stay at 100ms
-        const long sleepTime = gSystemBootCompleted ? 1000 : 100;
+    public:
+        sp<IBinder> mBinder;
+        std::mutex mMutex;
+        std::condition_variable mCv;
+    };
 
-        int n = 0;
-        while (uptimeMillis() < timeout) {
-            n++;
-            ALOGI("Waiting for service '%s' on '%s'...", String8(name).string(),
-                ProcessState::self()->getDriverName().c_str());
-            usleep(1000*sleepTime);
+    const std::string name = String8(name16).c_str();
 
-            sp<IBinder> svc = checkService(name);
-            if (svc != nullptr) return svc;
-        }
-        ALOGW("Service %s didn't start. Returning NULL", String8(name).string());
+    sp<IBinder> out;
+    if (!mTheRealServiceManager->getService(name, &out).isOk()) {
+        return nullptr;
+    }
+    if(out != nullptr) return out;
+
+    sp<Waiter> waiter = new Waiter;
+    if (!mTheRealServiceManager->registerForNotifications(
+            name, waiter).isOk()) {
         return nullptr;
     }
 
-    sp<IBinder> checkService(const String16& name) const override {
-        sp<IBinder> ret;
-        if (!mTheRealServiceManager->checkService(String8(name).c_str(), &ret).isOk()) {
-            return nullptr;
-        }
-        return ret;
-    }
-
-    status_t addService(const String16& name, const sp<IBinder>& service,
-                        bool allowIsolated, int dumpsysPriority) override {
-        Status status = mTheRealServiceManager->addService(String8(name).c_str(), service, allowIsolated, dumpsysPriority);
-        return status.exceptionCode();
-    }
-
-    virtual Vector<String16> listServices(int dumpsysPriority) {
-        std::vector<std::string> ret;
-        if (!mTheRealServiceManager->listServices(dumpsysPriority, &ret).isOk()) {
-            return {};
+    while(true) {
+        {
+            std::unique_lock<std::mutex> lock(waiter->mMutex);
+            using std::literals::chrono_literals::operator""s;
+            waiter->mCv.wait_for(lock, 1s, [&] {
+                return waiter->mBinder != nullptr;
+            });
+            if (waiter->mBinder != nullptr) return waiter->mBinder;
         }
 
-        Vector<String16> res;
-        res.setCapacity(ret.size());
-        for (const std::string& name : ret) {
-            res.push(String16(name.c_str()));
-        }
-        return res;
-    }
-
-    sp<IBinder> waitForService(const String16& name16) override {
-        class Waiter : public android::os::BnServiceCallback {
-            Status onRegistration(const std::string& /*name*/,
-                                  const sp<IBinder>& binder) override {
-                std::unique_lock<std::mutex> lock(mMutex);
-                mBinder = binder;
-                lock.unlock();
-                mCv.notify_one();
-                return Status::ok();
-            }
-        public:
-            sp<IBinder> mBinder;
-            std::mutex mMutex;
-            std::condition_variable mCv;
-        };
-
-        const std::string name = String8(name16).c_str();
-
-        sp<IBinder> out;
+        // Handle race condition for lazy services. Here is what can happen:
+        // - the service dies (not processed by init yet).
+        // - sm processes death notification.
+        // - sm gets getService and calls init to start service.
+        // - init gets the start signal, but the service already appears
+        //   started, so it does nothing.
+        // - init gets death signal, but doesn't know it needs to restart
+        //   the service
+        // - we need to request service again to get it to start
         if (!mTheRealServiceManager->getService(name, &out).isOk()) {
             return nullptr;
         }
         if(out != nullptr) return out;
 
-        sp<Waiter> waiter = new Waiter;
-        if (!mTheRealServiceManager->registerForNotifications(
-                name, waiter).isOk()) {
-            return nullptr;
-        }
-
-        while(true) {
-            {
-                std::unique_lock<std::mutex> lock(waiter->mMutex);
-                using std::literals::chrono_literals::operator""s;
-                waiter->mCv.wait_for(lock, 1s, [&] {
-                    return waiter->mBinder != nullptr;
-                });
-                if (waiter->mBinder != nullptr) return waiter->mBinder;
-            }
-
-            // Handle race condition for lazy services. Here is what can happen:
-            // - the service dies (not processed by init yet).
-            // - sm processes death notification.
-            // - sm gets getService and calls init to start service.
-            // - init gets the start signal, but the service already appears
-            //   started, so it does nothing.
-            // - init gets death signal, but doesn't know it needs to restart
-            //   the service
-            // - we need to request service again to get it to start
-            if (!mTheRealServiceManager->getService(name, &out).isOk()) {
-                return nullptr;
-            }
-            if(out != nullptr) return out;
-
-            ALOGW("Waited one second for %s", name.c_str());
-        }
+        ALOGW("Waited one second for %s", name.c_str());
     }
-
-private:
-    sp<AidlServiceManager> mTheRealServiceManager;
-};
-
-IMPLEMENT_META_INTERFACE(ServiceManager, "android.os.IServiceManager");
+}
 
 } // namespace android
