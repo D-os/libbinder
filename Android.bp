@@ -71,7 +71,12 @@ cc_library {
     // libbinder does not offer a stable wire protocol.
     // if a second copy of it is installed, then it may break after security
     // or dessert updates. Instead, apex users should use libbinder_ndk.
-    no_apex: true,
+    apex_available: [
+        "//apex_available:platform",
+        // TODO(b/139016109) remove these three
+        "com.android.media.swcodec",
+        "test_com.android.media.swcodec",
+    ],
 
     srcs: [
         "Binder.cpp",
