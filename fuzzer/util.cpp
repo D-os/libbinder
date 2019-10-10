@@ -24,13 +24,17 @@
 std::string hexString(const void* bytes, size_t len) {
     if (bytes == nullptr) return "<null>";
 
-    std::ostringstream s;
-    s << std::hex << std::setfill('0');
+    const uint8_t* bytes8 = static_cast<const uint8_t*>(bytes);
+    char chars[] = "0123456789abcdef";
+    std::string result;
+    result.resize(len * 2);
+
     for (size_t i = 0; i < len; i++) {
-        s << std::setw(2) << static_cast<int>(
-            static_cast<const uint8_t*>(bytes)[i]);
+        result[2 * i] = chars[bytes8[i] >> 4];
+        result[2 * i + 1] = chars[bytes8[i] & 0xf];
     }
-    return s.str();
+
+    return result;
 }
 std::string hexString(const std::vector<uint8_t>& bytes) {
     return hexString(bytes.data(), bytes.size());
