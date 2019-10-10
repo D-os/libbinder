@@ -36,12 +36,17 @@ void doFuzz(
 
     for (size_t i = 0; i < instructions.size() - 1; i += 2) {
         uint8_t a = instructions[i];
+        uint8_t readIdx = a % reads.size();
+
         uint8_t b = instructions[i + 1];
 
-        FUZZ_LOG() << "size: " << p.dataSize() << " avail: " << p.dataAvail()
-                   << " pos: " << p.dataPosition() << " cap: " << p.dataCapacity();
+        FUZZ_LOG() << "Instruction: " << (i / 2) + 1 << "/" << instructions.size() / 2
+                   << " cmd: " << static_cast<size_t>(a) << " (" << static_cast<size_t>(readIdx)
+                   << ") arg: " << static_cast<size_t>(b) << " size: " << p.dataSize()
+                   << " avail: " << p.dataAvail() << " pos: " << p.dataPosition()
+                   << " cap: " << p.dataCapacity();
 
-        reads[a % reads.size()](p, b);
+        reads[readIdx](p, b);
     }
 }
 
