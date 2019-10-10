@@ -23,27 +23,34 @@
 #error "Must define FUZZ_LOG_TAG"
 #endif
 
-#define ENABLE_LOG_FUZZ 1
-#define FUZZ_LOG() FuzzLog(FUZZ_LOG_TAG, ENABLE_LOG_FUZZ).log()
+// for local debugging
+#define ENABLE_LOG_FUZZ 0
 
+#define FUZZ_LOG() FuzzLog(FUZZ_LOG_TAG).log()
+
+#if ENABLE_LOG_FUZZ == 1
 class FuzzLog {
 public:
-    FuzzLog(const std::string& tag, bool log) : mTag(tag), mLog(log) {}
-    ~FuzzLog() {
-        if (mLog) {
-            std::cout << mTag << ": " << mOs.str() << std::endl;
-        }
-    }
+    FuzzLog(const char* tag) : mTag(tag) {}
+    ~FuzzLog() { std::cout << mTag << ": " << mOs.str() << std::endl; }
 
-    std::stringstream& log() {
-        return mOs;
-    }
+    std::stringstream& log() { return mOs; }
 
 private:
-    std::string mTag;
-    bool mLog;
+    const char* mTag = nullptr;
     std::stringstream mOs;
 };
+#else
+class FuzzLog {
+public:
+    FuzzLog(const char* /*tag*/) {}
+    template <typename T>
+    FuzzLog& operator<<(const T& /*t*/) {
+        return *this;
+    }
+    FuzzLog& log() { return *this; }
+};
+#endif
 
 std::string hexString(const void* bytes, size_t len);
 std::string hexString(const std::vector<uint8_t>& bytes);
