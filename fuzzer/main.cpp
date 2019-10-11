@@ -51,12 +51,25 @@ void doFuzz(
 }
 
 void fuzz(uint8_t options, const std::vector<uint8_t>& input, const std::vector<uint8_t>& instructions) {
-    (void) options;
+    uint8_t parcelType = options & 0x3;
 
-    // although they will do completely different things, might as well fuzz both
-    doFuzz<::android::hardware::Parcel>(HWBINDER_PARCEL_READ_FUNCTIONS, input, instructions);
-    doFuzz<::android::Parcel>(BINDER_PARCEL_READ_FUNCTIONS, input, instructions);
-    doFuzz<NdkParcelAdapter>(BINDER_NDK_PARCEL_READ_FUNCTIONS, input, instructions);
+    switch (parcelType) {
+        case 0x0:
+            doFuzz<::android::hardware::Parcel>(HWBINDER_PARCEL_READ_FUNCTIONS, input,
+                                                instructions);
+            break;
+        case 0x1:
+            doFuzz<::android::Parcel>(BINDER_PARCEL_READ_FUNCTIONS, input, instructions);
+            break;
+        case 0x2:
+            doFuzz<NdkParcelAdapter>(BINDER_NDK_PARCEL_READ_FUNCTIONS, input, instructions);
+            break;
+        case 0x3:
+            /*reserved for future use*/
+            break;
+        default:
+            LOG_ALWAYS_FATAL("unknown parcel type %d", static_cast<int>(parcelType));
+    }
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
