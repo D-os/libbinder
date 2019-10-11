@@ -93,26 +93,16 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_NO_STATUS(size_t, allowFds),
     PARCEL_READ_NO_STATUS(size_t, hasFileDescriptors),
     [] (const ::android::Parcel& p, uint8_t len) {
-#ifdef __ANDROID__
         std::string interface(len, 'a');
         FUZZ_LOG() << "about to enforceInterface: " << interface;
         bool b = p.enforceInterface(::android::String16(interface.c_str()));
         FUZZ_LOG() << "enforced interface: " << b;
-#else
-        FUZZ_LOG() << "skipping enforceInterface";
-        (void)p;
-        (void)len;
-#endif // __ANDROID__
     },
     [] (const ::android::Parcel& p, uint8_t /*len*/) {
-#ifdef __ANDROID__
         FUZZ_LOG() << "about to checkInterface";
-        bool b = p.checkInterface(new android::BBinder());
+        android::sp<android::IBinder> aBinder = new android::BBinder();
+        bool b = p.checkInterface(aBinder.get());
         FUZZ_LOG() << "checked interface: " << b;
-#else
-        FUZZ_LOG() << "skipping checkInterface";
-        (void)p;
-#endif // __ANDROID__
     },
     PARCEL_READ_NO_STATUS(size_t, objectsCount),
     PARCEL_READ_NO_STATUS(status_t, errorCheck),
