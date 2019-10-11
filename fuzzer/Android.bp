@@ -1,5 +1,5 @@
-cc_fuzz {
-    name: "binder_parcel_fuzzer",
+cc_defaults {
+    name: "binder_parcel_fuzzer_defaults",
     defaults: ["libbinder_ndk_host_user"],
     host_supported: true,
     srcs: [
@@ -36,4 +36,16 @@ cc_fuzz {
             ],
         },
     },
+    defaults_visibility: [":__subpackages__"],
+}
+
+cc_fuzz {
+    name: "binder_parcel_fuzzer",
+    defaults: ["binder_parcel_fuzzer_defaults"],
+}
+
+cc_fuzz {
+    name: "binder_parcel_fuzzer_logs",
+    defaults: ["binder_parcel_fuzzer_defaults"],
+    cflags: ["-DENABLE_LOG_FUZZ"],
 }
