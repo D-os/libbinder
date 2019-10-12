@@ -23,12 +23,9 @@
 #error "Must define FUZZ_LOG_TAG"
 #endif
 
-// for local debugging
-#define ENABLE_LOG_FUZZ 0
-
 #define FUZZ_LOG() FuzzLog(FUZZ_LOG_TAG).log()
 
-#if ENABLE_LOG_FUZZ == 1
+#ifdef ENABLE_LOG_FUZZ
 class FuzzLog {
 public:
     FuzzLog(const char* tag) : mTag(tag) {}
