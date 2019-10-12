@@ -34,6 +34,9 @@ void doFuzz(
     P p;
     p.setData(input.data(), input.size());
 
+    // since we are only using a byte to index
+    CHECK(reads.size() <= 255) << reads.size();
+
     for (size_t i = 0; i < instructions.size() - 1; i += 2) {
         uint8_t a = instructions[i];
         uint8_t readIdx = a % reads.size();
