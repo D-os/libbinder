@@ -2839,11 +2839,13 @@ status_t Parcel::continueWrite(size_t desired)
             if (objectsSize == 0) {
                 free(mObjects);
                 mObjects = nullptr;
+                mObjectsCapacity = 0;
             } else {
                 binder_size_t* objects =
                     (binder_size_t*)realloc(mObjects, objectsSize*sizeof(binder_size_t));
                 if (objects) {
                     mObjects = objects;
+                    mObjectsCapacity = objectsSize;
                 }
             }
             mObjectsSize = objectsSize;
