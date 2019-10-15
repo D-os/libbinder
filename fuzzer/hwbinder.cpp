@@ -30,6 +30,9 @@ std::ostream& operator<<(std::ostream& os, const ::android::sp<::android::hardwa
     return os;
 }
 
+#define PARCEL_READ_OPT_STATUS(T, FUN) \
+    PARCEL_READ_NO_STATUS(T, FUN), PARCEL_READ_WITH_STATUS(T, FUN)
+
 #define PARCEL_READ_NO_STATUS(T, FUN) \
     [] (const ::android::hardware::Parcel& p, uint8_t /*data*/) {\
         FUZZ_LOG() << "about to read " #T " using " #FUN " with no status";\
@@ -45,6 +48,7 @@ std::ostream& operator<<(std::ostream& os, const ::android::sp<::android::hardwa
         FUZZ_LOG() << #T " status: " << status << " value: " << t;\
     }
 
+// clang-format off
 std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_NO_STATUS(size_t, dataSize),
     PARCEL_READ_NO_STATUS(size_t, dataAvail),
@@ -62,30 +66,44 @@ std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTI
         FUZZ_LOG() << "enforceInterface status: " << okay;
     },
     PARCEL_READ_NO_STATUS(size_t, objectsCount),
+    [] (const ::android::hardware::Parcel& p, uint8_t length) {
+        FUZZ_LOG() << "about to read";
+        std::vector<uint8_t> data (length);
+        status_t status = p.read(data.data(), length);
+        FUZZ_LOG() << "read status: " << status << " data: " << hexString(data.data(), data.size());
+    },
+    [] (const ::android::hardware::Parcel& p, uint8_t length) {
+        FUZZ_LOG() << "about to read";
+        std::vector<uint8_t> data (length);
+        const void* inplace = p.readInplace(length);
+        FUZZ_LOG() << "read status: " << hexString(inplace, length);
+    },
     PARCEL_READ_WITH_STATUS(int8_t, readInt8),
     PARCEL_READ_WITH_STATUS(uint8_t, readUint8),
     PARCEL_READ_WITH_STATUS(int16_t, readInt16),
     PARCEL_READ_WITH_STATUS(uint16_t, readUint16),
-    PARCEL_READ_WITH_STATUS(int32_t, readInt32),
-    PARCEL_READ_WITH_STATUS(uint32_t, readUint32),
-    PARCEL_READ_WITH_STATUS(int64_t, readInt64),
-    PARCEL_READ_WITH_STATUS(uint64_t, readUint64),
-    PARCEL_READ_WITH_STATUS(float, readFloat),
-    PARCEL_READ_WITH_STATUS(double, readDouble),
-    PARCEL_READ_WITH_STATUS(bool, readBool),
-    PARCEL_READ_WITH_STATUS(::android::String16, readString16),
-    PARCEL_READ_WITH_STATUS(::android::sp<::android::hardware::IBinder>, readStrongBinder),
-    PARCEL_READ_WITH_STATUS(::android::sp<::android::hardware::IBinder>, readNullableStrongBinder),
-    [] (const ::android::hardware::Parcel& p, uint8_t amount) {
-        FUZZ_LOG() << "about to readInPlace " << amount;
-        const uint8_t* data = (const uint8_t*)p.readInplace(amount);
-        if (data) {
-            std::vector<uint8_t> vdata(data, data + amount);
-            FUZZ_LOG() << "readInPlace " << amount << " data: " << hexString(vdata);
-        } else {
-            FUZZ_LOG() << "readInPlace " << amount << " no data";
-        }
+    PARCEL_READ_OPT_STATUS(int32_t, readInt32),
+    PARCEL_READ_OPT_STATUS(uint32_t, readUint32),
+    PARCEL_READ_OPT_STATUS(int64_t, readInt64),
+    PARCEL_READ_OPT_STATUS(uint64_t, readUint64),
+    PARCEL_READ_OPT_STATUS(float, readFloat),
+    PARCEL_READ_OPT_STATUS(double, readDouble),
+    PARCEL_READ_OPT_STATUS(bool, readBool),
+    [] (const ::android::hardware::Parcel& p, uint8_t /*data*/) {
+        FUZZ_LOG() << "about to readCString";
+        const char* str = p.readCString();
+        FUZZ_LOG() << "readCString " << (str ? str : "<null>");
     },
+    PARCEL_READ_OPT_STATUS(::android::String16, readString16),
+    PARCEL_READ_WITH_STATUS(std::unique_ptr<::android::String16>, readString16),
+    [] (const ::android::hardware::Parcel& p, uint8_t /*data*/) {
+        FUZZ_LOG() << "about to readString16Inplace";
+        size_t outSize = 0;
+        const char16_t* str = p.readString16Inplace(&outSize);
+        FUZZ_LOG() << "readString16Inplace: " << hexString(str, sizeof(char16_t) * outSize);
+    },
+    PARCEL_READ_OPT_STATUS(::android::sp<::android::hardware::IBinder>, readStrongBinder),
+    PARCEL_READ_WITH_STATUS(::android::sp<::android::hardware::IBinder>, readNullableStrongBinder),
     [] (const ::android::hardware::Parcel& p, uint8_t size) {
         FUZZ_LOG() << "about to readBuffer";
         size_t handle = 0;
@@ -130,6 +148,28 @@ std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTI
         // should be null since we don't create any IPC objects
         CHECK(data == nullptr) << data;
     },
+    [] (const ::android::hardware::Parcel& p, uint8_t size) {
+        FUZZ_LOG() << "about to readEmbeddedNativeHandle";
+        size_t parent_buffer_handle = size & 0xf;
+        size_t parent_offset = size >> 4;
+        const native_handle_t* handle = nullptr;
+        status_t status = p.readEmbeddedNativeHandle(parent_buffer_handle, parent_offset, &handle);
+        FUZZ_LOG() << "readEmbeddedNativeHandle status: " << status << " handle: " << handle << " handle: " << handle;
+
+        // should be null since we don't create any IPC objects
+        CHECK(handle == nullptr) << handle;
+    },
+    [] (const ::android::hardware::Parcel& p, uint8_t size) {
+        FUZZ_LOG() << "about to readNullableEmbeddedNativeHandle";
+        size_t parent_buffer_handle = size & 0xf;
+        size_t parent_offset = size >> 4;
+        const native_handle_t* handle = nullptr;
+        status_t status = p.readNullableEmbeddedNativeHandle(parent_buffer_handle, parent_offset, &handle);
+        FUZZ_LOG() << "readNullableEmbeddedNativeHandle status: " << status << " handle: " << handle << " handle: " << handle;
+
+        // should be null since we don't create any IPC objects
+        CHECK(handle == nullptr) << handle;
+    },
     [] (const ::android::hardware::Parcel& p, uint8_t /*data*/) {
         FUZZ_LOG() << "about to readNativeHandleNoDup";
         const native_handle_t* handle = nullptr;
@@ -150,3 +190,4 @@ std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTI
         CHECK(handle == nullptr) << handle;
     },
 };
+// clang-format on
