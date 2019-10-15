@@ -62,7 +62,11 @@ public:
         DEBUG_PID_TRANSACTION   = B_PACK_CHARS('_', 'P', 'I', 'D'),
 
         // Corresponds to TF_ONE_WAY -- an asynchronous call.
-        FLAG_ONEWAY             = 0x00000001
+        FLAG_ONEWAY             = 0x00000001,
+
+        // Private userspace flag for transaction which is being requested from
+        // a vendor context.
+        FLAG_PRIVATE_VENDOR     = 0x10000000,
     };
 
                           IBinder();

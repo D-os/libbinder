@@ -17,6 +17,7 @@
 #include <android/binder_ibinder.h>
 #include "ibinder_internal.h"
 
+#include <android/binder_stability.h>
 #include <android/binder_status.h>
 #include "parcel_internal.h"
 #include "status_internal.h"
@@ -542,7 +543,8 @@ binder_status_t AIBinder_transact(AIBinder* binder, transaction_code_t code, APa
         return STATUS_UNKNOWN_TRANSACTION;
     }
 
-    if ((flags & ~FLAG_ONEWAY) != 0) {
+    constexpr binder_flags_t kAllFlags = FLAG_PRIVATE_VENDOR | FLAG_ONEWAY;
+    if ((flags & ~kAllFlags) != 0) {
         LOG(ERROR) << __func__ << ": Unrecognized flags sent: " << flags;
         return STATUS_BAD_VALUE;
     }
