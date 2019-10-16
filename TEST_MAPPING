@@ -4,6 +4,9 @@
       "name": "binderSafeInterfaceTest"
     },
     {
+      "name": "binderVendorDoubleLoadTest"
+    },
+    {
       "name": "binderDriverInterfaceTest"
     },
     {
