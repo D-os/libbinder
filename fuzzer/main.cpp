@@ -77,6 +77,10 @@ void fuzz(uint8_t options, const std::vector<uint8_t>& input, const std::vector<
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if (size <= 1) return 0;  // no use
+
+    // avoid timeouts, see b/142617274, b/142473153
+    if (size > 50000) return 0;
+
     uint8_t options = *data;
     data++;
     size--;
