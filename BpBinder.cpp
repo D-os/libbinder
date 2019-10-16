@@ -214,16 +214,21 @@ status_t BpBinder::transact(
 {
     // Once a binder has died, it will never come back to life.
     if (mAlive) {
+        bool privateVendor = flags & FLAG_PRIVATE_VENDOR;
+        // don't send userspace flags to the kernel
+        flags = flags & ~FLAG_PRIVATE_VENDOR;
+
         // user transactions require a given stability level
         if (code >= FIRST_CALL_TRANSACTION && code <= LAST_CALL_TRANSACTION) {
             using android::internal::Stability;
 
             auto stability = Stability::get(this);
+            auto required = privateVendor ? Stability::VENDOR : Stability::kLocalStability;
 
-            if (CC_UNLIKELY(!Stability::check(stability, Stability::kLocalStability))) {
+            if (CC_UNLIKELY(!Stability::check(stability, required))) {
                 ALOGE("Cannot do a user transaction on a %s binder in a %s context.",
                     Stability::stabilityString(stability).c_str(),
-                    Stability::stabilityString(Stability::kLocalStability).c_str());
+                    Stability::stabilityString(required).c_str());
                 return BAD_TYPE;
             }
         }
