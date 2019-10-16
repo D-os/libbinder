@@ -22,6 +22,10 @@
 
 using ::android::status_t;
 
+enum ByteEnum : int8_t {};
+enum IntEnum : int32_t {};
+enum LongEnum : int64_t {};
+
 class ExampleParcelable : public android::Parcelable {
 public:
     status_t writeToParcel(android::Parcel* /*parcel*/) const override {
@@ -80,6 +84,7 @@ struct ExampleLightFlattenable : public android::LightFlattenablePod<ExampleLigh
     PARCEL_READ_WITH_STATUS(T, FUN), \
     PARCEL_READ_NO_STATUS(T, FUN)
 
+// clang-format off
 std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_NO_STATUS(size_t, dataSize),
     PARCEL_READ_NO_STATUS(size_t, dataAvail),
@@ -147,6 +152,14 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     },
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readStrongBinder),
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readNullableStrongBinder),
+
+    // TODO(b/131868573): can force read of arbitrarily sized vector
+    // PARCEL_READ_WITH_STATUS(std::vector<ByteEnum>, readEnumVector),
+    // PARCEL_READ_WITH_STATUS(std::unique_ptr<std::vector<ByteEnum>>, readEnumVector),
+    // PARCEL_READ_WITH_STATUS(std::vector<IntEnum>, readEnumVector),
+    // PARCEL_READ_WITH_STATUS(std::unique_ptr<std::vector<IntEnum>>, readEnumVector),
+    // PARCEL_READ_WITH_STATUS(std::vector<LongEnum>, readEnumVector),
+    // PARCEL_READ_WITH_STATUS(std::unique_ptr<std::vector<LongEnum>>, readEnumVector),
 
     // only reading one parcelable type for now
     // TODO(b/131868573): can force read of arbitrarily sized vector
@@ -239,3 +252,4 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_NO_STATUS(size_t, getBlobAshmemSize),
     PARCEL_READ_NO_STATUS(size_t, getOpenAshmemSize),
 };
+// clang-format on
