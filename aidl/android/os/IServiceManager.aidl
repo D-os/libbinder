@@ -31,22 +31,22 @@ interface IServiceManager {
      * Must update values in IServiceManager.h
      */
     /* Allows services to dump sections according to priorities. */
-    const int DUMP_FLAG_PRIORITY_CRITICAL = 1; // 1 << 0
-    const int DUMP_FLAG_PRIORITY_HIGH = 2; // 1 << 1
-    const int DUMP_FLAG_PRIORITY_NORMAL = 4; // 1 << 2
+    const int DUMP_FLAG_PRIORITY_CRITICAL = 1 << 0;
+    const int DUMP_FLAG_PRIORITY_HIGH = 1 << 1;
+    const int DUMP_FLAG_PRIORITY_NORMAL = 1 << 2;
     /**
      * Services are by default registered with a DEFAULT dump priority. DEFAULT priority has the
      * same priority as NORMAL priority but the services are not called with dump priority
      * arguments.
      */
-    const int DUMP_FLAG_PRIORITY_DEFAULT = 8; // 1 << 3
+    const int DUMP_FLAG_PRIORITY_DEFAULT = 1 << 3;
 
     const int DUMP_FLAG_PRIORITY_ALL = 15;
              // DUMP_FLAG_PRIORITY_CRITICAL | DUMP_FLAG_PRIORITY_HIGH
              // | DUMP_FLAG_PRIORITY_NORMAL | DUMP_FLAG_PRIORITY_DEFAULT;
 
     /* Allows services to dump sections in protobuf format. */
-    const int DUMP_FLAG_PROTO = 16; // 1 << 4
+    const int DUMP_FLAG_PROTO = 1 << 4;
 
     /**
      * Retrieve an existing service called @a name from the
