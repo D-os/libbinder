@@ -201,7 +201,22 @@ class ScopedAStatus : public impl::ScopedAResource<AStatus*, void, AStatus_delet
     /**
      * See AStatus_isOk.
      */
-    bool isOk() { return get() != nullptr && AStatus_isOk(get()); }
+    bool isOk() const { return get() != nullptr && AStatus_isOk(get()); }
+
+    /**
+     * See AStatus_getExceptionCode
+     */
+    binder_exception_t getExceptionCode() const { return AStatus_getExceptionCode(get()); }
+
+    /**
+     * See AStatus_getServiceSpecificError
+     */
+    int32_t getServiceSpecificError() const { return AStatus_getServiceSpecificError(get()); }
+
+    /**
+     * See AStatus_getStatus
+     */
+    binder_status_t getStatus() const { return AStatus_getStatus(get()); }
 
     /**
      * Convenience method for okay status.
