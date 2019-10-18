@@ -145,7 +145,8 @@ public:
     }
 
     virtual void noteAsyncOp(const String16& callingPackageName, int32_t uid,
-            const String16& packageName, int32_t opCode, const String16& message) {
+            const String16& packageName, int32_t opCode, const String16& featureId,
+            const String16& message) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
 
@@ -166,6 +167,14 @@ public:
         }
 
         data.writeInt32(opCode);
+
+        // Convert empty featureId into null string
+        if (featureId.size() != 0) {
+            data.writeString16(featureId);
+        } else {
+            data.writeString16(nullptr, 0);
+        }
+
         data.writeString16(message);
         remote()->transact(NOTE_ASYNC_OP_TRANSACTION, data, &reply);
     }
@@ -291,8 +300,9 @@ status_t BnAppOpsService::onTransact(
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
             int32_t opCode = data.readInt32();
+            String16 featureId = data.readString16();
             String16 message = data.readString16();
-            noteAsyncOp(callingPackageName, uid, packageName, opCode, message);
+            noteAsyncOp(callingPackageName, uid, packageName, opCode, featureId, message);
             reply->writeNoException();
             return NO_ERROR;
         } break;
