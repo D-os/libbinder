@@ -164,3 +164,16 @@ filegroup {
     ],
     path: "aidl",
 }
+
+aidl_interface {
+    name: "libbinder_aidl_test_stub",
+    local_include_dir: "aidl",
+    srcs: [":libbinder_aidl"],
+    visibility: [":__subpackages__"],
+    vendor_available: true,
+    backend: {
+        java: {
+            enabled: false,
+        },
+    },
+}
