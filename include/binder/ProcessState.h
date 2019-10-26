@@ -69,6 +69,14 @@ public:
 
             ssize_t             getKernelReferences(size_t count, uintptr_t* buf);
 
+                                // Only usable by the context manager.
+                                // This refcount includes:
+                                // 1. Strong references to the node by this and other processes
+                                // 2. Temporary strong references held by the kernel during a
+                                //    transaction on the node.
+                                // It does NOT include local strong references to the node
+            ssize_t             getStrongRefCountForNodeByHandle(int32_t handle);
+
             enum class CallRestriction {
                 // all calls okay
                 NONE,
