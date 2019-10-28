@@ -72,6 +72,7 @@ public:
                         bool allowIsolated, int dumpsysPriority) override;
     Vector<String16> listServices(int dumpsysPriority) override;
     sp<IBinder> waitForService(const String16& name16) override;
+    bool isDeclared(const String16& name) override;
 
     // for legacy ABI
     const String16& getInterfaceDescriptor() const override {
@@ -319,6 +320,14 @@ sp<IBinder> ServiceManagerShim::waitForService(const String16& name16)
 
         ALOGW("Waited one second for %s", name.c_str());
     }
+}
+
+bool ServiceManagerShim::isDeclared(const String16& name) {
+    bool declared;
+    if (!mTheRealServiceManager->isDeclared(String8(name).c_str(), &declared).isOk()) {
+        return false;
+    }
+    return declared;
 }
 
 } // namespace android
