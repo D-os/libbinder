@@ -134,18 +134,15 @@ TEST(BinderStability, OnlyVintfStabilityBinderNeedsVintfDeclaration) {
 TEST(BinderStability, VintfStabilityServerMustBeDeclaredInManifest) {
     sp<IBinder> vintfServer = BadStableBinder::vintf();
 
-    EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
-        android::defaultServiceManager()->addService(String16("."), vintfServer));
-    EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
-        android::defaultServiceManager()->addService(String16("/"), vintfServer));
-    EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
-        android::defaultServiceManager()->addService(String16("/."), vintfServer));
-    EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
-        android::defaultServiceManager()->addService(String16("a.d.IFoo"), vintfServer));
-    EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
-        android::defaultServiceManager()->addService(String16("foo"), vintfServer));
-    EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
-        android::defaultServiceManager()->addService(String16("a.d.IFoo/foo"), vintfServer));
+    for (const char* instance8 : {
+        ".", "/", "/.", "a.d.IFoo", "foo", "a.d.IFoo/foo"
+    }) {
+        String16 instance (instance8);
+
+        EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
+            android::defaultServiceManager()->addService(String16("."), vintfServer)) << instance8;
+        EXPECT_FALSE(android::defaultServiceManager()->isDeclared(instance)) << instance8;
+    }
 }
 
 TEST(BinderStability, CantCallVendorBinderInSystemContext) {

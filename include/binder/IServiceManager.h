@@ -88,6 +88,14 @@ public:
      * Returns nullptr only for permission problem or fatal error.
      */
     virtual sp<IBinder> waitForService(const String16& name) = 0;
+
+    /**
+     * Check if a service is declared (e.g. VINTF manifest).
+     *
+     * If this returns true, waitForService should always be able to return the
+     * service.
+     */
+    virtual bool isDeclared(const String16& name) = 0;
 };
 
 sp<IServiceManager> defaultServiceManager();
@@ -95,6 +103,13 @@ sp<IServiceManager> defaultServiceManager();
 template<typename INTERFACE>
 sp<INTERFACE> waitForService(const String16& name) {
     const sp<IServiceManager> sm = defaultServiceManager();
+    return interface_cast<INTERFACE>(sm->waitForService(name));
+}
+
+template<typename INTERFACE>
+sp<INTERFACE> waitForDeclaredService(const String16& name) {
+    const sp<IServiceManager> sm = defaultServiceManager();
+    if (!sm->isDeclared(name)) return nullptr;
     return interface_cast<INTERFACE>(sm->waitForService(name));
 }
 

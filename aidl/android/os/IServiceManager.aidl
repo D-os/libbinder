@@ -89,4 +89,11 @@ interface IServiceManager {
      * Unregisters all requests for notifications for a specific callback.
      */
     void unregisterForNotifications(@utf8InCpp String name, IServiceCallback callback);
+
+    /**
+     * Returns whether a given interface is declared on the device, even if it
+     * is not started yet. For instance, this could be a service declared in the VINTF
+     * manifest.
+     */
+    boolean isDeclared(@utf8InCpp String name);
 }
