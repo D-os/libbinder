@@ -50,7 +50,7 @@ binder_status_t WriteAndValidateArraySize(AParcel* parcel, bool isNullArray, int
     if (length < -1) return STATUS_BAD_VALUE;
 
     if (!isNullArray && length < 0) {
-        LOG(ERROR) << __func__ << ": null array must be used with length == -1.";
+        LOG(ERROR) << __func__ << ": non-null array but length is " << length;
         return STATUS_BAD_VALUE;
     }
     if (isNullArray && length > 0) {
