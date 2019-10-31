@@ -219,9 +219,31 @@ class ScopedAStatus : public impl::ScopedAResource<AStatus*, void, AStatus_delet
     binder_status_t getStatus() const { return AStatus_getStatus(get()); }
 
     /**
-     * Convenience method for okay status.
+     * See AStatus_getMessage
+     */
+    const char* getMessage() const { return AStatus_getMessage(get()); }
+
+    /**
+     * Convenience methods for creating scoped statuses.
      */
     static ScopedAStatus ok() { return ScopedAStatus(AStatus_newOk()); }
+    static ScopedAStatus fromExceptionCode(binder_exception_t exception) {
+        return ScopedAStatus(AStatus_fromExceptionCode(exception));
+    }
+    static ScopedAStatus fromExceptionCodeWithMessage(binder_exception_t exception,
+                                                      const char* message) {
+        return ScopedAStatus(AStatus_fromExceptionCodeWithMessage(exception, message));
+    }
+    static ScopedAStatus fromServiceSpecificError(int32_t serviceSpecific) {
+        return ScopedAStatus(AStatus_fromServiceSpecificError(serviceSpecific));
+    }
+    static ScopedAStatus fromServiceSpecificErrorWithMessage(int32_t serviceSpecific,
+                                                             const char* message) {
+        return ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(serviceSpecific, message));
+    }
+    static ScopedAStatus fromStatus(binder_status_t status) {
+        return ScopedAStatus(AStatus_fromStatus(status));
+    }
 };
 
 /**
