@@ -22,6 +22,8 @@ cc_defaults {
             cflags: [
                 "-D__INTRODUCED_IN(n)=",
                 "-D__assert(a,b,c)=",
+                // We want all the APIs to be available on the host.
+                "-D__ANDROID_API__=10000",
             ],
         },
     },
