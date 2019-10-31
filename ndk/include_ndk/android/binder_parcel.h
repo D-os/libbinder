@@ -35,7 +35,7 @@ struct AIBinder;
 typedef struct AIBinder AIBinder;
 
 __BEGIN_DECLS
-#if __ANDROID_API__ >= __ANDROID_API_Q__
+#if __ANDROID_API__ >= 29
 
 /**
  * This object represents a package of data that can be sent between processes. When transacting, an
@@ -49,6 +49,8 @@ typedef struct AParcel AParcel;
 /**
  * Cleans up a parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel A parcel returned by AIBinder_prepareTransaction or AIBinder_transact when a
  * transaction is being aborted.
  */
@@ -56,6 +58,8 @@ void AParcel_delete(AParcel* parcel) __INTRODUCED_IN(29);
 
 /**
  * Sets the position within the parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel The parcel of which to set the position.
  * \param position Position of the parcel to set. This must be a value returned by
@@ -68,6 +72,8 @@ binder_status_t AParcel_setDataPosition(const AParcel* parcel, int32_t position)
 
 /**
  * Gets the current position within the parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel The parcel of which to get the position.
  *
@@ -389,6 +395,8 @@ typedef bool (*AParcel_byteArrayAllocator)(void* arrayData, int32_t length, int8
  * Writes an AIBinder to the next location in a non-null parcel. Can be null. This does not take any
  * refcounts of ownership of the binder from the client.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param binder the value to write to the parcel.
  *
@@ -399,6 +407,8 @@ binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) __I
 /**
  * Reads an AIBinder from the next location in a non-null parcel. One strong ref-count of ownership
  * is passed to the caller of this function.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param binder the out parameter for what is read from the parcel. This may be null.
@@ -414,12 +424,14 @@ binder_status_t AParcel_readStrongBinder(const AParcel* parcel, AIBinder** binde
  *
  * This corresponds to the SDK's android.os.ParcelFileDescriptor.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param fd the value to write to the parcel (-1 to represent a null ParcelFileDescriptor).
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd);
+binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd) __INTRODUCED_IN(29);
 
 /**
  * Reads an int from the next location in a non-null parcel.
@@ -428,13 +440,16 @@ binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd);
  *
  * This corresponds to the SDK's android.os.ParcelFileDescriptor.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param fd the out parameter for what is read from the parcel (or -1 to represent a null
  * ParcelFileDescriptor)
  *
  * \return STATUS_OK on successful write.
  */
-binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd);
+binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd)
+        __INTRODUCED_IN(29);
 
 /**
  * Writes an AStatus object to the next location in a non-null parcel.
@@ -444,6 +459,8 @@ binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd)
  * status will be returned from this method and nothing will be written to the parcel. If either
  * this happens or if writing the status object itself fails, the return value from this function
  * should be propagated to the client, and AParcel_readStatusHeader shouldn't be called.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param status the value to write to the parcel.
@@ -457,6 +474,8 @@ binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status
  * Reads an AStatus from the next location in a non-null parcel. Ownership is passed to the caller
  * of this function.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param status the out parameter for what is read from the parcel.
  *
@@ -469,6 +488,8 @@ binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status
  * Writes utf-8 string value to the next location in a non-null parcel.
  *
  * If length is -1, and string is nullptr, this will write a 'null' string to the parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param string the null-terminated string to write to the parcel, at least of size 'length'.
@@ -487,6 +508,8 @@ binder_status_t AParcel_writeString(AParcel* parcel, const char* string, int32_t
  * the output buffer from this read. If there is a 'null' string on the binder buffer, the allocator
  * will be called with length -1.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param stringData some external representation of a string.
  * \param allocator allocator that will be called once the size of the string is known.
@@ -503,6 +526,8 @@ binder_status_t AParcel_readString(const AParcel* parcel, void* stringData,
  * indices in range [0, length) with the arrayData provided here. The string length and buffer
  * returned from this function will be used to fill out the data from the parcel. If length is -1,
  * this will write a 'null' string array to the binder buffer.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param arrayData some external representation of an array.
@@ -526,6 +551,8 @@ binder_status_t AParcel_writeStringArray(AParcel* parcel, const void* arrayData,
  * the contents of the string that is read. If the string array being read is 'null', this will
  * instead just pass -1 to AParcel_stringArrayAllocator.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called with arrayData once the size of the output
@@ -542,6 +569,8 @@ binder_status_t AParcel_readStringArray(const AParcel* parcel, void* arrayData,
 
 /**
  * Writes an array of parcelables (user-defined types) to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
@@ -562,6 +591,8 @@ binder_status_t AParcel_writeParcelableArray(AParcel* parcel, const void* arrayD
  * length is greater than zero, elementReader will be called for every index to read the
  * corresponding parcelable.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called to allocate the array.
@@ -578,6 +609,8 @@ binder_status_t AParcel_readParcelableArray(const AParcel* parcel, void* arrayDa
 /**
  * Writes int32_t value to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
  *
@@ -587,6 +620,8 @@ binder_status_t AParcel_writeInt32(AParcel* parcel, int32_t value) __INTRODUCED_
 
 /**
  * Writes uint32_t value to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
@@ -598,6 +633,8 @@ binder_status_t AParcel_writeUint32(AParcel* parcel, uint32_t value) __INTRODUCE
 /**
  * Writes int64_t value to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
  *
@@ -607,6 +644,8 @@ binder_status_t AParcel_writeInt64(AParcel* parcel, int64_t value) __INTRODUCED_
 
 /**
  * Writes uint64_t value to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
@@ -618,6 +657,8 @@ binder_status_t AParcel_writeUint64(AParcel* parcel, uint64_t value) __INTRODUCE
 /**
  * Writes float value to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
  *
@@ -627,6 +668,8 @@ binder_status_t AParcel_writeFloat(AParcel* parcel, float value) __INTRODUCED_IN
 
 /**
  * Writes double value to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
@@ -638,6 +681,8 @@ binder_status_t AParcel_writeDouble(AParcel* parcel, double value) __INTRODUCED_
 /**
  * Writes bool value to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
  *
@@ -647,6 +692,8 @@ binder_status_t AParcel_writeBool(AParcel* parcel, bool value) __INTRODUCED_IN(2
 
 /**
  * Writes char16_t value to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
@@ -658,6 +705,8 @@ binder_status_t AParcel_writeChar(AParcel* parcel, char16_t value) __INTRODUCED_
 /**
  * Writes int8_t value to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param value the value to write to the parcel.
  *
@@ -667,6 +716,8 @@ binder_status_t AParcel_writeByte(AParcel* parcel, int8_t value) __INTRODUCED_IN
 
 /**
  * Reads into int32_t value from the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
@@ -678,6 +729,8 @@ binder_status_t AParcel_readInt32(const AParcel* parcel, int32_t* value) __INTRO
 /**
  * Reads into uint32_t value from the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
  *
@@ -687,6 +740,8 @@ binder_status_t AParcel_readUint32(const AParcel* parcel, uint32_t* value) __INT
 
 /**
  * Reads into int64_t value from the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
@@ -698,6 +753,8 @@ binder_status_t AParcel_readInt64(const AParcel* parcel, int64_t* value) __INTRO
 /**
  * Reads into uint64_t value from the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
  *
@@ -707,6 +764,8 @@ binder_status_t AParcel_readUint64(const AParcel* parcel, uint64_t* value) __INT
 
 /**
  * Reads into float value from the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
@@ -718,6 +777,8 @@ binder_status_t AParcel_readFloat(const AParcel* parcel, float* value) __INTRODU
 /**
  * Reads into double value from the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
  *
@@ -727,6 +788,8 @@ binder_status_t AParcel_readDouble(const AParcel* parcel, double* value) __INTRO
 
 /**
  * Reads into bool value from the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
@@ -738,6 +801,8 @@ binder_status_t AParcel_readBool(const AParcel* parcel, bool* value) __INTRODUCE
 /**
  * Reads into char16_t value from the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
  *
@@ -748,6 +813,8 @@ binder_status_t AParcel_readChar(const AParcel* parcel, char16_t* value) __INTRO
 /**
  * Reads into int8_t value from the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param value the value to read from the parcel.
  *
@@ -757,6 +824,8 @@ binder_status_t AParcel_readByte(const AParcel* parcel, int8_t* value) __INTRODU
 
 /**
  * Writes an array of int32_t to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
@@ -770,6 +839,8 @@ binder_status_t AParcel_writeInt32Array(AParcel* parcel, const int32_t* arrayDat
 /**
  * Writes an array of uint32_t to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
  * \param length the length of arrayData or -1 if this represents a null array.
@@ -781,6 +852,8 @@ binder_status_t AParcel_writeUint32Array(AParcel* parcel, const uint32_t* arrayD
 
 /**
  * Writes an array of int64_t to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
@@ -794,6 +867,8 @@ binder_status_t AParcel_writeInt64Array(AParcel* parcel, const int64_t* arrayDat
 /**
  * Writes an array of uint64_t to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
  * \param length the length of arrayData or -1 if this represents a null array.
@@ -806,6 +881,8 @@ binder_status_t AParcel_writeUint64Array(AParcel* parcel, const uint64_t* arrayD
 /**
  * Writes an array of float to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
  * \param length the length of arrayData or -1 if this represents a null array.
@@ -817,6 +894,8 @@ binder_status_t AParcel_writeFloatArray(AParcel* parcel, const float* arrayData,
 
 /**
  * Writes an array of double to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
@@ -833,6 +912,8 @@ binder_status_t AParcel_writeDoubleArray(AParcel* parcel, const double* arrayDat
  * getter(arrayData, i) will be called for each i in [0, length) in order to get the underlying
  * values to write to the parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param arrayData some external representation of an array.
  * \param length the length of arrayData (or -1 if this represents a null array).
@@ -846,6 +927,8 @@ binder_status_t AParcel_writeBoolArray(AParcel* parcel, const void* arrayData, i
 /**
  * Writes an array of char16_t to the next location in a non-null parcel.
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
  * \param length the length of arrayData or -1 if this represents a null array.
@@ -857,6 +940,8 @@ binder_status_t AParcel_writeCharArray(AParcel* parcel, const char16_t* arrayDat
 
 /**
  * Writes an array of int8_t to the next location in a non-null parcel.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to write to.
  * \param arrayData an array of size 'length' (or null if length is -1, may be null if length is 0).
@@ -874,6 +959,8 @@ binder_status_t AParcel_writeByteArray(AParcel* parcel, const int8_t* arrayData,
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called to allocate the array.
@@ -889,6 +976,8 @@ binder_status_t AParcel_readInt32Array(const AParcel* parcel, void* arrayData,
  * First, allocator will be called with the length of the array. If the allocation succeeds and the
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
@@ -906,6 +995,8 @@ binder_status_t AParcel_readUint32Array(const AParcel* parcel, void* arrayData,
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called to allocate the array.
@@ -921,6 +1012,8 @@ binder_status_t AParcel_readInt64Array(const AParcel* parcel, void* arrayData,
  * First, allocator will be called with the length of the array. If the allocation succeeds and the
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
@@ -938,6 +1031,8 @@ binder_status_t AParcel_readUint64Array(const AParcel* parcel, void* arrayData,
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called to allocate the array.
@@ -954,6 +1049,8 @@ binder_status_t AParcel_readFloatArray(const AParcel* parcel, void* arrayData,
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called to allocate the array.
@@ -968,6 +1065,8 @@ binder_status_t AParcel_readDoubleArray(const AParcel* parcel, void* arrayData,
  *
  * First, allocator will be called with the length of the array. Then, for every i in [0, length),
  * setter(arrayData, i, x) will be called where x is the value at the associated index.
+ *
+ * Available since API level 29.
  *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
@@ -988,6 +1087,8 @@ binder_status_t AParcel_readBoolArray(const AParcel* parcel, void* arrayData,
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called to allocate the array.
@@ -1004,6 +1105,8 @@ binder_status_t AParcel_readCharArray(const AParcel* parcel, void* arrayData,
  * length is greater than zero, the buffer returned by the allocator will be filled with the
  * corresponding data
  *
+ * Available since API level 29.
+ *
  * \param parcel the parcel to read from.
  * \param arrayData some external representation of an array.
  * \param allocator the callback that will be called to allocate the array.
@@ -1015,7 +1118,7 @@ binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
 
 // @END-PRIMITIVE-READ-WRITE
 
-#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= 29
 __END_DECLS
 
 /** @} */
