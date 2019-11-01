@@ -114,6 +114,13 @@ sp<INTERFACE> waitForDeclaredService(const String16& name) {
 }
 
 template<typename INTERFACE>
+sp<INTERFACE> waitForVintfService(
+        const String16& instance = String16("default")) {
+    return waitForDeclaredService<INTERFACE>(
+        INTERFACE::descriptor + String16("/") + instance);
+}
+
+template<typename INTERFACE>
 status_t getService(const String16& name, sp<INTERFACE>* outService)
 {
     const sp<IServiceManager> sm = defaultServiceManager();
