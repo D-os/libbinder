@@ -2,6 +2,11 @@ cc_fuzz {
     name: "binder_parcel_fuzzer",
     defaults: ["libbinder_ndk_host_user"],
     host_supported: true,
+
+    fuzz_config: {
+        cc: ["smoreland@google.com"],
+    },
+
     srcs: [
         "binder.cpp",
         "binder_ndk.cpp",

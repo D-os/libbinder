@@ -31,7 +31,7 @@
 #include <jni.h>
 
 __BEGIN_DECLS
-#if __ANDROID_API__ >= __ANDROID_API_Q__
+#if __ANDROID_API__ >= 29
 
 /**
  * Converts an android.os.IBinder object into an AIBinder* object.
@@ -39,6 +39,8 @@ __BEGIN_DECLS
  * If either env or the binder is null, null is returned. If this binder object was originally an
  * AIBinder object, the original object is returned. The returned object has one refcount
  * associated with it, and so this should be accompanied with an AIBinder_decStrong call.
+ *
+ * Available since API level 29.
  *
  * \param env Java environment.
  * \param binder android.os.IBinder java object.
@@ -55,6 +57,8 @@ __attribute__((warn_unused_result)) AIBinder* AIBinder_fromJavaBinder(JNIEnv* en
  * If either env or the binder is null, null is returned. If this binder object was originally an
  * IBinder object, the original java object will be returned.
  *
+ * Available since API level 29.
+ *
  * \param env Java environment.
  * \param binder the object to convert.
  *
@@ -63,7 +67,7 @@ __attribute__((warn_unused_result)) AIBinder* AIBinder_fromJavaBinder(JNIEnv* en
 __attribute__((warn_unused_result)) jobject AIBinder_toJavaBinder(JNIEnv* env, AIBinder* binder)
         __INTRODUCED_IN(29);
 
-#endif  //__ANDROID_API__ >= __ANDROID_API_Q__
+#endif  //__ANDROID_API__ >= 29
 __END_DECLS
 
 /** @} */

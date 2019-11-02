@@ -1449,41 +1449,38 @@ restart_write:
     return err;
 }
 
-status_t Parcel::readByteVectorInternal(int8_t* data, size_t size) const {
-    if (size_t(size) > dataAvail()) {
-      return BAD_VALUE;
-    }
-    return read(data, size);
-}
-
 status_t Parcel::readByteVector(std::vector<int8_t>* val) const {
-    if (status_t status = resizeOutVector(val); status != OK) return status;
-    return readByteVectorInternal(val->data(), val->size());
+    size_t size;
+    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
+    return readByteVectorInternal(val, size);
 }
 
 status_t Parcel::readByteVector(std::vector<uint8_t>* val) const {
-    if (status_t status = resizeOutVector(val); status != OK) return status;
-    return readByteVectorInternal(reinterpret_cast<int8_t*>(val->data()), val->size());
+    size_t size;
+    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
+    return readByteVectorInternal(val, size);
 }
 
 status_t Parcel::readByteVector(std::unique_ptr<std::vector<int8_t>>* val) const {
-    if (status_t status = resizeOutVector(val); status != OK) return status;
+    size_t size;
+    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
     if (val->get() == nullptr) {
-        // resizeOutVector does not create the out vector if size is < 0.
+        // reserveOutVector does not create the out vector if size is < 0.
         // This occurs when writing a null byte vector.
         return OK;
     }
-    return readByteVectorInternal((*val)->data(), (*val)->size());
+    return readByteVectorInternal(val->get(), size);
 }
 
 status_t Parcel::readByteVector(std::unique_ptr<std::vector<uint8_t>>* val) const {
-    if (status_t status = resizeOutVector(val); status != OK) return status;
+    size_t size;
+    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
     if (val->get() == nullptr) {
-        // resizeOutVector does not create the out vector if size is < 0.
+        // reserveOutVector does not create the out vector if size is < 0.
         // This occurs when writing a null byte vector.
         return OK;
     }
-    return readByteVectorInternal(reinterpret_cast<int8_t*>((*val)->data()), (*val)->size());
+    return readByteVectorInternal(val->get(), size);
 }
 
 status_t Parcel::readInt32Vector(std::unique_ptr<std::vector<int32_t>>* val) const {
