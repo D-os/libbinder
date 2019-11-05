@@ -134,21 +134,26 @@ public:
     //              const String16&) instead
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage,
-            const String16& featureId, const String16& message);
+            const std::unique_ptr<String16>& featureId, const String16& message);
     // @Deprecated, use startOpNoThrow(int32_t, int32_t, const String16&, bool, const String16&,
     //              const String16&) instead
     int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
             bool startIfModeDefault);
     int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
-            bool startIfModeDefault, const String16& featureId, const String16& message);
+            bool startIfModeDefault, const std::unique_ptr<String16>& featureId,
+            const String16& message);
+    // @Deprecated, use finishOp(int32_t, int32_t, const String16&, bool, const String16&) instead
     void finishOp(int32_t op, int32_t uid, const String16& callingPackage);
+    void finishOp(int32_t op, int32_t uid, const String16& callingPackage,
+            const std::unique_ptr<String16>& featureId);
     void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback);
     void stopWatchingMode(const sp<IAppOpsCallback>& callback);
     int32_t permissionToOpCode(const String16& permission);
     void setCameraAudioRestriction(int32_t mode);
-    void noteAsyncOp(const String16& callingPackageName, int32_t uid, const String16& packageName,
-            int32_t opCode, const String16& featureId, const String16& message);
+    void noteAsyncOp(const std::unique_ptr<String16>& callingPackageName, int32_t uid,
+            const String16& packageName, int32_t opCode, const std::unique_ptr<String16>& featureId,
+            const String16& message);
 
 private:
     Mutex mLock;
@@ -156,7 +161,7 @@ private:
 
     sp<IAppOpsService> getService();
     void markAppOpNoted(int32_t uid, const String16& packageName, int32_t opCode,
-            const String16& featureId, const String16& message);
+            const std::unique_ptr<String16>& featureId, const String16& message);
     bool shouldCollectNotes(int32_t opCode);
 };
 

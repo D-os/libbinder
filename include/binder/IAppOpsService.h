@@ -35,11 +35,13 @@ public:
     DECLARE_META_INTERFACE(AppOpsService)
 
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
-    virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
+    virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName,
+            const std::unique_ptr<String16>& featureId) = 0;
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName, bool startIfModeDefault) = 0;
+            const String16& packageName, const std::unique_ptr<String16>& featureId,
+            bool startIfModeDefault) = 0;
     virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName) = 0;
+            const String16& packageName, const std::unique_ptr<String16>& featureId) = 0;
     virtual void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback) = 0;
     virtual void stopWatchingMode(const sp<IAppOpsCallback>& callback) = 0;
@@ -48,8 +50,8 @@ public:
     virtual int32_t checkAudioOperation(int32_t code, int32_t usage,int32_t uid,
             const String16& packageName) = 0;
     virtual void setCameraAudioRestriction(int32_t mode) = 0;
-    virtual void noteAsyncOp(const String16& callingPackageName, int32_t uid,
-            const String16& packageName, int32_t opCode, const String16& featureId,
+    virtual void noteAsyncOp(const std::unique_ptr<String16>& callingPackageName, int32_t uid,
+            const String16& packageName, int32_t opCode, const std::unique_ptr<String16>& featureId,
             const String16& message) = 0;
     virtual bool shouldCollectNotes(int32_t opCode) = 0;
 
