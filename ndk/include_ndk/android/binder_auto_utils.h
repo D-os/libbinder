@@ -159,13 +159,17 @@ class ScopedAResource {
      */
     T* getR() { return &mT; }
 
-    // copy-constructing, or move/copy assignment is disallowed
+    // copy-constructing/assignment is disallowed
     ScopedAResource(const ScopedAResource&) = delete;
     ScopedAResource& operator=(const ScopedAResource&) = delete;
-    ScopedAResource& operator=(ScopedAResource&&) = delete;
 
-    // move-constructing is okay
+    // move-constructing/assignment is okay
     ScopedAResource(ScopedAResource&& other) : mT(std::move(other.mT)) { other.mT = DEFAULT; }
+    ScopedAResource& operator=(ScopedAResource&& other) {
+        set(other.mT);
+        other.mT = DEFAULT;
+        return *this;
+    }
 
    private:
     T mT;
@@ -197,6 +201,7 @@ class ScopedAStatus : public impl::ScopedAResource<AStatus*, void, AStatus_delet
     explicit ScopedAStatus(AStatus* a = nullptr) : ScopedAResource(a) {}
     ~ScopedAStatus() {}
     ScopedAStatus(ScopedAStatus&&) = default;
+    ScopedAStatus& operator=(ScopedAStatus&&) = default;
 
     /**
      * See AStatus_isOk.
