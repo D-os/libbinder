@@ -113,10 +113,24 @@ sp<INTERFACE> waitForDeclaredService(const String16& name) {
     return interface_cast<INTERFACE>(sm->waitForService(name));
 }
 
+template <typename INTERFACE>
+sp<INTERFACE> checkDeclaredService(const String16& name) {
+    const sp<IServiceManager> sm = defaultServiceManager();
+    if (!sm->isDeclared(name)) return nullptr;
+    return interface_cast<INTERFACE>(sm->checkService(name));
+}
+
 template<typename INTERFACE>
 sp<INTERFACE> waitForVintfService(
         const String16& instance = String16("default")) {
     return waitForDeclaredService<INTERFACE>(
+        INTERFACE::descriptor + String16("/") + instance);
+}
+
+template<typename INTERFACE>
+sp<INTERFACE> checkVintfService(
+        const String16& instance = String16("default")) {
+    return checkDeclaredService<INTERFACE>(
         INTERFACE::descriptor + String16("/") + instance);
 }
 
