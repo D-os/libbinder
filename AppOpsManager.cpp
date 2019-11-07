@@ -115,23 +115,19 @@ int32_t AppOpsManager::checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t ui
 }
 
 int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage) {
-    return noteOp(op, uid, callingPackage, String16(), String16());
+    return noteOp(op, uid, callingPackage, std::unique_ptr<String16>(),
+            String16("Legacy AppOpsManager.noteOp call"));
 }
 
 int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage,
-        const String16& featureId, const String16& message) {
+        const std::unique_ptr<String16>& featureId, const String16& message) {
     sp<IAppOpsService> service = getService();
     int32_t mode = service != nullptr
-            ? service->noteOperation(op, uid, callingPackage)
+            ? service->noteOperation(op, uid, callingPackage, featureId)
             : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 
     if (mode == AppOpsManager::MODE_ALLOWED) {
-        if (message.size() == 0) {
-            markAppOpNoted(uid, callingPackage, op, featureId,
-                    String16("noteOp from native code"));
-        } else {
-            markAppOpNoted(uid, callingPackage, op, featureId, message);
-        }
+        markAppOpNoted(uid, callingPackage, op, featureId, message);
     }
 
     return mode;
@@ -139,32 +135,34 @@ int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPa
 
 int32_t AppOpsManager::startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
         bool startIfModeDefault) {
-    return startOpNoThrow(op, uid, callingPackage, startIfModeDefault, String16(), String16());
+    return startOpNoThrow(op, uid, callingPackage, startIfModeDefault, std::unique_ptr<String16>(),
+            String16("Legacy AppOpsManager.startOpNoThrow call"));
 }
 
 int32_t AppOpsManager::startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
-        bool startIfModeDefault, const String16& featureId, const String16& message) {
+        bool startIfModeDefault, const std::unique_ptr<String16>& featureId,
+        const String16& message) {
     sp<IAppOpsService> service = getService();
     int32_t mode = service != nullptr
             ? service->startOperation(getToken(service), op, uid, callingPackage,
-                    startIfModeDefault) : APP_OPS_MANAGER_UNAVAILABLE_MODE;
+                    featureId, startIfModeDefault) : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 
     if (mode == AppOpsManager::MODE_ALLOWED) {
-        if (message.size() == 0) {
-            markAppOpNoted(uid, callingPackage, op, featureId,
-                    String16("startOp from native code"));
-        } else {
-            markAppOpNoted(uid, callingPackage, op, featureId, message);
-        }
+        markAppOpNoted(uid, callingPackage, op, featureId, message);
     }
 
     return mode;
 }
 
 void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPackage) {
+    finishOp(op, uid, callingPackage, std::unique_ptr<String16>());
+}
+
+void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPackage,
+        const std::unique_ptr<String16>& callingFeatureId) {
     sp<IAppOpsService> service = getService();
     if (service != nullptr) {
-        service->finishOperation(getToken(service), op, uid, callingPackage);
+        service->finishOperation(getToken(service), op, uid, callingPackage, callingFeatureId);
     }
 }
 
@@ -207,7 +205,7 @@ bool AppOpsManager::shouldCollectNotes(int32_t opcode) {
 }
 
 void AppOpsManager::markAppOpNoted(int32_t uid, const String16& packageName, int32_t opCode,
-         const String16& featureId, const String16& message) {
+         const std::unique_ptr<String16>& featureId, const String16& message) {
     // check it the appops needs to be collected and cache result
     if (appOpsToNote[opCode] == 0) {
         if (shouldCollectNotes(opCode)) {
@@ -221,11 +219,11 @@ void AppOpsManager::markAppOpNoted(int32_t uid, const String16& packageName, int
         return;
     }
 
-    noteAsyncOp(String16(), uid, packageName, opCode, featureId, message);
+    noteAsyncOp(std::unique_ptr<String16>(), uid, packageName, opCode, featureId, message);
 }
 
-void AppOpsManager::noteAsyncOp(const String16& callingPackageName, int32_t uid,
-         const String16& packageName, int32_t opCode, const String16& featureId,
+void AppOpsManager::noteAsyncOp(const std::unique_ptr<String16>& callingPackageName, int32_t uid,
+         const String16& packageName, int32_t opCode, const std::unique_ptr<String16>& featureId,
          const String16& message) {
     sp<IAppOpsService> service = getService();
     if (service != nullptr) {
