@@ -42,6 +42,24 @@ public:
     android::status_t writeToParcel(android::Parcel* parcel) const override;
     android::status_t readFromParcel(const android::Parcel* parcel) override;
 
+    inline bool operator!=(const ParcelFileDescriptor& rhs) const {
+        return mFd != rhs.mFd;
+    }
+    inline bool operator<(const ParcelFileDescriptor& rhs) const {
+        return mFd < rhs.mFd;
+    }
+    inline bool operator<=(const ParcelFileDescriptor& rhs) const {
+        return mFd <= rhs.mFd;
+    }
+    inline bool operator==(const ParcelFileDescriptor& rhs) const {
+        return mFd == rhs.mFd;
+    }
+    inline bool operator>(const ParcelFileDescriptor& rhs) const {
+        return mFd > rhs.mFd;
+    }
+    inline bool operator>=(const ParcelFileDescriptor& rhs) const {
+        return mFd >= rhs.mFd;
+    }
 private:
     android::base::unique_fd mFd;
 };
