@@ -56,9 +56,11 @@ enum {
 /**
  * This interface has the stability of the system image.
  */
-void AIBinder_markSystemStability(AIBinder* binder);
+__attribute__((weak)) void AIBinder_markSystemStability(AIBinder* binder);
 
 static inline void AIBinder_markCompilationUnitStability(AIBinder* binder) {
+    if (AIBinder_markSystemStability == nullptr) return;
+
     AIBinder_markSystemStability(binder);
 }
 
