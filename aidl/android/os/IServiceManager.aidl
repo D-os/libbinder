@@ -58,7 +58,7 @@ interface IServiceManager {
      * Returns null if the service does not exist.
      */
     @UnsupportedAppUsage
-    IBinder getService(@utf8InCpp String name);
+    @nullable IBinder getService(@utf8InCpp String name);
 
     /**
      * Retrieve an existing service called @a name from the service
@@ -66,7 +66,7 @@ interface IServiceManager {
      * exist.
      */
     @UnsupportedAppUsage
-    IBinder checkService(@utf8InCpp String name);
+    @nullable IBinder checkService(@utf8InCpp String name);
 
     /**
      * Place a new @a service called @a name into the service
