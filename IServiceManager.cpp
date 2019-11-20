@@ -280,19 +280,31 @@ sp<IBinder> ServiceManagerShim::waitForService(const String16& name16)
         std::condition_variable mCv;
     };
 
+    // Simple RAII object to ensure a function call immediately before going out of scope
+    class Defer {
+    public:
+        Defer(std::function<void()>&& f) : mF(std::move(f)) {}
+        ~Defer() { mF(); }
+    private:
+        std::function<void()> mF;
+    };
+
     const std::string name = String8(name16).c_str();
 
     sp<IBinder> out;
     if (!mTheRealServiceManager->getService(name, &out).isOk()) {
         return nullptr;
     }
-    if(out != nullptr) return out;
+    if (out != nullptr) return out;
 
     sp<Waiter> waiter = new Waiter;
     if (!mTheRealServiceManager->registerForNotifications(
             name, waiter).isOk()) {
         return nullptr;
     }
+    Defer unregister ([&] {
+        mTheRealServiceManager->unregisterForNotifications(name, waiter);
+    });
 
     while(true) {
         {
@@ -316,7 +328,7 @@ sp<IBinder> ServiceManagerShim::waitForService(const String16& name16)
         if (!mTheRealServiceManager->getService(name, &out).isOk()) {
             return nullptr;
         }
-        if(out != nullptr) return out;
+        if (out != nullptr) return out;
 
         ALOGW("Waited one second for %s", name.c_str());
     }
