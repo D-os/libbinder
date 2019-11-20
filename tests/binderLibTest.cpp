@@ -1034,9 +1034,9 @@ TEST_F(BinderLibTest, BufRejected) {
 
     binder_buffer_object obj {
         .hdr = { .type = BINDER_TYPE_PTR },
+        .flags = 0,
         .buffer = reinterpret_cast<binder_uintptr_t>((void*)&buf),
         .length = 4,
-        .flags = 0,
     };
     data.setDataCapacity(1024);
     // Write a bogus object at offset 0 to get an entry in the offset table
