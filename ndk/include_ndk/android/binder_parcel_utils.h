@@ -441,6 +441,42 @@ binder_status_t AParcel_readStdVectorParcelableElement(const AParcel* parcel, vo
 }
 
 /**
+ * Writes a ScopedFileDescriptor object inside a std::vector<ScopedFileDescriptor> at index 'index'
+ * to 'parcel'.
+ */
+template <>
+inline binder_status_t AParcel_writeStdVectorParcelableElement<ScopedFileDescriptor>(
+        AParcel* parcel, const void* vectorData, size_t index) {
+    const std::vector<ScopedFileDescriptor>* vector =
+            static_cast<const std::vector<ScopedFileDescriptor>*>(vectorData);
+    int writeFd = vector->at(index).get();
+    if (writeFd < 0) {
+        return STATUS_UNEXPECTED_NULL;
+    }
+    return AParcel_writeParcelFileDescriptor(parcel, writeFd);
+}
+
+/**
+ * Reads a ScopedFileDescriptor object inside a std::vector<ScopedFileDescriptor> at index 'index'
+ * from 'parcel'.
+ */
+template <>
+inline binder_status_t AParcel_readStdVectorParcelableElement<ScopedFileDescriptor>(
+        const AParcel* parcel, void* vectorData, size_t index) {
+    std::vector<ScopedFileDescriptor>* vector =
+            static_cast<std::vector<ScopedFileDescriptor>*>(vectorData);
+    int readFd;
+    binder_status_t status = AParcel_readParcelFileDescriptor(parcel, &readFd);
+    if (status == STATUS_OK) {
+        if (readFd < 0) {
+            return STATUS_UNEXPECTED_NULL;
+        }
+        vector->at(index).set(readFd);
+    }
+    return status;
+}
+
+/**
  * Convenience API for writing a std::vector<P>
  */
 template <typename P>
