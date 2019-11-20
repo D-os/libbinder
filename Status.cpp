@@ -232,9 +232,10 @@ String8 Status::toString8() const {
         ret.append("No error");
     } else {
         ret.appendFormat("Status(%d, %s): '", mException, exceptionToString(mException).c_str());
-        if (mException == EX_SERVICE_SPECIFIC ||
-            mException == EX_TRANSACTION_FAILED) {
+        if (mException == EX_SERVICE_SPECIFIC) {
             ret.appendFormat("%d: ", mErrorCode);
+        } else if (mException == EX_TRANSACTION_FAILED) {
+            ret.appendFormat("%s: ", statusToString(mErrorCode).c_str());
         }
         ret.append(String8(mMessage));
         ret.append("'");
