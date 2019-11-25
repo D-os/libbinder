@@ -38,10 +38,30 @@ protected:
 
 // ----------------------------------------------------------------------
 
+/**
+ * If this is a local object and the descriptor matches, this will return the
+ * actual local object which is implementing the interface. Otherwise, this will
+ * return a proxy to the interface without checking the interface descriptor.
+ * This means that subsequent calls may fail with BAD_TYPE.
+ */
 template<typename INTERFACE>
 inline sp<INTERFACE> interface_cast(const sp<IBinder>& obj)
 {
     return INTERFACE::asInterface(obj);
+}
+
+/**
+ * This is the same as interface_cast, except that it always checks to make sure
+ * the descriptor matches, and if it doesn't match, it will return nullptr.
+ */
+template<typename INTERFACE>
+inline sp<INTERFACE> checked_interface_cast(const sp<IBinder>& obj)
+{
+    if (obj->getInterfaceDescriptor() != INTERFACE::descriptor) {
+        return nullptr;
+    }
+
+    return interface_cast<INTERFACE>(obj);
 }
 
 // ----------------------------------------------------------------------
