@@ -45,7 +45,6 @@ public:
     virtual void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback) = 0;
     virtual void stopWatchingMode(const sp<IAppOpsCallback>& callback) = 0;
-    virtual sp<IBinder> getToken(const sp<IBinder>& clientToken) = 0;
     virtual int32_t permissionToOpCode(const String16& permission) = 0;
     virtual int32_t checkAudioOperation(int32_t code, int32_t usage,int32_t uid,
             const String16& packageName) = 0;
@@ -62,12 +61,11 @@ public:
         FINISH_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+3,
         START_WATCHING_MODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+4,
         STOP_WATCHING_MODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+5,
-        GET_TOKEN_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+6,
-        PERMISSION_TO_OP_CODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+7,
-        CHECK_AUDIO_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+8,
-        NOTE_ASYNC_OP_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+9,
-        SHOULD_COLLECT_NOTES_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+10,
-        SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+11,
+        PERMISSION_TO_OP_CODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+6,
+        CHECK_AUDIO_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+7,
+        NOTE_ASYNC_OP_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+8,
+        SHOULD_COLLECT_NOTES_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+9,
+        SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+10,
     };
 
     enum {
