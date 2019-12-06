@@ -109,7 +109,27 @@ public:                                                                 \
 
 
 #define __IINTF_CONCAT(x, y) (x ## y)
+
+#ifndef DO_NOT_CHECK_MANUAL_BINDER_INTERFACES
+
 #define IMPLEMENT_META_INTERFACE(INTERFACE, NAME)                       \
+    static_assert(internal::allowedManualInterface(NAME),               \
+                  "b/64223827: Manually written binder interfaces are " \
+                  "considered error prone and frequently have bugs. "   \
+                  "The preferred way to add interfaces is to define "   \
+                  "an .aidl file to auto-generate the interface. If "   \
+                  "an interface must be manually written, add its "     \
+                  "name to the whitelist.");                            \
+    DO_NOT_DIRECTLY_USE_ME_IMPLEMENT_META_INTERFACE(INTERFACE, NAME)    \
+
+#else
+
+#define IMPLEMENT_META_INTERFACE(INTERFACE, NAME)                       \
+    DO_NOT_DIRECTLY_USE_ME_IMPLEMENT_META_INTERFACE(INTERFACE, NAME)    \
+
+#endif
+
+#define DO_NOT_DIRECTLY_USE_ME_IMPLEMENT_META_INTERFACE(INTERFACE, NAME)\
     const ::android::StaticString16                                     \
         I##INTERFACE##_descriptor_static_str16(__IINTF_CONCAT(u, NAME));\
     const ::android::String16 I##INTERFACE::descriptor(                 \
@@ -192,6 +212,122 @@ inline IBinder* BpInterface<INTERFACE>::onAsBinder()
 
 // ----------------------------------------------------------------------
 
+namespace internal {
+constexpr const char* const kManualInterfaces[] = {
+  "android.app.IActivityManager",
+  "android.app.IUidObserver",
+  "android.drm.IDrm",
+  "android.dvr.IVsyncCallback",
+  "android.dvr.IVsyncService",
+  "android.gfx.tests.ICallback",
+  "android.gfx.tests.IIPCTest",
+  "android.gfx.tests.ISafeInterfaceTest",
+  "android.graphicsenv.IGpuService",
+  "android.gui.DisplayEventConnection",
+  "android.gui.IConsumerListener",
+  "android.gui.IGraphicBufferConsumer",
+  "android.gui.IRegionSamplingListener",
+  "android.gui.ITransactionComposerListener",
+  "android.gui.SensorEventConnection",
+  "android.gui.SensorServer",
+  "android.hardware.ICamera",
+  "android.hardware.ICameraClient",
+  "android.hardware.ICameraRecordingProxy",
+  "android.hardware.ICameraRecordingProxyListener",
+  "android.hardware.ICrypto",
+  "android.hardware.IOMXObserver",
+  "android.hardware.ISoundTrigger",
+  "android.hardware.ISoundTriggerClient",
+  "android.hardware.ISoundTriggerHwService",
+  "android.hardware.IStreamListener",
+  "android.hardware.IStreamSource",
+  "android.input.IInputFlinger",
+  "android.input.ISetInputWindowsListener",
+  "android.media.IAudioFlinger",
+  "android.media.IAudioFlingerClient",
+  "android.media.IAudioPolicyService",
+  "android.media.IAudioPolicyServiceClient",
+  "android.media.IAudioService",
+  "android.media.IAudioTrack",
+  "android.media.IDataSource",
+  "android.media.IDrmClient",
+  "android.media.IEffect",
+  "android.media.IEffectClient",
+  "android.media.IMediaAnalyticsService",
+  "android.media.IMediaCodecList",
+  "android.media.IMediaDrmService",
+  "android.media.IMediaExtractor",
+  "android.media.IMediaExtractorService",
+  "android.media.IMediaHTTPConnection",
+  "android.media.IMediaHTTPService",
+  "android.media.IMediaLogService",
+  "android.media.IMediaMetadataRetriever",
+  "android.media.IMediaPlayer",
+  "android.media.IMediaPlayerClient",
+  "android.media.IMediaPlayerService",
+  "android.media.IMediaRecorder",
+  "android.media.IMediaRecorderClient",
+  "android.media.IMediaResourceMonitor",
+  "android.media.IMediaSource",
+  "android.media.IRemoteDisplay",
+  "android.media.IRemoteDisplayClient",
+  "android.media.IResourceManagerClient",
+  "android.media.IResourceManagerService",
+  "android.os.IComplexTypeInterface",
+  "android.os.IPermissionController",
+  "android.os.IPingResponder",
+  "android.os.IPowerManager",
+  "android.os.IProcessInfoService",
+  "android.os.ISchedulingPolicyService",
+  "android.os.IStringConstants",
+  "android.os.storage.IObbActionListener",
+  "android.os.storage.IStorageEventListener",
+  "android.os.storage.IStorageManager",
+  "android.os.storage.IStorageShutdownObserver",
+  "android.service.vr.IPersistentVrStateCallbacks",
+  "android.service.vr.IVrManager",
+  "android.service.vr.IVrStateCallbacks",
+  "android.ui.ISurfaceComposer",
+  "android.ui.ISurfaceComposerClient",
+  "android.utils.IMemory",
+  "android.utils.IMemoryHeap",
+  "com.android.car.procfsinspector.IProcfsInspector",
+  "com.android.internal.app.IAppOpsCallback",
+  "com.android.internal.app.IAppOpsService",
+  "com.android.internal.app.IBatteryStats",
+  "com.android.internal.os.IResultReceiver",
+  "com.android.internal.os.IShellCallback",
+  "drm.IDrmManagerService",
+  "drm.IDrmServiceListener",
+  "IAAudioClient",
+  "IAAudioService",
+  "VtsFuzzer",
+  nullptr,
+};
+
+constexpr const char* const kDownstreamManualInterfaces[] = {
+  // Add downstream interfaces here.
+  nullptr,
+};
+
+constexpr bool equals(const char* a, const char* b) {
+  if (*a != *b) return false;
+  if (*a == '\0') return true;
+  return equals(a + 1, b + 1);
+}
+
+constexpr bool inList(const char* a, const char* const* whitelist) {
+  if (*whitelist == nullptr) return false;
+  if (equals(a, *whitelist)) return true;
+  return inList(a, whitelist + 1);
+}
+
+constexpr bool allowedManualInterface(const char* name) {
+  return inList(name, kManualInterfaces) ||
+         inList(name, kDownstreamManualInterfaces);
+}
+
+} // namespace internal
 } // namespace android
 
 #endif // ANDROID_IINTERFACE_H
