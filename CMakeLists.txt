@@ -35,6 +35,6 @@ add_library(binder SHARED
         "IpPrefix.cpp"
         "Value.cpp"
 )
-target_link_libraries(binder utils)
+target_link_libraries(binder utils binderthreadstate)
 
 add_subdirectory(tests)

@@ -21,7 +21,7 @@
 
 #include <binder/IActivityManager.h>
 
-#include <utils/threads.h>
+#include <utils/Mutex.h>
 
 // ---------------------------------------------------------------------------
 namespace android {
