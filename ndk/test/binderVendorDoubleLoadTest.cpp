@@ -105,7 +105,8 @@ TEST(DoubleBinder, CallIntoNdk) {
 
         std::string outString;
         ScopedAStatus status = server->RepeatString("foo", &outString);
-        EXPECT_EQ(STATUS_OK, AStatus_getExceptionCode(status.get())) << serviceName;
+        EXPECT_EQ(STATUS_OK, AStatus_getExceptionCode(status.get()))
+                << serviceName << " " << status.getDescription();
         EXPECT_EQ("foo", outString) << serviceName;
     }
 }

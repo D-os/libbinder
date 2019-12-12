@@ -103,6 +103,8 @@ LIBBINDER_NDK30 { # introduced=30
   global:
     AIBinder_getExtension;
     AIBinder_setExtension;
+    AStatus_getDescription;
+    AStatus_deleteDescription;
 
     AIBinder_markSystemStability; # apex
     AIBinder_markVendorStability; # llndk
