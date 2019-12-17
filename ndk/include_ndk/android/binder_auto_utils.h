@@ -34,6 +34,7 @@
 
 #include <unistd.h>
 #include <cstddef>
+#include <string>
 
 namespace ndk {
 
@@ -227,6 +228,13 @@ class ScopedAStatus : public impl::ScopedAResource<AStatus*, void, AStatus_delet
      * See AStatus_getMessage
      */
     const char* getMessage() const { return AStatus_getMessage(get()); }
+
+    std::string getDescription() const {
+        const char* cStr = AStatus_getDescription(get());
+        std::string ret = cStr;
+        AStatus_deleteDescription(cStr);
+        return ret;
+    }
 
     /**
      * Convenience methods for creating scoped statuses.
