@@ -66,6 +66,17 @@ const char* AStatus_getMessage(const AStatus* status) {
     return status->get()->exceptionMessage().c_str();
 }
 
+const char* AStatus_getDescription(const AStatus* status) {
+    android::String8 description = status->get()->toString8();
+    char* cStr = new char[description.size() + 1];
+    memcpy(cStr, description.c_str(), description.size() + 1);
+    return cStr;
+}
+
+void AStatus_deleteDescription(const char* description) {
+    delete[] const_cast<char*>(description);
+}
+
 void AStatus_delete(AStatus* status) {
     delete status;
 }

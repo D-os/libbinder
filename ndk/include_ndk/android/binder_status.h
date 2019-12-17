@@ -247,6 +247,25 @@ binder_status_t AStatus_getStatus(const AStatus* status) __INTRODUCED_IN(29);
 const char* AStatus_getMessage(const AStatus* status) __INTRODUCED_IN(29);
 
 /**
+ * Get human-readable description for debugging.
+ *
+ * Available since API level 30.
+ *
+ * \param status the status being queried.
+ *
+ * \return a description, must be deleted with AStatus_deleteDescription.
+ */
+__attribute__((warn_unused_result)) const char* AStatus_getDescription(const AStatus* status)
+        __INTRODUCED_IN(30);
+
+/**
+ * Delete description.
+ *
+ * \param description value from AStatus_getDescription
+ */
+void AStatus_deleteDescription(const char* description) __INTRODUCED_IN(30);
+
+/**
  * Deletes memory associated with the status instance.
  *
  * Available since API level 29.
