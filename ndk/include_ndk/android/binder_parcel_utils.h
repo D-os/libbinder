@@ -421,13 +421,41 @@ static inline binder_status_t AParcel_readVector(
 }
 
 /**
+ * Convenience API for writing a non-null parcelable.
+ */
+template <typename P>
+static inline binder_status_t AParcel_writeParcelable(AParcel* parcel, const P& p) {
+    binder_status_t status = AParcel_writeInt32(parcel, 1);  // non-null
+    if (status != STATUS_OK) {
+        return status;
+    }
+    return p.writeToParcel(parcel);
+}
+
+/**
+ * Convenience API for reading a non-null parcelable.
+ */
+template <typename P>
+static inline binder_status_t AParcel_readParcelable(const AParcel* parcel, P* p) {
+    int32_t null;
+    binder_status_t status = AParcel_readInt32(parcel, &null);
+    if (status != STATUS_OK) {
+        return status;
+    }
+    if (null == 0) {
+        return STATUS_UNEXPECTED_NULL;
+    }
+    return p->readFromParcel(parcel);
+}
+
+/**
  * Writes a parcelable object of type P inside a std::vector<P> at index 'index' to 'parcel'.
  */
 template <typename P>
 binder_status_t AParcel_writeStdVectorParcelableElement(AParcel* parcel, const void* vectorData,
                                                         size_t index) {
     const std::vector<P>* vector = static_cast<const std::vector<P>*>(vectorData);
-    return vector->at(index).writeToParcel(parcel);
+    return AParcel_writeParcelable(parcel, vector->at(index));
 }
 
 /**
@@ -437,7 +465,7 @@ template <typename P>
 binder_status_t AParcel_readStdVectorParcelableElement(const AParcel* parcel, void* vectorData,
                                                        size_t index) {
     std::vector<P>* vector = static_cast<std::vector<P>*>(vectorData);
-    return vector->at(index).readFromParcel(parcel);
+    return AParcel_readParcelable(parcel, &vector->at(index));
 }
 
 /**
