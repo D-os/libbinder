@@ -106,16 +106,6 @@ public:
         remote()->transact(STOP_WATCHING_MODE_TRANSACTION, data, &reply);
     }
 
-    virtual sp<IBinder> getToken(const sp<IBinder>& clientToken) {
-        Parcel data, reply;
-        data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
-        data.writeStrongBinder(clientToken);
-        remote()->transact(GET_TOKEN_TRANSACTION, data, &reply);
-        // fail on exception
-        if (reply.readExceptionCode() != 0) return nullptr;
-        return reply.readStrongBinder();
-    }
-
     virtual int32_t permissionToOpCode(const String16& permission) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
@@ -249,14 +239,6 @@ status_t BnAppOpsService::onTransact(
             sp<IAppOpsCallback> callback = interface_cast<IAppOpsCallback>(data.readStrongBinder());
             stopWatchingMode(callback);
             reply->writeNoException();
-            return NO_ERROR;
-        } break;
-        case GET_TOKEN_TRANSACTION: {
-            CHECK_INTERFACE(IAppOpsService, data, reply);
-            sp<IBinder> clientToken = data.readStrongBinder();
-            sp<IBinder> token = getToken(clientToken);
-            reply->writeNoException();
-            reply->writeStrongBinder(token);
             return NO_ERROR;
         } break;
         case PERMISSION_TO_OP_CODE_TRANSACTION: {
