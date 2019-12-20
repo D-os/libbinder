@@ -36,10 +36,11 @@ public:
 
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
     virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName,
-            const std::unique_ptr<String16>& featureId) = 0;
+            const std::unique_ptr<String16>& featureId, bool shouldCollectAsyncNotedOp,
+            const String16& message) = 0;
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
             const String16& packageName, const std::unique_ptr<String16>& featureId,
-            bool startIfModeDefault) = 0;
+            bool startIfModeDefault, bool shouldCollectAsyncNotedOp, const String16& message) = 0;
     virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
             const String16& packageName, const std::unique_ptr<String16>& featureId) = 0;
     virtual void startWatchingMode(int32_t op, const String16& packageName,
@@ -49,9 +50,6 @@ public:
     virtual int32_t checkAudioOperation(int32_t code, int32_t usage,int32_t uid,
             const String16& packageName) = 0;
     virtual void setCameraAudioRestriction(int32_t mode) = 0;
-    virtual void noteAsyncOp(const std::unique_ptr<String16>& callingPackageName, int32_t uid,
-            const String16& packageName, int32_t opCode, const std::unique_ptr<String16>& featureId,
-            const String16& message) = 0;
     virtual bool shouldCollectNotes(int32_t opCode) = 0;
 
     enum {
@@ -63,9 +61,8 @@ public:
         STOP_WATCHING_MODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+5,
         PERMISSION_TO_OP_CODE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+6,
         CHECK_AUDIO_OPERATION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+7,
-        NOTE_ASYNC_OP_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+8,
-        SHOULD_COLLECT_NOTES_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+9,
-        SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+10,
+        SHOULD_COLLECT_NOTES_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+8,
+        SET_CAMERA_AUDIO_RESTRICTION_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION+9,
     };
 
     enum {

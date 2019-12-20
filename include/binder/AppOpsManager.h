@@ -151,17 +151,12 @@ public:
     void stopWatchingMode(const sp<IAppOpsCallback>& callback);
     int32_t permissionToOpCode(const String16& permission);
     void setCameraAudioRestriction(int32_t mode);
-    void noteAsyncOp(const std::unique_ptr<String16>& callingPackageName, int32_t uid,
-            const String16& packageName, int32_t opCode, const std::unique_ptr<String16>& featureId,
-            const String16& message);
 
 private:
     Mutex mLock;
     sp<IAppOpsService> mService;
 
     sp<IAppOpsService> getService();
-    void markAppOpNoted(int32_t uid, const String16& packageName, int32_t opCode,
-            const std::unique_ptr<String16>& featureId, const String16& message);
     bool shouldCollectNotes(int32_t opCode);
 };
 
