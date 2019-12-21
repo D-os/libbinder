@@ -449,6 +449,41 @@ static inline binder_status_t AParcel_readParcelable(const AParcel* parcel, P* p
 }
 
 /**
+ * Convenience API for writing a nullable parcelable.
+ */
+template <typename P>
+static inline binder_status_t AParcel_writeNullableParcelable(AParcel* parcel,
+                                                              const std::optional<P>& p) {
+    if (p == std::nullopt) {
+        return AParcel_writeInt32(parcel, 0);  // null
+    }
+    binder_status_t status = AParcel_writeInt32(parcel, 1);  // non-null
+    if (status != STATUS_OK) {
+        return status;
+    }
+    return p->writeToParcel(parcel);
+}
+
+/**
+ * Convenience API for reading a nullable parcelable.
+ */
+template <typename P>
+static inline binder_status_t AParcel_readNullableParcelable(const AParcel* parcel,
+                                                             std::optional<P>* p) {
+    int32_t null;
+    binder_status_t status = AParcel_readInt32(parcel, &null);
+    if (status != STATUS_OK) {
+        return status;
+    }
+    if (null == 0) {
+        *p = std::nullopt;
+        return STATUS_OK;
+    }
+    *p = std::optional<P>(P{});
+    return (*p)->readFromParcel(parcel);
+}
+
+/**
  * Writes a parcelable object of type P inside a std::vector<P> at index 'index' to 'parcel'.
  */
 template <typename P>
