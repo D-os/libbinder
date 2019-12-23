@@ -90,6 +90,7 @@ cc_library {
         "IResultReceiver.cpp",
         "IServiceManager.cpp",
         "IShellCallback.cpp",
+        "LazyServiceRegistrar.cpp",
         "MemoryBase.cpp",
         "MemoryDealer.cpp",
         "MemoryHeapBase.cpp",
@@ -160,6 +161,7 @@ filegroup {
     name: "libbinder_aidl",
     srcs: [
         "aidl/android/content/pm/IPackageManagerNative.aidl",
+        "aidl/android/os/IClientCallback.aidl",
         "aidl/android/os/IServiceCallback.aidl",
         "aidl/android/os/IServiceManager.aidl",
     ],
