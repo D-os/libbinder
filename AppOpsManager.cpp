@@ -123,12 +123,9 @@ int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPa
         const std::unique_ptr<String16>& featureId, const String16& message) {
     sp<IAppOpsService> service = getService();
     int32_t mode = service != nullptr
-            ? service->noteOperation(op, uid, callingPackage, featureId)
+            ? service->noteOperation(op, uid, callingPackage, featureId, shouldCollectNotes(op),
+                    message)
             : APP_OPS_MANAGER_UNAVAILABLE_MODE;
-
-    if (mode == AppOpsManager::MODE_ALLOWED) {
-        markAppOpNoted(uid, callingPackage, op, featureId, message);
-    }
 
     return mode;
 }
@@ -145,11 +142,8 @@ int32_t AppOpsManager::startOpNoThrow(int32_t op, int32_t uid, const String16& c
     sp<IAppOpsService> service = getService();
     int32_t mode = service != nullptr
             ? service->startOperation(getClientId(), op, uid, callingPackage,
-                    featureId, startIfModeDefault) : APP_OPS_MANAGER_UNAVAILABLE_MODE;
-
-    if (mode == AppOpsManager::MODE_ALLOWED) {
-        markAppOpNoted(uid, callingPackage, op, featureId, message);
-    }
+                    featureId, startIfModeDefault, shouldCollectNotes(op), message)
+            : APP_OPS_MANAGER_UNAVAILABLE_MODE;
 
     return mode;
 }
@@ -196,40 +190,17 @@ void AppOpsManager::setCameraAudioRestriction(int32_t mode) {
     }
 }
 
+// check it the appops needs to be collected and cache result
 bool AppOpsManager::shouldCollectNotes(int32_t opcode) {
-    sp<IAppOpsService> service = getService();
-    if (service != nullptr) {
-        return service->shouldCollectNotes(opcode);
-    }
-    return false;
-}
-
-void AppOpsManager::markAppOpNoted(int32_t uid, const String16& packageName, int32_t opCode,
-         const std::unique_ptr<String16>& featureId, const String16& message) {
-    // check it the appops needs to be collected and cache result
-    if (appOpsToNote[opCode] == 0) {
-        if (shouldCollectNotes(opCode)) {
-            appOpsToNote[opCode] = 2;
+    if (appOpsToNote[opcode] == 0) {
+        if (getService()->shouldCollectNotes(opcode)) {
+            appOpsToNote[opcode] = 2;
         } else {
-            appOpsToNote[opCode] = 1;
+            appOpsToNote[opcode] = 1;
         }
     }
 
-    if (appOpsToNote[opCode] != 2) {
-        return;
-    }
-
-    noteAsyncOp(std::unique_ptr<String16>(), uid, packageName, opCode, featureId, message);
-}
-
-void AppOpsManager::noteAsyncOp(const std::unique_ptr<String16>& callingPackageName, int32_t uid,
-         const String16& packageName, int32_t opCode, const std::unique_ptr<String16>& featureId,
-         const String16& message) {
-    sp<IAppOpsService> service = getService();
-    if (service != nullptr) {
-        return service->noteAsyncOp(callingPackageName, uid, packageName, opCode, featureId,
-                message);
-    }
+    return appOpsToNote[opcode] == 2;
 }
 
 } // namespace android
