@@ -50,6 +50,7 @@ cc_library_shared {
         "ibinder.cpp",
         "ibinder_jni.cpp",
         "parcel.cpp",
+        "parcel_jni.cpp",
         "process.cpp",
         "stability.cpp",
         "status.cpp",
