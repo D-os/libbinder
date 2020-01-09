@@ -36,13 +36,13 @@ __BEGIN_DECLS
 /**
  * Converts an android.os.IBinder object into an AIBinder* object.
  *
- * If either env or the binder is null, null is returned. If this binder object was originally an
+ * If the binder is null, null is returned. If this binder object was originally an
  * AIBinder object, the original object is returned. The returned object has one refcount
  * associated with it, and so this should be accompanied with an AIBinder_decStrong call.
  *
  * Available since API level 29.
  *
- * \param env Java environment.
+ * \param env Java environment. Must not be null.
  * \param binder android.os.IBinder java object.
  *
  * \return an AIBinder object representing the Java binder object. If either parameter is null, or
@@ -54,12 +54,12 @@ __attribute__((warn_unused_result)) AIBinder* AIBinder_fromJavaBinder(JNIEnv* en
 /**
  * Converts an AIBinder* object into an android.os.IBinder object.
  *
- * If either env or the binder is null, null is returned. If this binder object was originally an
- * IBinder object, the original java object will be returned.
+ * If the binder is null, null is returned. If this binder object was originally an IBinder object,
+ * the original java object will be returned.
  *
  * Available since API level 29.
  *
- * \param env Java environment.
+ * \param env Java environment. Must not be null.
  * \param binder the object to convert.
  *
  * \return an android.os.IBinder object or null if the parameters were null.
