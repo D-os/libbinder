@@ -105,6 +105,7 @@ LIBBINDER_NDK30 { # introduced=30
     AIBinder_setExtension;
     AStatus_getDescription;
     AStatus_deleteDescription;
+    AParcel_fromJavaParcel;
 
     AIBinder_markSystemStability; # apex
     AIBinder_markVendorStability; # llndk
