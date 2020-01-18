@@ -90,8 +90,7 @@ cc_test {
 
 aidl_interface {
     name: "IBinderVendorDoubleLoadTest",
-    // TODO(b/119771576): only vendor is needed
-    vendor_available: true,
+    vendor: true,
     srcs: [
         "IBinderVendorDoubleLoadTest.aidl",
     ],
