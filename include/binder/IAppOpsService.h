@@ -21,6 +21,8 @@
 #include <binder/IAppOpsCallback.h>
 #include <binder/IInterface.h>
 
+#include <optional>
+
 #ifdef __ANDROID_VNDK__
 #error "This header is not visible to vendors"
 #endif
@@ -36,13 +38,13 @@ public:
 
     virtual int32_t checkOperation(int32_t code, int32_t uid, const String16& packageName) = 0;
     virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName,
-            const std::unique_ptr<String16>& featureId, bool shouldCollectAsyncNotedOp,
+            const std::optional<String16>& featureId, bool shouldCollectAsyncNotedOp,
             const String16& message) = 0;
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName, const std::unique_ptr<String16>& featureId,
+            const String16& packageName, const std::optional<String16>& featureId,
             bool startIfModeDefault, bool shouldCollectAsyncNotedOp, const String16& message) = 0;
     virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName, const std::unique_ptr<String16>& featureId) = 0;
+            const String16& packageName, const std::optional<String16>& featureId) = 0;
     virtual void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback) = 0;
     virtual void stopWatchingMode(const sp<IAppOpsCallback>& callback) = 0;

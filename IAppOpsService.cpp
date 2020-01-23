@@ -22,6 +22,8 @@
 #include <binder/Parcel.h>
 #include <utils/String8.h>
 
+#include <optional>
+
 namespace android {
 
 // ----------------------------------------------------------------------
@@ -47,7 +49,7 @@ public:
     }
 
     virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName,
-                const std::unique_ptr<String16>& featureId, bool shouldCollectAsyncNotedOp,
+                const std::optional<String16>& featureId, bool shouldCollectAsyncNotedOp,
                 const String16& message) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
@@ -64,7 +66,7 @@ public:
     }
 
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-                const String16& packageName, const std::unique_ptr<String16>& featureId,
+                const String16& packageName, const std::optional<String16>& featureId,
                 bool startIfModeDefault, bool shouldCollectAsyncNotedOp, const String16& message) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
@@ -83,7 +85,7 @@ public:
     }
 
     virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName, const std::unique_ptr<String16>& featureId) {
+            const String16& packageName, const std::optional<String16>& featureId) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
         data.writeStrongBinder(token);
@@ -182,7 +184,7 @@ status_t BnAppOpsService::onTransact(
             int32_t code = data.readInt32();
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
-            std::unique_ptr<String16> featureId;
+            std::optional<String16> featureId;
             data.readString16(&featureId);
             bool shouldCollectAsyncNotedOp = data.readInt32() == 1;
             String16 message = data.readString16();
@@ -198,7 +200,7 @@ status_t BnAppOpsService::onTransact(
             int32_t code = data.readInt32();
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
-            std::unique_ptr<String16> featureId;
+            std::optional<String16> featureId;
             data.readString16(&featureId);
             bool startIfModeDefault = data.readInt32() == 1;
             bool shouldCollectAsyncNotedOp = data.readInt32() == 1;
@@ -215,7 +217,7 @@ status_t BnAppOpsService::onTransact(
             int32_t code = data.readInt32();
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
-            std::unique_ptr<String16> featureId;
+            std::optional<String16> featureId;
             data.readString16(&featureId);
             finishOperation(token, code, uid, packageName, featureId);
             reply->writeNoException();

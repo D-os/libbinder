@@ -21,6 +21,8 @@
 
 #include <utils/threads.h>
 
+#include <optional>
+
 #ifdef __ANDROID_VNDK__
 #error "This header is not visible to vendors"
 #endif
@@ -134,18 +136,18 @@ public:
     //              const String16&) instead
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage,
-            const std::unique_ptr<String16>& featureId, const String16& message);
+            const std::optional<String16>& featureId, const String16& message);
     // @Deprecated, use startOpNoThrow(int32_t, int32_t, const String16&, bool, const String16&,
     //              const String16&) instead
     int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
             bool startIfModeDefault);
     int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
-            bool startIfModeDefault, const std::unique_ptr<String16>& featureId,
+            bool startIfModeDefault, const std::optional<String16>& featureId,
             const String16& message);
     // @Deprecated, use finishOp(int32_t, int32_t, const String16&, bool, const String16&) instead
     void finishOp(int32_t op, int32_t uid, const String16& callingPackage);
     void finishOp(int32_t op, int32_t uid, const String16& callingPackage,
-            const std::unique_ptr<String16>& featureId);
+            const std::optional<String16>& featureId);
     void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback);
     void stopWatchingMode(const sp<IAppOpsCallback>& callback);
