@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 #include <iface/iface.h>
 
+#include <sys/prctl.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -28,6 +29,34 @@
 using ::android::sp;
 
 constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
+
+class MyFoo : public IFoo {
+    binder_status_t doubleNumber(int32_t in, int32_t* out) override {
+        *out = 2 * in;
+        LOG(INFO) << "doubleNumber (" << in << ") => " << *out;
+        return STATUS_OK;
+    }
+
+    binder_status_t die() override {
+        LOG(FATAL) << "IFoo::die called!";
+        return STATUS_UNKNOWN_ERROR;
+    }
+};
+
+int service(const char* instance) {
+    ABinderProcess_setThreadPoolMaxThreadCount(0);
+
+    // Strong reference to MyFoo kept by service manager.
+    binder_status_t status = (new MyFoo)->addService(instance);
+
+    if (status != STATUS_OK) {
+        LOG(FATAL) << "Could not register: " << status << " " << instance;
+    }
+
+    ABinderProcess_joinThreadPool();
+
+    return 1;  // should not return
+}
 
 // This is too slow
 // TEST(NdkBinder, GetServiceThatDoesntExist) {
@@ -198,6 +227,15 @@ TEST(NdkBinder, AddServiceMultipleTimes) {
 
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
+
+    if (fork() == 0) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+        return service(IFoo::kInstanceNameToDieFor);
+    }
+    if (fork() == 0) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+        return service(IFoo::kSomeInstanceName);
+    }
 
     ABinderProcess_setThreadPoolMaxThreadCount(1);  // to recieve death notifications/callbacks
     ABinderProcess_startThreadPool();
