@@ -20,9 +20,6 @@
     },
     {
       "name": "CtsNdkBinderTestCases"
-    },
-    {
-      "name": "aidl_lazy_test"
     }
   ]
 }
