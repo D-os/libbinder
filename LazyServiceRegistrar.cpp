@@ -53,14 +53,13 @@ private:
 
     struct Service {
         sp<IBinder> service;
-        std::string name;
         bool allowIsolated;
         int dumpFlags;
     };
     /**
-     * Number of services that have been registered.
+     * Map of registered names and services
      */
-    std::vector<Service> mRegisteredServices;
+    std::map<std::string, Service> mRegisteredServices;
 };
 
 bool ClientCounterCallback::registerService(const sp<IBinder>& service, const std::string& name,
@@ -68,20 +67,24 @@ bool ClientCounterCallback::registerService(const sp<IBinder>& service, const st
     auto manager = interface_cast<AidlServiceManager>(
                     ProcessState::self()->getContextObject(nullptr));
 
-    ALOGI("Registering service %s", name.c_str());
+    bool reRegister = mRegisteredServices.count(name) > 0;
+    std::string regStr = (reRegister) ? "Re-registering" : "Registering";
+    ALOGI("%s service %s", regStr.c_str(), name.c_str());
 
     if (!manager->addService(name.c_str(), service, allowIsolated, dumpFlags).isOk()) {
         ALOGE("Failed to register service %s", name.c_str());
         return false;
     }
 
-    if (!manager->registerClientCallback(name, service, this).isOk())
-    {
-      ALOGE("Failed to add client callback for service %s", name.c_str());
-      return false;
+    if (!manager->registerClientCallback(name, service, this).isOk()) {
+        ALOGE("Failed to add client callback for service %s", name.c_str());
+        return false;
     }
 
-    mRegisteredServices.push_back({service, name, allowIsolated, dumpFlags});
+    if (!reRegister) {
+        // Only add this when a service is added for the first time, as it is not removed
+        mRegisteredServices[name] = {service, allowIsolated, dumpFlags};
+    }
 
     return true;
 }
@@ -119,10 +122,11 @@ void ClientCounterCallback::tryShutdown() {
     for (; unRegisterIt != mRegisteredServices.end(); ++unRegisterIt) {
         auto& entry = (*unRegisterIt);
 
-        bool success = manager->tryUnregisterService(entry.name, entry.service).isOk();
+        bool success = manager->tryUnregisterService(entry.first, entry.second.service).isOk();
+
 
         if (!success) {
-            ALOGI("Failed to unregister service %s", entry.name.c_str());
+            ALOGI("Failed to unregister service %s", entry.first.c_str());
             break;
         }
     }
@@ -137,7 +141,8 @@ void ClientCounterCallback::tryShutdown() {
         auto& entry = (*reRegisterIt);
 
         // re-register entry
-        if (!registerService(entry.service, entry.name, entry.allowIsolated, entry.dumpFlags)) {
+        if (!registerService(entry.second.service, entry.first, entry.second.allowIsolated,
+                             entry.second.dumpFlags)) {
             // Must restart. Otherwise, clients will never be able to get a hold of this service.
             ALOGE("Bad state: could not re-register services");
         }
