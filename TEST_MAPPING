@@ -19,6 +19,9 @@
       "name": "binderStabilityTest"
     },
     {
+      "name": "libbinder_ndk_unit_test"
+    },
+    {
       "name": "CtsNdkBinderTestCases"
     }
   ]
