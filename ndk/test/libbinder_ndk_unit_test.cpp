@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
+#include <aidl/BnBinderNdkUnitTest.h>
+#include <aidl/BnEmpty.h>
 #include <android-base/logging.h>
 #include <android/binder_ibinder_jni.h>
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
 #include <gtest/gtest.h>
 #include <iface/iface.h>
+
+// warning: this is assuming that libbinder_ndk is using the same copy
+// of libbinder that we are.
+#include <binder/IPCThreadState.h>
 
 #include <sys/prctl.h>
 #include <chrono>
@@ -29,7 +35,38 @@
 using ::android::sp;
 
 constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
+constexpr char kBinderNdkUnitTestService[] = "BinderNdkUnitTest";
 
+class MyBinderNdkUnitTest : public aidl::BnBinderNdkUnitTest {
+    ndk::ScopedAStatus takeInterface(const std::shared_ptr<aidl::IEmpty>& empty) {
+        (void)empty;
+        return ndk::ScopedAStatus::ok();
+    }
+    ndk::ScopedAStatus forceFlushCommands() {
+        // warning: this is assuming that libbinder_ndk is using the same copy
+        // of libbinder that we are.
+        android::IPCThreadState::self()->flushCommands();
+        return ndk::ScopedAStatus::ok();
+    }
+};
+
+int generatedService() {
+    ABinderProcess_setThreadPoolMaxThreadCount(0);
+
+    auto service = ndk::SharedRefBase::make<MyBinderNdkUnitTest>();
+    binder_status_t status =
+            AServiceManager_addService(service->asBinder().get(), kBinderNdkUnitTestService);
+
+    if (status != STATUS_OK) {
+        LOG(FATAL) << "Could not register: " << status << " " << kBinderNdkUnitTestService;
+    }
+
+    ABinderProcess_joinThreadPool();
+
+    return 1;  // should not return
+}
+
+// manually-written parceling class considered bad practice
 class MyFoo : public IFoo {
     binder_status_t doubleNumber(int32_t in, int32_t* out) override {
         *out = 2 * in;
@@ -43,7 +80,7 @@ class MyFoo : public IFoo {
     }
 };
 
-int service(const char* instance) {
+int manualService(const char* instance) {
     ABinderProcess_setThreadPoolMaxThreadCount(0);
 
     // Strong reference to MyFoo kept by service manager.
@@ -225,16 +262,54 @@ TEST(NdkBinder, AddServiceMultipleTimes) {
     EXPECT_EQ(IFoo::getService(kInstanceName1), IFoo::getService(kInstanceName2));
 }
 
+TEST(NdkBinder, SentAidlBinderCanBeDestroyed) {
+    static volatile bool destroyed = false;
+    static std::mutex dMutex;
+    static std::condition_variable cv;
+
+    class MyEmpty : public aidl::BnEmpty {
+        virtual ~MyEmpty() {
+            destroyed = true;
+            cv.notify_one();
+        }
+    };
+
+    std::shared_ptr<MyEmpty> empty = ndk::SharedRefBase::make<MyEmpty>();
+
+    ndk::SpAIBinder binder(AServiceManager_getService(kBinderNdkUnitTestService));
+    std::shared_ptr<aidl::IBinderNdkUnitTest> service =
+            aidl::IBinderNdkUnitTest::fromBinder(binder);
+
+    EXPECT_FALSE(destroyed);
+
+    service->takeInterface(empty);
+    service->forceFlushCommands();
+    empty = nullptr;
+
+    // give other binder thread time to process commands
+    {
+        using namespace std::chrono_literals;
+        std::unique_lock<std::mutex> lk(dMutex);
+        cv.wait_for(lk, 1s, [] { return destroyed; });
+    }
+
+    EXPECT_TRUE(destroyed);
+}
+
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
 
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
-        return service(IFoo::kInstanceNameToDieFor);
+        return manualService(IFoo::kInstanceNameToDieFor);
     }
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
-        return service(IFoo::kSomeInstanceName);
+        return manualService(IFoo::kSomeInstanceName);
+    }
+    if (fork() == 0) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+        return generatedService();
     }
 
     ABinderProcess_setThreadPoolMaxThreadCount(1);  // to recieve death notifications/callbacks
