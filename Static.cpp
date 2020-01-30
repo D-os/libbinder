@@ -19,7 +19,7 @@
 
 #include "Static.h"
 
-#include <binder/BufferedTextOutput.h>
+#include "BufferedTextOutput.h"
 #include <binder/IPCThreadState.h>
 #include <utils/Log.h>
 
