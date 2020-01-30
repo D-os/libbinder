@@ -59,6 +59,9 @@ cc_test {
     name: "libbinder_ndk_unit_test",
     defaults: ["test_libbinder_ndk_test_defaults"],
     srcs: ["libbinder_ndk_unit_test.cpp"],
+    static_libs: [
+        "IBinderNdkUnitTest-ndk_platform",
+    ],
     test_suites: ["general-tests"],
     require_root: true,
 
@@ -91,5 +94,13 @@ aidl_interface {
     vendor: true,
     srcs: [
         "IBinderVendorDoubleLoadTest.aidl",
+    ],
+}
+
+aidl_interface {
+    name: "IBinderNdkUnitTest",
+    srcs: [
+        "IBinderNdkUnitTest.aidl",
+        "IEmpty.aidl",
     ],
 }
