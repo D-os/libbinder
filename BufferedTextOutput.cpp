@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <binder/BufferedTextOutput.h>
+#include "BufferedTextOutput.h"
 #include <binder/Debug.h>
 
 #include <cutils/atomic.h>
