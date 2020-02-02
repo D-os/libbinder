@@ -85,10 +85,11 @@ private:
     sp<AidlServiceManager> mTheRealServiceManager;
 };
 
+static Mutex gDefaultServiceManagerLock;
+static sp<IServiceManager> gDefaultServiceManager;
+
 sp<IServiceManager> defaultServiceManager()
 {
-    static Mutex gDefaultServiceManagerLock;
-    static sp<IServiceManager> gDefaultServiceManager;
 
     if (gDefaultServiceManager != nullptr) return gDefaultServiceManager;
 
@@ -104,6 +105,11 @@ sp<IServiceManager> defaultServiceManager()
     }
 
     return gDefaultServiceManager;
+}
+
+void setDefaultServiceManager(const sp<IServiceManager>& sm) {
+  AutoMutex _l(gDefaultServiceManagerLock);
+  gDefaultServiceManager = sm;
 }
 
 #if !defined(__ANDROID_VNDK__) && defined(__ANDROID__)
