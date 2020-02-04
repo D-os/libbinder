@@ -81,7 +81,7 @@ private:
         VINTF = 0b111111,
     };
 
-#if defined(__ANDROID_APEX_COM_ANDROID_VNDK_CURRENT__) || (defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__))
+#if defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
     static constexpr Level kLocalStability = Level::VENDOR;
 #else
     static constexpr Level kLocalStability = Level::SYSTEM;
