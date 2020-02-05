@@ -60,14 +60,14 @@ public:
         : mIsMain(isMain)
     {
     }
-    
+
 protected:
     virtual bool threadLoop()
     {
         IPCThreadState::self()->joinThreadPool(mIsMain);
         return false;
     }
-    
+
     const bool mIsMain;
 };
 
@@ -296,7 +296,7 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
 void ProcessState::expungeHandle(int32_t handle, IBinder* binder)
 {
     AutoMutex _l(mLock);
-    
+
     handle_entry* e = lookupHandleLocked(handle);
 
     // This handle may have already been replaced with a new BpBinder
@@ -387,7 +387,7 @@ ProcessState::ProcessState(const char *driver)
 {
 
 // TODO(b/139016109): enforce in build system
-#if defined(__ANDROID_APEX__) && !defined(__ANDROID_APEX_COM_ANDROID_VNDK_CURRENT__)
+#if defined(__ANDROID_APEX__)
     LOG_ALWAYS_FATAL("Cannot use libbinder in APEX (only system.img libbinder) since it is not stable.");
 #endif
 
@@ -418,5 +418,5 @@ ProcessState::~ProcessState()
     }
     mDriverFD = -1;
 }
-        
+
 } // namespace android
