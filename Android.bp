@@ -138,7 +138,6 @@ cc_library {
         "liblog",
         "libcutils",
         "libutils",
-        "libbinderthreadstate",
     ],
 
     header_libs: [
