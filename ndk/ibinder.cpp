@@ -24,10 +24,13 @@
 
 #include <android-base/logging.h>
 #include <binder/IPCThreadState.h>
+#include <binder/IResultReceiver.h>
+#include <private/android_filesystem_config.h>
 
 using DeathRecipient = ::android::IBinder::DeathRecipient;
 
 using ::android::IBinder;
+using ::android::IResultReceiver;
 using ::android::Parcel;
 using ::android::sp;
 using ::android::status_t;
@@ -158,6 +161,45 @@ status_t ABBinder::onTransact(transaction_code_t code, const Parcel& data, Parce
 
         binder_status_t status = getClass()->onTransact(this, code, &in, &out);
         return PruneStatusT(status);
+    } else if (code == SHELL_COMMAND_TRANSACTION) {
+        int in = data.readFileDescriptor();
+        int out = data.readFileDescriptor();
+        int err = data.readFileDescriptor();
+
+        int argc = data.readInt32();
+        std::vector<String8> utf8Args;          // owns memory of utf8s
+        std::vector<const char*> utf8Pointers;  // what can be passed over NDK API
+        for (int i = 0; i < argc && data.dataAvail() > 0; i++) {
+            utf8Args.push_back(String8(data.readString16()));
+            utf8Pointers.push_back(utf8Args[i].c_str());
+        }
+
+        data.readStrongBinder();  // skip over the IShellCallback
+        sp<IResultReceiver> resultReceiver = IResultReceiver::asInterface(data.readStrongBinder());
+
+        // Shell commands should only be callable by ADB.
+        uid_t uid = AIBinder_getCallingUid();
+        if (uid != AID_ROOT && uid != AID_SHELL) {
+            if (resultReceiver != nullptr) {
+                resultReceiver->send(-1);
+            }
+            return STATUS_PERMISSION_DENIED;
+        }
+
+        // Check that the file descriptors are valid.
+        if (in == STATUS_BAD_TYPE || out == STATUS_BAD_TYPE || err == STATUS_BAD_TYPE) {
+            if (resultReceiver != nullptr) {
+                resultReceiver->send(-1);
+            }
+            return STATUS_BAD_VALUE;
+        }
+
+        binder_status_t status = getClass()->handleShellCommand(
+                this, in, out, err, utf8Pointers.data(), utf8Pointers.size());
+        if (resultReceiver != nullptr) {
+            resultReceiver->send(status);
+        }
+        return status;
     } else {
         return BBinder::onTransact(code, data, reply, flags);
     }
@@ -264,6 +306,13 @@ void AIBinder_Class_setOnDump(AIBinder_Class* clazz, AIBinder_onDump onDump) {
 
     // this is required to be called before instances are instantiated
     clazz->onDump = onDump;
+}
+
+void AIBinder_Class_setHandleShellCommand(AIBinder_Class* clazz,
+                                          AIBinder_handleShellCommand handleShellCommand) {
+    CHECK(clazz != nullptr) << "setHandleShellCommand requires non-null clazz";
+
+    clazz->handleShellCommand = handleShellCommand;
 }
 
 void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinder>& who) {
