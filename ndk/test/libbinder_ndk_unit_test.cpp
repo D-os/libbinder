@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <IBinderNdkUnitTest.h>
 #include <aidl/BnBinderNdkUnitTest.h>
 #include <aidl/BnEmpty.h>
 #include <android-base/logging.h>
@@ -26,13 +27,16 @@
 // warning: this is assuming that libbinder_ndk is using the same copy
 // of libbinder that we are.
 #include <binder/IPCThreadState.h>
+#include <binder/IResultReceiver.h>
+#include <binder/IServiceManager.h>
+#include <binder/IShellCallback.h>
 
 #include <sys/prctl.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
 
-using ::android::sp;
+using namespace android;
 
 constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
 constexpr char kBinderNdkUnitTestService[] = "BinderNdkUnitTest";
@@ -47,6 +51,14 @@ class MyBinderNdkUnitTest : public aidl::BnBinderNdkUnitTest {
         // of libbinder that we are.
         android::IPCThreadState::self()->flushCommands();
         return ndk::ScopedAStatus::ok();
+    }
+    binder_status_t handleShellCommand(int /*in*/, int out, int /*err*/, const char** args,
+                                       uint32_t numArgs) override {
+        for (uint32_t i = 0; i < numArgs; i++) {
+            dprintf(out, "%s", args[i]);
+        }
+        fsync(out);
+        return STATUS_OK;
     }
 };
 
@@ -294,6 +306,92 @@ TEST(NdkBinder, SentAidlBinderCanBeDestroyed) {
     }
 
     EXPECT_TRUE(destroyed);
+}
+
+class MyResultReceiver : public BnResultReceiver {
+   public:
+    Mutex mMutex;
+    Condition mCondition;
+    bool mHaveResult = false;
+    int32_t mResult = 0;
+
+    virtual void send(int32_t resultCode) {
+        AutoMutex _l(mMutex);
+        mResult = resultCode;
+        mHaveResult = true;
+        mCondition.signal();
+    }
+
+    int32_t waitForResult() {
+        AutoMutex _l(mMutex);
+        while (!mHaveResult) {
+            mCondition.wait(mMutex);
+        }
+        return mResult;
+    }
+};
+
+class MyShellCallback : public BnShellCallback {
+   public:
+    virtual int openFile(const String16& /*path*/, const String16& /*seLinuxContext*/,
+                         const String16& /*mode*/) {
+        // Empty implementation.
+        return 0;
+    }
+};
+
+bool ReadFdToString(int fd, std::string* content) {
+    char buf[64];
+    ssize_t n;
+    while ((n = TEMP_FAILURE_RETRY(read(fd, &buf[0], sizeof(buf)))) > 0) {
+        content->append(buf, n);
+    }
+    return (n == 0) ? true : false;
+}
+
+std::string shellCmdToString(sp<IBinder> unitTestService, const std::vector<const char*>& args) {
+    int inFd[2] = {-1, -1};
+    int outFd[2] = {-1, -1};
+    int errFd[2] = {-1, -1};
+
+    EXPECT_EQ(0, socketpair(AF_UNIX, SOCK_STREAM, 0, inFd));
+    EXPECT_EQ(0, socketpair(AF_UNIX, SOCK_STREAM, 0, outFd));
+    EXPECT_EQ(0, socketpair(AF_UNIX, SOCK_STREAM, 0, errFd));
+
+    sp<MyShellCallback> cb = new MyShellCallback();
+    sp<MyResultReceiver> resultReceiver = new MyResultReceiver();
+
+    Vector<String16> argsVec;
+    for (int i = 0; i < args.size(); i++) {
+        argsVec.add(String16(args[i]));
+    }
+    status_t error = IBinder::shellCommand(unitTestService, inFd[0], outFd[0], errFd[0], argsVec,
+                                           cb, resultReceiver);
+    EXPECT_EQ(error, android::OK);
+
+    status_t res = resultReceiver->waitForResult();
+    EXPECT_EQ(res, android::OK);
+
+    close(inFd[0]);
+    close(inFd[1]);
+    close(outFd[0]);
+    close(errFd[0]);
+    close(errFd[1]);
+
+    std::string ret;
+    EXPECT_TRUE(ReadFdToString(outFd[1], &ret));
+    close(outFd[1]);
+    return ret;
+}
+
+TEST(NdkBinder, UseHandleShellCommand) {
+    static const sp<android::IServiceManager> sm(android::defaultServiceManager());
+    sp<IBinder> testService = sm->getService(String16(kBinderNdkUnitTestService));
+
+    EXPECT_EQ("", shellCmdToString(testService, {}));
+    EXPECT_EQ("", shellCmdToString(testService, {"", ""}));
+    EXPECT_EQ("Hello world!", shellCmdToString(testService, {"Hello ", "world!"}));
+    EXPECT_EQ("CMD", shellCmdToString(testService, {"C", "M", "D"}));
 }
 
 int main(int argc, char* argv[]) {
