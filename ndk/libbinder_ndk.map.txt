@@ -110,6 +110,7 @@ LIBBINDER_NDK30 { # introduced=30
     AIBinder_markSystemStability; # apex
     AIBinder_markVendorStability; # llndk
     AIBinder_markVintfStability; # apex llndk
+    AIBinder_Class_setHandleShellCommand; # apex llndk
   local:
     *;
 };
