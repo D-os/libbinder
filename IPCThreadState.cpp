@@ -1230,6 +1230,11 @@ status_t IPCThreadState::executeCommand(int32_t cmd)
                 if (error < NO_ERROR) reply.setError(error);
                 sendReply(reply, 0);
             } else {
+                if (error != OK || reply.dataSize() != 0) {
+                    alog << "oneway function results will be dropped but finished with status "
+                         << statusToString(error)
+                         << " and parcel size " << reply.dataSize() << endl;
+                }
                 LOG_ONEWAY("NOT sending reply to %d!", mCallingPid);
             }
 
