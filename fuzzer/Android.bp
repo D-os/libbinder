@@ -16,7 +16,6 @@ cc_fuzz {
     ],
     static_libs: [
         "libbase",
-        "libbinderthreadstate",
         "libcgrouprc",
         "libcgrouprc_format",
         "libcutils",

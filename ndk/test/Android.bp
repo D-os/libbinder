@@ -60,6 +60,7 @@ cc_test {
     defaults: ["test_libbinder_ndk_test_defaults"],
     srcs: ["libbinder_ndk_unit_test.cpp"],
     static_libs: [
+        "IBinderNdkUnitTest-cpp",
         "IBinderNdkUnitTest-ndk_platform",
     ],
     test_suites: ["general-tests"],
