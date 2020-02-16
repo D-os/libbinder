@@ -86,9 +86,15 @@ class SharedRefBase {
         return t->template ref<T>();
     }
 
+    static void operator delete(void* p) { std::free(p); }
+
    private:
     std::once_flag mFlagThis;
     std::weak_ptr<SharedRefBase> mThis;
+
+    // Use 'SharedRefBase::make<T>(...)' to make. SharedRefBase has implicit
+    // ownership. Making this operator private to avoid double-ownership.
+    static void* operator new(size_t s) { return std::malloc(s); }
 };
 
 /**
