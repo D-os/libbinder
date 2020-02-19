@@ -238,7 +238,9 @@ AIBinder_Class* ICInterface::defineClass(const char* interfaceDescriptor,
     // ourselves. The defaults are harmless.
     AIBinder_Class_setOnDump(clazz, ICInterfaceData::onDump);
 #ifdef HAS_BINDER_SHELL_COMMAND
-    AIBinder_Class_setHandleShellCommand(clazz, ICInterfaceData::handleShellCommand);
+    if (AIBinder_Class_setHandleShellCommand != nullptr) {
+        AIBinder_Class_setHandleShellCommand(clazz, ICInterfaceData::handleShellCommand);
+    }
 #endif
     return clazz;
 }

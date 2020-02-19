@@ -48,8 +48,7 @@ typedef binder_status_t (*AIBinder_handleShellCommand)(AIBinder* binder, int in,
  * \param handleShellCommand function to call when a shell transaction is
  * received
  */
-void AIBinder_Class_setHandleShellCommand(AIBinder_Class* clazz,
-                                          AIBinder_handleShellCommand handleShellCommand)
-        __INTRODUCED_IN(30);
+__attribute__((weak)) void AIBinder_Class_setHandleShellCommand(
+        AIBinder_Class* clazz, AIBinder_handleShellCommand handleShellCommand) __INTRODUCED_IN(30);
 
 __END_DECLS
