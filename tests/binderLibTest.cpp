@@ -30,6 +30,7 @@
 
 #include <private/binder/binder_module.h>
 #include <sys/epoll.h>
+#include <sys/prctl.h>
 
 #define ARRAY_SIZE(array) (sizeof array / sizeof array[0])
 
@@ -106,6 +107,7 @@ pid_t start_server_process(int arg2, bool usePoll = false)
     if (pid == -1)
         return pid;
     if (pid == 0) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
         close(pipefd[0]);
         execv(binderservername, childargv);
         status = -errno;
