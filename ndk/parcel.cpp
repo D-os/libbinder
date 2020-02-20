@@ -247,15 +247,12 @@ binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd) {
         if (fd != -1) {
             return STATUS_UNKNOWN_ERROR;
         }
-        return parcel->get()->writeInt32(0);  // null
+        return PruneStatusT(parcel->get()->writeInt32(0));  // null
     }
+    status_t status = parcel->get()->writeInt32(1);  // not-null
+    if (status != STATUS_OK) return PruneStatusT(status);
 
-    ParcelFileDescriptor parcelFd = ParcelFileDescriptor(unique_fd(fd));
-    status_t status = parcel->get()->writeParcelable(parcelFd);
-
-    // ownership is retained by caller
-    (void)parcelFd.release().release();
-
+    status = parcel->get()->writeDupParcelFileDescriptor(fd);
     return PruneStatusT(status);
 }
 
