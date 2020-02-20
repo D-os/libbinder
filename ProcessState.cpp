@@ -112,6 +112,10 @@ sp<IBinder> ProcessState::getContextObject(const sp<IBinder>& /*caller*/)
 {
     sp<IBinder> context = getStrongProxyForHandle(0);
 
+    if (context == nullptr) {
+       ALOGW("Not able to get context object on %s.", mDriverName.c_str());
+    }
+
     // The root object is special since we get it directly from the driver, it is never
     // written by Parcell::writeStrongBinder.
     internal::Stability::tryMarkCompilationUnit(context.get());
