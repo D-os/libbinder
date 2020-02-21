@@ -558,6 +558,13 @@ bool Parcel::checkInterface(IBinder* binder) const
 bool Parcel::enforceInterface(const String16& interface,
                               IPCThreadState* threadState) const
 {
+    return enforceInterface(interface.string(), interface.size(), threadState);
+}
+
+bool Parcel::enforceInterface(const char16_t* interface,
+                              size_t len,
+                              IPCThreadState* threadState) const
+{
     // StrictModePolicy.
     int32_t strictPolicy = readInt32();
     if (threadState == nullptr) {
@@ -584,12 +591,15 @@ bool Parcel::enforceInterface(const String16& interface,
         return false;
     }
     // Interface descriptor.
-    const String16 str(readString16());
-    if (str == interface) {
+    size_t parcel_interface_len;
+    const char16_t* parcel_interface = readString16Inplace(&parcel_interface_len);
+    if (len == parcel_interface_len &&
+            (!len || !memcmp(parcel_interface, interface, len * sizeof (char16_t)))) {
         return true;
     } else {
         ALOGW("**** enforceInterface() expected '%s' but read '%s'",
-                String8(interface).string(), String8(str).string());
+              String8(interface, len).string(),
+              String8(parcel_interface, parcel_interface_len).string());
         return false;
     }
 }
