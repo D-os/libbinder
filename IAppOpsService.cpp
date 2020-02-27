@@ -22,6 +22,8 @@
 #include <binder/Parcel.h>
 #include <utils/String8.h>
 
+#include <optional>
+
 namespace android {
 
 // ----------------------------------------------------------------------
