@@ -15,6 +15,9 @@
  */
 #include <binder/Stability.h>
 
+#include <binder/BpBinder.h>
+#include <binder/Binder.h>
+
 namespace android {
 namespace internal {
 
@@ -78,11 +81,12 @@ status_t Stability::set(IBinder* binder, int32_t stability, bool log) {
 
     if (currentStability == stability) return OK;
 
-    binder->attachObject(
-        reinterpret_cast<void*>(&Stability::get),
-        reinterpret_cast<void*>(stability),
-        nullptr /*cleanupCookie*/,
-        nullptr /*cleanup function*/);
+    BBinder* local = binder->localBinder();
+    if (local != nullptr) {
+        local->mStability = static_cast<int32_t>(stability);
+    } else {
+        binder->remoteBinder()->mStability = static_cast<int32_t>(stability);
+    }
 
     return OK;
 }
@@ -90,8 +94,12 @@ status_t Stability::set(IBinder* binder, int32_t stability, bool log) {
 Stability::Level Stability::get(IBinder* binder) {
     if (binder == nullptr) return UNDECLARED;
 
-    return static_cast<Level>(reinterpret_cast<intptr_t>(
-        binder->findObject(reinterpret_cast<void*>(&Stability::get))));
+    BBinder* local = binder->localBinder();
+    if (local != nullptr) {
+        return static_cast<Stability::Level>(local->mStability);
+    }
+
+    return static_cast<Stability::Level>(binder->remoteBinder()->mStability);
 }
 
 bool Stability::check(int32_t provided, Level required) {
