@@ -24,6 +24,10 @@
 // ---------------------------------------------------------------------------
 namespace android {
 
+namespace internal {
+class Stability;
+}
+
 class BBinder : public IBinder
 {
 public:
@@ -88,7 +92,12 @@ private:
     Extras*             getOrCreateExtras();
 
     std::atomic<Extras*> mExtras;
-            void*       mReserved0;
+
+    friend ::android::internal::Stability;
+    union {
+        int32_t mStability;
+        void* mReserved0;
+    };
 };
 
 // ---------------------------------------------------------------------------
