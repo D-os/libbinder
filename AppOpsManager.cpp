@@ -56,12 +56,6 @@ static const sp<IBinder>& getClientId() {
     return gClientId;
 }
 
-thread_local uint64_t notedAppOpsInThisBinderTransaction[2];
-thread_local int32_t uidOfThisBinderTransaction = -1;
-
-// Whether an appop should be collected: 0 == not initialized, 1 == don't note, 2 == note
-uint8_t appOpsToNote[AppOpsManager::_NUM_OP] = {0};
-
 AppOpsManager::AppOpsManager()
 {
 }
@@ -192,6 +186,9 @@ void AppOpsManager::setCameraAudioRestriction(int32_t mode) {
 
 // check it the appops needs to be collected and cache result
 bool AppOpsManager::shouldCollectNotes(int32_t opcode) {
+    // Whether an appop should be collected: 0 == not initialized, 1 == don't note, 2 == note
+    static uint8_t appOpsToNote[AppOpsManager::_NUM_OP] = {0};
+
     if (appOpsToNote[opcode] == 0) {
         if (getService()->shouldCollectNotes(opcode)) {
             appOpsToNote[opcode] = 2;
