@@ -43,11 +43,10 @@ const int APP_OPS_MANAGER_UNAVAILABLE_MODE = AppOpsManager::MODE_IGNORED;
 
 }  // namespace
 
-static String16 _appops("appops");
-static pthread_mutex_t gClientIdMutex = PTHREAD_MUTEX_INITIALIZER;
-static sp<IBinder> gClientId;
-
 static const sp<IBinder>& getClientId() {
+    static pthread_mutex_t gClientIdMutex = PTHREAD_MUTEX_INITIALIZER;
+    static sp<IBinder> gClientId;
+
     pthread_mutex_lock(&gClientIdMutex);
     if (gClientId == nullptr) {
         gClientId = new BBinder();
@@ -72,6 +71,7 @@ sp<IAppOpsService> AppOpsManager::getService() { return NULL; }
 #else
 sp<IAppOpsService> AppOpsManager::getService()
 {
+    static String16 _appops("appops");
 
     std::lock_guard<Mutex> scoped_lock(mLock);
     int64_t startTime = 0;
