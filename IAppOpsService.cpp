@@ -47,14 +47,14 @@ public:
     }
 
     virtual int32_t noteOperation(int32_t code, int32_t uid, const String16& packageName,
-                const std::unique_ptr<String16>& featureId, bool shouldCollectAsyncNotedOp,
+                const std::unique_ptr<String16>& attributionTag, bool shouldCollectAsyncNotedOp,
                 const String16& message) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
         data.writeInt32(code);
         data.writeInt32(uid);
         data.writeString16(packageName);
-        data.writeString16(featureId);
+        data.writeString16(attributionTag);
         data.writeInt32(shouldCollectAsyncNotedOp ? 1 : 0);
         data.writeString16(message);
         remote()->transact(NOTE_OPERATION_TRANSACTION, data, &reply);
@@ -64,7 +64,7 @@ public:
     }
 
     virtual int32_t startOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-                const String16& packageName, const std::unique_ptr<String16>& featureId,
+                const String16& packageName, const std::unique_ptr<String16>& attributionTag,
                 bool startIfModeDefault, bool shouldCollectAsyncNotedOp, const String16& message) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
@@ -72,7 +72,7 @@ public:
         data.writeInt32(code);
         data.writeInt32(uid);
         data.writeString16(packageName);
-        data.writeString16(featureId);
+        data.writeString16(attributionTag);
         data.writeInt32(startIfModeDefault ? 1 : 0);
         data.writeInt32(shouldCollectAsyncNotedOp ? 1 : 0);
         data.writeString16(message);
@@ -83,14 +83,14 @@ public:
     }
 
     virtual void finishOperation(const sp<IBinder>& token, int32_t code, int32_t uid,
-            const String16& packageName, const std::unique_ptr<String16>& featureId) {
+            const String16& packageName, const std::unique_ptr<String16>& attributionTag) {
         Parcel data, reply;
         data.writeInterfaceToken(IAppOpsService::getInterfaceDescriptor());
         data.writeStrongBinder(token);
         data.writeInt32(code);
         data.writeInt32(uid);
         data.writeString16(packageName);
-        data.writeString16(featureId);
+        data.writeString16(attributionTag);
         remote()->transact(FINISH_OPERATION_TRANSACTION, data, &reply);
     }
 
@@ -182,11 +182,11 @@ status_t BnAppOpsService::onTransact(
             int32_t code = data.readInt32();
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
-            std::unique_ptr<String16> featureId;
-            data.readString16(&featureId);
+            std::unique_ptr<String16> attributionTag;
+            data.readString16(&attributionTag);
             bool shouldCollectAsyncNotedOp = data.readInt32() == 1;
             String16 message = data.readString16();
-            int32_t res = noteOperation(code, uid, packageName, featureId,
+            int32_t res = noteOperation(code, uid, packageName, attributionTag,
                     shouldCollectAsyncNotedOp, message);
             reply->writeNoException();
             reply->writeInt32(res);
@@ -198,12 +198,12 @@ status_t BnAppOpsService::onTransact(
             int32_t code = data.readInt32();
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
-            std::unique_ptr<String16> featureId;
-            data.readString16(&featureId);
+            std::unique_ptr<String16> attributionTag;
+            data.readString16(&attributionTag);
             bool startIfModeDefault = data.readInt32() == 1;
             bool shouldCollectAsyncNotedOp = data.readInt32() == 1;
             String16 message = data.readString16();
-            int32_t res = startOperation(token, code, uid, packageName, featureId,
+            int32_t res = startOperation(token, code, uid, packageName, attributionTag,
                     startIfModeDefault, shouldCollectAsyncNotedOp, message);
             reply->writeNoException();
             reply->writeInt32(res);
@@ -215,9 +215,9 @@ status_t BnAppOpsService::onTransact(
             int32_t code = data.readInt32();
             int32_t uid = data.readInt32();
             String16 packageName = data.readString16();
-            std::unique_ptr<String16> featureId;
-            data.readString16(&featureId);
-            finishOperation(token, code, uid, packageName, featureId);
+            std::unique_ptr<String16> attributionTag;
+            data.readString16(&attributionTag);
+            finishOperation(token, code, uid, packageName, attributionTag);
             reply->writeNoException();
             return NO_ERROR;
         } break;
