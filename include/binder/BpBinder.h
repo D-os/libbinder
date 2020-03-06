@@ -133,12 +133,13 @@ private:
             bool                isDescriptorCached() const;
 
     mutable Mutex               mLock;
-            int32_t             mTrackedUid;
-            volatile bool       mAlive;
-            volatile bool       mObitsSent;
+            volatile int32_t    mAlive;
+            volatile int32_t    mObitsSent;
             Vector<Obituary>*   mObituaries;
             ObjectManager       mObjects;
+            Parcel*             mConstantData;
     mutable String16            mDescriptorCache;
+            int32_t             mTrackedUid;
 
     static Mutex                                sTrackingLock;
     static std::unordered_map<int32_t,uint32_t> sTrackingMap;
