@@ -139,10 +139,10 @@ BpBinder* BpBinder::create(int32_t handle) {
 BpBinder::BpBinder(int32_t handle, int32_t trackedUid)
     : mHandle(handle)
     , mStability(0)
-    , mTrackedUid(trackedUid)
-    , mAlive(true)
-    , mObitsSent(false)
+    , mAlive(1)
+    , mObitsSent(0)
     , mObituaries(nullptr)
+    , mTrackedUid(trackedUid)
 {
     ALOGV("Creating BpBinder %p handle %d\n", this, mHandle);
 
@@ -185,7 +185,7 @@ const String16& BpBinder::getInterfaceDescriptor() const
 
 bool BpBinder::isBinderAlive() const
 {
-    return mAlive;
+    return mAlive != 0;
 }
 
 status_t BpBinder::pingBinder()
@@ -236,7 +236,7 @@ status_t BpBinder::transact(
 
         status_t status = IPCThreadState::self()->transact(
             mHandle, code, data, reply, flags);
-        if (status == DEAD_OBJECT) mAlive = false;
+        if (status == DEAD_OBJECT) mAlive = 0;
 
         return status;
     }
@@ -320,7 +320,7 @@ void BpBinder::sendObituary()
     ALOGV("Sending obituary for proxy %p handle %d, mObitsSent=%s\n",
         this, mHandle, mObitsSent ? "true" : "false");
 
-    mAlive = false;
+    mAlive = 0;
     if (mObitsSent) return;
 
     mLock.lock();
@@ -332,7 +332,7 @@ void BpBinder::sendObituary()
         self->flushCommands();
         mObituaries = nullptr;
     }
-    mObitsSent = true;
+    mObitsSent = 1;
     mLock.unlock();
 
     ALOGV("Reporting death of proxy %p for %zu recipients\n",
