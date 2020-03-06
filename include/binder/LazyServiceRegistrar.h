@@ -34,6 +34,12 @@ class LazyServiceRegistrar {
                               const std::string& name = "default",
                               bool allowIsolated = false,
                               int dumpFlags = IServiceManager::DUMP_FLAG_PRIORITY_DEFAULT);
+     /**
+      * Force the service to persist, even when it has 0 clients.
+      * If setting this flag from the server side, make sure to do so before calling registerService,
+      * or there may be a race with the default dynamic shutdown.
+      */
+     void forcePersist(bool persist);
 
    private:
      std::shared_ptr<internal::ClientCounterCallback> mClientCC;
