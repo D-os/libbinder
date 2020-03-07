@@ -141,7 +141,7 @@ public:
 
 // ---------------------------------------------------------------------------
 
-BBinder::BBinder() : mExtras(nullptr)
+BBinder::BBinder() : mExtras(nullptr), mStability(0)
 {
 }
 
