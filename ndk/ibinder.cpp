@@ -486,7 +486,6 @@ pid_t AIBinder_getCallingPid() {
 
 void AIBinder_incStrong(AIBinder* binder) {
     if (binder == nullptr) {
-        LOG(ERROR) << __func__ << ": on null binder";
         return;
     }
 
