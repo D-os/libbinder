@@ -96,11 +96,11 @@ int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPa
 }
 
 int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage,
-        const std::unique_ptr<String16>& featureId, const String16& message) {
+        const std::unique_ptr<String16>& attributionTag, const String16& message) {
     sp<IAppOpsService> service = getService();
     int32_t mode = service != nullptr
-            ? service->noteOperation(op, uid, callingPackage, featureId, shouldCollectNotes(op),
-                    message)
+            ? service->noteOperation(op, uid, callingPackage, attributionTag,
+                    shouldCollectNotes(op), message)
             : AppOpsManager::MODE_IGNORED;
 
     return mode;
@@ -113,12 +113,12 @@ int32_t AppOpsManager::startOpNoThrow(int32_t op, int32_t uid, const String16& c
 }
 
 int32_t AppOpsManager::startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
-        bool startIfModeDefault, const std::unique_ptr<String16>& featureId,
+        bool startIfModeDefault, const std::unique_ptr<String16>& attributionTag,
         const String16& message) {
     sp<IAppOpsService> service = getService();
     int32_t mode = service != nullptr
             ? service->startOperation(getClientId(), op, uid, callingPackage,
-                    featureId, startIfModeDefault, shouldCollectNotes(op), message)
+                    attributionTag, startIfModeDefault, shouldCollectNotes(op), message)
             : AppOpsManager::MODE_IGNORED;
 
     return mode;
@@ -129,10 +129,10 @@ void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPac
 }
 
 void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPackage,
-        const std::unique_ptr<String16>& callingFeatureId) {
+        const std::unique_ptr<String16>& attributionTag) {
     sp<IAppOpsService> service = getService();
     if (service != nullptr) {
-        service->finishOperation(getClientId(), op, uid, callingPackage, callingFeatureId);
+        service->finishOperation(getClientId(), op, uid, callingPackage, attributionTag);
     }
 }
 
