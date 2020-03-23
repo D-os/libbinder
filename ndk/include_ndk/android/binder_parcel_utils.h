@@ -831,34 +831,34 @@ inline binder_status_t AParcel_readVector(const AParcel* parcel,
 }
 
 /**
- * Writes a vector of int8_t to the next location in a non-null parcel.
+ * Writes a vector of uint8_t to the next location in a non-null parcel.
  */
-inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<int8_t>& vec) {
-    return AParcel_writeByteArray(parcel, vec.data(), vec.size());
+inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<uint8_t>& vec) {
+    return AParcel_writeByteArray(parcel, reinterpret_cast<const int8_t*>(vec.data()), vec.size());
 }
 
 /**
- * Writes an optional vector of int8_t to the next location in a non-null parcel.
+ * Writes an optional vector of uint8_t to the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_writeVector(AParcel* parcel,
-                                           const std::optional<std::vector<int8_t>>& vec) {
+                                           const std::optional<std::vector<uint8_t>>& vec) {
     if (!vec) return AParcel_writeByteArray(parcel, nullptr, -1);
     return AParcel_writeVector(parcel, *vec);
 }
 
 /**
- * Reads a vector of int8_t from the next location in a non-null parcel.
+ * Reads a vector of uint8_t from the next location in a non-null parcel.
  */
-inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<int8_t>* vec) {
+inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<uint8_t>* vec) {
     void* vectorData = static_cast<void*>(vec);
     return AParcel_readByteArray(parcel, vectorData, AParcel_stdVectorAllocator<int8_t>);
 }
 
 /**
- * Reads an optional vector of int8_t from the next location in a non-null parcel.
+ * Reads an optional vector of uint8_t from the next location in a non-null parcel.
  */
 inline binder_status_t AParcel_readVector(const AParcel* parcel,
-                                          std::optional<std::vector<int8_t>>* vec) {
+                                          std::optional<std::vector<uint8_t>>* vec) {
     void* vectorData = static_cast<void*>(vec);
     return AParcel_readByteArray(parcel, vectorData, AParcel_nullableStdVectorAllocator<int8_t>);
 }
