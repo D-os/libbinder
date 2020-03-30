@@ -98,6 +98,15 @@ int32_t ActivityManager::getUidProcessState(const uid_t uid, const String16& cal
     return PROCESS_STATE_UNKNOWN;
 }
 
+bool ActivityManager::setSchedPolicyCgroup(const int32_t tid, const int32_t group)
+{
+    sp<IActivityManager> service = getService();
+    if (service != nullptr) {
+        return service->setSchedPolicyCgroup(tid, group);
+    }
+    return false;
+}
+
 status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
     sp<IActivityManager> service = getService();
     if (service != nullptr) {

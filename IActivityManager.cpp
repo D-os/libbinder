@@ -104,6 +104,17 @@ public:
         }
         return reply.readInt32();
     }
+
+    virtual bool setSchedPolicyCgroup(const int32_t tid, const int32_t group)
+    {
+         Parcel data, reply;
+         data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
+         data.writeInt32(tid);
+         data.writeInt32(group);
+         remote()->transact(SET_SCHED_POLICY_CGROUP_TRANSACTION, data, &reply);
+         if (reply.readExceptionCode() != 0) return false;
+         return reply.readBool();
+    }
 };
 
 // ------------------------------------------------------------------------------------
