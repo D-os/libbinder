@@ -173,6 +173,10 @@ public:
      * The @a cookie is optional -- if non-NULL, it should be a
      * memory address that you own (that is, you know it is unique).
      *
+     * @note When all references to the binder being linked to are dropped, the
+     * recipient is automatically unlinked. So, you must hold onto a binder in
+     * order to receive death notifications about it.
+     *
      * @note You will only receive death notifications for remote binders,
      * as local binders by definition can't die without you dying as well.
      * Trying to use this function on a local binder will result in an
