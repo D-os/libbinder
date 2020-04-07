@@ -40,7 +40,7 @@ cc_test {
     },
 
     srcs: ["binderDriverInterfaceTest.cpp"],
-    test_suites: ["device-tests", "vts-core"],
+    test_suites: ["device-tests", "vts"],
 }
 
 cc_test {
@@ -69,7 +69,7 @@ cc_test {
         "libbinder",
         "libutils",
     ],
-    test_suites: ["device-tests", "vts-core"],
+    test_suites: ["device-tests", "vts"],
     require_root: true,
 }
 
@@ -131,7 +131,7 @@ cc_test {
         "liblog",
         "libutils",
     ],
-    test_suites: ["device-tests", "vts-core"],
+    test_suites: ["device-tests", "vts"],
     require_root: true,
 }
 
