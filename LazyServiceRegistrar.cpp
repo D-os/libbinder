@@ -114,6 +114,12 @@ Status ClientCounterCallback::onClients(const sp<IBinder>& service, bool clients
         mNumConnectedServices--;
     }
 
+    // if this fails, we should switch this to keep track of clients inside
+    // of mRegisteredServices so that we know which service is double-counted.
+    LOG_ALWAYS_FATAL_IF(mNumConnectedServices > mRegisteredServices.size(),
+                        "Invalid state: %zu services have clients, but we only know about %zu",
+                        mNumConnectedServices, mRegisteredServices.size());
+
     ALOGI("Process has %zu (of %zu available) client(s) in use after notification %s has clients: %d",
           mNumConnectedServices, mRegisteredServices.size(),
           String8(service->getInterfaceDescriptor()).string(), clients);
