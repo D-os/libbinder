@@ -82,12 +82,12 @@ bool ClientCounterCallback::registerService(const sp<IBinder>& service, const st
         return false;
     }
 
-    if (!manager->registerClientCallback(name, service, this).isOk()) {
-        ALOGE("Failed to add client callback for service %s", name.c_str());
-        return false;
-    }
-
     if (!reRegister) {
+        if (!manager->registerClientCallback(name, service, this).isOk()) {
+            ALOGE("Failed to add client callback for service %s", name.c_str());
+            return false;
+        }
+
         // Only add this when a service is added for the first time, as it is not removed
         mRegisteredServices[name] = {service, allowIsolated, dumpFlags};
     }
