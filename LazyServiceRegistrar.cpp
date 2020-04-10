@@ -45,25 +45,31 @@ protected:
     Status onClients(const sp<IBinder>& service, bool clients) override;
 
 private:
+    struct Service {
+        sp<IBinder> service;
+        bool allowIsolated;
+        int dumpFlags;
+
+        // whether, based on onClients calls, we know we have a client for this
+        // service or not
+        bool clients = false;
+    };
+
+    /**
+     * Looks up a service guaranteed to be registered (service from onClients).
+     */
+    std::map<std::string, Service>::iterator assertRegisteredService(const sp<IBinder>& service);
+
     /**
      * Unregisters all services that we can. If we can't unregister all, re-register other
      * services.
      */
     void tryShutdown();
 
-    /**
-     * Counter of the number of services that currently have at least one client.
-     */
+    // count of services with clients
     size_t mNumConnectedServices;
 
-    struct Service {
-        sp<IBinder> service;
-        bool allowIsolated;
-        int dumpFlags;
-    };
-    /**
-     * Map of registered names and services
-     */
+    // map of registered names and services
     std::map<std::string, Service> mRegisteredServices;
 
     bool mForcePersist;
@@ -89,10 +95,26 @@ bool ClientCounterCallback::registerService(const sp<IBinder>& service, const st
 
     if (!reRegister) {
         // Only add this when a service is added for the first time, as it is not removed
-        mRegisteredServices[name] = {service, allowIsolated, dumpFlags};
+        mRegisteredServices[name] = {
+              .service = service,
+              .allowIsolated = allowIsolated,
+              .dumpFlags = dumpFlags
+        };
     }
 
     return true;
+}
+
+std::map<std::string, ClientCounterCallback::Service>::iterator ClientCounterCallback::assertRegisteredService(const sp<IBinder>& service) {
+    LOG_ALWAYS_FATAL_IF(service == nullptr, "Got onClients callback for null service");
+    for (auto it = mRegisteredServices.begin(); it != mRegisteredServices.end(); ++it) {
+        auto const& [name, registered] = *it;
+        (void) name;
+        if (registered.service != service) continue;
+        return it;
+    }
+    LOG_ALWAYS_FATAL("Got callback on service which we did not register: %s", String8(service->getInterfaceDescriptor()).c_str());
+    __builtin_unreachable();
 }
 
 void ClientCounterCallback::forcePersist(bool persist) {
@@ -108,21 +130,25 @@ void ClientCounterCallback::forcePersist(bool persist) {
  * invocations could occur on different threads however.
  */
 Status ClientCounterCallback::onClients(const sp<IBinder>& service, bool clients) {
-    if (clients) {
-        mNumConnectedServices++;
-    } else {
-        mNumConnectedServices--;
+    auto & [name, registered] = *assertRegisteredService(service);
+    if (registered.clients == clients) {
+        LOG_ALWAYS_FATAL("Process already thought %s had clients: %d but servicemanager has "
+                         "notified has clients: %d", name.c_str(), registered.clients, clients);
+    }
+    registered.clients = clients;
+
+    // update cache count of clients
+    {
+         size_t numWithClients = 0;
+         for (const auto& [name, registered] : mRegisteredServices) {
+             (void) name;
+             if (registered.clients) numWithClients++;
+         }
+         mNumConnectedServices = numWithClients;
     }
 
-    // if this fails, we should switch this to keep track of clients inside
-    // of mRegisteredServices so that we know which service is double-counted.
-    LOG_ALWAYS_FATAL_IF(mNumConnectedServices > mRegisteredServices.size(),
-                        "Invalid state: %zu services have clients, but we only know about %zu",
-                        mNumConnectedServices, mRegisteredServices.size());
-
     ALOGI("Process has %zu (of %zu available) client(s) in use after notification %s has clients: %d",
-          mNumConnectedServices, mRegisteredServices.size(),
-          String8(service->getInterfaceDescriptor()).string(), clients);
+          mNumConnectedServices, mRegisteredServices.size(), name.c_str(), clients);
 
     tryShutdown();
     return Status::ok();
