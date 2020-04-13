@@ -92,6 +92,7 @@ cc_test {
 
 aidl_interface {
     name: "IBinderVendorDoubleLoadTest",
+    unstable: true,
     vendor: true,
     srcs: [
         "IBinderVendorDoubleLoadTest.aidl",
@@ -100,6 +101,7 @@ aidl_interface {
 
 aidl_interface {
     name: "IBinderNdkUnitTest",
+    unstable: true,
     srcs: [
         "IBinderNdkUnitTest.aidl",
         "IEmpty.aidl",
