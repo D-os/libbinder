@@ -193,13 +193,15 @@ status_t Status::writeToParcel(Parcel* parcel) const {
     }
 
     status_t status = parcel->writeInt32(mException);
-    if (status != OK) { return status; }
+    if (status != OK) return status;
     if (mException == EX_NONE) {
         // We have no more information to write.
         return status;
     }
     status = parcel->writeString16(String16(mMessage));
+    if (status != OK) return status;
     status = parcel->writeInt32(0); // Empty remote stack trace header
+    if (status != OK) return status;
     if (mException == EX_SERVICE_SPECIFIC) {
         status = parcel->writeInt32(mErrorCode);
     } else if (mException == EX_PARCELABLE) {
