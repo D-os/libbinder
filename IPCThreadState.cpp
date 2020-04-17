@@ -997,7 +997,11 @@ status_t IPCThreadState::talkWithDriver(bool doReceive)
     if (err >= NO_ERROR) {
         if (bwr.write_consumed > 0) {
             if (bwr.write_consumed < mOut.dataSize())
-                LOG_ALWAYS_FATAL("Driver did not consume write buffer");
+                LOG_ALWAYS_FATAL("Driver did not consume write buffer. "
+                                 "err: %s consumed: %zu of %zu",
+                                 statusToString(err).c_str(),
+                                 (size_t)bwr.write_consumed,
+                                 mOut.dataSize());
             else {
                 mOut.setDataSize(0);
                 processPostWriteDerefs();
