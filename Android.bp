@@ -170,6 +170,7 @@ filegroup {
 
 aidl_interface {
     name: "libbinder_aidl_test_stub",
+    unstable: true,
     local_include_dir: "aidl",
     srcs: [":libbinder_aidl"],
     vendor_available: true,
