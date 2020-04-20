@@ -116,7 +116,7 @@ struct ProcResults {
         if (time > max_time_bucket) {
             m_long_transactions++;
         }
-        m_buckets[min(time, max_time_bucket-1) / time_per_bucket] += 1;
+        m_buckets[min((uint32_t)(time / time_per_bucket), num_buckets - 1)] += 1;
         m_best = min(time, m_best);
         m_worst = max(time, m_worst);
         m_transactions += 1;
