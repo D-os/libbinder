@@ -1052,12 +1052,22 @@ status_t Parcel::writeCString(const char* str)
 
 status_t Parcel::writeString8(const String8& str)
 {
-    status_t err = writeInt32(str.bytes());
-    // only write string if its length is more than zero characters,
-    // as readString8 will only read if the length field is non-zero.
-    // this is slightly different from how writeString16 works.
-    if (str.bytes() > 0 && err == NO_ERROR) {
-        err = write(str.string(), str.bytes()+1);
+    return writeString8(str.string(), str.size());
+}
+
+status_t Parcel::writeString8(const char* str, size_t len)
+{
+    if (str == nullptr) return writeInt32(-1);
+
+    status_t err = writeInt32(len);
+    if (err == NO_ERROR) {
+        uint8_t* data = (uint8_t*)writeInplace(len+sizeof(char));
+        if (data) {
+            memcpy(data, str, len);
+            *reinterpret_cast<char*>(data+len) = 0;
+            return NO_ERROR;
+        }
+        err = mError;
     }
     return err;
 }
@@ -2012,37 +2022,39 @@ const char* Parcel::readCString() const
 
 String8 Parcel::readString8() const
 {
-    String8 retString;
-    status_t status = readString8(&retString);
-    if (status != OK) {
-        // We don't care about errors here, so just return an empty string.
-        return String8();
-    }
-    return retString;
+    size_t len;
+    const char* str = readString8Inplace(&len);
+    if (str) return String8(str, len);
+    ALOGE("Reading a NULL string not supported here.");
+    return String8();
 }
 
 status_t Parcel::readString8(String8* pArg) const
 {
-    int32_t size;
-    status_t status = readInt32(&size);
-    if (status != OK) {
-        return status;
-    }
-    // watch for potential int overflow from size+1
-    if (size < 0 || size >= INT32_MAX) {
-        return BAD_VALUE;
-    }
-    // |writeString8| writes nothing for empty string.
-    if (size == 0) {
+    size_t len;
+    const char* str = readString8Inplace(&len);
+    if (str) {
+        pArg->setTo(str, len);
+        return 0;
+    } else {
         *pArg = String8();
-        return OK;
+        return UNEXPECTED_NULL;
     }
-    const char* str = (const char*)readInplace(size + 1);
-    if (str == nullptr) {
-        return BAD_VALUE;
+}
+
+const char* Parcel::readString8Inplace(size_t* outLen) const
+{
+    int32_t size = readInt32();
+    // watch for potential int overflow from size+1
+    if (size >= 0 && size < INT32_MAX) {
+        *outLen = size;
+        const char* str = (const char*)readInplace(size+1);
+        if (str != nullptr) {
+            return str;
+        }
     }
-    pArg->setTo(str, size);
-    return OK;
+    *outLen = 0;
+    return nullptr;
 }
 
 String16 Parcel::readString16() const
