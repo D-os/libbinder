@@ -119,6 +119,7 @@ public:
     status_t            writeDouble(double val);
     status_t            writeCString(const char* str);
     status_t            writeString8(const String8& str);
+    status_t            writeString8(const char* str, size_t len);
     status_t            writeString16(const String16& str);
     status_t            writeString16(const std::unique_ptr<String16>& str);
     status_t            writeString16(const char16_t* str, size_t len);
@@ -283,6 +284,7 @@ public:
     const char*         readCString() const;
     String8             readString8() const;
     status_t            readString8(String8* pArg) const;
+    const char*         readString8Inplace(size_t* outLen) const;
     String16            readString16() const;
     status_t            readString16(String16* pArg) const;
     status_t            readString16(std::unique_ptr<String16>* pArg) const;
