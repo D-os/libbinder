@@ -205,6 +205,10 @@ ServiceManagerShim::ServiceManagerShim(const sp<AidlServiceManager>& impl)
  : mTheRealServiceManager(impl)
 {}
 
+// This implementation could be simplified and made more efficient by delegating
+// to waitForService. However, this changes the threading structure in some
+// cases and could potentially break prebuilts. Once we have higher logistical
+// complexity, this could be attempted.
 sp<IBinder> ServiceManagerShim::getService(const String16& name) const
 {
     static bool gSystemBootCompleted = false;
