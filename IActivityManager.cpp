@@ -104,18 +104,6 @@ public:
         }
         return reply.readInt32();
     }
-
-    virtual bool isUidActiveOrForeground(const uid_t uid, const String16& callingPackage)
-    {
-         Parcel data, reply;
-         data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
-         data.writeInt32(uid);
-         data.writeString16(callingPackage);
-         remote()->transact(IS_UID_ACTIVE_OR_FOREGROUND_TRANSACTION, data, &reply);
-         // fail on exception
-         if (reply.readExceptionCode() != 0) return false;
-         return reply.readInt32() == 1;
-    }
 };
 
 // ------------------------------------------------------------------------------------
