@@ -98,15 +98,6 @@ int32_t ActivityManager::getUidProcessState(const uid_t uid, const String16& cal
     return PROCESS_STATE_UNKNOWN;
 }
 
-bool ActivityManager::isUidActiveOrForeground(const uid_t uid, const String16& callingPackage)
-{
-    sp<IActivityManager> service = getService();
-    if (service != nullptr) {
-        return service->isUidActiveOrForeground(uid, callingPackage);
-    }
-    return false;
-}
-
 status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
     sp<IActivityManager> service = getService();
     if (service != nullptr) {
