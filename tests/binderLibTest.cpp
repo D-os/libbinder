@@ -32,6 +32,8 @@
 #include <sys/epoll.h>
 #include <sys/prctl.h>
 
+#include "binderAbiHelper.h"
+
 #define ARRAY_SIZE(array) (sizeof array / sizeof array[0])
 
 using namespace android;
@@ -1451,6 +1453,8 @@ int run_server(int index, int readypipefd, bool usePoll)
 }
 
 int main(int argc, char **argv) {
+    ExitIfWrongAbi();
+
     if (argc == 4 && !strcmp(argv[1], "--servername")) {
         binderservername = argv[2];
     } else {
