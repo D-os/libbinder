@@ -95,6 +95,7 @@ sp<IServiceManager> defaultServiceManager()
         while (sm == nullptr) {
             sm = interface_cast<AidlServiceManager>(ProcessState::self()->getContextObject(nullptr));
             if (sm == nullptr) {
+                ALOGE("Waiting 1s on context object on %s.", ProcessState::self()->getDriverName().c_str());
                 sleep(1);
             }
         }
