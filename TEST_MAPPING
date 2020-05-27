@@ -7,9 +7,6 @@
       "name": "binderVendorDoubleLoadTest"
     },
     {
-      "name": "binderAllocationLimits"
-    },
-    {
       "name": "binderDriverInterfaceTest"
     },
     {
