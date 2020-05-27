@@ -2808,8 +2808,6 @@ status_t Parcel::continueWrite(size_t desired)
         }
 
     } else {
-        desired = std::max(desired, (size_t)128);
-
         // This is the first data.  Easy!
         uint8_t* data = (uint8_t*)malloc(desired);
         if (!data) {
