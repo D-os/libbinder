@@ -169,18 +169,3 @@ cc_test {
     test_suites: ["device-tests"],
     require_root: true,
 }
-
-cc_test {
-    name: "binderAllocationLimits",
-    defaults: ["binder_test_defaults"],
-    srcs: ["binderAllocationLimits.cpp"],
-    shared_libs: [
-        "libbinder",
-        "liblog",
-        "libutils",
-        "libutilscallstack",
-        "libbase",
-    ],
-    test_suites: ["device-tests"],
-    require_root: true,
-}
