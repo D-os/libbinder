@@ -7,6 +7,9 @@
       "name": "binderVendorDoubleLoadTest"
     },
     {
+      "name": "binderAllocationLimits"
+    },
+    {
       "name": "binderDriverInterfaceTest"
     },
     {
@@ -29,6 +32,17 @@
     },
     {
       "name": "libbinderthreadstateutils_test"
+    },
+    {
+      "name": "CtsOsTestCases",
+      "options": [
+        {
+          "exclude-filter": "android.os.cts.BuildTest#testSdkInt"
+        },
+        {
+          "exclude-filter": "android.os.cts.StrictModeTest#testNonSdkApiUsage"
+        }
+      ]
     }
   ]
 }
