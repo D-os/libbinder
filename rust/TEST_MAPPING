@@ -1,0 +1,10 @@
+{
+  "presubmit": [
+    {
+      "name": "libbinder_rs-internal_test"
+    },
+    {
+      "name": "rustBinderTest"
+    }
+  ]
+}
