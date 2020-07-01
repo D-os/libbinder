@@ -387,7 +387,7 @@ SimpleBestFitAllocator::chunk_t* SimpleBestFitAllocator::dealloc(size_t start)
     while (cur) {
         if (cur->start == start) {
             LOG_FATAL_IF(cur->free,
-                "block at offset 0x%08lX of size 0x%08lX already freed",
+                "block at offset 0x%08lX of size 0x%08X already freed",
                 cur->start*kMemoryAlign, cur->size*kMemoryAlign);
 
             // merge freed blocks together
@@ -411,7 +411,7 @@ SimpleBestFitAllocator::chunk_t* SimpleBestFitAllocator::dealloc(size_t start)
                 }
             #endif
             LOG_FATAL_IF(!freed->free,
-                "freed block at offset 0x%08lX of size 0x%08lX is not free!",
+                "freed block at offset 0x%08lX of size 0x%08X is not free!",
                 freed->start * kMemoryAlign, freed->size * kMemoryAlign);
 
             return freed;
