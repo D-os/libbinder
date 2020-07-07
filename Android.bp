@@ -17,6 +17,8 @@ cc_library_headers {
     export_include_dirs: ["include"],
     vendor_available: true,
     host_supported: true,
+    // TODO(b/153609531): remove when no longer needed.
+    native_bridge_supported: true,
 
     header_libs: [
         "libbase_headers",
@@ -62,6 +64,8 @@ cc_library {
     },
     double_loadable: true,
     host_supported: true,
+    // TODO(b/153609531): remove when no longer needed.
+    native_bridge_supported: true,
 
     // TODO(b/31559095): get headers from bionic on host
     include_dirs: [
