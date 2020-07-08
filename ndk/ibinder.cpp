@@ -99,8 +99,14 @@ bool AIBinder::associateClass(const AIBinder_Class* clazz) {
 
     String8 descriptor(getBinder()->getInterfaceDescriptor());
     if (descriptor != newDescriptor) {
-        LOG(ERROR) << __func__ << ": Expecting binder to have class '" << newDescriptor.c_str()
-                   << "' but descriptor is actually '" << descriptor.c_str() << "'.";
+        if (getBinder()->isBinderAlive()) {
+            LOG(ERROR) << __func__ << ": Expecting binder to have class '" << newDescriptor.c_str()
+                       << "' but descriptor is actually '" << descriptor.c_str() << "'.";
+        } else {
+            // b/155793159
+            LOG(ERROR) << __func__ << ": Cannot associate class '" << newDescriptor.c_str()
+                       << "' to dead binder.";
+        }
         return false;
     }
 
