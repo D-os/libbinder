@@ -15,6 +15,7 @@
  */
 
 #include <android/binder_ibinder.h>
+#include <android/binder_ibinder_platform.h>
 #include "ibinder_internal.h"
 
 #include <android/binder_stability.h>
@@ -675,4 +676,19 @@ binder_status_t AIBinder_setExtension(AIBinder* binder, AIBinder* ext) {
 
     rawBinder->setExtension(ext->getBinder());
     return STATUS_OK;
+}
+
+// platform methods follow
+
+void AIBinder_setRequestingSid(AIBinder* binder, bool requestingSid) {
+    ABBinder* localBinder = binder->asABBinder();
+    if (localBinder == nullptr) {
+        LOG(FATAL) << "AIBinder_setRequestingSid must be called on a local binder";
+    }
+
+    localBinder->setRequestingSid(requestingSid);
+}
+
+const char* AIBinder_getCallingSid() {
+    return ::android::IPCThreadState::self()->getCallingSid();
 }
