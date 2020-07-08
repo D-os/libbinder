@@ -36,6 +36,7 @@ cc_library {
     host_supported: true,
 
     export_include_dirs: [
+        "include_cpp",
         "include_ndk",
         "include_platform",
     ],
@@ -101,6 +102,17 @@ ndk_headers {
     license: "NOTICE",
 }
 
+// TODO(b/160624671): package with the aidl compiler
+ndk_headers {
+    name: "libbinder_ndk_helper_headers",
+    from: "include_cpp/android",
+    to: "android",
+    srcs: [
+        "include_cpp/android/*.h",
+    ],
+    license: "NOTICE",
+}
+
 ndk_library {
     name: "libbinder_ndk",
     symbol_file: "libbinder_ndk.map.txt",
@@ -111,6 +123,7 @@ llndk_library {
     name: "libbinder_ndk",
     symbol_file: "libbinder_ndk.map.txt",
     export_include_dirs: [
+        "include_cpp",
         "include_ndk",
         "include_platform",
     ],
