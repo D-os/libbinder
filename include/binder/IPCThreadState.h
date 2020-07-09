@@ -50,7 +50,7 @@ public:
              * Returns the SELinux security identifier of the process which has
              * made the current binder call. If not in a binder call this will
              * return nullptr. If this isn't requested with
-             * IBinder::setRequestingSid, it will also return nullptr.
+             * Binder::setRequestingSid, it will also return nullptr.
              *
              * This can't be restored once it's cleared, and it does not return the
              * context of the current process when not in a binder call.
