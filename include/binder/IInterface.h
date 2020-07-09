@@ -255,8 +255,6 @@ constexpr const char* const kManualInterfaces[] = {
   "android.media.IAudioTrack",
   "android.media.IDataSource",
   "android.media.IDrmClient",
-  "android.media.IEffect",
-  "android.media.IEffectClient",
   "android.media.IMediaCodecList",
   "android.media.IMediaDrmService",
   "android.media.IMediaExtractor",
