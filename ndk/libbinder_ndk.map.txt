@@ -115,6 +115,14 @@ LIBBINDER_NDK30 { # introduced=30
     *;
 };
 
+LIBBINDER_NDK31 { # introduced=31
+  global:
+    AIBinder_getCallingSid; # apex
+    AIBinder_setRequestingSid; # apex
+  local:
+    *;
+};
+
 LIBBINDER_NDK_PLATFORM {
   global:
     AParcel_getAllowFds;

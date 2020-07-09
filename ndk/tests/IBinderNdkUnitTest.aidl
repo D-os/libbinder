@@ -24,4 +24,6 @@ import IEmpty;
 interface IBinderNdkUnitTest {
     void takeInterface(IEmpty test);
     void forceFlushCommands();
+
+    boolean getsRequestedSid();
 }
