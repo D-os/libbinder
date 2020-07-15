@@ -18,6 +18,10 @@
 
 #include <android/binder_ibinder.h>
 
+#if !defined(__ANDROID_APEX__) && !defined(__ANDROID_VNDK__)
+#include <binder/IBinder.h>
+#endif
+
 __BEGIN_DECLS
 
 /**
@@ -44,3 +48,33 @@ void AIBinder_setRequestingSid(AIBinder* binder, bool requestingSid) __INTRODUCE
 __attribute__((warn_unused_result)) const char* AIBinder_getCallingSid() __INTRODUCED_IN(31);
 
 __END_DECLS
+
+#if !defined(__ANDROID_APEX__) && !defined(__ANDROID_VNDK__)
+
+/**
+ * Get libbinder version of binder from AIBinder.
+ *
+ * WARNING: function calls to a local object on the other side of this function
+ * will parcel. When converting between binders, keep in mind it is not as
+ * efficient as a direct function call.
+ *
+ * \param binder binder with ownership retained by the client
+ * \return platform binder object
+ */
+android::sp<android::IBinder> AIBinder_toPlatformBinder(AIBinder* binder);
+
+/**
+ * Get libbinder_ndk version of binder from platform binder.
+ *
+ * WARNING: function calls to a local object on the other side of this function
+ * will parcel. When converting between binders, keep in mind it is not as
+ * efficient as a direct function call.
+ *
+ * \param binder platform binder which may be from anywhere (doesn't have to be
+ * created with libbinder_ndK)
+ * \return binder with one reference count of ownership given to the client. See
+ * AIBinder_decStrong
+ */
+AIBinder* AIBinder_fromPlatformBinder(const android::sp<android::IBinder>& binder);
+
+#endif
