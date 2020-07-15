@@ -698,3 +698,14 @@ void AIBinder_setRequestingSid(AIBinder* binder, bool requestingSid) {
 const char* AIBinder_getCallingSid() {
     return ::android::IPCThreadState::self()->getCallingSid();
 }
+
+android::sp<android::IBinder> AIBinder_toPlatformBinder(AIBinder* binder) {
+    if (binder == nullptr) return nullptr;
+    return binder->getBinder();
+}
+
+AIBinder* AIBinder_fromPlatformBinder(const android::sp<android::IBinder>& binder) {
+    sp<AIBinder> ndkBinder = ABpBinder::lookupOrCreateFromBinder(binder);
+    AIBinder_incStrong(ndkBinder.get());
+    return ndkBinder.get();
+}
