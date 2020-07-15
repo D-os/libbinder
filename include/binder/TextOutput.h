@@ -50,12 +50,18 @@ public:
 
 // ---------------------------------------------------------------------------
 
+// DO NOT USE: prefer libutils/libbase logs, which don't require static data to
+// be allocated.
 // Text output stream for printing to the log (via utils/Log.h).
 extern TextOutput& alog;
 
+// DO NOT USE: prefer libutils/libbase logs, which don't require static data to
+// be allocated.
 // Text output stream for printing to stdout.
 extern TextOutput& aout;
 
+// DO NOT USE: prefer libutils/libbase logs, which don't require static data to
+// be allocated.
 // Text output stream for printing to stderr.
 extern TextOutput& aerr;
 
