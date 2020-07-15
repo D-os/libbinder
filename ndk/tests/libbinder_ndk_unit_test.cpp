@@ -44,6 +44,10 @@ constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
 constexpr char kBinderNdkUnitTestService[] = "BinderNdkUnitTest";
 
 class MyBinderNdkUnitTest : public aidl::BnBinderNdkUnitTest {
+    ndk::ScopedAStatus repeatInt(int32_t in, int32_t* out) {
+        *out = in;
+        return ndk::ScopedAStatus::ok();
+    }
     ndk::ScopedAStatus takeInterface(const std::shared_ptr<aidl::IEmpty>& empty) {
         (void)empty;
         return ndk::ScopedAStatus::ok();
@@ -327,6 +331,30 @@ TEST(NdkBinder, SentAidlBinderCanBeDestroyed) {
     }
 
     EXPECT_TRUE(destroyed);
+}
+
+TEST(NdkBinder, ConvertToPlatformBinder) {
+    for (const ndk::SpAIBinder& binder :
+         {// remote
+          ndk::SpAIBinder(AServiceManager_getService(kBinderNdkUnitTestService)),
+          // local
+          ndk::SharedRefBase::make<MyBinderNdkUnitTest>()->asBinder()}) {
+        // convert to platform binder
+        EXPECT_NE(binder.get(), nullptr);
+        sp<IBinder> platformBinder = AIBinder_toPlatformBinder(binder.get());
+        EXPECT_NE(platformBinder.get(), nullptr);
+        auto proxy = interface_cast<IBinderNdkUnitTest>(platformBinder);
+        EXPECT_NE(proxy, nullptr);
+
+        // use platform binder
+        int out;
+        EXPECT_TRUE(proxy->repeatInt(4, &out).isOk());
+        EXPECT_EQ(out, 4);
+
+        // convert back
+        ndk::SpAIBinder backBinder = ndk::SpAIBinder(AIBinder_fromPlatformBinder(platformBinder));
+        EXPECT_EQ(backBinder.get(), binder.get());
+    }
 }
 
 class MyResultReceiver : public BnResultReceiver {
