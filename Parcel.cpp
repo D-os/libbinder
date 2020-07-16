@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <linux/sched.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -188,16 +189,18 @@ status_t Parcel::finishUnflattenBinder(
     return OK;
 }
 
+static constexpr inline int schedPolicyMask(int policy, int priority) {
+    return (priority & FLAT_BINDER_FLAG_PRIORITY_MASK) | ((policy & 3) << FLAT_BINDER_FLAG_SCHED_POLICY_SHIFT);
+}
+
 status_t Parcel::flattenBinder(const sp<IBinder>& binder)
 {
     flat_binder_object obj;
+    obj.flags = FLAT_BINDER_FLAG_ACCEPTS_FDS;
 
-    if (IPCThreadState::self()->backgroundSchedulingDisabled()) {
-        /* minimum priority for all nodes is nice 0 */
-        obj.flags = FLAT_BINDER_FLAG_ACCEPTS_FDS;
-    } else {
-        /* minimum priority for all nodes is MAX_NICE(19) */
-        obj.flags = 0x13 | FLAT_BINDER_FLAG_ACCEPTS_FDS;
+    int schedBits = 0;
+    if (!IPCThreadState::self()->backgroundSchedulingDisabled()) {
+        schedBits = schedPolicyMask(SCHED_NORMAL, 19);
     }
 
     if (binder != nullptr) {
@@ -213,6 +216,13 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
             obj.handle = handle;
             obj.cookie = 0;
         } else {
+            int policy = local->getMinSchedulerPolicy();
+            int priority = local->getMinSchedulerPriority();
+
+            if (policy != 0 || priority != 0) {
+                // override value, since it is set explicitly
+                schedBits = schedPolicyMask(policy, priority);
+            }
             if (local->isRequestingSid()) {
                 obj.flags |= FLAT_BINDER_FLAG_TXN_SECURITY_CTX;
             }
@@ -225,6 +235,8 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
         obj.binder = 0;
         obj.cookie = 0;
     }
+
+    obj.flags |= schedBits;
 
     return finishFlattenBinder(binder, obj);
 }

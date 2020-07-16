@@ -48,6 +48,9 @@ static char *binderservername;
 static char *binderserversuffix;
 static char binderserverarg[] = "--binderserver";
 
+static constexpr int kSchedPolicy = SCHED_RR;
+static constexpr int kSchedPriority = 7;
+
 static String16 binderLibTestServiceName = String16("test.binderLib");
 
 enum BinderLibTestTranscationCode {
@@ -73,6 +76,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_GET_PTR_SIZE_TRANSACTION,
     BINDER_LIB_TEST_CREATE_BINDER_TRANSACTION,
     BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION,
+    BINDER_LIB_TEST_GET_SCHEDULING_POLICY,
     BINDER_LIB_TEST_ECHO_VECTOR,
 };
 
@@ -1012,6 +1016,22 @@ TEST_F(BinderLibTest, WorkSourcePropagatedForAllFollowingBinderCalls)
     EXPECT_EQ(NO_ERROR, ret2);
 }
 
+TEST_F(BinderLibTest, SchedPolicySet) {
+    sp<IBinder> server = addServer();
+    ASSERT_TRUE(server != nullptr);
+
+    Parcel data, reply;
+    status_t ret = server->transact(BINDER_LIB_TEST_GET_SCHEDULING_POLICY, data, &reply);
+    EXPECT_EQ(NO_ERROR, ret);
+
+    int policy = reply.readInt32();
+    int priority = reply.readInt32();
+
+    EXPECT_EQ(kSchedPolicy, policy & (~SCHED_RESET_ON_FORK));
+    EXPECT_EQ(kSchedPriority, priority);
+}
+
+
 TEST_F(BinderLibTest, VectorSent) {
     Parcel data, reply;
     sp<IBinder> server = addServer();
@@ -1301,6 +1321,16 @@ class BinderLibTestService : public BBinder
                 reply->writeInt32(IPCThreadState::self()->getCallingWorkSourceUid());
                 return NO_ERROR;
             }
+            case BINDER_LIB_TEST_GET_SCHEDULING_POLICY: {
+                int policy = 0;
+                sched_param param;
+                if (0 != pthread_getschedparam(pthread_self(), &policy, &param)) {
+                    return UNKNOWN_ERROR;
+                }
+                reply->writeInt32(policy);
+                reply->writeInt32(param.sched_priority);
+                return NO_ERROR;
+            }
             case BINDER_LIB_TEST_ECHO_VECTOR: {
                 std::vector<uint64_t> vector;
                 auto err = data.readUint64Vector(&vector);
@@ -1333,6 +1363,8 @@ int run_server(int index, int readypipefd, bool usePoll)
     BinderLibTestService* testServicePtr;
     {
         sp<BinderLibTestService> testService = new BinderLibTestService(index);
+
+        testService->setMinSchedulerPolicy(kSchedPolicy, kSchedPriority);
 
         /*
          * Normally would also contain functionality as well, but we are only
