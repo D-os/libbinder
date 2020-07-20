@@ -24,6 +24,7 @@
 #include <binder/IShellCallback.h>
 #include <binder/Parcel.h>
 
+#include <linux/sched.h>
 #include <stdio.h>
 
 namespace android {
@@ -133,6 +134,8 @@ public:
     // unlocked objects
     bool mRequestingSid = false;
     sp<IBinder> mExtension;
+    int mPolicy = SCHED_NORMAL;
+    int mPriority = 0;
 
     // for below objects
     Mutex mLock;
@@ -277,6 +280,47 @@ sp<IBinder> BBinder::getExtension() {
     Extras* e = mExtras.load(std::memory_order_acquire);
     if (e == nullptr) return nullptr;
     return e->mExtension;
+}
+
+void BBinder::setMinSchedulerPolicy(int policy, int priority) {
+    switch (policy) {
+    case SCHED_NORMAL:
+      LOG_ALWAYS_FATAL_IF(priority < -20 || priority > 19, "Invalid priority for SCHED_NORMAL: %d", priority);
+      break;
+    case SCHED_RR:
+    case SCHED_FIFO:
+      LOG_ALWAYS_FATAL_IF(priority < 1 || priority > 99, "Invalid priority for sched %d: %d", policy, priority);
+      break;
+    default:
+      LOG_ALWAYS_FATAL("Unrecognized scheduling policy: %d", policy);
+    }
+
+    Extras* e = mExtras.load(std::memory_order_acquire);
+
+    if (e == nullptr) {
+        // Avoid allocations if called with default.
+        if (policy == SCHED_NORMAL && priority == 0) {
+            return;
+        }
+
+        e = getOrCreateExtras();
+        if (!e) return; // out of memory
+    }
+
+    e->mPolicy = policy;
+    e->mPriority = priority;
+}
+
+int BBinder::getMinSchedulerPolicy() {
+    Extras* e = mExtras.load(std::memory_order_acquire);
+    if (e == nullptr) return SCHED_NORMAL;
+    return e->mPolicy;
+}
+
+int BBinder::getMinSchedulerPriority() {
+    Extras* e = mExtras.load(std::memory_order_acquire);
+    if (e == nullptr) return 0;
+    return e->mPriority;
 }
 
 pid_t BBinder::getDebugPid() {
