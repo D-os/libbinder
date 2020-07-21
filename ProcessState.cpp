@@ -32,6 +32,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <mutex>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -73,38 +74,49 @@ protected:
 
 sp<ProcessState> ProcessState::self()
 {
-    Mutex::Autolock _l(gProcessMutex);
-    if (gProcess != nullptr) {
-        return gProcess;
-    }
-    gProcess = new ProcessState(kDefaultDriver);
-    return gProcess;
+    return init(kDefaultDriver, false /*requireDefault*/);
 }
 
 sp<ProcessState> ProcessState::initWithDriver(const char* driver)
 {
-    Mutex::Autolock _l(gProcessMutex);
-    if (gProcess != nullptr) {
-        // Allow for initWithDriver to be called repeatedly with the same
-        // driver.
-        if (!strcmp(gProcess->getDriverName().c_str(), driver)) {
-            return gProcess;
-        }
-        LOG_ALWAYS_FATAL("ProcessState was already initialized.");
-    }
-
-    if (access(driver, R_OK) == -1) {
-        ALOGE("Binder driver %s is unavailable. Using /dev/binder instead.", driver);
-        driver = "/dev/binder";
-    }
-
-    gProcess = new ProcessState(driver);
-    return gProcess;
+    return init(driver, true /*requireDefault*/);
 }
 
 sp<ProcessState> ProcessState::selfOrNull()
 {
-    Mutex::Autolock _l(gProcessMutex);
+    return init(nullptr, false /*requireDefault*/);
+}
+
+sp<ProcessState> ProcessState::init(const char *driver, bool requireDefault)
+{
+    [[clang::no_destroy]] static sp<ProcessState> gProcess;
+    [[clang::no_destroy]] static std::mutex gProcessMutex;
+
+    if (driver == nullptr) {
+        std::lock_guard<std::mutex> l(gProcessMutex);
+        return gProcess;
+    }
+
+    [[clang::no_destroy]] static std::once_flag gProcessOnce;
+    std::call_once(gProcessOnce, [&](){
+        if (access(driver, R_OK) == -1) {
+            ALOGE("Binder driver %s is unavailable. Using /dev/binder instead.", driver);
+            driver = "/dev/binder";
+        }
+
+        std::lock_guard<std::mutex> l(gProcessMutex);
+        gProcess = new ProcessState(driver);
+    });
+
+    if (requireDefault) {
+        // Detect if we are trying to initialize with a different driver, and
+        // consider that an error. ProcessState will only be initialized once above.
+        LOG_ALWAYS_FATAL_IF(gProcess->getDriverName() != driver,
+                            "ProcessState was already initialized with %s,"
+                            " can't initialize with %s.",
+                            gProcess->getDriverName().c_str(), driver);
+    }
+
     return gProcess;
 }
 
