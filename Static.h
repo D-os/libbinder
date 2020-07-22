@@ -27,8 +27,4 @@ namespace android {
 // For TextStream.cpp
 extern Vector<int32_t> gTextBuffers;
 
-// For ProcessState.cpp
-extern Mutex& gProcessMutex;
-extern sp<ProcessState> gProcess;
-
 }   // namespace android
