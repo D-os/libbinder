@@ -68,9 +68,4 @@ TextOutput& alog(*new LogTextOutput());
 TextOutput& aout(*new FdTextOutput(STDOUT_FILENO));
 TextOutput& aerr(*new FdTextOutput(STDERR_FILENO));
 
-// ------------ ProcessState.cpp
-
-Mutex& gProcessMutex = *new Mutex;
-sp<ProcessState> gProcess;
-
 }   // namespace android
