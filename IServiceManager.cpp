@@ -18,6 +18,9 @@
 
 #include <binder/IServiceManager.h>
 
+#include <inttypes.h>
+#include <unistd.h>
+
 #include <android/os/BnServiceCallback.h>
 #include <android/os/IServiceManager.h>
 #include <binder/IPCThreadState.h>
@@ -35,8 +38,6 @@
 #endif
 
 #include "Static.h"
-
-#include <unistd.h>
 
 namespace android {
 
@@ -219,7 +220,8 @@ sp<IBinder> ServiceManagerShim::getService(const String16& name) const
 
     const bool isVendorService =
         strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
-    const long timeout = uptimeMillis() + 5000;
+    const long timeout = 5000;
+    int64_t startTime = uptimeMillis();
     // Vendor code can't access system properties
     if (!gSystemBootCompleted && !isVendorService) {
 #ifdef __ANDROID__
@@ -233,15 +235,21 @@ sp<IBinder> ServiceManagerShim::getService(const String16& name) const
     // retry interval in millisecond; note that vendor services stay at 100ms
     const long sleepTime = gSystemBootCompleted ? 1000 : 100;
 
+    ALOGI("Waiting for service '%s' on '%s'...", String8(name).string(),
+          ProcessState::self()->getDriverName().c_str());
+
     int n = 0;
-    while (uptimeMillis() < timeout) {
+    while (uptimeMillis() - startTime < timeout) {
         n++;
-        ALOGI("Waiting for service '%s' on '%s'...", String8(name).string(),
-            ProcessState::self()->getDriverName().c_str());
         usleep(1000*sleepTime);
 
         sp<IBinder> svc = checkService(name);
-        if (svc != nullptr) return svc;
+        if (svc != nullptr) {
+            ALOGI("Waiting for service '%s' on '%s' successful after waiting %" PRIi64 "ms",
+                  String8(name).string(), ProcessState::self()->getDriverName().c_str(),
+                  uptimeMillis() - startTime);
+            return svc;
+        }
     }
     ALOGW("Service %s didn't start. Returning NULL", String8(name).string());
     return nullptr;
