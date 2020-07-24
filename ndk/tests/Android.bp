@@ -40,6 +40,7 @@ cc_library_static {
 cc_defaults {
     name: "test_libbinder_ndk_test_defaults",
     defaults: ["test_libbinder_ndk_defaults"],
+    // critical that libbinder/libbinder_ndk are shared for VTS
     shared_libs: [
         "libandroid_runtime_lazy",
         "libbase",
@@ -63,7 +64,7 @@ cc_test {
         "IBinderNdkUnitTest-cpp",
         "IBinderNdkUnitTest-ndk_platform",
     ],
-    test_suites: ["general-tests"],
+    test_suites: ["general-tests", "vts"],
     require_root: true,
 
     // force since binderVendorDoubleLoadTest has its own
@@ -81,13 +82,14 @@ cc_test {
         "IBinderVendorDoubleLoadTest-ndk_platform",
         "libbinder_aidl_test_stub-ndk_platform",
     ],
+    // critical that libbinder/libbinder_ndk are shared for VTS
     shared_libs: [
         "libbase",
         "libbinder",
         "libbinder_ndk",
         "libutils",
     ],
-    test_suites: ["general-tests"],
+    test_suites: ["general-tests", "vts"],
 }
 
 aidl_interface {
