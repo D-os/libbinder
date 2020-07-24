@@ -53,11 +53,20 @@ public:
     // Returns android::OK on success and an appropriate error otherwise.
     virtual status_t readFromParcel(const Parcel* parcel) = 0;
 
-    // 'Stable' means this parcelable is guaranteed to be stable for multiple years.
+    // WARNING: for use by auto-generated code only (AIDL). Should not be used
+    // manually, or there is a risk of breaking CTS, GTS, VTS, or CTS-on-GSI
+    // tests.
+    enum class Stability {
+        STABILITY_LOCAL,
+        STABILITY_VINTF, // corresponds to @VintfStability
+    };
+
+    // 'Stable' means this parcelable is guaranteed to be stable for multiple
+    // years.
     // It must be guaranteed by setting stability field in aidl_interface.
-    // WARNING: isStable() is only expected to be overridden by auto-generated code.
-    // Returns true if this parcelable is stable.
-    virtual bool isStable() const { return false; }
+    // WARNING: getStability() is only expected to be overridden by auto-generated
+    // code. Returns true if this parcelable is stable.
+    virtual Stability getStability() const { return Stability::STABILITY_LOCAL; }
 };  // class Parcelable
 
 #if defined(__clang__)
