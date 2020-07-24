@@ -24,6 +24,7 @@
 #include <android/binder_process.h>
 #include <gtest/gtest.h>
 #include <iface/iface.h>
+#include <utils/Looper.h>
 
 // warning: this is assuming that libbinder_ndk is using the same copy
 // of libbinder that we are.
@@ -107,19 +108,39 @@ class MyFoo : public IFoo {
     }
 };
 
-int manualService(const char* instance) {
-    ABinderProcess_setThreadPoolMaxThreadCount(0);
-
+void manualService(const char* instance) {
     // Strong reference to MyFoo kept by service manager.
     binder_status_t status = (new MyFoo)->addService(instance);
 
     if (status != STATUS_OK) {
         LOG(FATAL) << "Could not register: " << status << " " << instance;
     }
+}
+int manualPollingService(const char* instance) {
+    int fd;
+    CHECK(STATUS_OK == ABinderProcess_setupPolling(&fd));
+    manualService(instance);
 
+    class Handler : public LooperCallback {
+        int handleEvent(int /*fd*/, int /*events*/, void* /*data*/) override {
+            ABinderProcess_handlePolledCommands();
+            return 1;  // Continue receiving callbacks.
+        }
+    };
+
+    sp<Looper> looper = Looper::prepare(0 /* opts */);
+    looper->addFd(fd, Looper::POLL_CALLBACK, Looper::EVENT_INPUT, new Handler(), nullptr /*data*/);
+    // normally, would add additional fds
+    while (true) {
+        looper->pollAll(-1 /* timeoutMillis */);
+    }
+    return 1;  // should not reach
+}
+int manualThreadPoolService(const char* instance) {
+    ABinderProcess_setThreadPoolMaxThreadCount(0);
+    manualService(instance);
     ABinderProcess_joinThreadPool();
-
-    return 1;  // should not return
+    return 1;
 }
 
 // This is too slow
@@ -448,11 +469,11 @@ int main(int argc, char* argv[]) {
 
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
-        return manualService(IFoo::kInstanceNameToDieFor);
+        return manualThreadPoolService(IFoo::kInstanceNameToDieFor);
     }
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
-        return manualService(IFoo::kSomeInstanceName);
+        return manualPollingService(IFoo::kSomeInstanceName);
     }
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
