@@ -19,10 +19,15 @@
 #include <stdint.h>
 #include <sys/cdefs.h>
 
+#include <android/binder_status.h>
+
 __BEGIN_DECLS
 
 /**
  * This creates a threadpool for incoming binder transactions if it has not already been created.
+ *
+ * When using this, it is expected that ABinderProcess_setupPolling and
+ * ABinderProcess_handlePolledCommands are not used.
  */
 void ABinderProcess_startThreadPool();
 /**
@@ -36,5 +41,28 @@ bool ABinderProcess_setThreadPoolMaxThreadCount(uint32_t numThreads);
  * maximum size.
  */
 void ABinderProcess_joinThreadPool();
+
+/**
+ * This gives you an fd to wait on. Whenever data is available on the fd,
+ * ABinderProcess_handlePolledCommands can be called to handle binder queries.
+ * This is expected to be used in a single threaded process which waits on
+ * events from multiple different fds.
+ *
+ * When using this, it is expected ABinderProcess_startThreadPool and
+ * ABinderProcess_joinThreadPool are not used.
+ *
+ * \param fd out param corresponding to the binder domain opened in this
+ * process.
+ * \return STATUS_OK on success
+ */
+__attribute__((weak)) binder_status_t ABinderProcess_setupPolling(int* fd) __INTRODUCED_IN(31);
+
+/**
+ * This will handle all queued binder commands in this process and then return.
+ * It is expected to be called whenever there is data on the fd.
+ *
+ * \return STATUS_OK on success
+ */
+__attribute__((weak)) binder_status_t ABinderProcess_handlePolledCommands() __INTRODUCED_IN(31);
 
 __END_DECLS

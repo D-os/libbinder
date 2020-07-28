@@ -34,3 +34,11 @@ bool ABinderProcess_setThreadPoolMaxThreadCount(uint32_t numThreads) {
 void ABinderProcess_joinThreadPool() {
     IPCThreadState::self()->joinThreadPool();
 }
+
+binder_status_t ABinderProcess_setupPolling(int* fd) {
+    return IPCThreadState::self()->setupPolling(fd);
+}
+
+binder_status_t ABinderProcess_handlePolledCommands() {
+    return IPCThreadState::self()->handlePolledCommands();
+}
