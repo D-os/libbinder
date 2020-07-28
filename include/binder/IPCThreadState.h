@@ -85,8 +85,8 @@ public:
             int64_t             clearCallingIdentity();
             // Restores PID/UID (not SID)
             void                restoreCallingIdentity(int64_t token);
-            
-            int                 setupPolling(int* fd);
+
+            status_t            setupPolling(int* fd);
             status_t            handlePolledCommands();
             void                flushCommands();
 
