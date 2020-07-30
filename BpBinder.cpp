@@ -224,7 +224,7 @@ status_t BpBinder::transact(
             using android::internal::Stability;
 
             auto stability = Stability::get(this);
-            auto required = privateVendor ? Stability::VENDOR : Stability::kLocalStability;
+            auto required = privateVendor ? Stability::VENDOR : Stability::getLocalStability();
 
             if (CC_UNLIKELY(!Stability::check(stability, required))) {
                 ALOGE("Cannot do a user transaction on a %s binder in a %s context.",
