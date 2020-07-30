@@ -127,6 +127,10 @@ cc_library {
         export_aidl_headers: true,
     },
 
+    // TODO(b/142684679): for com.android.media which is compiled
+    // as vendor and used as system code.
+    use_apex_name_macro: true,
+
     cflags: [
         "-Wall",
         "-Wextra",
