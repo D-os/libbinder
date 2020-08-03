@@ -285,7 +285,6 @@ impl Parcel {
 fn test_read_write() {
     use crate::binder::Interface;
     use crate::native::Binder;
-    use std::ffi::CString;
 
     let mut service = Binder::new(()).as_binder();
     let mut parcel = Parcel::new_for_test(&mut service).unwrap();
@@ -300,7 +299,7 @@ fn test_read_write() {
     assert_eq!(parcel.read::<u64>(), Err(StatusCode::NOT_ENOUGH_DATA));
     assert_eq!(parcel.read::<f32>(), Err(StatusCode::NOT_ENOUGH_DATA));
     assert_eq!(parcel.read::<f64>(), Err(StatusCode::NOT_ENOUGH_DATA));
-    assert_eq!(parcel.read::<Option<CString>>(), Ok(None));
+    assert_eq!(parcel.read::<Option<String>>(), Ok(None));
     assert_eq!(parcel.read::<String>(), Err(StatusCode::UNEXPECTED_NULL));
 
     assert_eq!(parcel.read_binder().err(), Some(StatusCode::BAD_TYPE));
@@ -410,11 +409,24 @@ fn test_utf8_utf16_conversions() {
     }
     assert_eq!(
         parcel.read::<Option<String>>().unwrap().unwrap(),
-        "Hello, Binder!"
+        "Hello, Binder!",
     );
     unsafe {
         assert!(parcel.set_data_position(start).is_ok());
     }
+
+    assert!(parcel.write("Embedded null \0 inside a string").is_ok());
+    unsafe {
+        assert!(parcel.set_data_position(start).is_ok());
+    }
+    assert_eq!(
+        parcel.read::<Option<String>>().unwrap().unwrap(),
+        "Embedded null \0 inside a string",
+    );
+    unsafe {
+        assert!(parcel.set_data_position(start).is_ok());
+    }
+
     assert!(parcel.write(&["str1", "str2", "str3"][..]).is_ok());
     assert!(parcel
         .write(
