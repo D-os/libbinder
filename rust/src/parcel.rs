@@ -21,6 +21,7 @@ use crate::error::{status_result, Result, StatusCode};
 use crate::proxy::SpIBinder;
 use crate::sys;
 
+use std::cell::RefCell;
 use std::convert::TryInto;
 use std::mem::ManuallyDrop;
 use std::ptr;
@@ -117,6 +118,55 @@ impl Parcel {
         }
     }
 
+    /// Perform a series of writes to the `Parcel`, prepended with the length
+    /// (in bytes) of the written data.
+    ///
+    /// The length `0i32` will be written to the parcel first, followed by the
+    /// writes performed by the callback. The initial length will then be
+    /// updated to the length of all data written by the callback, plus the
+    /// size of the length elemement itself (4 bytes).
+    ///
+    /// # Examples
+    ///
+    /// After the following call:
+    ///
+    /// ```
+    /// # use binder::{Binder, Interface, Parcel};
+    /// # let mut parcel = Parcel::Owned(std::ptr::null_mut());
+    /// parcel.sized_write(|subparcel| {
+    ///     subparcel.write(&1u32)?;
+    ///     subparcel.write(&2u32)?;
+    ///     subparcel.write(&3u32)
+    /// });
+    /// ```
+    ///
+    /// `parcel` will contain the following:
+    ///
+    /// ```ignore
+    /// [16i32, 1u32, 2u32, 3u32]
+    /// ```
+    pub fn sized_write<F>(&mut self, f: F) -> Result<()>
+    where for<'a>
+        F: Fn(&'a WritableSubParcel<'a>) -> Result<()>
+    {
+        let start = self.get_data_position();
+        self.write(&0i32)?;
+        {
+            let subparcel = WritableSubParcel(RefCell::new(self));
+            f(&subparcel)?;
+        }
+        let end = self.get_data_position();
+        unsafe {
+            self.set_data_position(start)?;
+        }
+        assert!(end >= start);
+        self.write(&(end - start))?;
+        unsafe {
+            self.set_data_position(end)?;
+        }
+        Ok(())
+    }
+
     /// Returns the current position in the parcel data.
     pub fn get_data_position(&self) -> i32 {
         unsafe {
@@ -140,6 +190,16 @@ impl Parcel {
     /// on that.
     pub unsafe fn set_data_position(&self, pos: i32) -> Result<()> {
         status_result(sys::AParcel_setDataPosition(self.as_native(), pos))
+    }
+}
+
+/// A segment of a writable parcel, used for [`Parcel::sized_write`].
+pub struct WritableSubParcel<'a>(RefCell<&'a mut Parcel>);
+
+impl<'a> WritableSubParcel<'a> {
+    /// Write a type that implements [`Serialize`] to the sub-parcel.
+    pub fn write<S: Serialize + ?Sized>(&self, parcelable: &S) -> Result<()> {
+        parcelable.serialize(&mut *self.0.borrow_mut())
     }
 }
 
@@ -444,4 +504,39 @@ fn test_utf8_utf16_conversions() {
         ["str4", "str5", "str6"]
     );
     assert_eq!(parcel.read::<Vec<String>>().unwrap(), [s1, s2, s3]);
+}
+
+#[test]
+fn test_sized_write() {
+    use crate::binder::Interface;
+    use crate::native::Binder;
+
+    let mut service = Binder::new(()).as_binder();
+    let mut parcel = Parcel::new_for_test(&mut service).unwrap();
+    let start = parcel.get_data_position();
+
+    let arr = [1i32, 2i32, 3i32];
+
+    parcel.sized_write(|subparcel| {
+        subparcel.write(&arr[..])
+    }).expect("Could not perform sized write");
+
+    // i32 sub-parcel length + i32 array length + 3 i32 elements
+    let expected_len = 20i32;
+
+    assert_eq!(parcel.get_data_position(), start + expected_len);
+
+    unsafe {
+        parcel.set_data_position(start).unwrap();
+    }
+
+    assert_eq!(
+        expected_len,
+        parcel.read().unwrap(),
+    );
+
+    assert_eq!(
+        parcel.read::<Vec<i32>>().unwrap(),
+        &arr,
+    );
 }
