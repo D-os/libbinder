@@ -43,6 +43,7 @@ using namespace android;
 
 constexpr char kExistingNonNdkService[] = "SurfaceFlinger";
 constexpr char kBinderNdkUnitTestService[] = "BinderNdkUnitTest";
+constexpr char kLazyBinderNdkUnitTestService[] = "LazyBinderNdkUnitTest";
 
 class MyBinderNdkUnitTest : public aidl::BnBinderNdkUnitTest {
     ndk::ScopedAStatus repeatInt(int32_t in, int32_t* out) {
@@ -143,6 +144,27 @@ int manualThreadPoolService(const char* instance) {
     return 1;
 }
 
+int lazyService(const char* instance) {
+    ABinderProcess_setThreadPoolMaxThreadCount(0);
+    // Wait to register this service to make sure the main test process will
+    // actually wait for the service to be available. Tested with sleep(60),
+    // and reduced for sake of time.
+    sleep(1);
+    // Strong reference to MyBinderNdkUnitTest kept by service manager.
+    // This is just for testing, it has no corresponding init behavior.
+    auto service = ndk::SharedRefBase::make<MyBinderNdkUnitTest>();
+    auto binder = service->asBinder();
+
+    binder_status_t status = AServiceManager_registerLazyService(binder.get(), instance);
+    if (status != STATUS_OK) {
+        LOG(FATAL) << "Could not register: " << status << " " << instance;
+    }
+
+    ABinderProcess_joinThreadPool();
+
+    return 1;  // should not return
+}
+
 // This is too slow
 // TEST(NdkBinder, GetServiceThatDoesntExist) {
 //     sp<IFoo> foo = IFoo::getService("asdfghkl;");
@@ -169,6 +191,33 @@ TEST(NdkBinder, DoubleNumber) {
     int32_t out;
     EXPECT_EQ(STATUS_OK, foo->doubleNumber(1, &out));
     EXPECT_EQ(2, out);
+}
+
+TEST(NdkBinder, GetLazyService) {
+    // Not declared in the vintf manifest
+    ASSERT_FALSE(AServiceManager_isDeclared(kLazyBinderNdkUnitTestService));
+    ndk::SpAIBinder binder(AServiceManager_waitForService(kLazyBinderNdkUnitTestService));
+    std::shared_ptr<aidl::IBinderNdkUnitTest> service =
+            aidl::IBinderNdkUnitTest::fromBinder(binder);
+    ASSERT_NE(service, nullptr);
+
+    EXPECT_EQ(STATUS_OK, AIBinder_ping(binder.get()));
+}
+
+// This is too slow
+TEST(NdkBinder, CheckLazyServiceShutDown) {
+    ndk::SpAIBinder binder(AServiceManager_waitForService(kLazyBinderNdkUnitTestService));
+    std::shared_ptr<aidl::IBinderNdkUnitTest> service =
+            aidl::IBinderNdkUnitTest::fromBinder(binder);
+    ASSERT_NE(service, nullptr);
+
+    EXPECT_EQ(STATUS_OK, AIBinder_ping(binder.get()));
+    binder = nullptr;
+    service = nullptr;
+    IPCThreadState::self()->flushCommands();
+    // Make sure the service is dead after some time of no use
+    sleep(10);
+    ASSERT_EQ(nullptr, AServiceManager_checkService(kLazyBinderNdkUnitTestService));
 }
 
 void LambdaOnDeath(void* cookie) {
@@ -474,6 +523,10 @@ int main(int argc, char* argv[]) {
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
         return manualPollingService(IFoo::kSomeInstanceName);
+    }
+    if (fork() == 0) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+        return lazyService(kLazyBinderNdkUnitTestService);
     }
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);

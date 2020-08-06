@@ -18,6 +18,7 @@
 
 #include <android/binder_ibinder.h>
 #include <android/binder_status.h>
+#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 
@@ -49,5 +50,48 @@ __attribute__((warn_unused_result)) AIBinder* AServiceManager_checkService(const
  * \param instance identifier of the service used to lookup the service.
  */
 __attribute__((warn_unused_result)) AIBinder* AServiceManager_getService(const char* instance);
+
+/**
+ * Registers a lazy service with the default service manager under the 'instance' name.
+ * Does not take ownership of binder.
+ * The service must be configured statically with init so it can be restarted with
+ * ctl.interface.* messages from servicemanager.
+ * AServiceManager_registerLazyService cannot safely be used with AServiceManager_addService
+ * in the same process. If one service is registered with AServiceManager_registerLazyService,
+ * the entire process will have its lifetime controlled by servicemanager.
+ * Instead, all services in the process should be registered using
+ * AServiceManager_registerLazyService.
+ *
+ * \param binder object to register globally with the service manager.
+ * \param instance identifier of the service. This will be used to lookup the service.
+ *
+ * \return STATUS_OK on success.
+ */
+binder_status_t AServiceManager_registerLazyService(AIBinder* binder, const char* instance)
+        __INTRODUCED_IN(31);
+
+/**
+ * Gets a binder object with this specific instance name. Efficiently waits for the service.
+ * If the service is not declared, it will wait indefinitely. Requires the threadpool
+ * to be started in the service.
+ * This also implicitly calls AIBinder_incStrong (so the caller of this function is responsible
+ * for calling AIBinder_decStrong).
+ *
+ * \param instance identifier of the service used to lookup the service.
+ *
+ * \return service if registered, null if not.
+ */
+__attribute__((warn_unused_result)) AIBinder* AServiceManager_waitForService(const char* instance)
+        __INTRODUCED_IN(31);
+
+/**
+ * Check if a service is declared (e.g. VINTF manifest).
+ *
+ * \param instance identifier of the service.
+ *
+ * \return true on success, meaning AServiceManager_waitForService should always
+ *    be able to return the service.
+ */
+bool AServiceManager_isDeclared(const char* instance) __INTRODUCED_IN(31);
 
 __END_DECLS
