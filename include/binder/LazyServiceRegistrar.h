@@ -26,7 +26,19 @@ namespace internal {
 class ClientCounterCallback;
 }  // namespace internal
 
-/** Exits when all services registered through this object have 0 clients */
+/**
+ * Exits when all services registered through this object have 0 clients
+ *
+ * In order to use this class, it's expected that your service:
+ * - registers all services in the process with this API
+ * - configures services as oneshot in init .rc files
+ * - configures services as disabled in init.rc files, unless a client is
+ *   guaranteed early in boot, in which case, forcePersist should also be used
+ *   to avoid races.
+ * - uses 'interface' declarations in init .rc files
+ *
+ * For more information on init .rc configuration, see system/core/init/README.md
+ **/
 class LazyServiceRegistrar {
    public:
      static LazyServiceRegistrar& getInstance();
