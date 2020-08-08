@@ -36,6 +36,18 @@ pub struct Binder<T: Remotable> {
     rust_object: *mut T,
 }
 
+/// # Safety
+///
+/// A `Binder<T>` is a pair of unique owning pointers to two values:
+///   * a C++ ABBinder which the C++ API guarantees can be passed between threads
+///   * a Rust object which implements `Remotable`; this trait requires `Send + Sync`
+///
+/// Both pointers are unique (never escape the `Binder<T>` object and are not copied)
+/// so we can essentially treat `Binder<T>` as a box-like containing the two objects;
+/// the box-like object inherits `Send` from the two inner values, similarly
+/// to how `Box<T>` is `Send` if `T` is `Send`.
+unsafe impl<T: Remotable> Send for Binder<T> {}
+
 impl<T: Remotable> Binder<T> {
     /// Create a new Binder remotable object.
     ///
