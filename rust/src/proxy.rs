@@ -122,6 +122,14 @@ impl AssociateClass for SpIBinder {
     }
 }
 
+impl PartialEq for SpIBinder {
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(self.0, other.0)
+    }
+}
+
+impl Eq for SpIBinder {}
+
 impl Clone for SpIBinder {
     fn clone(&self) -> Self {
         unsafe {
@@ -362,6 +370,18 @@ impl WpIBinder {
         };
         assert!(!ptr.is_null());
         Self(ptr)
+    }
+
+    /// Promote this weak reference to a strong reference to the binder object.
+    pub fn promote(&self) -> Option<SpIBinder> {
+        unsafe {
+            // Safety: `WpIBinder` always contains a valid weak reference, so we
+            // can pass this pointer to `AIBinder_Weak_promote`. Returns either
+            // null or an AIBinder owned by the caller, both of which are valid
+            // to pass to `SpIBinder::from_raw`.
+            let ptr = sys::AIBinder_Weak_promote(self.0);
+            SpIBinder::from_raw(ptr)
+        }
     }
 }
 

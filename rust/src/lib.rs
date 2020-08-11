@@ -102,7 +102,7 @@ mod error;
 mod native;
 mod state;
 
-use binder_ndk_bindgen as sys;
+use binder_ndk_sys as sys;
 
 pub mod parcel;
 
