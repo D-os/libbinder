@@ -1120,7 +1120,6 @@ binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
 // @END-PRIMITIVE-READ-WRITE
 
 #endif  //__ANDROID_API__ >= 29
-#if __ANDROID_API__ >= 31
 /**
  * Reset the parcel to the initial status.
  *
@@ -1166,7 +1165,6 @@ binder_status_t AParcel_appendFrom(const AParcel* from, AParcel* to, int32_t sta
  * \return A parcel which is not related to any IBinder objects.
  */
 AParcel* AParcel_create() __INTRODUCED_IN(31);
-#endif  //__ANDROID_API__ >= 31
 __END_DECLS
 
 /** @} */
