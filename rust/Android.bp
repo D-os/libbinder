@@ -1,0 +1,74 @@
+rust_library {
+    name: "libbinder_rs",
+    crate_name: "binder",
+    srcs: ["src/lib.rs"],
+    shared_libs: [
+        "libbinder_ndk",
+        "libutils",
+    ],
+    rustlibs: [
+        "liblibc",
+        "libbinder_ndk_bindgen",
+    ],
+    host_supported: true,
+}
+
+rust_bindgen {
+    name: "libbinder_ndk_bindgen",
+    crate_name: "binder_ndk_bindgen",
+    wrapper_src: "BinderBindings.h",
+    source_stem: "ndk_bindings",
+    cflags: [
+        "-x c++",
+    ],
+    bindgen_flags: [
+        // Unfortunately the only way to specify the rust_non_exhaustive enum
+        // style for a type is to make it the default
+        "--default-enum-style", "rust_non_exhaustive",
+        // and then specify constified enums for the enums we don't want
+        // rustified
+        "--constified-enum", "android::c_interface::consts::.*",
+
+        "--whitelist-type", "android::c_interface::.*",
+        "--whitelist-type", "AStatus",
+        "--whitelist-type", "AIBinder_Class",
+        "--whitelist-type", "AIBinder",
+        "--whitelist-type", "AIBinder_Weak",
+        "--whitelist-type", "AIBinder_DeathRecipient",
+        "--whitelist-type", "AParcel",
+        "--whitelist-type", "binder_status_t",
+        "--whitelist-function", ".*",
+    ],
+    shared_libs: [
+        "libbinder_ndk",
+    ],
+    host_supported: true,
+
+    // Currently necessary for host builds
+    // TODO(b/31559095): bionic on host should define this
+    target: {
+        host: {
+            cflags: [
+                "-D__INTRODUCED_IN(n)=",
+                "-D__assert(a,b,c)=",
+                // We want all the APIs to be available on the host.
+                "-D__ANDROID_API__=10000",
+            ],
+        },
+    },
+}
+
+rust_test {
+    name: "libbinder_rs-internal_test",
+    crate_name: "binder",
+    srcs: ["src/lib.rs"],
+    test_suites: ["general-tests"],
+    auto_gen_config: true,
+    shared_libs: [
+        "libbinder_ndk",
+    ],
+    rustlibs: [
+        "liblibc",
+        "libbinder_ndk_bindgen",
+    ],
+}
