@@ -71,14 +71,6 @@ public:
     /* this closes this heap -- use carefully */
     void dispose();
 
-    /* this is only needed as a workaround, use only if you know
-     * what you are doing */
-    status_t setDevice(const char* device) {
-        if (mDevice == nullptr)
-            mDevice = device;
-        return mDevice ? NO_ERROR : ALREADY_EXISTS;
-    }
-
 protected:
             MemoryHeapBase();
     // init() takes ownership of fd
