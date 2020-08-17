@@ -21,4 +21,8 @@ rust_test {
     // this cannot be the same as the module name.
     stem: "rustBinderTestServiceBinary",
     test_harness: false,
+    // TODO(b/164473602): Remove this setting and add the module to `data`
+    // attribute of rustBinderTest.
+    auto_gen_config: false,
+    test_suites: ["general-tests"],
 }
