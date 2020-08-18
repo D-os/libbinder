@@ -98,6 +98,9 @@ pub trait IBinder {
     /// Send a ping transaction to this object
     fn ping_binder(&mut self) -> Result<()>;
 
+    /// Indicate that the service intends to receive caller security contexts.
+    fn set_requesting_sid(&mut self, enable: bool);
+
     /// Dump this object to the given file handle
     fn dump<F: AsRawFd>(&mut self, fp: &F, args: &[&str]) -> Result<()>;
 

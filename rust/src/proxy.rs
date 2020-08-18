@@ -242,6 +242,12 @@ impl<T: AsNative<sys::AIBinder>> IBinder for T {
         status_result(status)
     }
 
+    fn set_requesting_sid(&mut self, enable: bool) {
+        unsafe {
+            sys::AIBinder_setRequestingSid(self.as_native_mut(), enable)
+        };
+    }
+
     fn dump<F: AsRawFd>(&mut self, fp: &F, args: &[&str]) -> Result<()> {
         let args: Vec<_> = args.iter().map(|a| CString::new(*a).unwrap()).collect();
         let mut arg_ptrs: Vec<_> = args.iter().map(|a| a.as_ptr()).collect();
