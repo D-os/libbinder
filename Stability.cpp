@@ -50,7 +50,17 @@ void Stability::tryMarkCompilationUnit(IBinder* binder) {
 
 Stability::Level Stability::getLocalStability() {
 #ifdef __ANDROID_VNDK__
-    return Level::VENDOR;
+    #ifdef __ANDROID_APEX__
+        // TODO(b/142684679) avoid use_vendor on system APEXes
+        #if !defined(__ANDROID_APEX_COM_ANDROID_MEDIA_SWCODEC__) \
+            && !defined(__ANDROID_APEX_TEST_COM_ANDROID_MEDIA_SWCODEC__)
+        #error VNDK + APEX only defined for com.android.media.swcodec
+        #endif
+        // TODO(b/142684679) avoid use_vendor on system APEXes
+        return Level::SYSTEM;
+    #else
+        return Level::VENDOR;
+    #endif
 #else
     // TODO(b/139325195): split up stability levels for system/APEX.
     return Level::SYSTEM;

@@ -518,13 +518,7 @@ void Parcel::updateWorkSourceRequestHeaderPosition() const {
     }
 }
 
-#ifdef __ANDROID_APEX__
-#error APEX cannot include libbinder. The wire protocol for libbinder is not\
-    frozen, and including it in an APEX would also require APEX\
-    servicemanagers which is not an options. Use libbinder_ndk instead.
-#endif
-
-#if defined(__ANDROID_VNDK__)
+#if defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
 constexpr int32_t kHeader = B_PACK_CHARS('V', 'N', 'D', 'R');
 #else
 constexpr int32_t kHeader = B_PACK_CHARS('S', 'Y', 'S', 'T');
