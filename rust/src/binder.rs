@@ -61,7 +61,7 @@ pub trait Interface {
 /// the AIDL backend, users need only implement the high-level AIDL-defined
 /// interface. The AIDL compiler then generates a container struct that wraps
 /// the user-defined service and implements `Remotable`.
-pub trait Remotable: Sync {
+pub trait Remotable: Send + Sync {
     /// The Binder interface descriptor string.
     ///
     /// This string is a unique identifier for a Binder interface, and should be
