@@ -43,14 +43,6 @@ pub fn status_result(status: status_t) -> Result<()> {
     }
 }
 
-// impl Display for StatusCode {
-//     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-//         write!(f, "StatusCode::{:?}", self)
-//     }
-// }
-
-// impl error::Error for StatusCode {}
-
 fn parse_status_code(code: i32) -> StatusCode {
     match code {
         e if e == StatusCode::OK as i32 => StatusCode::OK,
