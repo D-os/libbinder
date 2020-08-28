@@ -160,8 +160,8 @@ bool ProcessState::becomeContextManager(context_check_func checkFunc, void* user
     if (result != 0) {
         android_errorWriteLog(0x534e4554, "121035042");
 
-        int dummy = 0;
-        result = ioctl(mDriverFD, BINDER_SET_CONTEXT_MGR, &dummy);
+        int unused = 0;
+        result = ioctl(mDriverFD, BINDER_SET_CONTEXT_MGR, &unused);
     }
 
     if (result == -1) {
