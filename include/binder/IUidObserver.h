@@ -34,7 +34,8 @@ public:
     virtual void onUidGone(uid_t uid, bool disabled) = 0;
     virtual void onUidActive(uid_t uid) = 0;
     virtual void onUidIdle(uid_t uid, bool disabled) = 0;
-    virtual void onUidStateChanged(uid_t uid, int32_t procState, int64_t procStateSeq) = 0;
+    virtual void onUidStateChanged(uid_t uid, int32_t procState, int64_t procStateSeq,
+            int32_t capability) = 0;
 
     enum {
         ON_UID_GONE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,

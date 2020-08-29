@@ -21,44 +21,34 @@
 
 #include <utils/SystemClock.h>
 
+#include <sys/types.h>
+
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
+#define LOG_TAG "AppOpsManager"
+
 namespace android {
 
-namespace {
+static const sp<IBinder>& getClientId() {
+    static pthread_mutex_t gClientIdMutex = PTHREAD_MUTEX_INITIALIZER;
+    static sp<IBinder> gClientId;
 
-#if defined(__BRILLO__)
-// Because Brillo has no application model, security policy is managed
-// statically (at build time) with SELinux controls.
-// As a consequence, it also never runs the AppOpsManager service.
-const int APP_OPS_MANAGER_UNAVAILABLE_MODE = AppOpsManager::MODE_ALLOWED;
-#else
-const int APP_OPS_MANAGER_UNAVAILABLE_MODE = AppOpsManager::MODE_IGNORED;
-#endif  // defined(__BRILLO__)
-
-}  // namespace
-
-static String16 _appops("appops");
-static pthread_mutex_t gTokenMutex = PTHREAD_MUTEX_INITIALIZER;
-static sp<IBinder> gToken;
-
-static const sp<IBinder>& getToken(const sp<IAppOpsService>& service) {
-    pthread_mutex_lock(&gTokenMutex);
-    if (gToken == nullptr || gToken->pingBinder() != NO_ERROR) {
-        gToken = service->getToken(new BBinder());
+    pthread_mutex_lock(&gClientIdMutex);
+    if (gClientId == nullptr) {
+        gClientId = new BBinder();
     }
-    pthread_mutex_unlock(&gTokenMutex);
-    return gToken;
+    pthread_mutex_unlock(&gClientIdMutex);
+    return gClientId;
 }
 
 AppOpsManager::AppOpsManager()
 {
 }
 
-#if defined(__BRILLO__)
-// There is no AppOpsService on Brillo
-sp<IAppOpsService> AppOpsManager::getService() { return NULL; }
-#else
 sp<IAppOpsService> AppOpsManager::getService()
 {
+    static String16 _appops("appops");
 
     std::lock_guard<Mutex> scoped_lock(mLock);
     int64_t startTime = 0;
@@ -83,14 +73,13 @@ sp<IAppOpsService> AppOpsManager::getService()
     }
     return service;
 }
-#endif  // defined(__BRILLO__)
 
 int32_t AppOpsManager::checkOp(int32_t op, int32_t uid, const String16& callingPackage)
 {
     sp<IAppOpsService> service = getService();
     return service != nullptr
             ? service->checkOperation(op, uid, callingPackage)
-            : APP_OPS_MANAGER_UNAVAILABLE_MODE;
+            : AppOpsManager::MODE_IGNORED;
 }
 
 int32_t AppOpsManager::checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t uid,
@@ -98,28 +87,52 @@ int32_t AppOpsManager::checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t ui
     sp<IAppOpsService> service = getService();
     return service != nullptr
            ? service->checkAudioOperation(op, usage, uid, callingPackage)
-           : APP_OPS_MANAGER_UNAVAILABLE_MODE;
+           : AppOpsManager::MODE_IGNORED;
 }
 
 int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage) {
+    return noteOp(op, uid, callingPackage, {},
+            String16("Legacy AppOpsManager.noteOp call"));
+}
+
+int32_t AppOpsManager::noteOp(int32_t op, int32_t uid, const String16& callingPackage,
+        const std::optional<String16>& attributionTag, const String16& message) {
     sp<IAppOpsService> service = getService();
-    return service != nullptr
-            ? service->noteOperation(op, uid, callingPackage)
-            : APP_OPS_MANAGER_UNAVAILABLE_MODE;
+    int32_t mode = service != nullptr
+            ? service->noteOperation(op, uid, callingPackage, attributionTag,
+                    shouldCollectNotes(op), message)
+            : AppOpsManager::MODE_IGNORED;
+
+    return mode;
 }
 
 int32_t AppOpsManager::startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
         bool startIfModeDefault) {
+    return startOpNoThrow(op, uid, callingPackage, startIfModeDefault, {},
+            String16("Legacy AppOpsManager.startOpNoThrow call"));
+}
+
+int32_t AppOpsManager::startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
+        bool startIfModeDefault, const std::optional<String16>& attributionTag,
+        const String16& message) {
     sp<IAppOpsService> service = getService();
-    return service != nullptr
-            ? service->startOperation(getToken(service), op, uid, callingPackage,
-                    startIfModeDefault) : APP_OPS_MANAGER_UNAVAILABLE_MODE;
+    int32_t mode = service != nullptr
+            ? service->startOperation(getClientId(), op, uid, callingPackage,
+                    attributionTag, startIfModeDefault, shouldCollectNotes(op), message)
+            : AppOpsManager::MODE_IGNORED;
+
+    return mode;
 }
 
 void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPackage) {
+    finishOp(op, uid, callingPackage, {});
+}
+
+void AppOpsManager::finishOp(int32_t op, int32_t uid, const String16& callingPackage,
+        const std::optional<String16>& attributionTag) {
     sp<IAppOpsService> service = getService();
     if (service != nullptr) {
-        service->finishOperation(getToken(service), op, uid, callingPackage);
+        service->finishOperation(getClientId(), op, uid, callingPackage, attributionTag);
     }
 }
 
@@ -146,5 +159,27 @@ int32_t AppOpsManager::permissionToOpCode(const String16& permission) {
     return -1;
 }
 
+void AppOpsManager::setCameraAudioRestriction(int32_t mode) {
+    sp<IAppOpsService> service = getService();
+    if (service != nullptr) {
+        service->setCameraAudioRestriction(mode);
+    }
+}
+
+// check it the appops needs to be collected and cache result
+bool AppOpsManager::shouldCollectNotes(int32_t opcode) {
+    // Whether an appop should be collected: 0 == not initialized, 1 == don't note, 2 == note
+    static uint8_t appOpsToNote[AppOpsManager::_NUM_OP] = {0};
+
+    if (appOpsToNote[opcode] == 0) {
+        if (getService()->shouldCollectNotes(opcode)) {
+            appOpsToNote[opcode] = 2;
+        } else {
+            appOpsToNote[opcode] = 1;
+        }
+    }
+
+    return appOpsToNote[opcode] == 2;
+}
 
 } // namespace android

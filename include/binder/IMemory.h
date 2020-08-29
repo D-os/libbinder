@@ -76,13 +76,34 @@ public:
     // NOLINTNEXTLINE(google-default-arguments)
     virtual sp<IMemoryHeap> getMemory(ssize_t* offset=nullptr, size_t* size=nullptr) const = 0;
 
+    // helpers
+
+    // Accessing the underlying pointer must be done with caution, as there are
+    // some inherent security risks associated with it. When receiving an
+    // IMemory from an untrusted process, there is currently no way to guarantee
+    // that this process would't change the content after the fact. This may
+    // lead to TOC/TOU class of security bugs. In most cases, when performance
+    // is not an issue, the recommended practice is to immediately copy the
+    // buffer upon reception, then work with the copy, e.g.:
+    //
+    // std::string private_copy(mem.size(), '\0');
+    // memcpy(private_copy.data(), mem.unsecurePointer(), mem.size());
+    //
+    // In cases where performance is an issue, this matter must be addressed on
+    // an ad-hoc basis.
     void* unsecurePointer() const;
 
-    // helpers
-    void* fastPointer(const sp<IBinder>& heap, ssize_t offset) const;
-    void* pointer() const;
     size_t size() const;
     ssize_t offset() const;
+
+private:
+    // These are now deprecated and are left here for backward-compatibility
+    // with prebuilts that may reference these symbol at runtime.
+    // Instead, new code should use unsecurePointer()/unsecureFastPointer(),
+    // which do the same thing, but make it more obvious that there are some
+    // security-related pitfalls associated with them.
+    void* pointer() const;
+    void* fastPointer(const sp<IBinder>& heap, ssize_t offset) const;
 };
 
 class BnMemory : public BnInterface<IMemory>

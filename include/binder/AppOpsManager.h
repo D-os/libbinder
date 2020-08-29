@@ -17,11 +17,15 @@
 #ifndef ANDROID_APP_OPS_MANAGER_H
 #define ANDROID_APP_OPS_MANAGER_H
 
-#ifndef __ANDROID_VNDK__
-
 #include <binder/IAppOpsService.h>
 
 #include <utils/threads.h>
+
+#include <optional>
+
+#ifdef __ANDROID_VNDK__
+#error "This header is not visible to vendors"
+#endif
 
 // ---------------------------------------------------------------------------
 namespace android {
@@ -109,6 +113,27 @@ public:
         OP_START_FOREGROUND = 76,
         OP_BLUETOOTH_SCAN = 77,
         OP_USE_BIOMETRIC = 78,
+        OP_ACTIVITY_RECOGNITION = 79,
+        OP_SMS_FINANCIAL_TRANSACTIONS = 80,
+        OP_READ_MEDIA_AUDIO = 81,
+        OP_WRITE_MEDIA_AUDIO = 82,
+        OP_READ_MEDIA_VIDEO = 83,
+        OP_WRITE_MEDIA_VIDEO = 84,
+        OP_READ_MEDIA_IMAGES = 85,
+        OP_WRITE_MEDIA_IMAGES = 86,
+        OP_LEGACY_STORAGE = 87,
+        OP_ACCESS_ACCESSIBILITY = 88,
+        OP_READ_DEVICE_IDENTIFIERS = 89,
+        OP_ACCESS_MEDIA_LOCATION = 90,
+        OP_QUERY_ALL_PACKAGES = 91,
+        OP_MANAGE_EXTERNAL_STORAGE = 92,
+        OP_INTERACT_ACROSS_PROFILES = 93,
+        OP_ACTIVATE_PLATFORM_VPN = 94,
+        OP_LOADER_USAGE_STATS = 95,
+        OP_DEPRECATED_1 = 96,
+        OP_AUTO_REVOKE_PERMISSIONS_IF_UNUSED = 97,
+        OP_AUTO_REVOKE_MANAGED_BY_INSTALLER = 98,
+        _NUM_OP = 99
     };
 
     AppOpsManager();
@@ -116,27 +141,39 @@ public:
     int32_t checkOp(int32_t op, int32_t uid, const String16& callingPackage);
     int32_t checkAudioOpNoThrow(int32_t op, int32_t usage, int32_t uid,
             const String16& callingPackage);
+    // @Deprecated, use noteOp(int32_t, int32_t uid, const String16&, const String16&,
+    //              const String16&) instead
     int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage);
+    int32_t noteOp(int32_t op, int32_t uid, const String16& callingPackage,
+            const std::optional<String16>& attributionTag, const String16& message);
+    // @Deprecated, use startOpNoThrow(int32_t, int32_t, const String16&, bool, const String16&,
+    //              const String16&) instead
     int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
             bool startIfModeDefault);
+    int32_t startOpNoThrow(int32_t op, int32_t uid, const String16& callingPackage,
+            bool startIfModeDefault, const std::optional<String16>& attributionTag,
+            const String16& message);
+    // @Deprecated, use finishOp(int32_t, int32_t, const String16&, bool, const String16&) instead
     void finishOp(int32_t op, int32_t uid, const String16& callingPackage);
+    void finishOp(int32_t op, int32_t uid, const String16& callingPackage,
+            const std::optional<String16>& attributionTag);
     void startWatchingMode(int32_t op, const String16& packageName,
             const sp<IAppOpsCallback>& callback);
     void stopWatchingMode(const sp<IAppOpsCallback>& callback);
     int32_t permissionToOpCode(const String16& permission);
+    void setCameraAudioRestriction(int32_t mode);
 
 private:
     Mutex mLock;
     sp<IAppOpsService> mService;
 
     sp<IAppOpsService> getService();
+    bool shouldCollectNotes(int32_t opCode);
 };
 
 
 } // namespace android
+
 // ---------------------------------------------------------------------------
-#else // __ANDROID_VNDK__
-#error "This header is not visible to vendors"
-#endif // __ANDROID_VNDK__
 
 #endif // ANDROID_APP_OPS_MANAGER_H
