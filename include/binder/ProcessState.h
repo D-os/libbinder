@@ -50,14 +50,8 @@ public:
             sp<IBinder>         getContextObject(const sp<IBinder>& caller);
 
             void                startThreadPool();
-                        
-    typedef bool (*context_check_func)(const String16& name,
-                                       const sp<IBinder>& caller,
-                                       void* userData);
 
-            bool                becomeContextManager(
-                                    context_check_func checkFunc,
-                                    void* userData);
+            bool                becomeContextManager();
 
             sp<IBinder>         getStrongProxyForHandle(int32_t handle);
             void                expungeHandle(int32_t handle, IBinder* binder);
@@ -127,9 +121,6 @@ private:
     mutable Mutex               mLock;  // protects everything below.
 
             Vector<handle_entry>mHandleToObject;
-
-            context_check_func  mBinderContextCheckFunc;
-            void*               mBinderContextUserData;
 
             String8             mRootDir;
             bool                mThreadPoolStarted;
