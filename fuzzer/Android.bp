@@ -1,0 +1,47 @@
+cc_fuzz {
+    name: "binder_parcel_fuzzer",
+    defaults: ["libbinder_ndk_host_user"],
+    host_supported: true,
+
+    fuzz_config: {
+        cc: ["smoreland@google.com"],
+    },
+
+    srcs: [
+        "binder.cpp",
+        "binder_ndk.cpp",
+        "hwbinder.cpp",
+        "main.cpp",
+        "util.cpp",
+    ],
+    static_libs: [
+        "libbase",
+        "libcgrouprc",
+        "libcgrouprc_format",
+        "libcutils",
+        "libhidlbase",
+        "liblog",
+        "libprocessgroup",
+        "libjsoncpp",
+        "libutils",
+    ],
+
+    target: {
+        android: {
+            shared_libs: [
+                "libbinder_ndk",
+                "libbinder",
+            ],
+        },
+        host: {
+            static_libs: [
+                "libbinder_ndk",
+                "libbinder",
+            ],
+        },
+    },
+    // This flag enables verbose output in the fuzz target, and is very useful
+    // for debugging a failure. If you are trying to diagnose how a crash was
+    // produced, you may find uncommenting the below line very useful.
+    // cflags: ["-DENABLE_LOG_FUZZ"],
+}

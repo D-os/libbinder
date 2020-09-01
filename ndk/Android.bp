@@ -29,7 +29,7 @@ cc_defaults {
     },
 }
 
-cc_library_shared {
+cc_library {
     name: "libbinder_ndk",
 
     defaults: ["libbinder_ndk_host_user"],
@@ -73,6 +73,12 @@ cc_library_shared {
     ],
 
     target: {
+        android: {
+            // Only one copy of this library on an Android device
+            static: {
+                enabled: false,
+            },
+        },
         linux: {
             version_script: "libbinder_ndk.map.txt",
         },

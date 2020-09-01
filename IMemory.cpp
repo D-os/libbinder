@@ -150,10 +150,6 @@ void* IMemory::fastPointer(const sp<IBinder>& binder, ssize_t offset) const
 }
 
 void* IMemory::unsecurePointer() const {
-    return pointer();
-}
-
-void* IMemory::pointer() const {
     ssize_t offset;
     sp<IMemoryHeap> heap = getMemory(&offset);
     void* const base = heap!=nullptr ? heap->base() : MAP_FAILED;
@@ -161,6 +157,8 @@ void* IMemory::pointer() const {
         return nullptr;
     return static_cast<char*>(base) + offset;
 }
+
+void* IMemory::pointer() const { return unsecurePointer(); }
 
 size_t IMemory::size() const {
     size_t size;
