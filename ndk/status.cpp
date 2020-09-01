@@ -123,8 +123,8 @@ binder_status_t PruneStatusT(status_t status) {
             return STATUS_UNKNOWN_ERROR;
 
         default:
-            LOG(WARNING) << __func__
-                         << ": Unknown status_t pruned into STATUS_UNKNOWN_ERROR: " << status;
+            LOG(WARNING) << __func__ << ": Unknown status_t (" << status
+                         << ") pruned into STATUS_UNKNOWN_ERROR";
             return STATUS_UNKNOWN_ERROR;
     }
 }
@@ -155,8 +155,8 @@ binder_exception_t PruneException(int32_t exception) {
             return EX_TRANSACTION_FAILED;
 
         default:
-            LOG(WARNING) << __func__
-                         << ": Unknown status_t pruned into EX_TRANSACTION_FAILED: " << exception;
+            LOG(WARNING) << __func__ << ": Unknown binder exception (" << exception
+                         << ") pruned into EX_TRANSACTION_FAILED";
             return EX_TRANSACTION_FAILED;
     }
 }
