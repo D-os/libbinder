@@ -144,11 +144,9 @@ void ProcessState::startThreadPool()
     }
 }
 
-bool ProcessState::becomeContextManager(context_check_func checkFunc, void* userData)
+bool ProcessState::becomeContextManager()
 {
     AutoMutex _l(mLock);
-    mBinderContextCheckFunc = checkFunc;
-    mBinderContextUserData = userData;
 
     flat_binder_object obj {
         .flags = FLAT_BINDER_FLAG_TXN_SECURITY_CTX,
@@ -165,8 +163,6 @@ bool ProcessState::becomeContextManager(context_check_func checkFunc, void* user
     }
 
     if (result == -1) {
-        mBinderContextCheckFunc = nullptr;
-        mBinderContextUserData = nullptr;
         ALOGE("Binder ioctl to become context manager failed: %s\n", strerror(errno));
     }
 
@@ -397,8 +393,6 @@ ProcessState::ProcessState(const char *driver)
     , mExecutingThreadsCount(0)
     , mMaxThreads(DEFAULT_MAX_BINDER_THREADS)
     , mStarvationStartTimeMs(0)
-    , mBinderContextCheckFunc(nullptr)
-    , mBinderContextUserData(nullptr)
     , mThreadPoolStarted(false)
     , mThreadPoolSeq(1)
     , mCallRestriction(CallRestriction::NONE)
