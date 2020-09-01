@@ -29,9 +29,9 @@ __BEGIN_DECLS
  * \param binder object to register globally with the service manager.
  * \param instance identifier of the service. This will be used to lookup the service.
  *
- * \return STATUS_OK on success.
+ * \return EX_NONE on success.
  */
-binder_status_t AServiceManager_addService(AIBinder* binder, const char* instance);
+binder_exception_t AServiceManager_addService(AIBinder* binder, const char* instance);
 
 /**
  * Gets a binder object with this specific instance name. Will return nullptr immediately if the
