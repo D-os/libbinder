@@ -679,7 +679,7 @@ status_t IPCThreadState::transact(int32_t handle,
                 CallStack::logStack("non-oneway call", CallStack::getCurrent(10).get(),
                     ANDROID_LOG_ERROR);
             } else /* FATAL_IF_NOT_ONEWAY */ {
-                LOG_ALWAYS_FATAL("Process may not make oneway calls (code: %u).", code);
+                LOG_ALWAYS_FATAL("Process may not make non-oneway calls (code: %u).", code);
             }
         }
 
