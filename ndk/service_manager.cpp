@@ -29,14 +29,14 @@ using ::android::sp;
 using ::android::status_t;
 using ::android::String16;
 
-binder_status_t AServiceManager_addService(AIBinder* binder, const char* instance) {
+binder_exception_t AServiceManager_addService(AIBinder* binder, const char* instance) {
     if (binder == nullptr || instance == nullptr) {
-        return STATUS_UNEXPECTED_NULL;
+        return EX_ILLEGAL_ARGUMENT;
     }
 
     sp<IServiceManager> sm = defaultServiceManager();
-    status_t status = sm->addService(String16(instance), binder->getBinder());
-    return PruneStatusT(status);
+    status_t exception = sm->addService(String16(instance), binder->getBinder());
+    return PruneException(exception);
 }
 AIBinder* AServiceManager_checkService(const char* instance) {
     if (instance == nullptr) {
