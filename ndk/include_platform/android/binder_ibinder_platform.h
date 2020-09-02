@@ -32,7 +32,8 @@ __BEGIN_DECLS
  *
  * \param binder local server binder to request security contexts on
  */
-void AIBinder_setRequestingSid(AIBinder* binder, bool requestingSid) __INTRODUCED_IN(31);
+__attribute__((weak)) void AIBinder_setRequestingSid(AIBinder* binder, bool requestingSid)
+        __INTRODUCED_IN(31);
 
 /**
  * Returns the selinux context of the callee.
@@ -45,7 +46,7 @@ void AIBinder_setRequestingSid(AIBinder* binder, bool requestingSid) __INTRODUCE
  * \return security context or null if unavailable. The lifetime of this context
  * is the lifetime of the transaction.
  */
-__attribute__((warn_unused_result)) const char* AIBinder_getCallingSid() __INTRODUCED_IN(31);
+__attribute__((weak, warn_unused_result)) const char* AIBinder_getCallingSid() __INTRODUCED_IN(31);
 
 __END_DECLS
 
