@@ -36,6 +36,37 @@ namespace android {
 #include <sys/ioctl.h>
 #include <linux/android/binder.h>
 
+#ifndef BR_FROZEN_REPLY
+// Temporary definition of BR_FROZEN_REPLY. For production
+// this will come from UAPI binder.h
+#define BR_FROZEN_REPLY _IO('r', 18)
+#endif //BR_FROZEN_REPLY
+
+#ifndef BINDER_FREEZE
+/*
+ * Temporary definitions for freeze support. For the final version
+ * these will be defined in the UAPI binder.h file from upstream kernel.
+ */
+#define BINDER_FREEZE _IOW('b', 14, struct binder_freeze_info)
+
+struct binder_freeze_info {
+    //
+    // Group-leader PID of process to be frozen
+    //
+    uint32_t            pid;
+    //
+    // Enable(1) / Disable(0) freeze for given PID
+    //
+    uint32_t            enable;
+    //
+    // Timeout to wait for transactions to drain.
+    // 0: don't wait (ioctl will return EAGAIN if not drained)
+    // N: number of ms to wait
+    uint32_t            timeout_ms;
+};
+#endif //BINDER_FREEZE
+
+
 #ifdef __cplusplus
 }   // namespace android
 #endif
