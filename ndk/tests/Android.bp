@@ -66,9 +66,6 @@ cc_test {
     ],
     test_suites: ["general-tests", "vts"],
     require_root: true,
-
-    // force since binderVendorDoubleLoadTest has its own
-    auto_gen_config: true,
 }
 
 cc_test {
@@ -90,6 +87,7 @@ cc_test {
         "libutils",
     ],
     test_suites: ["general-tests", "vts"],
+    require_root: true,
 }
 
 aidl_interface {
