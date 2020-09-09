@@ -16,6 +16,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <fstream>
 #include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -79,6 +80,8 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_CREATE_BINDER_TRANSACTION,
     BINDER_LIB_TEST_GET_WORK_SOURCE_TRANSACTION,
     BINDER_LIB_TEST_GET_SCHEDULING_POLICY,
+    BINDER_LIB_TEST_NOP_TRANSACTION_WAIT,
+    BINDER_LIB_TEST_GETPID,
     BINDER_LIB_TEST_ECHO_VECTOR,
     BINDER_LIB_TEST_REJECT_BUF,
 };
@@ -397,6 +400,40 @@ TEST_F(BinderLibTest, NopTransaction) {
     Parcel data, reply;
     ret = m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION, data, &reply);
     EXPECT_EQ(NO_ERROR, ret);
+}
+
+TEST_F(BinderLibTest, Freeze) {
+    status_t ret;
+    Parcel data, reply, replypid;
+    std::ifstream freezer_file("/sys/fs/cgroup/freezer/cgroup.freeze");
+
+    //Pass test on devices where the freezer is not supported
+    if (freezer_file.fail()) {
+        GTEST_SKIP();
+        return;
+    }
+
+    std::string freezer_enabled;
+    std::getline(freezer_file, freezer_enabled);
+
+    //Pass test on devices where the freezer is disabled
+    if (freezer_enabled != "1") {
+        GTEST_SKIP();
+        return;
+    }
+
+    ret = m_server->transact(BINDER_LIB_TEST_GETPID, data, &replypid);
+    int32_t pid = replypid.readInt32();
+    EXPECT_EQ(NO_ERROR, ret);
+    for (int i = 0; i < 10; i++) {
+        EXPECT_EQ(NO_ERROR, m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION_WAIT, data, &reply, TF_ONE_WAY));
+    }
+    EXPECT_EQ(-EAGAIN, IPCThreadState::self()->freeze(pid, 1, 0));
+    EXPECT_EQ(-EAGAIN, IPCThreadState::self()->freeze(pid, 1, 0));
+    EXPECT_EQ(NO_ERROR, IPCThreadState::self()->freeze(pid, 1, 1000));
+    EXPECT_EQ(FAILED_TRANSACTION, m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION, data, &reply));
+    EXPECT_EQ(NO_ERROR, IPCThreadState::self()->freeze(pid, 0, 0));
+    EXPECT_EQ(NO_ERROR, m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION, data, &reply));
 }
 
 TEST_F(BinderLibTest, SetError) {
@@ -1178,6 +1215,12 @@ class BinderLibTestService : public BBinder
                 pthread_mutex_unlock(&m_serverWaitMutex);
                 return ret;
             }
+            case BINDER_LIB_TEST_GETPID:
+                reply->writeInt32(getpid());
+                return NO_ERROR;
+            case BINDER_LIB_TEST_NOP_TRANSACTION_WAIT:
+                usleep(5000);
+                return NO_ERROR;
             case BINDER_LIB_TEST_NOP_TRANSACTION:
                 return NO_ERROR;
             case BINDER_LIB_TEST_DELAYED_CALL_BACK: {
