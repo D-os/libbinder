@@ -1320,6 +1320,22 @@ void IPCThreadState::threadDestructor(void *st)
         }
 }
 
+status_t IPCThreadState::getProcessFreezeInfo(pid_t pid, bool *sync_received, bool *async_received)
+{
+    int ret = 0;
+    binder_frozen_status_info info;
+    info.pid = pid;
+
+#if defined(__ANDROID__)
+    if (ioctl(self()->mProcess->mDriverFD, BINDER_GET_FROZEN_INFO, &info) < 0)
+        ret = -errno;
+#endif
+    *sync_received = info.sync_recv;
+    *async_received = info.async_recv;
+
+    return ret;
+}
+
 status_t IPCThreadState::freeze(pid_t pid, bool enable, uint32_t timeout_ms) {
     struct binder_freeze_info info;
     int ret = 0;
