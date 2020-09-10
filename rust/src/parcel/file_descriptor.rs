@@ -26,6 +26,7 @@ use std::fs::File;
 use std::os::unix::io::{AsRawFd, FromRawFd};
 
 /// Rust version of the Java class android.os.ParcelFileDescriptor
+#[derive(Debug)]
 pub struct ParcelFileDescriptor(File);
 
 impl ParcelFileDescriptor {
