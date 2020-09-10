@@ -583,3 +583,48 @@ macro_rules! declare_binder_interface {
         }
     };
 }
+
+/// Declare an AIDL enumeration.
+///
+/// This is mainly used internally by the AIDL compiler.
+#[macro_export]
+macro_rules! declare_binder_enum {
+    {
+        $enum:ident : $backing:ty {
+            $( $name:ident = $value:expr, )*
+        }
+    } => {
+        #[derive(Debug, Default, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+        pub struct $enum(pub $backing);
+        impl $enum {
+            $( pub const $name: Self = Self($value); )*
+        }
+
+        impl $crate::parcel::Serialize for $enum {
+            fn serialize(&self, parcel: &mut $crate::parcel::Parcel) -> $crate::Result<()> {
+                parcel.write(&self.0)
+            }
+        }
+
+        impl $crate::parcel::SerializeArray for $enum {
+            fn serialize_array(slice: &[Self], parcel: &mut $crate::parcel::Parcel) -> $crate::Result<()> {
+                let v: Vec<$backing> = slice.iter().map(|x| x.0).collect();
+                <$backing as binder::parcel::SerializeArray>::serialize_array(&v[..], parcel)
+            }
+        }
+
+        impl $crate::parcel::Deserialize for $enum {
+            fn deserialize(parcel: &$crate::parcel::Parcel) -> $crate::Result<Self> {
+                parcel.read().map(Self)
+            }
+        }
+
+        impl $crate::parcel::DeserializeArray for $enum {
+            fn deserialize_array(parcel: &$crate::parcel::Parcel) -> $crate::Result<Option<Vec<Self>>> {
+                let v: Option<Vec<$backing>> =
+                    <$backing as binder::parcel::DeserializeArray>::deserialize_array(parcel)?;
+                Ok(v.map(|v| v.into_iter().map(Self).collect()))
+            }
+        }
+    };
+}
