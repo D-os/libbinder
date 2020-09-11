@@ -30,3 +30,52 @@ rust_test {
     auto_gen_config: false,
     test_suites: ["general-tests"],
 }
+
+cc_test {
+    name: "binderRustNdkInteropTest",
+    srcs: [
+        "binderRustNdkInteropTest.cpp",
+    ],
+    shared_libs: [
+        "libbinder",
+        "libbinder_ndk",
+    ],
+    static_libs: [
+        "IBinderRustNdkInteropTest-ndk_platform",
+        "libbinder_ndk_rust_interop",
+    ],
+    test_suites: ["general-tests"],
+    require_root: true,
+
+    // rustBinderTestService uses a custom config
+    auto_gen_config: true,
+}
+
+aidl_interface {
+    name: "IBinderRustNdkInteropTest",
+    unstable: true,
+    srcs: [
+        "IBinderRustNdkInteropTest.aidl",
+        "IBinderRustNdkInteropTestOther.aidl",
+    ],
+    backend: {
+        ndk: {
+            enabled: true,
+        },
+        rust: {
+            enabled: true,
+        },
+    },
+}
+
+rust_ffi_static {
+    name: "libbinder_ndk_rust_interop",
+    crate_name: "binder_ndk_rust_interop",
+    srcs: [
+        "ndk_rust_interop.rs",
+    ],
+    rustlibs: [
+        "libbinder_rs",
+        "IBinderRustNdkInteropTest-rust",
+    ],
+}
