@@ -18,6 +18,7 @@
 #include <aidl/BnBinderNdkUnitTest.h>
 #include <aidl/BnEmpty.h>
 #include <android-base/logging.h>
+#include <android/binder_context.h>
 #include <android/binder_ibinder_jni.h>
 #include <android/binder_ibinder_platform.h>
 #include <android/binder_manager.h>
