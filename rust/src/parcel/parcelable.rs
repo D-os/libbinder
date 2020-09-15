@@ -21,7 +21,8 @@ use crate::proxy::SpIBinder;
 use crate::sys;
 
 use std::convert::TryInto;
-use std::ffi::{c_void, CStr, CString};
+use std::ffi::c_void;
+use std::os::raw::c_char;
 use std::ptr;
 
 /// A struct whose instances can be written to a [`Parcel`].
@@ -340,7 +341,7 @@ impl SerializeArray for i16 {
     }
 }
 
-impl SerializeOption for CStr {
+impl SerializeOption for str {
     fn serialize_option(this: Option<&Self>, parcel: &mut Parcel) -> Result<()> {
         match this {
             None => unsafe {
@@ -356,14 +357,17 @@ impl SerializeOption for CStr {
             },
             Some(s) => unsafe {
                 // Safety: `Parcel` always contains a valid pointer to an
-                // `AParcel`. `AParcel_writeString` assumes that we pass a
-                // null-terminated C string pointer with no nulls in the middle
-                // of the string. Rust guarantees exactly that for a valid CStr
-                // instance.
+                // `AParcel`. `AParcel_writeString` assumes that we pass a utf-8
+                // string pointer of `length` bytes, which is what str in Rust
+                // is. The docstring for `AParcel_writeString` says that the
+                // string input should be null-terminated, but it doesn't
+                // actually rely on that fact in the code. If this ever becomes
+                // necessary, we will need to null-terminate the str buffer
+                // before sending it.
                 status_result(sys::AParcel_writeString(
                     parcel.as_native_mut(),
-                    s.as_ptr(),
-                    s.to_bytes()
+                    s.as_ptr() as *const c_char,
+                    s.as_bytes()
                         .len()
                         .try_into()
                         .or(Err(StatusCode::BAD_VALUE))?,
@@ -373,29 +377,15 @@ impl SerializeOption for CStr {
     }
 }
 
-impl SerializeArray for Option<&CStr> {}
+impl SerializeArray for Option<&str> {}
 
-impl Serialize for CStr {
+impl Serialize for str {
     fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
         Some(self).serialize(parcel)
     }
 }
 
-impl Serialize for CString {
-    fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
-        Some(self.as_c_str()).serialize(parcel)
-    }
-}
-
-impl SerializeArray for CString {}
-
-impl SerializeOption for CString {
-    fn serialize_option(this: Option<&Self>, parcel: &mut Parcel) -> Result<()> {
-        SerializeOption::serialize_option(this.map(CString::as_c_str), parcel)
-    }
-}
-
-impl SerializeArray for Option<CString> {}
+impl SerializeArray for &str {}
 
 impl Serialize for String {
     fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
@@ -413,7 +403,7 @@ impl SerializeOption for String {
 
 impl SerializeArray for Option<String> {}
 
-impl Deserialize for Option<CString> {
+impl Deserialize for Option<String> {
     fn deserialize(parcel: &Parcel) -> Result<Self> {
         let mut vec: Option<Vec<u8>> = None;
         let status = unsafe {
@@ -430,23 +420,12 @@ impl Deserialize for Option<CString> {
 
         status_result(status)?;
         vec.map(|mut s| {
-            // The vector includes a null-terminator and CString::new requires
-            // no nulls, including terminating.
+            // The vector includes a null-terminator and we don't want the
+            // string to be null-terminated for Rust.
             s.pop();
-            CString::new(s).or(Err(StatusCode::BAD_VALUE))
+            String::from_utf8(s).or(Err(StatusCode::BAD_VALUE))
         })
         .transpose()
-    }
-}
-
-impl DeserializeArray for Option<CString> {}
-
-impl DeserializeOption for String {
-    fn deserialize_option(parcel: &Parcel) -> Result<Option<Self>> {
-        let c_str = <Option<CString>>::deserialize(parcel)?;
-        c_str
-            .map(|s| s.into_string().or(Err(StatusCode::BAD_VALUE)))
-            .transpose()
     }
 }
 
@@ -461,28 +440,6 @@ impl Deserialize for String {
 }
 
 impl DeserializeArray for String {}
-
-impl SerializeOption for str {
-    fn serialize_option(this: Option<&Self>, parcel: &mut Parcel) -> Result<()> {
-        match this {
-            None => parcel.write(&-1i32),
-            Some(s) => {
-                let c_str = CString::new(s).or(Err(StatusCode::BAD_VALUE))?;
-                parcel.write(&c_str)
-            }
-        }
-    }
-}
-
-impl Serialize for str {
-    fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
-        Some(self).serialize(parcel)
-    }
-}
-
-impl SerializeArray for &str {}
-
-impl SerializeArray for Option<&str> {}
 
 impl<T: SerializeArray> Serialize for [T] {
     fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
@@ -905,8 +862,9 @@ fn test_slice_parcelables() {
     let s1 = "Hello, Binder!";
     let s2 = "This is a utf8 string.";
     let s3 = "Some more text here.";
+    let s4 = "Embedded nulls \0 \0";
 
-    let strs = [s1, s2, s3];
+    let strs = [s1, s2, s3, s4];
 
     unsafe {
         assert!(parcel.set_data_position(start).is_ok());
