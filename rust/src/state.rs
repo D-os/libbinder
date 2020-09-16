@@ -98,4 +98,36 @@ impl ThreadState {
             sys::AIBinder_getCallingPid()
         }
     }
+
+    /// This function makes the client's security context available to the
+    /// service calling this function. This can be used for access control.
+    /// It does not suffer from the TOCTOU issues of get_calling_pid.
+    ///
+    /// Implementations of `check_permission` should use the given CStr
+    /// argument as context for selinux permission checks. If `None` is
+    /// given, the implementation should fall back to using the PID
+    /// instead.
+    ///
+    /// Note: `None` may be passed to the callback if the caller did not
+    /// `set_requesting_sid` on the serviced binder, or if the underlying
+    /// kernel is too old to support this feature.
+    pub fn with_calling_sid<T, F>(check_permission: F) -> T
+    where
+        for<'a> F: FnOnce(Option<&'a std::ffi::CStr>) -> T {
+        // Safety: AIBinder_getCallingSid returns a c-string pointer
+        // that is valid for a transaction. Also, the string returned
+        // is thread local. By restricting the lifetime of the CStr
+        // reference to the scope of the callback, we prevent it being
+        // used beyond the guaranteed lifetime.
+        check_permission(unsafe {
+            let sid = sys::AIBinder_getCallingSid();
+            // AIBinder_getCallingSid() returns a '\0' terminated string
+            // or NULL.
+            if sid.is_null() {
+                None
+            } else {
+                Some(std::ffi::CStr::from_ptr(sid))
+            }
+        })
+    }
 }
