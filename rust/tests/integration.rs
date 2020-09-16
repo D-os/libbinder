@@ -18,7 +18,8 @@
 
 use binder::declare_binder_interface;
 use binder::parcel::Parcel;
-use binder::{Binder, IBinder, Interface, SpIBinder, TransactionCode};
+use binder::{Binder, IBinder, Interface, SpIBinder, StatusCode, ThreadState, TransactionCode};
+use std::convert::{TryFrom, TryInto};
 
 /// Name of service runner.
 ///
@@ -49,6 +50,7 @@ fn main() -> Result<(), &'static str> {
         let mut service = Binder::new(BnTest(Box::new(TestService {
             s: service_name.clone(),
         })));
+        service.set_requesting_sid(true);
         if let Some(extension_name) = extension_name {
             let extension = BnTest::new_binder(TestService { s: extension_name });
             service
@@ -79,11 +81,37 @@ struct TestService {
     s: String,
 }
 
+#[repr(u32)]
+enum TestTransactionCode {
+    Test = SpIBinder::FIRST_CALL_TRANSACTION,
+    GetSelinuxContext,
+}
+
+impl TryFrom<u32> for TestTransactionCode {
+    type Error = StatusCode;
+
+    fn try_from(c: u32) -> Result<Self, Self::Error> {
+        match c {
+            _ if c == TestTransactionCode::Test as u32 => Ok(TestTransactionCode::Test),
+            _ if c == TestTransactionCode::GetSelinuxContext as u32 => {
+                Ok(TestTransactionCode::GetSelinuxContext)
+            }
+            _ => Err(StatusCode::UNKNOWN_TRANSACTION),
+        }
+    }
+}
+
 impl Interface for TestService {}
 
 impl ITest for TestService {
     fn test(&self) -> binder::Result<String> {
         Ok(self.s.clone())
+    }
+
+    fn get_selinux_context(&self) -> binder::Result<String> {
+        let sid =
+            ThreadState::with_calling_sid(|sid| sid.map(|s| s.to_string_lossy().into_owned()));
+        sid.ok_or(StatusCode::UNEXPECTED_NULL)
     }
 }
 
@@ -91,6 +119,9 @@ impl ITest for TestService {
 pub trait ITest: Interface {
     /// Returns a test string
     fn test(&self) -> binder::Result<String>;
+
+    /// Returns the caller's SELinux context
+    fn get_selinux_context(&self) -> binder::Result<String>;
 }
 
 declare_binder_interface! {
@@ -104,19 +135,30 @@ declare_binder_interface! {
 
 fn on_transact(
     service: &dyn ITest,
-    _code: TransactionCode,
+    code: TransactionCode,
     _data: &Parcel,
     reply: &mut Parcel,
 ) -> binder::Result<()> {
-    reply.write(&service.test()?)?;
-    Ok(())
+    match code.try_into()? {
+        TestTransactionCode::Test => reply.write(&service.test()?),
+        TestTransactionCode::GetSelinuxContext => reply.write(&service.get_selinux_context()?),
+    }
 }
 
 impl ITest for BpTest {
     fn test(&self) -> binder::Result<String> {
-        let reply = self
-            .binder
-            .transact(SpIBinder::FIRST_CALL_TRANSACTION, 0, |_| Ok(()))?;
+        let reply =
+            self.binder
+                .transact(TestTransactionCode::Test as TransactionCode, 0, |_| Ok(()))?;
+        reply.read()
+    }
+
+    fn get_selinux_context(&self) -> binder::Result<String> {
+        let reply = self.binder.transact(
+            TestTransactionCode::GetSelinuxContext as TransactionCode,
+            0,
+            |_| Ok(()),
+        )?;
         reply.read()
     }
 }
@@ -125,12 +167,19 @@ impl ITest for Binder<BnTest> {
     fn test(&self) -> binder::Result<String> {
         self.0.test()
     }
+
+    fn get_selinux_context(&self) -> binder::Result<String> {
+        self.0.get_selinux_context()
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use selinux_bindgen as selinux_sys;
+    use std::ffi::CStr;
     use std::fs::File;
     use std::process::{Child, Command};
+    use std::ptr;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
     use std::thread;
@@ -201,6 +250,24 @@ mod tests {
         let test_client: Box<dyn ITest> =
             binder::get_interface(service_name).expect("Did not get manager binder service");
         assert_eq!(test_client.test().unwrap(), "trivial_client_test");
+    }
+
+    #[test]
+    fn get_selinux_context() {
+        let service_name = "get_selinux_context";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Box<dyn ITest> =
+            binder::get_interface(service_name).expect("Did not get manager binder service");
+        let expected_context = unsafe {
+            let mut out_ptr = ptr::null_mut();
+            assert_eq!(selinux_sys::getcon(&mut out_ptr), 0);
+            assert!(!out_ptr.is_null());
+            CStr::from_ptr(out_ptr)
+        };
+        assert_eq!(
+            test_client.get_selinux_context().unwrap(),
+            expected_context.to_str().expect("context was invalid UTF-8"),
+        );
     }
 
     fn register_death_notification(binder: &mut SpIBinder) -> (Arc<AtomicBool>, DeathRecipient) {

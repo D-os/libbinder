@@ -3,6 +3,10 @@ rust_test {
     srcs: ["integration.rs"],
     rustlibs: [
         "libbinder_rs",
+        "libselinux_bindgen",
+    ],
+    shared_libs: [
+        "libselinux",
     ],
     // For the binaries to be pushed properly as specified in AndroidTest.xml,
     // this cannot be the same as the module name.
