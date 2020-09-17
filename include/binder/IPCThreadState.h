@@ -49,6 +49,9 @@ public:
     // returns: 0 in case of success, a value < 0 in case of error
     static  status_t            freeze(pid_t pid, bool enabled, uint32_t timeout_ms);
 
+    // Provide information about the state of a frozen process
+    static  status_t            getProcessFreezeInfo(pid_t pid, bool *sync_received,
+                                                    bool *async_received);
             sp<ProcessState>    process();
             
             status_t            clearLastError();
