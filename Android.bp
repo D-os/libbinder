@@ -99,6 +99,7 @@ cc_library {
         "MemoryDealer.cpp",
         "MemoryHeapBase.cpp",
         "Parcel.cpp",
+        "ParcelableHolder.cpp",
         "ParcelFileDescriptor.cpp",
         "PersistableBundle.cpp",
         "ProcessState.cpp",
