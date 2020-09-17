@@ -66,6 +66,29 @@ struct binder_freeze_info {
 };
 #endif //BINDER_FREEZE
 
+#ifndef BINDER_GET_FROZEN_INFO
+
+#define BINDER_GET_FROZEN_INFO          _IOWR('b', 15, struct binder_frozen_status_info)
+
+struct binder_frozen_status_info {
+    //
+    // Group-leader PID of process to be queried
+    //
+    __u32            pid;
+    //
+    // Indicates whether the process has received any sync calls since last
+    // freeze (cleared at freeze/unfreeze)
+    //
+    __u32            sync_recv;
+    //
+    // Indicates whether the process has received any async calls since last
+    // freeze (cleared at freeze/unfreeze)
+    //
+    __u32            async_recv;
+};
+#endif //BINDER_GET_FROZEN_INFO
+
+
 
 #ifdef __cplusplus
 }   // namespace android
