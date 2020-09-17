@@ -56,7 +56,7 @@ public:
     // WARNING: for use by auto-generated code only (AIDL). Should not be used
     // manually, or there is a risk of breaking CTS, GTS, VTS, or CTS-on-GSI
     // tests.
-    enum class Stability {
+    enum class Stability : int32_t {
         STABILITY_LOCAL,
         STABILITY_VINTF, // corresponds to @VintfStability
     };
