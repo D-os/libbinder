@@ -448,6 +448,14 @@ int32_t IPCThreadState::getLastTransactionBinderFlags() const
     return mLastTransactionBinderFlags;
 }
 
+void IPCThreadState::setCallRestriction(ProcessState::CallRestriction restriction) {
+    mCallRestriction = restriction;
+}
+
+ProcessState::CallRestriction IPCThreadState::getCallRestriction() const {
+    return mCallRestriction;
+}
+
 void IPCThreadState::restoreCallingIdentity(int64_t token)
 {
     mCallingUid = (int)(token>>32);
