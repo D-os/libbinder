@@ -32,8 +32,6 @@ namespace android {
 class IPCThreadState
 {
 public:
-    using CallRestriction = ProcessState::CallRestriction;
-
     static  IPCThreadState*     self();
     static  IPCThreadState*     selfOrNull();  // self(), but won't instantiate
 
@@ -101,9 +99,6 @@ public:
             void                setLastTransactionBinderFlags(int32_t flags);
             int32_t             getLastTransactionBinderFlags() const;
 
-            void                setCallRestriction(CallRestriction restriction);
-            CallRestriction     getCallRestriction() const;
-
             int64_t             clearCallingIdentity();
             // Restores PID/UID (not SID)
             void                restoreCallingIdentity(int64_t token);
@@ -162,6 +157,7 @@ public:
             // This constant needs to be kept in sync with Binder.UNSET_WORKSOURCE from the Java
             // side.
             static const int32_t kUnsetWorkSource = -1;
+
 private:
                                 IPCThreadState();
                                 ~IPCThreadState();
@@ -208,7 +204,8 @@ private:
             bool                mPropagateWorkSource;
             int32_t             mStrictModePolicy;
             int32_t             mLastTransactionBinderFlags;
-            CallRestriction     mCallRestriction;
+
+            ProcessState::CallRestriction mCallRestriction;
 };
 
 } // namespace android
