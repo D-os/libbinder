@@ -599,12 +599,6 @@ TEST_F(BinderLibTest, AddServer)
     ASSERT_TRUE(server != nullptr);
 }
 
-TEST_F(BinderLibTest, AddManagerToManager) {
-    sp<IServiceManager> sm = defaultServiceManager();
-    sp<IBinder> binder = IInterface::asBinder(sm);
-    EXPECT_EQ(NO_ERROR, sm->addService(String16("binderLibTest-manager"), binder));
-}
-
 TEST_F(BinderLibTest, DeathNotificationStrongRef)
 {
     status_t ret;
