@@ -93,7 +93,7 @@ class SharedRefBase {
     //
     // Use 'SharedRefBase::make<T>(...)' to make. SharedRefBase has implicit
     // ownership. Making this operator private to avoid double-ownership.
-#if !defined(__ANDROID_API__) || __ANDROID_API__ >= 30
+#if !defined(__ANDROID_API__) || __ANDROID_API__ >= 30 || defined(__ANDROID_APEX__)
    private:
 #else
     [[deprecated("Prefer SharedRefBase::make<T>(...) if possible.")]]
