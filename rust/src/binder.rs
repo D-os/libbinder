@@ -590,6 +590,15 @@ macro_rules! declare_binder_interface {
                 f.pad(stringify!($interface))
             }
         }
+
+        // Convert a &dyn $interface to Box<dyn $interface>
+        impl std::borrow::ToOwned for dyn $interface {
+            type Owned = Box<dyn $interface>;
+            fn to_owned(&self) -> Self::Owned {
+                self.as_binder().into_interface()
+                    .expect(concat!("Error cloning interface ", stringify!($interface)))
+            }
+        }
     };
 }
 
