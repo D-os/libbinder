@@ -282,9 +282,17 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
                 // a driver API to get a handle to the context manager with
                 // proper reference counting.
 
+                IPCThreadState* ipc = IPCThreadState::self();
+
+                CallRestriction originalCallRestriction = ipc->getCallRestriction();
+                ipc->setCallRestriction(CallRestriction::NONE);
+
                 Parcel data;
-                status_t status = IPCThreadState::self()->transact(
+                status_t status = ipc->transact(
                         0, IBinder::PING_TRANSACTION, data, nullptr, 0);
+
+                ipc->setCallRestriction(originalCallRestriction);
+
                 if (status == DEAD_OBJECT)
                    return nullptr;
             }
