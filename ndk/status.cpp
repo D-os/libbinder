@@ -47,27 +47,27 @@ AStatus* AStatus_fromStatus(binder_status_t status) {
 }
 
 bool AStatus_isOk(const AStatus* status) {
-    return status->get()->isOk();
+    return status->get().isOk();
 }
 
 binder_exception_t AStatus_getExceptionCode(const AStatus* status) {
-    return PruneException(status->get()->exceptionCode());
+    return PruneException(status->get().exceptionCode());
 }
 
 int32_t AStatus_getServiceSpecificError(const AStatus* status) {
-    return status->get()->serviceSpecificErrorCode();
+    return status->get().serviceSpecificErrorCode();
 }
 
 binder_status_t AStatus_getStatus(const AStatus* status) {
-    return PruneStatusT(status->get()->transactionError());
+    return PruneStatusT(status->get().transactionError());
 }
 
 const char* AStatus_getMessage(const AStatus* status) {
-    return status->get()->exceptionMessage().c_str();
+    return status->get().exceptionMessage().c_str();
 }
 
 const char* AStatus_getDescription(const AStatus* status) {
-    android::String8 description = status->get()->toString8();
+    android::String8 description = status->get().toString8();
     char* cStr = new char[description.size() + 1];
     memcpy(cStr, description.c_str(), description.size() + 1);
     return cStr;

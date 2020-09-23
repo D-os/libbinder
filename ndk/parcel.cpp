@@ -272,7 +272,7 @@ binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd)
 }
 
 binder_status_t AParcel_writeStatusHeader(AParcel* parcel, const AStatus* status) {
-    return PruneStatusT(status->get()->writeToParcel(parcel->get()));
+    return PruneStatusT(status->get().writeToParcel(parcel->get()));
 }
 binder_status_t AParcel_readStatusHeader(const AParcel* parcel, AStatus** status) {
     ::android::binder::Status bstatus;
