@@ -19,6 +19,8 @@
 #include "util.h"
 
 #include <android/os/IServiceManager.h>
+#include <binder/ParcelableHolder.h>
+#include <binder/PersistableBundle.h>
 
 using ::android::status_t;
 
@@ -251,5 +253,20 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_NO_STATUS(uid_t, readCallingWorkSourceUid),
     PARCEL_READ_NO_STATUS(size_t, getBlobAshmemSize),
     PARCEL_READ_NO_STATUS(size_t, getOpenAshmemSize),
+
+    // additional parcelable objects defined in libbinder
+    [] (const ::android::Parcel& p, uint8_t data) {
+        using ::android::os::ParcelableHolder;
+        using ::android::Parcelable;
+        FUZZ_LOG() << "about to read ParcelableHolder using readParcelable with status";
+        Parcelable::Stability stability = Parcelable::Stability::STABILITY_LOCAL;
+        if ( (data & 1) == 1 ) {
+            stability = Parcelable::Stability::STABILITY_VINTF;
+        }
+        ParcelableHolder t = ParcelableHolder(stability);
+        status_t status = p.readParcelable(&t);
+        FUZZ_LOG() << "ParcelableHolder status: " << status;
+    },
+    PARCEL_READ_WITH_STATUS(android::os::PersistableBundle, readParcelable),
 };
 // clang-format on
