@@ -199,6 +199,9 @@ class ScopedAStatus : public impl::ScopedAResource<AStatus*, void, AStatus_delet
    public:
     /**
      * Takes ownership of a.
+     *
+     * WARNING: this constructor is only expected to be used when reading a
+     *     status value. Use `ScopedAStatus::ok()` instead.
      */
     explicit ScopedAStatus(AStatus* a = nullptr) : ScopedAResource(a) {}
     ~ScopedAStatus() {}

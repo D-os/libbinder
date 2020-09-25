@@ -23,7 +23,8 @@ using ::android::status_t;
 using ::android::binder::Status;
 
 AStatus* AStatus_newOk() {
-    return new AStatus();
+    static AStatus status = AStatus();
+    return &status;
 }
 
 AStatus* AStatus_fromExceptionCode(binder_exception_t exception) {
@@ -78,7 +79,9 @@ void AStatus_deleteDescription(const char* description) {
 }
 
 void AStatus_delete(AStatus* status) {
-    delete status;
+    if (status != AStatus_newOk()) {
+        delete status;
+    }
 }
 
 binder_status_t PruneStatusT(status_t status) {
