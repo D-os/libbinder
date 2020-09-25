@@ -96,6 +96,11 @@ public:
      * service.
      */
     virtual bool isDeclared(const String16& name) = 0;
+
+    /**
+     * Get all instances of a service as declared in the VINTF manifest
+     */
+    virtual Vector<String16> getDeclaredInstances(const String16& interface) = 0;
 };
 
 sp<IServiceManager> defaultServiceManager();

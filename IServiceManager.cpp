@@ -74,6 +74,7 @@ public:
     Vector<String16> listServices(int dumpsysPriority) override;
     sp<IBinder> waitForService(const String16& name16) override;
     bool isDeclared(const String16& name) override;
+    Vector<String16> getDeclaredInstances(const String16& interface) override;
 
     // for legacy ABI
     const String16& getInterfaceDescriptor() const override {
@@ -371,6 +372,20 @@ bool ServiceManagerShim::isDeclared(const String16& name) {
         return false;
     }
     return declared;
+}
+
+Vector<String16> ServiceManagerShim::getDeclaredInstances(const String16& interface) {
+    std::vector<std::string> out;
+    if (!mTheRealServiceManager->getDeclaredInstances(String8(interface).c_str(), &out).isOk()) {
+        return {};
+    }
+
+    Vector<String16> res;
+    res.setCapacity(out.size());
+    for (const std::string& instance : out) {
+        res.push(String16(instance.c_str()));
+    }
+    return res;
 }
 
 } // namespace android

@@ -99,6 +99,14 @@ interface IServiceManager {
     boolean isDeclared(@utf8InCpp String name);
 
     /**
+     * Returns all declared instances for a particular interface.
+     *
+     * For instance, if 'android.foo.IFoo/foo' is declared, and 'android.foo.IFoo' is
+     * passed here, then ["foo"] would be returned.
+     */
+    @utf8InCpp String[] getDeclaredInstances(@utf8InCpp String iface);
+
+    /**
      * Request a callback when the number of clients of the service changes.
      * Used by LazyServiceRegistrar to dynamically stop services that have no clients.
      */
