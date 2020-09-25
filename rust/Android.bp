@@ -28,11 +28,8 @@ rust_library {
 rust_bindgen {
     name: "libbinder_ndk_bindgen",
     crate_name: "binder_ndk_bindgen",
-    wrapper_src: "sys/BinderBindings.h",
+    wrapper_src: "sys/BinderBindings.hpp",
     source_stem: "bindings",
-    cflags: [
-        "-x c++",
-    ],
     bindgen_flags: [
         // Unfortunately the only way to specify the rust_non_exhaustive enum
         // style for a type is to make it the default
