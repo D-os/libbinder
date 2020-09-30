@@ -73,11 +73,10 @@ void clean(const void* id, void* obj, void* cookie) {
 AIBinder::AIBinder(const AIBinder_Class* clazz) : mClazz(clazz) {}
 AIBinder::~AIBinder() {}
 
-bool AIBinder::associateClass(const AIBinder_Class* clazz) {
-    if (clazz == nullptr) return false;
+std::optional<bool> AIBinder::associateClassInternal(const AIBinder_Class* clazz,
+                                                     const String8& newDescriptor, bool set) {
+    std::lock_guard<std::mutex> lock(mClazzMutex);
     if (mClazz == clazz) return true;
-
-    String8 newDescriptor(clazz->getInterfaceDescriptor());
 
     if (mClazz != nullptr) {
         String8 currentDescriptor(mClazz->getInterfaceDescriptor());
@@ -97,6 +96,22 @@ bool AIBinder::associateClass(const AIBinder_Class* clazz) {
         return false;
     }
 
+    if (set) {
+        // if this is a local object, it's not one known to libbinder_ndk
+        mClazz = clazz;
+    }
+
+    return {};
+}
+
+bool AIBinder::associateClass(const AIBinder_Class* clazz) {
+    if (clazz == nullptr) return false;
+
+    String8 newDescriptor(clazz->getInterfaceDescriptor());
+
+    auto result = associateClassInternal(clazz, newDescriptor, false);
+    if (result.has_value()) return *result;
+
     CHECK(asABpBinder() != nullptr);  // ABBinder always has a descriptor
 
     String8 descriptor(getBinder()->getInterfaceDescriptor());
@@ -112,10 +127,7 @@ bool AIBinder::associateClass(const AIBinder_Class* clazz) {
         return false;
     }
 
-    // if this is a local object, it's not one known to libbinder_ndk
-    mClazz = clazz;
-
-    return true;
+    return associateClassInternal(clazz, newDescriptor, true).value_or(true);
 }
 
 ABBinder::ABBinder(const AIBinder_Class* clazz, void* userData)
