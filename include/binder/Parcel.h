@@ -86,6 +86,7 @@ public:
 
     // Writes the RPC header.
     status_t            writeInterfaceToken(const String16& interface);
+    status_t            writeInterfaceToken(const char16_t* str, size_t len);
 
     // Parses the RPC header, returning true if the interface name
     // in the header matches the expected interface from the caller.
