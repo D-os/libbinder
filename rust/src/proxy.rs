@@ -352,7 +352,10 @@ impl SerializeArray for Option<&SpIBinder> {}
 
 impl Deserialize for SpIBinder {
     fn deserialize(parcel: &Parcel) -> Result<SpIBinder> {
-        parcel.read_binder().transpose().unwrap()
+        parcel
+            .read_binder()
+            .transpose()
+            .unwrap_or(Err(StatusCode::UNEXPECTED_NULL))
     }
 }
 
