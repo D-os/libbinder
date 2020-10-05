@@ -99,6 +99,7 @@ std::optional<bool> AIBinder::associateClassInternal(const AIBinder_Class* clazz
     if (set) {
         // if this is a local object, it's not one known to libbinder_ndk
         mClazz = clazz;
+        return true;
     }
 
     return {};
@@ -127,7 +128,7 @@ bool AIBinder::associateClass(const AIBinder_Class* clazz) {
         return false;
     }
 
-    return associateClassInternal(clazz, newDescriptor, true).value_or(true);
+    return associateClassInternal(clazz, newDescriptor, true).value();
 }
 
 ABBinder::ABBinder(const AIBinder_Class* clazz, void* userData)
