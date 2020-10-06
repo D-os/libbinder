@@ -54,7 +54,7 @@ struct AIBinder : public virtual ::android::RefBase {
 
    private:
     std::optional<bool> associateClassInternal(const AIBinder_Class* clazz,
-                                               const ::android::String8& newDescriptor, bool set);
+                                               const ::android::String16& newDescriptor, bool set);
 
     // AIBinder instance is instance of this class for a local object. In order to transact on a
     // remote object, this also must be set for simplicity (although right now, only the
