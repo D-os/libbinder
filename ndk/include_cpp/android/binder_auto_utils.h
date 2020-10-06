@@ -44,9 +44,14 @@ namespace ndk {
 class SpAIBinder {
    public:
     /**
+     * Default constructor.
+     */
+    SpAIBinder() : mBinder(nullptr) {}
+
+    /**
      * Takes ownership of one strong refcount of binder.
      */
-    explicit SpAIBinder(AIBinder* binder = nullptr) : mBinder(binder) {}
+    explicit SpAIBinder(AIBinder* binder) : mBinder(binder) {}
 
     /**
      * Convenience operator for implicitly constructing an SpAIBinder from nullptr. This is not
