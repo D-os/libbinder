@@ -18,6 +18,7 @@
 #include "binder.h"
 #include "binder_ndk.h"
 #include "hwbinder.h"
+#include "random_parcel.h"
 #include "util.h"
 
 #include <android-base/logging.h>
@@ -26,29 +27,33 @@
 #include <cstdlib>
 #include <ctime>
 
+using android::fillRandomParcel;
+
+void fillRandomParcel(::android::hardware::Parcel* p, FuzzedDataProvider&& provider) {
+    std::vector<uint8_t> input = provider.ConsumeRemainingBytes<uint8_t>();
+    p->setData(input.data(), input.size());
+}
+
 template <typename P>
 void doFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
-            FuzzedDataProvider* provider) {
+            FuzzedDataProvider&& provider) {
     // Allow some majority of the bytes to be dedicated to telling us what to
     // do. The fixed value added here represents that we want to test doing a
     // lot of 'instructions' even on really short parcels.
-    size_t maxInstructions = 20 + (provider->remaining_bytes() * 2 / 3);
+    size_t maxInstructions = 20 + (provider.remaining_bytes() * 2 / 3);
     // but don't always use that many instructions. We want to allow the fuzzer
     // to explore large parcels with few instructions if it wants to.
-    std::vector<uint8_t> instructions = provider->ConsumeBytes<uint8_t>(
-            provider->ConsumeIntegralInRange<size_t>(0, maxInstructions));
-
-    // TODO: generate 'objects' data
-    std::vector<uint8_t> input = provider->ConsumeRemainingBytes<uint8_t>();
+    std::vector<uint8_t> instructions = provider.ConsumeBytes<uint8_t>(
+            provider.ConsumeIntegralInRange<size_t>(0, maxInstructions));
 
     P p;
-    p.setData(input.data(), input.size());
+    fillRandomParcel(&p, std::move(provider));
 
     // since we are only using a byte to index
     CHECK(reads.size() <= 255) << reads.size();
 
     FUZZ_LOG() << "backend: " << backend;
-    FUZZ_LOG() << "input: " << hexString(input);
+    FUZZ_LOG() << "input: " << hexString(p.data(), p.dataSize());
     FUZZ_LOG() << "instructions: " << hexString(instructions);
 
     for (size_t i = 0; i + 1 < instructions.size(); i += 2) {
@@ -75,20 +80,22 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     FuzzedDataProvider provider = FuzzedDataProvider(data, size);
 
-    const std::function<void(FuzzedDataProvider*)> fuzzBackend[3] = {
-            [](FuzzedDataProvider* provider) {
+    const std::function<void(FuzzedDataProvider &&)> fuzzBackend[3] = {
+            [](FuzzedDataProvider&& provider) {
                 doFuzz<::android::hardware::Parcel>("hwbinder", HWBINDER_PARCEL_READ_FUNCTIONS,
-                                                    provider);
+                                                    std::move(provider));
             },
-            [](FuzzedDataProvider* provider) {
-                doFuzz<::android::Parcel>("binder", BINDER_PARCEL_READ_FUNCTIONS, provider);
+            [](FuzzedDataProvider&& provider) {
+                doFuzz<::android::Parcel>("binder", BINDER_PARCEL_READ_FUNCTIONS,
+                                          std::move(provider));
             },
-            [](FuzzedDataProvider* provider) {
-                doFuzz<NdkParcelAdapter>("binder_ndk", BINDER_NDK_PARCEL_READ_FUNCTIONS, provider);
+            [](FuzzedDataProvider&& provider) {
+                doFuzz<NdkParcelAdapter>("binder_ndk", BINDER_NDK_PARCEL_READ_FUNCTIONS,
+                                         std::move(provider));
             },
     };
 
-    provider.PickValueInArray(fuzzBackend)(&provider);
+    provider.PickValueInArray(fuzzBackend)(std::move(provider));
 
     return 0;
 }

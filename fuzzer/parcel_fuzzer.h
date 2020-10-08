@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 template <typename P>
 using ParcelRead = std::function<void(const P& p, uint8_t data)>;
