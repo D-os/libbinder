@@ -21,15 +21,25 @@
 #include "util.h"
 
 #include <android-base/logging.h>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include <cstdlib>
 #include <ctime>
 
 template <typename P>
-void doFuzz(
-        const std::vector<ParcelRead<P>>& reads,
-        const std::vector<uint8_t>& input,
-        const std::vector<uint8_t>& instructions) {
+void doFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
+            FuzzedDataProvider* provider) {
+    // Allow some majority of the bytes to be dedicated to telling us what to
+    // do. The fixed value added here represents that we want to test doing a
+    // lot of 'instructions' even on really short parcels.
+    size_t maxInstructions = 20 + (provider->remaining_bytes() * 2 / 3);
+    // but don't always use that many instructions. We want to allow the fuzzer
+    // to explore large parcels with few instructions if it wants to.
+    std::vector<uint8_t> instructions = provider->ConsumeBytes<uint8_t>(
+            provider->ConsumeIntegralInRange<size_t>(0, maxInstructions));
+
+    // TODO: generate 'objects' data
+    std::vector<uint8_t> input = provider->ConsumeRemainingBytes<uint8_t>();
 
     P p;
     p.setData(input.data(), input.size());
@@ -37,7 +47,11 @@ void doFuzz(
     // since we are only using a byte to index
     CHECK(reads.size() <= 255) << reads.size();
 
-    for (size_t i = 0; i < instructions.size() - 1; i += 2) {
+    FUZZ_LOG() << "backend: " << backend;
+    FUZZ_LOG() << "input: " << hexString(input);
+    FUZZ_LOG() << "instructions: " << hexString(instructions);
+
+    for (size_t i = 0; i + 1 < instructions.size(); i += 2) {
         uint8_t a = instructions[i];
         uint8_t readIdx = a % reads.size();
 
@@ -53,58 +67,28 @@ void doFuzz(
     }
 }
 
-void fuzz(uint8_t options, const std::vector<uint8_t>& input, const std::vector<uint8_t>& instructions) {
-    uint8_t parcelType = options & 0x3;
-
-    switch (parcelType) {
-        case 0x0:
-            doFuzz<::android::hardware::Parcel>(HWBINDER_PARCEL_READ_FUNCTIONS, input,
-                                                instructions);
-            break;
-        case 0x1:
-            doFuzz<::android::Parcel>(BINDER_PARCEL_READ_FUNCTIONS, input, instructions);
-            break;
-        case 0x2:
-            doFuzz<NdkParcelAdapter>(BINDER_NDK_PARCEL_READ_FUNCTIONS, input, instructions);
-            break;
-        case 0x3:
-            /*reserved for future use*/
-            break;
-        default:
-            LOG_ALWAYS_FATAL("unknown parcel type %d", static_cast<int>(parcelType));
-    }
-}
-
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if (size <= 1) return 0;  // no use
 
     // avoid timeouts, see b/142617274, b/142473153
     if (size > 50000) return 0;
 
-    uint8_t options = *data;
-    data++;
-    size--;
+    FuzzedDataProvider provider = FuzzedDataProvider(data, size);
 
-    // TODO: generate 'objects' data
+    const std::function<void(FuzzedDataProvider*)> fuzzBackend[3] = {
+            [](FuzzedDataProvider* provider) {
+                doFuzz<::android::hardware::Parcel>("hwbinder", HWBINDER_PARCEL_READ_FUNCTIONS,
+                                                    provider);
+            },
+            [](FuzzedDataProvider* provider) {
+                doFuzz<::android::Parcel>("binder", BINDER_PARCEL_READ_FUNCTIONS, provider);
+            },
+            [](FuzzedDataProvider* provider) {
+                doFuzz<NdkParcelAdapter>("binder_ndk", BINDER_NDK_PARCEL_READ_FUNCTIONS, provider);
+            },
+    };
 
-    // data to fill out parcel
-    size_t inputLen = size / 2;
-    std::vector<uint8_t> input(data, data + inputLen);
-    data += inputLen;
-    size -= inputLen;
+    provider.PickValueInArray(fuzzBackend)(&provider);
 
-    // data to use to determine what to do
-    size_t instructionLen = size;
-    std::vector<uint8_t> instructions(data, data + instructionLen);
-    data += instructionLen;
-    size -= instructionLen;
-
-    CHECK(size == 0) << "size: " << size;
-
-    FUZZ_LOG() << "options: " << (int)options << " inputLen: " << inputLen << " instructionLen: " << instructionLen;
-    FUZZ_LOG() << "input: " << hexString(input);
-    FUZZ_LOG() << "instructions: " << hexString(instructions);
-
-    fuzz(options, input, instructions);
     return 0;
 }
