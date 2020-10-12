@@ -12,6 +12,8 @@ cc_fuzz {
         "binder_ndk.cpp",
         "hwbinder.cpp",
         "main.cpp",
+        "random_fd.cpp",
+        "random_parcel.cpp",
         "util.cpp",
     ],
     static_libs: [

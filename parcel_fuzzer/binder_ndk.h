@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <android/binder_auto_utils.h>
 #include <vector>
@@ -31,6 +32,9 @@ public:
     const AParcel* aParcel() const { return mParcel.get(); }
     AParcel* aParcel() { return mParcel.get(); }
 
+    android::Parcel* parcel() { return aParcel()->get(); }
+
+    const uint8_t* data() const { return aParcel()->get()->data(); }
     size_t dataSize() const { return aParcel()->get()->dataSize(); }
     size_t dataAvail() const { return aParcel()->get()->dataAvail(); }
     size_t dataPosition() const { return aParcel()->get()->dataPosition(); }

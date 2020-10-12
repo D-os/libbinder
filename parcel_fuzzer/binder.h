@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
-#include <hwbinder/Parcel.h>
+#include <binder/Parcel.h>
 #include <vector>
 
 #include "parcel_fuzzer.h"
 
-extern std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTIONS;
+extern std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS;

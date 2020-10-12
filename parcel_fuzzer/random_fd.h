@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,5 +14,14 @@
  * limitations under the License.
  */
 
-template <typename P>
-using ParcelRead = std::function<void(const P& p, uint8_t data)>;
+#pragma once
+
+#include <fuzzer/FuzzedDataProvider.h>
+
+namespace android {
+
+// ownership to callee, always valid or aborts
+// get a random FD for use in fuzzing, of a few different specific types
+int getRandomFd(FuzzedDataProvider* provider);
+
+} // namespace android
