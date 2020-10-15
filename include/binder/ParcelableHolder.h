@@ -103,7 +103,7 @@ public:
         return std::shared_ptr<T>(mParcelable, reinterpret_cast<T*>(mParcelable.get()));
     }
 
-    Stability getStability() const override { return mStability; };
+    Stability getStability() const override { return mStability; }
 
     inline bool operator!=(const ParcelableHolder& rhs) const {
         return std::tie(mParcelable, mParcelPtr, mStability) !=
