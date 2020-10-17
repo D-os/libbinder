@@ -18,10 +18,10 @@
 #include "binder.h"
 #include "binder_ndk.h"
 #include "hwbinder.h"
-#include "random_parcel.h"
 #include "util.h"
 
 #include <android-base/logging.h>
+#include <fuzzbinder/random_parcel.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include <cstdlib>
@@ -30,8 +30,13 @@
 using android::fillRandomParcel;
 
 void fillRandomParcel(::android::hardware::Parcel* p, FuzzedDataProvider&& provider) {
+    // TODO: functionality to create random parcels for libhwbinder parcels
     std::vector<uint8_t> input = provider.ConsumeRemainingBytes<uint8_t>();
     p->setData(input.data(), input.size());
+}
+static void fillRandomParcel(NdkParcelAdapter* p, FuzzedDataProvider&& provider) {
+    // fill underlying parcel using functions to fill random libbinder parcel
+    fillRandomParcel(p->parcel(), std::move(provider));
 }
 
 template <typename P>
