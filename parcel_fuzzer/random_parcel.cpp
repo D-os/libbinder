@@ -14,19 +14,14 @@
  * limitations under the License.
  */
 
-#include "random_parcel.h"
-
-#include "random_fd.h"
+#include <fuzzbinder/random_parcel.h>
 
 #include <android-base/logging.h>
 #include <binder/IServiceManager.h>
+#include <fuzzbinder/random_fd.h>
 #include <utils/String16.h>
 
 namespace android {
-
-void fillRandomParcel(NdkParcelAdapter* p, FuzzedDataProvider&& provider) {
-    fillRandomParcel(p->parcel(), std::move(provider));
-}
 
 class NamedBinder : public BBinder {
 public:

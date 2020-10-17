@@ -18,6 +18,7 @@ cc_fuzz {
     ],
     static_libs: [
         "libbase",
+        "libbinder_random_parcel",
         "libcgrouprc",
         "libcgrouprc_format",
         "libcutils",
@@ -46,4 +47,21 @@ cc_fuzz {
     // for debugging a failure. If you are trying to diagnose how a crash was
     // produced, you may find uncommenting the below line very useful.
     // cflags: ["-DENABLE_LOG_FUZZ"],
+}
+
+cc_library_static {
+    name: "libbinder_random_parcel",
+    host_supported: true,
+    srcs: [
+        "random_fd.cpp",
+        "random_parcel.cpp",
+    ],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "libcutils",
+        "libutils",
+    ],
+    local_include_dirs: ["include_random_parcel"],
+    export_include_dirs: ["include_random_parcel"],
 }
