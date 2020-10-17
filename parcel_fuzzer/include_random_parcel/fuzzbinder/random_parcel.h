@@ -16,12 +16,9 @@
 
 #pragma once
 
-#include "binder_ndk.h"
-
 #include <binder/Parcel.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 namespace android {
 void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider);
-void fillRandomParcel(NdkParcelAdapter* p, FuzzedDataProvider&& provider);
 } // namespace android

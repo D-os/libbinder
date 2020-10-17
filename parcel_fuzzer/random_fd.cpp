@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "random_fd.h"
+#include <fuzzbinder/random_fd.h>
 
 #include <fcntl.h>
 
