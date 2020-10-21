@@ -59,7 +59,6 @@ public:
 
     template <typename T>
     bool setParcelable(std::shared_ptr<T> p) {
-        std::lock_guard<std::mutex> l(mMutex);
         static_assert(std::is_base_of<Parcelable, T>::value, "T must be derived from Parcelable");
         if (p && this->getStability() > p->getStability()) {
             return false;
@@ -73,7 +72,6 @@ public:
     template <typename T>
     std::shared_ptr<T> getParcelable() const {
         static_assert(std::is_base_of<Parcelable, T>::value, "T must be derived from Parcelable");
-        std::lock_guard<std::mutex> l(mMutex);
         const std::string& parcelableDesc = T::getParcelableDescriptor();
         if (!this->mParcelPtr) {
             if (!this->mParcelable || !this->mParcelableName) {
@@ -135,7 +133,6 @@ private:
     mutable std::optional<std::string> mParcelableName;
     mutable std::unique_ptr<Parcel> mParcelPtr;
     Stability mStability;
-    mutable std::mutex mMutex;
 };
 } // namespace os
 } // namespace android
