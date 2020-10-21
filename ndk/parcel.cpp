@@ -647,4 +647,22 @@ bool AParcel_getAllowFds(const AParcel* parcel) {
     return parcel->get()->allowFds();
 }
 
+binder_status_t AParcel_reset(AParcel* parcel) {
+    parcel->get()->freeData();
+    return STATUS_OK;
+}
+
+int32_t AParcel_getDataSize(const AParcel* parcel) {
+    return parcel->get()->dataSize();
+}
+
+binder_status_t AParcel_appendFrom(const AParcel* from, AParcel* to, int32_t start, int32_t size) {
+    status_t status = to->get()->appendFrom(from->get(), start, size);
+    return PruneStatusT(status);
+}
+
+AParcel* AParcel_create() {
+    return new AParcel(nullptr);
+}
+
 // @END

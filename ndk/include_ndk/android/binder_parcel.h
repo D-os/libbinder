@@ -1120,6 +1120,53 @@ binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
 // @END-PRIMITIVE-READ-WRITE
 
 #endif  //__ANDROID_API__ >= 29
+#if __ANDROID_API__ >= 31
+/**
+ * Reset the parcel to the initial status.
+ *
+ * Available since API level 31.
+ *
+ * \param parcel The parcel of which to be reset.
+ *
+ * \return STATUS_OK on success.
+ */
+binder_status_t AParcel_reset(AParcel* parcel) __INTRODUCED_IN(31);
+
+/**
+ * Gets the size of the parcel.
+ *
+ * Available since API level 31.
+ *
+ * \param parcel The parcel of which to get the size.
+ *
+ * \return The size of the parcel.
+ */
+int32_t AParcel_getDataSize(const AParcel* parcel) __INTRODUCED_IN(31);
+
+/**
+ * Copy the data of a parcel to other parcel.
+ *
+ * Available since API level 31.
+ *
+ * \param from The source
+ * \param to The detination
+ * \param start The position where the copied data starts.
+ * \param size The amount of data which will be copied.
+ *
+ * \return STATUS_OK on success.
+ */
+binder_status_t AParcel_appendFrom(const AParcel* from, AParcel* to, int32_t start, int32_t size)
+        __INTRODUCED_IN(31);
+
+/**
+ * Creates a parcel.
+ *
+ * Available since API level 31.
+ *
+ * \return A parcel which is not related to any IBinder objects.
+ */
+AParcel* AParcel_create() __INTRODUCED_IN(31);
+#endif  //__ANDROID_API__ >= 31
 __END_DECLS
 
 /** @} */
