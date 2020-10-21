@@ -50,7 +50,6 @@ class AParcelableHolder {
     virtual ~AParcelableHolder() = default;
 
     binder_status_t writeToParcel(AParcel* parcel) const {
-        std::lock_guard<std::mutex> l(mMutex);
         RETURN_ON_FAILURE(AParcel_writeInt32(parcel, static_cast<int32_t>(this->mStability)));
         RETURN_ON_FAILURE(AParcel_writeInt32(parcel, AParcel_getDataSize(this->mParcel.get())));
         RETURN_ON_FAILURE(AParcel_appendFrom(this->mParcel.get(), parcel, 0,
@@ -59,8 +58,6 @@ class AParcelableHolder {
     }
 
     binder_status_t readFromParcel(const AParcel* parcel) {
-        std::lock_guard<std::mutex> l(mMutex);
-
         AParcel_reset(mParcel.get());
 
         RETURN_ON_FAILURE(AParcel_readInt32(parcel, &this->mStability));
@@ -86,7 +83,6 @@ class AParcelableHolder {
 
     template <typename T>
     bool setParcelable(T* p) {
-        std::lock_guard<std::mutex> l(mMutex);
         if (p && this->mStability > T::_aidl_stability) {
             return false;
         }
@@ -98,7 +94,6 @@ class AParcelableHolder {
 
     template <typename T>
     std::unique_ptr<T> getParcelable() const {
-        std::lock_guard<std::mutex> l(mMutex);
         const std::string parcelableDesc(T::descriptor);
         AParcel_setDataPosition(mParcel.get(), 0);
         if (AParcel_getDataSize(mParcel.get()) == 0) {
@@ -119,7 +114,6 @@ class AParcelableHolder {
 
    private:
     mutable ndk::ScopedAParcel mParcel;
-    mutable std::mutex mMutex;
     parcelable_stability_t mStability;
 };
 
