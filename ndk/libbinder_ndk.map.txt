@@ -120,6 +120,11 @@ LIBBINDER_NDK31 { # introduced=31
     AServiceManager_isDeclared; # apex llndk
     AServiceManager_registerLazyService; # llndk
     AServiceManager_waitForService; # apex llndk
+
+    AParcel_reset;
+    AParcel_getDataSize;
+    AParcel_appendFrom;
+    AParcel_create;
 };
 
 LIBBINDER_NDK_PLATFORM {
