@@ -49,7 +49,7 @@ MemoryHeapBase::MemoryHeapBase(size_t size, uint32_t flags, char const * name)
     int fd = ashmem_create_region(name == nullptr ? "MemoryHeapBase" : name, size);
     ALOGE_IF(fd<0, "error creating ashmem region: %s", strerror(errno));
     if (fd >= 0) {
-        if (mapfd(fd, size) == NO_ERROR) {
+        if (mapfd(fd, true, size) == NO_ERROR) {
             if (flags & READ_ONLY) {
                 ashmem_set_prot_region(fd, PROT_READ);
             }
@@ -70,7 +70,7 @@ MemoryHeapBase::MemoryHeapBase(const char* device, size_t size, uint32_t flags)
     if (fd >= 0) {
         const size_t pagesize = getpagesize();
         size = ((size + pagesize-1) & ~(pagesize-1));
-        if (mapfd(fd, size) == NO_ERROR) {
+        if (mapfd(fd, false, size) == NO_ERROR) {
             mDevice = device;
         }
     }
@@ -82,7 +82,7 @@ MemoryHeapBase::MemoryHeapBase(int fd, size_t size, uint32_t flags, off_t offset
 {
     const size_t pagesize = getpagesize();
     size = ((size + pagesize-1) & ~(pagesize-1));
-    mapfd(fcntl(fd, F_DUPFD_CLOEXEC, 0), size, offset);
+    mapfd(fcntl(fd, F_DUPFD_CLOEXEC, 0), false, size, offset);
 }
 
 status_t MemoryHeapBase::init(int fd, void *base, size_t size, int flags, const char* device)
@@ -98,7 +98,7 @@ status_t MemoryHeapBase::init(int fd, void *base, size_t size, int flags, const 
     return NO_ERROR;
 }
 
-status_t MemoryHeapBase::mapfd(int fd, size_t size, off_t offset)
+status_t MemoryHeapBase::mapfd(int fd, bool writeableByCaller, size_t size, off_t offset)
 {
     if (size == 0) {
         // try to figure out the size automatically
@@ -116,8 +116,12 @@ status_t MemoryHeapBase::mapfd(int fd, size_t size, off_t offset)
     }
 
     if ((mFlags & DONT_MAP_LOCALLY) == 0) {
+        int prot = PROT_READ;
+        if (writeableByCaller || (mFlags & READ_ONLY) == 0) {
+            prot |= PROT_WRITE;
+        }
         void* base = (uint8_t*)mmap(nullptr, size,
-                PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset);
+                prot, MAP_SHARED, fd, offset);
         if (base == MAP_FAILED) {
             ALOGE("mmap(fd=%d, size=%zu) failed (%s)",
                     fd, size, strerror(errno));
