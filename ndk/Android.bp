@@ -35,6 +35,8 @@ cc_library {
     defaults: ["libbinder_ndk_host_user"],
     host_supported: true,
 
+    llndk_stubs: "libbinder_ndk.llndk",
+
     export_include_dirs: [
         "include_cpp",
         "include_ndk",
@@ -120,7 +122,7 @@ ndk_library {
 }
 
 llndk_library {
-    name: "libbinder_ndk",
+    name: "libbinder_ndk.llndk",
     symbol_file: "libbinder_ndk.map.txt",
     export_include_dirs: [
         "include_cpp",
