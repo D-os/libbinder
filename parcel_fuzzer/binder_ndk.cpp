@@ -18,6 +18,7 @@
 #include "binder_ndk.h"
 
 #include <android/binder_parcel_utils.h>
+#include <android/binder_parcelable_utils.h>
 
 #include "util.h"
 
@@ -54,6 +55,25 @@ std::vector<ParcelRead<NdkParcelAdapter>> BINDER_NDK_PARCEL_READ_FUNCTIONS{
             binder_status_t status = AParcel_readStatusHeader(p.aParcel(), t.getR());
             FUZZ_LOG() << "read status header: " << status;
         },
+        [](const NdkParcelAdapter& p, uint8_t /*data*/) {
+            FUZZ_LOG() << "about to getDataSize the parcel";
+            AParcel_getDataSize(p.aParcel());
+            FUZZ_LOG() << "getDataSize done";
+        },
+        [](const NdkParcelAdapter& p, uint8_t data) {
+            FUZZ_LOG() << "about to read a ParcelableHolder";
+            ndk::AParcelableHolder ph {(data % 2 == 1) ? ndk::STABILITY_LOCAL : ndk::STABILITY_VINTF};
+            binder_status_t status = AParcel_readParcelable(p.aParcel(), &ph);
+            FUZZ_LOG() << "read the ParcelableHolder: " << status;
+        },
+        [](const NdkParcelAdapter& p, uint8_t data) {
+            FUZZ_LOG() << "about to appendFrom";
+            AParcel* parcel = AParcel_create();
+            binder_status_t status = AParcel_appendFrom(p.aParcel(), parcel, 0, data);
+            AParcel_delete(parcel);
+            FUZZ_LOG() << "appendFrom: " << status;
+        },
+
         PARCEL_READ(int32_t, AParcel_readInt32),
         PARCEL_READ(uint32_t, AParcel_readUint32),
         PARCEL_READ(int64_t, AParcel_readInt64),
