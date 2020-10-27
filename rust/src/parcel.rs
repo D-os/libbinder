@@ -100,6 +100,14 @@ impl Parcel {
 
 // Data serialization methods
 impl Parcel {
+    /// Data written to parcelable is zero'd before being deleted or reallocated.
+    pub fn mark_sensitive(&mut self) {
+        unsafe {
+            // Safety: guaranteed to have a parcel object, and this method never fails
+            sys::AParcel_markSensitive(self.as_native())
+        }
+    }
+
     /// Write a type that implements [`Serialize`] to the `Parcel`.
     pub fn write<S: Serialize + ?Sized>(&mut self, parcelable: &S) -> Result<()> {
         parcelable.serialize(self)

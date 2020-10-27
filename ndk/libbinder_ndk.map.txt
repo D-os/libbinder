@@ -121,15 +121,16 @@ LIBBINDER_NDK31 { # introduced=31
     AServiceManager_registerLazyService; # llndk
     AServiceManager_waitForService; # apex llndk
 
-    AParcel_reset;
-    AParcel_getDataSize;
     AParcel_appendFrom;
     AParcel_create;
+    AParcel_getDataSize;
+    AParcel_reset;
 };
 
 LIBBINDER_NDK_PLATFORM {
   global:
     AParcel_getAllowFds;
+    AParcel_markSensitive;
     extern "C++" {
         AIBinder_fromPlatformBinder*;
         AIBinder_toPlatformBinder*;

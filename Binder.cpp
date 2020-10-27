@@ -173,6 +173,10 @@ status_t BBinder::transact(
 {
     data.setDataPosition(0);
 
+    if (reply != nullptr && (flags & FLAG_CLEAR_BUF)) {
+        reply->markSensitive();
+    }
+
     status_t err = NO_ERROR;
     switch (code) {
         case PING_TRANSACTION:
