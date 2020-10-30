@@ -10,6 +10,11 @@ rust_library {
         "libbinder_ndk_sys",
     ],
     host_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        }
+    }
 }
 
 rust_library {
@@ -23,6 +28,11 @@ rust_library {
         "libbinder_ndk",
     ],
     host_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        }
+    }
 }
 
 rust_bindgen {
@@ -63,6 +73,9 @@ rust_bindgen {
                 // We want all the APIs to be available on the host.
                 "-D__ANDROID_API__=10000",
             ],
+        },
+        darwin: {
+            enabled: false,
         },
     },
 }
