@@ -17,9 +17,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <android/permission_manager.h>
 #include <binder/ActivityManager.h>
 #include <binder/IActivityManager.h>
 #include <binder/Parcel.h>
+#include <utils/Errors.h>
 
 namespace android {
 
@@ -103,6 +105,23 @@ public:
             return ActivityManager::PROCESS_STATE_UNKNOWN;
         }
         return reply.readInt32();
+    }
+
+    virtual status_t checkPermission(const String16& permission,
+                                    const pid_t pid,
+                                    const uid_t uid,
+                                    int32_t* outResult) {
+        Parcel data, reply;
+        data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
+        data.writeString16(permission);
+        data.writeInt32(pid);
+        data.writeInt32(uid);
+        status_t err = remote()->transact(CHECK_PERMISSION_TRANSACTION, data, &reply);
+        if (err != NO_ERROR || ((err = reply.readExceptionCode()) != NO_ERROR)) {
+            return err;
+        }
+        *outResult = reply.readInt32();
+        return NO_ERROR;
     }
 };
 
