@@ -313,7 +313,8 @@ class ScopedFileDescriptor : public impl::ScopedAResource<int, int, close, -1> {
     /**
      * Takes ownership of a.
      */
-    explicit ScopedFileDescriptor(int a = -1) : ScopedAResource(a) {}
+    ScopedFileDescriptor() : ScopedFileDescriptor(-1) {}
+    explicit ScopedFileDescriptor(int a) : ScopedAResource(a) {}
     ~ScopedFileDescriptor() {}
     ScopedFileDescriptor(ScopedFileDescriptor&&) = default;
     ScopedFileDescriptor& operator=(ScopedFileDescriptor&&) = default;
