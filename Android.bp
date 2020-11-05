@@ -31,6 +31,11 @@ cc_library_headers {
         "libutils_headers",
     ],
     min_sdk_version: "29",
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
 }
 
 // These interfaces are android-specific implementation unrelated to binder
@@ -121,6 +126,9 @@ cc_library {
         },
         vendor: {
             exclude_srcs: libbinder_device_interface_sources,
+        },
+        darwin: {
+            enabled: false,
         },
     },
 
