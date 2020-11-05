@@ -26,6 +26,11 @@ cc_defaults {
         "libutils",
         "libbase",
     ],
+    target: {
+        darwin: {
+            enabled: false,
+        }
+    }
 }
 
 cc_fuzz {
