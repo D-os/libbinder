@@ -1068,6 +1068,7 @@ status_t Parcel::writeString8(const char* str, size_t len)
 {
     if (str == nullptr) return writeInt32(-1);
 
+    // NOTE: Keep this logic in sync with android_os_Parcel.cpp
     status_t err = writeInt32(len);
     if (err == NO_ERROR) {
         uint8_t* data = (uint8_t*)writeInplace(len+sizeof(char));
@@ -1108,6 +1109,7 @@ status_t Parcel::writeString16(const char16_t* str, size_t len)
 {
     if (str == nullptr) return writeInt32(-1);
 
+    // NOTE: Keep this logic in sync with android_os_Parcel.cpp
     status_t err = writeInt32(len);
     if (err == NO_ERROR) {
         len *= sizeof(char16_t);
