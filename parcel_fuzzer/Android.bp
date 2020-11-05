@@ -52,6 +52,11 @@ cc_fuzz {
 cc_library_static {
     name: "libbinder_random_parcel",
     host_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        }
+    },
     srcs: [
         "random_fd.cpp",
         "random_parcel.cpp",
