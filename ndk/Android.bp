@@ -26,6 +26,9 @@ cc_defaults {
                 "-D__ANDROID_API__=10000",
             ],
         },
+        darwin: {
+            enabled: false,
+        },
     },
 }
 
@@ -83,6 +86,9 @@ cc_library {
         },
         linux: {
             version_script: "libbinder_ndk.map.txt",
+        },
+        darwin: {
+            enabled: false,
         },
     },
     stubs: {
