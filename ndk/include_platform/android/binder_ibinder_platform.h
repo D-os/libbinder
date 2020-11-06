@@ -16,39 +16,32 @@
 
 #pragma once
 
-// binder_context.h used to be part of this header and is included for backwards
-// compatibility.
-#include <android/binder_context.h>
-
-#if !defined(__ANDROID_APEX__) && !defined(__ANDROID_VNDK__)
-
 #include <android/binder_ibinder.h>
-#include <binder/IBinder.h>
+
+__BEGIN_DECLS
 
 /**
- * Get libbinder version of binder from AIBinder.
+ * Makes calls to AIBinder_getCallingSid work if the kernel supports it. This
+ * must be called on a local binder server before it is sent out to any othe
+ * process. If this is a remote binder, it will abort. If the kernel doesn't
+ * support this feature, you'll always get null from AIBinder_getCallingSid.
  *
- * WARNING: function calls to a local object on the other side of this function
- * will parcel. When converting between binders, keep in mind it is not as
- * efficient as a direct function call.
- *
- * \param binder binder with ownership retained by the client
- * \return platform binder object
+ * \param binder local server binder to request security contexts on
  */
-android::sp<android::IBinder> AIBinder_toPlatformBinder(AIBinder* binder);
+__attribute__((weak)) void AIBinder_setRequestingSid(AIBinder* binder, bool requestingSid)
+        __INTRODUCED_IN(31);
 
 /**
- * Get libbinder_ndk version of binder from platform binder.
+ * Returns the selinux context of the callee.
  *
- * WARNING: function calls to a local object on the other side of this function
- * will parcel. When converting between binders, keep in mind it is not as
- * efficient as a direct function call.
+ * In order for this to work, the following conditions must be met:
+ * - The kernel must be new enough to support this feature.
+ * - The server must have called AIBinder_setRequestingSid.
+ * - The callee must be a remote process.
  *
- * \param binder platform binder which may be from anywhere (doesn't have to be
- * created with libbinder_ndK)
- * \return binder with one reference count of ownership given to the client. See
- * AIBinder_decStrong
+ * \return security context or null if unavailable. The lifetime of this context
+ * is the lifetime of the transaction.
  */
-AIBinder* AIBinder_fromPlatformBinder(const android::sp<android::IBinder>& binder);
+__attribute__((weak, warn_unused_result)) const char* AIBinder_getCallingSid() __INTRODUCED_IN(31);
 
-#endif
+__END_DECLS
