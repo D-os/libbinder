@@ -297,8 +297,6 @@ public:
     status_t            readFloat(float *pArg) const;
     double              readDouble() const;
     status_t            readDouble(double *pArg) const;
-    intptr_t            readIntPtr() const;
-    status_t            readIntPtr(intptr_t *pArg) const;
     bool                readBool() const;
     status_t            readBool(bool *pArg) const;
     char16_t            readChar() const;
