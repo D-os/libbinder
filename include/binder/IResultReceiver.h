@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-//
-#ifndef ANDROID_IRESULT_RECEIVER_H
-#define ANDROID_IRESULT_RECEIVER_H
+#pragma once
 
 #include <binder/IInterface.h>
 
@@ -51,6 +49,3 @@ public:
 // ----------------------------------------------------------------------
 
 } // namespace android
-
-#endif // ANDROID_IRESULT_RECEIVER_H
-

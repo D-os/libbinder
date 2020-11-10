@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PARCEL_H
-#define ANDROID_PARCEL_H
+#pragma once
 
 #include <map> // for legacy reasons
 #include <string>
@@ -1328,5 +1327,3 @@ inline TextOutput& operator<<(TextOutput& to, const Parcel& parcel)
 } // namespace android
 
 // ---------------------------------------------------------------------------
-
-#endif // ANDROID_PARCEL_H
