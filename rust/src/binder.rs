@@ -33,8 +33,7 @@ pub type TransactionCode = u32;
 
 /// Additional operation flags.
 ///
-/// Can be either 0 for a normal RPC, or [`IBinder::FLAG_ONEWAY`] for a
-/// one-way RPC.
+/// `IBinder::FLAG_*` values.
 pub type TransactionFlags = u32;
 
 /// Super-trait for Binder interfaces.
@@ -91,6 +90,8 @@ pub trait IBinder {
 
     /// Corresponds to TF_ONE_WAY -- an asynchronous call.
     const FLAG_ONEWAY: TransactionFlags = sys::FLAG_ONEWAY;
+    /// Corresponds to TF_CLEAR_BUF -- clear transaction buffers after call is made.
+    const FLAG_CLEAR_BUF: TransactionFlags = sys::FLAG_CLEAR_BUF;
 
     /// Is this object still alive?
     fn is_binder_alive(&self) -> bool;
