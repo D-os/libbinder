@@ -114,6 +114,7 @@ cc_library {
         "TextOutput.cpp",
         "Utils.cpp",
         ":libbinder_aidl",
+        ":activity_manager_procstate_aidl",
     ],
 
     target: {
