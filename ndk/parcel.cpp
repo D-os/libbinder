@@ -226,6 +226,10 @@ int32_t AParcel_getDataPosition(const AParcel* parcel) {
     return parcel->get()->dataPosition();
 }
 
+void AParcel_markSensitive(const AParcel* parcel) {
+    return parcel->get()->markSensitive();
+}
+
 binder_status_t AParcel_writeStrongBinder(AParcel* parcel, AIBinder* binder) {
     sp<IBinder> writeBinder = binder != nullptr ? binder->getBinder() : nullptr;
     return parcel->get()->writeStrongBinder(writeBinder);

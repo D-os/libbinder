@@ -64,6 +64,10 @@ public:
         // Corresponds to TF_ONE_WAY -- an asynchronous call.
         FLAG_ONEWAY             = 0x00000001,
 
+        // Corresponds to TF_CLEAR_BUF -- clear transaction buffers after call
+        // is made
+        FLAG_CLEAR_BUF          = 0x00000020,
+
         // Private userspace flag for transaction which is being requested from
         // a vendor context.
         FLAG_PRIVATE_VENDOR     = 0x10000000,
