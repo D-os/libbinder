@@ -26,6 +26,22 @@
 
 namespace android {
 
+std::string hexString(const void* bytes, size_t len) {
+    if (bytes == nullptr) return "<null>";
+
+    const uint8_t* bytes8 = static_cast<const uint8_t*>(bytes);
+    const char chars[] = "0123456789abcdef";
+    std::string result;
+    result.resize(len * 2);
+
+    for (size_t i = 0; i < len; i++) {
+        result[2 * i] = chars[bytes8[i] >> 4];
+        result[2 * i + 1] = chars[bytes8[i] & 0xf];
+    }
+
+    return result;
+}
+
 // ---------------------------------------------------------------------
 
 static const char indentStr[] =
