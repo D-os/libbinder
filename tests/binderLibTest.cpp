@@ -402,6 +402,14 @@ TEST_F(BinderLibTest, NopTransaction) {
     EXPECT_EQ(NO_ERROR, ret);
 }
 
+TEST_F(BinderLibTest, NopTransactionClear) {
+    status_t ret;
+    Parcel data, reply;
+    // make sure it accepts the transaction flag
+    ret = m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION, data, &reply, TF_CLEAR_BUF);
+    EXPECT_EQ(NO_ERROR, ret);
+}
+
 TEST_F(BinderLibTest, Freeze) {
     status_t ret;
     Parcel data, reply, replypid;
