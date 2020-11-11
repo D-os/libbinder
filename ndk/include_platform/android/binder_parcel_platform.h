@@ -33,4 +33,15 @@ __BEGIN_DECLS
  */
 bool AParcel_getAllowFds(const AParcel*);
 
+/**
+ * Data written to the parcel will be zero'd before being deleted or realloced.
+ *
+ * The main use of this is marking a parcel that will be used in a transaction
+ * with FLAG_CLEAR_BUF. When FLAG_CLEAR_BUF is used, the reply parcel will
+ * automatically be marked as sensitive when it is created.
+ *
+ * \param parcel The parcel to clear associated data from.
+ */
+void AParcel_markSensitive(const AParcel* parcel);
+
 __END_DECLS

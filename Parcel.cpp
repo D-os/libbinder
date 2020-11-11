@@ -49,6 +49,7 @@
 
 #include <private/binder/binder_module.h>
 #include "Static.h"
+#include "Utils.h"
 
 #define LOG_REFS(...)
 //#define LOG_REFS(...) ALOG(LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -500,6 +501,11 @@ bool Parcel::hasFileDescriptors() const
         scanForFds();
     }
     return mHasFds;
+}
+
+void Parcel::markSensitive() const
+{
+    mDeallocZero = true;
 }
 
 void Parcel::updateWorkSourceRequestHeaderPosition() const {
@@ -2627,6 +2633,9 @@ void Parcel::freeDataNoInit()
             LOG_ALLOC("Parcel %p: freeing with %zu capacity", this, mDataCapacity);
             gParcelGlobalAllocSize -= mDataCapacity;
             gParcelGlobalAllocCount--;
+            if (mDeallocZero) {
+                zeroMemory(mData, mDataSize);
+            }
             free(mData);
         }
         if (mObjects) free(mObjects);
@@ -2649,6 +2658,21 @@ status_t Parcel::growData(size_t len)
             : continueWrite(std::max(newSize, (size_t) 128));
 }
 
+static uint8_t* reallocZeroFree(uint8_t* data, size_t oldCapacity, size_t newCapacity, bool zero) {
+    if (!zero) {
+        return (uint8_t*)realloc(data, newCapacity);
+    }
+    uint8_t* newData = (uint8_t*)malloc(newCapacity);
+    if (!newData) {
+        return nullptr;
+    }
+
+    memcpy(newData, data, std::min(oldCapacity, newCapacity));
+    zeroMemory(data, oldCapacity);
+    free(data);
+    return newData;
+}
+
 status_t Parcel::restartWrite(size_t desired)
 {
     if (desired > INT32_MAX) {
@@ -2662,7 +2686,7 @@ status_t Parcel::restartWrite(size_t desired)
         return continueWrite(desired);
     }
 
-    uint8_t* data = (uint8_t*)realloc(mData, desired);
+    uint8_t* data = reallocZeroFree(mData, mDataCapacity, desired, mDeallocZero);
     if (!data && desired > mDataCapacity) {
         mError = NO_MEMORY;
         return NO_MEMORY;
@@ -2813,7 +2837,7 @@ status_t Parcel::continueWrite(size_t desired)
 
         // We own the data, so we can just do a realloc().
         if (desired > mDataCapacity) {
-            uint8_t* data = (uint8_t*)realloc(mData, desired);
+            uint8_t* data = reallocZeroFree(mData, mDataCapacity, desired, mDeallocZero);
             if (data) {
                 LOG_ALLOC("Parcel %p: continue from %zu to %zu capacity", this, mDataCapacity,
                         desired);
@@ -2881,6 +2905,7 @@ void Parcel::initState()
     mHasFds = false;
     mFdsKnown = true;
     mAllowFds = true;
+    mDeallocZero = false;
     mOwner = nullptr;
     mOpenAshmemSize = 0;
     mWorkSourceRequestHeaderPosition = 0;
