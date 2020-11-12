@@ -488,24 +488,21 @@ public:
     // uid.
     uid_t               readCallingWorkSourceUid() const;
 
+    void                print(TextOutput& to, uint32_t flags = 0) const;
+
 private:
     typedef void        (*release_func)(Parcel* parcel,
                                         const uint8_t* data, size_t dataSize,
-                                        const binder_size_t* objects, size_t objectsSize,
-                                        void* cookie);
-                        
+                                        const binder_size_t* objects, size_t objectsSize);
+
     uintptr_t           ipcData() const;
     size_t              ipcDataSize() const;
     uintptr_t           ipcObjects() const;
     size_t              ipcObjectsCount() const;
     void                ipcSetDataReference(const uint8_t* data, size_t dataSize,
                                             const binder_size_t* objects, size_t objectsCount,
-                                            release_func relFunc, void* relCookie);
-    
-public:
-    void                print(TextOutput& to, uint32_t flags = 0) const;
+                                            release_func relFunc);
 
-private:
                         Parcel(const Parcel& o);
     Parcel&             operator=(const Parcel& o);
     
@@ -612,7 +609,9 @@ private:
     mutable bool        mDeallocZero;
 
     release_func        mOwner;
-    void*               mOwnerCookie;
+
+    // TODO(167966510): reserved for binder/version/stability
+    void*               mReserved = reinterpret_cast<void*>(0xAAAAAAAA);
 
     class Blob {
     public:
