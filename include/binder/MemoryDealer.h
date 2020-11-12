@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_MEMORY_DEALER_H
-#define ANDROID_MEMORY_DEALER_H
-
+#pragma once
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -60,5 +58,3 @@ private:
 
 // ----------------------------------------------------------------------------
 } // namespace android
-
-#endif // ANDROID_MEMORY_DEALER_H

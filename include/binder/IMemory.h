@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_IMEMORY_H
-#define ANDROID_IMEMORY_H
+#pragma once
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -124,5 +123,3 @@ protected:
 // ----------------------------------------------------------------------------
 
 } // namespace android
-
-#endif // ANDROID_IMEMORY_H

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_TEXTOUTPUT_H
-#define ANDROID_TEXTOUTPUT_H
+#pragma once
 
 #include <utils/Errors.h>
 #include <utils/String8.h>
@@ -206,5 +205,3 @@ inline bool HexDump::carrayStyle() const { return mCArrayStyle; }
 
 // ---------------------------------------------------------------------------
 } // namespace android
-
-#endif // ANDROID_TEXTOUTPUT_H

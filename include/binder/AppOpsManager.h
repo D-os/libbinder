@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_APP_OPS_MANAGER_H
-#define ANDROID_APP_OPS_MANAGER_H
+#pragma once
 
 #include <binder/IAppOpsService.h>
 
@@ -179,5 +178,3 @@ private:
 } // namespace android
 
 // ---------------------------------------------------------------------------
-
-#endif // ANDROID_APP_OPS_MANAGER_H

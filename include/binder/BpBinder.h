@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_BPBINDER_H
-#define ANDROID_BPBINDER_H
+#pragma once
 
 #include <binder/IBinder.h>
 #include <utils/KeyedVector.h>
@@ -153,5 +152,3 @@ private:
 } // namespace android
 
 // ---------------------------------------------------------------------------
-
-#endif // ANDROID_BPBINDER_H
