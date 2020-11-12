@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-//
-#ifndef ANDROID_IAPP_OPS_SERVICE_H
-#define ANDROID_IAPP_OPS_SERVICE_H
+#pragma once
 
 #include <binder/IAppOpsCallback.h>
 #include <binder/IInterface.h>
@@ -90,5 +88,3 @@ public:
 // ----------------------------------------------------------------------
 
 } // namespace android
-
-#endif // ANDROID_IAPP_OPS_SERVICE_H

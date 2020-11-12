@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-//
-#ifndef ANDROID_ISHELL_CALLBACK_H
-#define ANDROID_ISHELL_CALLBACK_H
+#pragma once
 
 #include <binder/IInterface.h>
 
@@ -52,6 +50,3 @@ public:
 // ----------------------------------------------------------------------
 
 } // namespace android
-
-#endif // ANDROID_ISHELL_CALLBACK_H
-

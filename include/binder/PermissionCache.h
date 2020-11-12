@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef BINDER_PERMISSION_H
-#define BINDER_PERMISSION_H
+#pragma once
 
 #ifndef __ANDROID_VNDK__
 
@@ -82,5 +81,3 @@ public:
 #else // __ANDROID_VNDK__
 #error "This header is not visible to vendors"
 #endif // __ANDROID_VNDK__
-
-#endif /* BINDER_PERMISSION_H */

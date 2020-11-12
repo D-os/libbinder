@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-//
-#ifndef ANDROID_IUID_OBSERVER_H
-#define ANDROID_IUID_OBSERVER_H
+#pragma once
 
 #ifndef __ANDROID_VNDK__
 
@@ -64,5 +62,3 @@ public:
 #else // __ANDROID_VNDK__
 #error "This header is not visible to vendors"
 #endif // __ANDROID_VNDK__
-
-#endif // ANDROID_IUID_OBSERVER_H

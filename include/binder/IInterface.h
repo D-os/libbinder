@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-//
-#ifndef ANDROID_IINTERFACE_H
-#define ANDROID_IINTERFACE_H
+#pragma once
 
 #include <binder/Binder.h>
 
@@ -331,5 +329,3 @@ constexpr bool allowedManualInterface(const char* name) {
 
 } // namespace internal
 } // namespace android
-
-#endif // ANDROID_IINTERFACE_H
