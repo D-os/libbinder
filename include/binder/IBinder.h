@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_IBINDER_H
-#define ANDROID_IBINDER_H
+#pragma once
 
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
@@ -257,5 +256,3 @@ private:
 } // namespace android
 
 // ---------------------------------------------------------------------------
-
-#endif // ANDROID_IBINDER_H
