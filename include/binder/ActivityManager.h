@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_ACTIVITY_MANAGER_H
-#define ANDROID_ACTIVITY_MANAGER_H
+#pragma once
 
 #ifndef __ANDROID_VNDK__
 
@@ -94,5 +93,3 @@ private:
 #else // __ANDROID_VNDK__
 #error "This header is not visible to vendors"
 #endif // __ANDROID_VNDK__
-
-#endif // ANDROID_ACTIVITY_MANAGER_H

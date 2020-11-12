@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PROCESS_INFO_SERVICE_H
-#define ANDROID_PROCESS_INFO_SERVICE_H
+#pragma once
 
 #ifndef __ANDROID_VNDK__
 
@@ -83,6 +82,3 @@ public:
 #else // __ANDROID_VNDK__
 #error "This header is not visible to vendors"
 #endif // __ANDROID_VNDK__
-
-#endif // ANDROID_PROCESS_INFO_SERVICE_H
-
