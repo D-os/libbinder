@@ -1914,17 +1914,6 @@ double Parcel::readDouble() const
 
 #endif
 
-status_t Parcel::readIntPtr(intptr_t *pArg) const
-{
-    return readAligned(pArg);
-}
-
-
-intptr_t Parcel::readIntPtr() const
-{
-    return readAligned<intptr_t>();
-}
-
 status_t Parcel::readBool(bool *pArg) const
 {
     int32_t tmp = 0;
