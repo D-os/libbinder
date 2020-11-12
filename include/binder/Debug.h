@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_BINDER_DEBUG_H
-#define ANDROID_BINDER_DEBUG_H
+#pragma once
 
 #include <stdint.h>
 #include <sys/cdefs.h>
@@ -45,5 +44,3 @@ __END_DECLS
 
 // ---------------------------------------------------------------------------
 } // namespace android
-
-#endif // ANDROID_BINDER_DEBUG_H
