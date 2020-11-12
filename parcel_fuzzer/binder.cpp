@@ -130,7 +130,6 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_OPT_STATUS(uint64_t, readUint64),
     PARCEL_READ_OPT_STATUS(float, readFloat),
     PARCEL_READ_OPT_STATUS(double, readDouble),
-    PARCEL_READ_OPT_STATUS(intptr_t, readIntPtr),
     PARCEL_READ_OPT_STATUS(bool, readBool),
     PARCEL_READ_OPT_STATUS(char16_t, readChar),
     PARCEL_READ_OPT_STATUS(int8_t, readByte),
