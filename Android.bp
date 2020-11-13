@@ -180,7 +180,6 @@ cc_library {
     ],
     tidy_checks_as_errors: [
         "*",
-        "-google-default-arguments",
         "-google-runtime-int",
     ],
 }
