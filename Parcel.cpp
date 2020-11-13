@@ -2498,7 +2498,7 @@ size_t Parcel::ipcObjectsCount() const
 }
 
 void Parcel::ipcSetDataReference(const uint8_t* data, size_t dataSize,
-    const binder_size_t* objects, size_t objectsCount, release_func relFunc, void* relCookie)
+    const binder_size_t* objects, size_t objectsCount, release_func relFunc)
 {
     binder_size_t minOffset = 0;
     freeDataNoInit();
@@ -2513,7 +2513,6 @@ void Parcel::ipcSetDataReference(const uint8_t* data, size_t dataSize,
     mNextObjectHint = 0;
     mObjectsSorted = false;
     mOwner = relFunc;
-    mOwnerCookie = relCookie;
     for (size_t i = 0; i < mObjectsSize; i++) {
         binder_size_t offset = mObjects[i];
         if (offset < minOffset) {
@@ -2614,7 +2613,7 @@ void Parcel::freeDataNoInit()
     if (mOwner) {
         LOG_ALLOC("Parcel %p: freeing other owner data", this);
         //ALOGI("Freeing data ref of %p (pid=%d)", this, getpid());
-        mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mOwnerCookie);
+        mOwner(this, mData, mDataSize, mObjects, mObjectsSize);
     } else {
         LOG_ALLOC("Parcel %p: freeing allocated data", this);
         releaseObjects();
@@ -2777,7 +2776,7 @@ status_t Parcel::continueWrite(size_t desired)
             memcpy(objects, mObjects, objectsSize*sizeof(binder_size_t));
         }
         //ALOGI("Freeing data ref of %p (pid=%d)", this, getpid());
-        mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mOwnerCookie);
+        mOwner(this, mData, mDataSize, mObjects, mObjectsSize);
         mOwner = nullptr;
 
         LOG_ALLOC("Parcel %p: taking ownership of %zu capacity", this, desired);
