@@ -39,13 +39,13 @@ typedef unsigned int binder_size_t;
 typedef unsigned long long binder_size_t;
 #endif
 
+struct flat_binder_object;
 
 // ---------------------------------------------------------------------------
 namespace android {
 
 template <typename T> class Flattenable;
 template <typename T> class LightFlattenable;
-struct flat_binder_object;
 class IBinder;
 class IPCThreadState;
 class ProcessState;
