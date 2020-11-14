@@ -44,22 +44,22 @@ public:
     android::status_t readFromParcel(const android::Parcel* parcel) override;
 
     inline bool operator!=(const ParcelFileDescriptor& rhs) const {
-        return mFd != rhs.mFd;
+        return mFd.get() != rhs.mFd.get();
     }
     inline bool operator<(const ParcelFileDescriptor& rhs) const {
-        return mFd < rhs.mFd;
+        return mFd.get() < rhs.mFd.get();
     }
     inline bool operator<=(const ParcelFileDescriptor& rhs) const {
-        return mFd <= rhs.mFd;
+        return mFd.get() <= rhs.mFd.get();
     }
     inline bool operator==(const ParcelFileDescriptor& rhs) const {
-        return mFd == rhs.mFd;
+        return mFd.get() == rhs.mFd.get();
     }
     inline bool operator>(const ParcelFileDescriptor& rhs) const {
-        return mFd > rhs.mFd;
+        return mFd.get() > rhs.mFd.get();
     }
     inline bool operator>=(const ParcelFileDescriptor& rhs) const {
-        return mFd >= rhs.mFd;
+        return mFd.get() >= rhs.mFd.get();
     }
 private:
     android::base::unique_fd mFd;
