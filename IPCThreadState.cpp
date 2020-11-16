@@ -135,7 +135,7 @@ static const void* printBinderTransactionData(TextOutput& out, const void* data)
         out << "target.ptr=" << btd->target.ptr;
     }
     out << " (cookie " << btd->cookie << ")" << endl
-        << "code=" << TypeCode(btd->code) << ", flags=" << (void*)(long)btd->flags << endl
+        << "code=" << TypeCode(btd->code) << ", flags=" << (void*)(uint64_t)btd->flags << endl
         << "data=" << btd->data.ptr.buffer << " (" << (void*)btd->data_size
         << " bytes)" << endl
         << "offsets=" << btd->data.ptr.offsets << " (" << (void*)btd->offsets_size
@@ -150,7 +150,7 @@ static const void* printReturnCommand(TextOutput& out, const void* _cmd)
     uint32_t code = (uint32_t)*cmd++;
     size_t cmdIndex = code & 0xff;
     if (code == BR_ERROR) {
-        out << "BR_ERROR: " << (void*)(long)(*cmd++) << endl;
+        out << "BR_ERROR: " << (void*)(uint64_t)(*cmd++) << endl;
         return cmd;
     } else if (cmdIndex >= N) {
         out << "Unknown reply: " << code << endl;
@@ -177,21 +177,21 @@ static const void* printReturnCommand(TextOutput& out, const void* _cmd)
         case BR_DECREFS: {
             const int32_t b = *cmd++;
             const int32_t c = *cmd++;
-            out << ": target=" << (void*)(long)b << " (cookie " << (void*)(long)c << ")";
+            out << ": target=" << (void*)(uint64_t)b << " (cookie " << (void*)(uint64_t)c << ")";
         } break;
 
         case BR_ATTEMPT_ACQUIRE: {
             const int32_t p = *cmd++;
             const int32_t b = *cmd++;
             const int32_t c = *cmd++;
-            out << ": target=" << (void*)(long)b << " (cookie " << (void*)(long)c
+            out << ": target=" << (void*)(uint64_t)b << " (cookie " << (void*)(uint64_t)c
                 << "), pri=" << p;
         } break;
 
         case BR_DEAD_BINDER:
         case BR_CLEAR_DEATH_NOTIFICATION_DONE: {
             const int32_t c = *cmd++;
-            out << ": death cookie " << (void*)(long)c;
+            out << ": death cookie " << (void*)(uint64_t)c;
         } break;
 
         default:
@@ -232,7 +232,7 @@ static const void* printCommand(TextOutput& out, const void* _cmd)
 
         case BC_FREE_BUFFER: {
             const int32_t buf = *cmd++;
-            out << ": buffer=" << (void*)(long)buf;
+            out << ": buffer=" << (void*)(uint64_t)buf;
         } break;
 
         case BC_INCREFS:
@@ -247,7 +247,7 @@ static const void* printCommand(TextOutput& out, const void* _cmd)
         case BC_ACQUIRE_DONE: {
             const int32_t b = *cmd++;
             const int32_t c = *cmd++;
-            out << ": target=" << (void*)(long)b << " (cookie " << (void*)(long)c << ")";
+            out << ": target=" << (void*)(uint64_t)b << " (cookie " << (void*)(uint64_t)c << ")";
         } break;
 
         case BC_ATTEMPT_ACQUIRE: {
@@ -260,12 +260,12 @@ static const void* printCommand(TextOutput& out, const void* _cmd)
         case BC_CLEAR_DEATH_NOTIFICATION: {
             const int32_t h = *cmd++;
             const int32_t c = *cmd++;
-            out << ": handle=" << h << " (death cookie " << (void*)(long)c << ")";
+            out << ": handle=" << h << " (death cookie " << (void*)(uint64_t)c << ")";
         } break;
 
         case BC_DEAD_BINDER_DONE: {
             const int32_t c = *cmd++;
-            out << ": death cookie " << (void*)(long)c;
+            out << ": death cookie " << (void*)(uint64_t)c;
         } break;
 
         default:
