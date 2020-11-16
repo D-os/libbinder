@@ -173,8 +173,10 @@ class ScopedAResource {
     ScopedAResource& operator=(const ScopedAResource&) = delete;
 
     // move-constructing/assignment is okay
-    ScopedAResource(ScopedAResource&& other) : mT(std::move(other.mT)) { other.mT = DEFAULT; }
-    ScopedAResource& operator=(ScopedAResource&& other) {
+    ScopedAResource(ScopedAResource&& other) noexcept : mT(std::move(other.mT)) {
+        other.mT = DEFAULT;
+    }
+    ScopedAResource& operator=(ScopedAResource&& other) noexcept {
         set(other.mT);
         other.mT = DEFAULT;
         return *this;
