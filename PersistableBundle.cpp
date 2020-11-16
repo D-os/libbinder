@@ -34,10 +34,22 @@ using android::Parcel;
 using android::sp;
 using android::status_t;
 using android::UNEXPECTED_NULL;
+
+using android::binder::VAL_BOOLEAN;
+using android::binder::VAL_INTEGER;
+using android::binder::VAL_LONG;
+using android::binder::VAL_DOUBLE;
+using android::binder::VAL_STRING;
+using android::binder::VAL_BOOLEANARRAY;
+using android::binder::VAL_INTARRAY;
+using android::binder::VAL_LONGARRAY;
+using android::binder::VAL_DOUBLEARRAY;
+using android::binder::VAL_STRINGARRAY;
+using android::binder::VAL_PERSISTABLEBUNDLE;
+
 using std::map;
 using std::set;
 using std::vector;
-using namespace ::android::binder;
 
 enum {
     // Keep them in sync with BUNDLE_MAGIC* in frameworks/base/core/java/android/os/BaseBundle.java.
