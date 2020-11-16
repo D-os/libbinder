@@ -74,6 +74,9 @@ class SpAIBinder {
      * ownership of that other object.
      */
     SpAIBinder& operator=(const SpAIBinder& other) {
+        if (this == &other) {
+            return *this;
+        }
         AIBinder_incStrong(other.mBinder);
         set(other.mBinder);
         return *this;
