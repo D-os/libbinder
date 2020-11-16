@@ -98,6 +98,14 @@ cc_library {
             "30",
         ],
     },
+    tidy: true,
+    tidy_flags: [
+        // Only check our headers
+        "--header-filter=^.*frameworks/native/libs/binder/.*.h$",
+    ],
+    tidy_checks_as_errors: [
+        "*",
+    ],
 }
 
 ndk_headers {
