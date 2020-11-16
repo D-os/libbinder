@@ -17,10 +17,6 @@
 #ifndef _BINDER_MODULE_H_
 #define _BINDER_MODULE_H_
 
-#ifdef __cplusplus
-namespace android {
-#endif
-
 /* obtain structures and constants from the kernel header */
 
 // TODO(b/31559095): bionic on host
@@ -35,6 +31,10 @@ namespace android {
 
 #include <sys/ioctl.h>
 #include <linux/android/binder.h>
+
+#ifdef __cplusplus
+namespace android {
+#endif
 
 #ifndef BR_FROZEN_REPLY
 // Temporary definition of BR_FROZEN_REPLY. For production
