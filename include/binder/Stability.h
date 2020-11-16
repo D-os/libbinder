@@ -26,6 +26,29 @@ class ProcessState;
 
 namespace internal {
 
+// Stability encodes how a binder changes over time. There are two levels of
+// stability:
+// 1). the interface stability - this is how a particular set of API calls (a
+//   particular ordering of things like writeInt32/readInt32) are changed over
+//   time. If one release, we have 'writeInt32' and the next release, we have
+//   'writeInt64', then this interface doesn't have a very stable
+//   Stability::Level. Usually this ordering is controlled by a .aidl file.
+// 2). the wire format stability - this is how these API calls map to actual
+//   bytes that are written to the wire (literally, this is how they are written
+//   to the kernel inside of IBinder::transact, but it may be expanded to other
+//   wires in the future). For instance, writeInt32 in binder translates to
+//   writing a 4-byte little-endian integer in two's complement. You can imagine
+//   in the future, we change writeInt32/readInt32 to instead write 8-bytes with
+//   that integer and some check bits. In this case, the wire format changes,
+//   but as long as a client libbinder knows to keep on writing a 4-byte value
+//   to old servers, and new servers know how to interpret the 8-byte result,
+//   they can still communicate.
+//
+// Every binder object has a stability level associated with it, and when
+// communicating with a binder, we make sure that the command we sent is one
+// that it knows how to process. The summary of stability of a binder is
+// represented by a Stability::Category object.
+
 // WARNING: These APIs are only ever expected to be called by auto-generated code.
 //     Instead of calling them, you should set the stability of a .aidl interface
 class Stability final {
@@ -73,7 +96,7 @@ private:
 
     static void tryMarkCompilationUnit(IBinder* binder);
 
-    enum Level : int32_t {
+    enum Level : uint8_t {
         UNDECLARED = 0,
 
         VENDOR = 0b000011,
@@ -81,19 +104,54 @@ private:
         VINTF = 0b111111,
     };
 
+    // This is the format of stability passed on the wire.
+    struct Category {
+        static inline Category fromRepr(int32_t representation) {
+            return *reinterpret_cast<Category*>(&representation);
+        }
+        int32_t repr() const {
+            return *reinterpret_cast<const int32_t*>(this);
+        }
+        static inline Category currentFromLevel(Level level);
+
+        bool operator== (const Category& o) const {
+            return repr() == o.repr();
+        }
+        bool operator!= (const Category& o) const {
+            return !(*this == o);
+        }
+
+        std::string debugString();
+
+        // This is the version of the wire protocol associated with the host
+        // process of a particular binder. As the wire protocol changes, if
+        // sending a transaction to a binder with an old version, the Parcel
+        // class must write parcels according to the version documented here.
+        uint8_t version;
+
+        uint8_t reserved[2];
+
+        // bitmask of Stability::Level
+        Level level;
+    };
+    static_assert(sizeof(Category) == sizeof(int32_t));
+
     // returns the stability according to how this was built
-    static Level getLocalStability();
+    static Level getLocalLevel();
 
     // applies stability to binder if stability level is known
     __attribute__((warn_unused_result))
-    static status_t set(IBinder* binder, int32_t stability, bool log);
+    static status_t setRepr(IBinder* binder, int32_t representation, bool log);
 
-    static Level get(IBinder* binder);
+    // get stability information as encoded on the wire
+    static Category getCategory(IBinder* binder);
 
-    static bool check(int32_t provided, Level required);
+    // whether a transaction on binder is allowed, if the transaction
+    // is done from a context with a specific stability level
+    static bool check(Category provided, Level required);
 
-    static bool isDeclaredStability(int32_t stability);
-    static std::string stabilityString(int32_t stability);
+    static bool isDeclaredLevel(Level level);
+    static std::string levelString(Level level);
 
     Stability();
 };
