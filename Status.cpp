@@ -245,10 +245,5 @@ String8 Status::toString8() const {
     return ret;
 }
 
-std::stringstream& operator<< (std::stringstream& stream, const Status& s) {
-    stream << s.toString8().string();
-    return stream;
-}
-
 }  // namespace binder
 }  // namespace android
