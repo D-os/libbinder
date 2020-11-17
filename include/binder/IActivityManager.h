@@ -31,11 +31,11 @@ public:
     DECLARE_META_INTERFACE(ActivityManager)
 
     virtual int openContentUri(const String16& stringUri) = 0;
-    virtual void registerUidObserver(const sp<IUidObserver>& observer,
+    virtual status_t registerUidObserver(const sp<IUidObserver>& observer,
                                      const int32_t event,
                                      const int32_t cutpoint,
                                      const String16& callingPackage) = 0;
-    virtual void unregisterUidObserver(const sp<IUidObserver>& observer) = 0;
+    virtual status_t unregisterUidObserver(const sp<IUidObserver>& observer) = 0;
     virtual bool isUidActive(const uid_t uid, const String16& callingPackage) = 0;
     virtual int32_t getUidProcessState(const uid_t uid, const String16& callingPackage) = 0;
     virtual status_t checkPermission(const String16& permission,

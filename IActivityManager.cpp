@@ -59,7 +59,7 @@ public:
         return fd;
     }
 
-    virtual void registerUidObserver(const sp<IUidObserver>& observer,
+    virtual status_t registerUidObserver(const sp<IUidObserver>& observer,
                                      const int32_t event,
                                      const int32_t cutpoint,
                                      const String16& callingPackage)
@@ -70,15 +70,23 @@ public:
          data.writeInt32(event);
          data.writeInt32(cutpoint);
          data.writeString16(callingPackage);
-         remote()->transact(REGISTER_UID_OBSERVER_TRANSACTION, data, &reply);
+         status_t err = remote()->transact(REGISTER_UID_OBSERVER_TRANSACTION, data, &reply);
+         if (err != NO_ERROR || ((err = reply.readExceptionCode()) != NO_ERROR)) {
+             return err;
+         }
+         return OK;
     }
 
-    virtual void unregisterUidObserver(const sp<IUidObserver>& observer)
+    virtual status_t unregisterUidObserver(const sp<IUidObserver>& observer)
     {
          Parcel data, reply;
          data.writeInterfaceToken(IActivityManager::getInterfaceDescriptor());
          data.writeStrongBinder(IInterface::asBinder(observer));
-         remote()->transact(UNREGISTER_UID_OBSERVER_TRANSACTION, data, &reply);
+         status_t err = remote()->transact(UNREGISTER_UID_OBSERVER_TRANSACTION, data, &reply);
+         if (err != NO_ERROR || ((err = reply.readExceptionCode()) != NO_ERROR)) {
+             return err;
+         }
+         return OK;
     }
 
     virtual bool isUidActive(const uid_t uid, const String16& callingPackage)
