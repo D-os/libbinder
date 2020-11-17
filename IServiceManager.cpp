@@ -310,7 +310,7 @@ sp<IBinder> ServiceManagerShim::waitForService(const String16& name16)
     // Simple RAII object to ensure a function call immediately before going out of scope
     class Defer {
     public:
-        Defer(std::function<void()>&& f) : mF(std::move(f)) {}
+        explicit Defer(std::function<void()>&& f) : mF(std::move(f)) {}
         ~Defer() { mF(); }
     private:
         std::function<void()> mF;
