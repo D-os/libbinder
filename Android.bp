@@ -181,11 +181,7 @@ cc_library {
     ],
     tidy_checks_as_errors: [
         "*",
-        "-google-build-using-namespace",
-        "-google-default-arguments",
-        "-google-explicit-constructor",
         "-google-runtime-int",
-        "-performance-unnecessary-value-param",
     ],
 }
 

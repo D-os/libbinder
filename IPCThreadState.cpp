@@ -1077,7 +1077,7 @@ status_t IPCThreadState::writeTransactionData(int32_t cmd, uint32_t binderFlags,
 
 sp<BBinder> the_context_object;
 
-void IPCThreadState::setTheContextObject(sp<BBinder> obj)
+void IPCThreadState::setTheContextObject(const sp<BBinder>& obj)
 {
     the_context_object = obj;
 }
