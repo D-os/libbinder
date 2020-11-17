@@ -208,7 +208,7 @@ void printHexData(int32_t indent, const void *buf, size_t length,
     }
 
     for (offset = 0; ; offset += bytesPerLine, pos += bytesPerLine) {
-        long remain = length;
+        size_t remain = length;
 
         char* c = buffer;
         if (!oneLine && !cStyle) {

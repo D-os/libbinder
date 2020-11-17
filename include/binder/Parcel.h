@@ -33,8 +33,10 @@
 #include <binder/Parcelable.h>
 
 #ifdef BINDER_IPC_32BIT
+//NOLINTNEXTLINE(google-runtime-int) b/173188702
 typedef unsigned int binder_size_t;
 #else
+//NOLINTNEXTLINE(google-runtime-int) b/173188702
 typedef unsigned long long binder_size_t;
 #endif
 

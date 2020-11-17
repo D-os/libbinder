@@ -161,8 +161,8 @@ struct AIBinder_DeathRecipient : ::android::RefBase {
     };
 
     explicit AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied);
-    binder_status_t linkToDeath(::android::sp<::android::IBinder>, void* cookie);
-    binder_status_t unlinkToDeath(::android::sp<::android::IBinder> binder, void* cookie);
+    binder_status_t linkToDeath(const ::android::sp<::android::IBinder>&, void* cookie);
+    binder_status_t unlinkToDeath(const ::android::sp<::android::IBinder>& binder, void* cookie);
 
    private:
     // When the user of this API deletes a Bp object but not the death recipient, the
