@@ -367,7 +367,7 @@ void AIBinder_DeathRecipient::pruneDeadTransferEntriesLocked() {
                            mDeathRecipients.end());
 }
 
-binder_status_t AIBinder_DeathRecipient::linkToDeath(sp<IBinder> binder, void* cookie) {
+binder_status_t AIBinder_DeathRecipient::linkToDeath(const sp<IBinder>& binder, void* cookie) {
     CHECK(binder != nullptr);
 
     std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
@@ -386,7 +386,7 @@ binder_status_t AIBinder_DeathRecipient::linkToDeath(sp<IBinder> binder, void* c
     return STATUS_OK;
 }
 
-binder_status_t AIBinder_DeathRecipient::unlinkToDeath(sp<IBinder> binder, void* cookie) {
+binder_status_t AIBinder_DeathRecipient::unlinkToDeath(const sp<IBinder>& binder, void* cookie) {
     CHECK(binder != nullptr);
 
     std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
