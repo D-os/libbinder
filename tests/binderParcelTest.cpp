@@ -25,6 +25,40 @@ using android::String16;
 using android::String8;
 using android::status_t;
 
+TEST(Parcel, NonNullTerminatedString8) {
+    String8 kTestString = String8("test-is-good");
+
+    // write non-null terminated string
+    Parcel p;
+    p.writeString8(kTestString);
+    p.setDataPosition(0);
+    // BAD! assumption of wire format for test
+    // write over length of string
+    p.writeInt32(kTestString.size() - 2);
+
+    p.setDataPosition(0);
+    String8 output;
+    EXPECT_NE(OK, p.readString8(&output));
+    EXPECT_EQ(output.size(), 0);
+}
+
+TEST(Parcel, NonNullTerminatedString16) {
+    String16 kTestString = String16("test-is-good");
+
+    // write non-null terminated string
+    Parcel p;
+    p.writeString16(kTestString);
+    p.setDataPosition(0);
+    // BAD! assumption of wire format for test
+    // write over length of string
+    p.writeInt32(kTestString.size() - 2);
+
+    p.setDataPosition(0);
+    String16 output;
+    EXPECT_NE(OK, p.readString16(&output));
+    EXPECT_EQ(output.size(), 0);
+}
+
 // Tests a second operation results in a parcel at the same location as it
 // started.
 void parcelOpSameLength(const std::function<void(Parcel*)>& a, const std::function<void(Parcel*)>& b) {
