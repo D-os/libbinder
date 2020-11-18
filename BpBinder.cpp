@@ -137,8 +137,8 @@ BpBinder* BpBinder::create(int32_t handle) {
 }
 
 BpBinder::BpBinder(int32_t handle, int32_t trackedUid)
-    : mHandle(handle)
-    , mStability(0)
+    : mStability(0)
+    , mHandle(handle)
     , mAlive(1)
     , mObitsSent(0)
     , mObituaries(nullptr)

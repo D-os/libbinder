@@ -117,10 +117,11 @@ protected:
     virtual bool        onIncStrongAttempted(uint32_t flags, const void* id);
 
 private:
-    const   int32_t             mHandle;
 
     friend ::android::internal::Stability;
             int32_t             mStability;
+
+    const   int32_t             mHandle;
 
     struct Obituary {
         wp<DeathRecipient> recipient;
