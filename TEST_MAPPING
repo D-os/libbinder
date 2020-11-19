@@ -50,6 +50,14 @@
           "exclude-filter": "android.os.cts.StrictModeTest#testNonSdkApiUsage"
         }
       ]
+    },
+    {
+      "name": "libbinder_rs-internal_test"
+    }
+  ],
+  "postsubmit": [
+    {
+      "name": "rustBinderTest"
     }
   ]
 }
