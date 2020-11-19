@@ -261,7 +261,7 @@ binder_status_t AParcel_writeParcelFileDescriptor(AParcel* parcel, int fd) {
 }
 
 binder_status_t AParcel_readParcelFileDescriptor(const AParcel* parcel, int* fd) {
-    std::unique_ptr<ParcelFileDescriptor> parcelFd;
+    std::optional<ParcelFileDescriptor> parcelFd;
 
     status_t status = parcel->get()->readParcelable(&parcelFd);
     if (status != STATUS_OK) return PruneStatusT(status);
