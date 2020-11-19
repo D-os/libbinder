@@ -210,6 +210,8 @@ public:
     template<typename T>
     status_t            writeParcelableVector(const std::shared_ptr<std::vector<std::unique_ptr<T>>>& val);
     template<typename T>
+    status_t            writeParcelableVector(const std::shared_ptr<std::vector<std::optional<T>>>& val);
+    template<typename T>
     status_t            writeParcelableVector(const std::vector<T>& val);
 
     template<typename T>
@@ -1226,6 +1228,16 @@ status_t Parcel::writeParcelableVector(const std::shared_ptr<std::vector<std::un
     }
 
     using NullableT = std::unique_ptr<T>;
+    return unsafeWriteTypedVector<NullableT, const NullableT&>(*val, &Parcel::writeNullableParcelable);
+}
+
+template<typename T>
+status_t Parcel::writeParcelableVector(const std::shared_ptr<std::vector<std::optional<T>>>& val) {
+    if (val.get() == nullptr) {
+        return this->writeInt32(-1);
+    }
+
+    using NullableT = std::optional<T>;
     return unsafeWriteTypedVector<NullableT, const NullableT&>(*val, &Parcel::writeNullableParcelable);
 }
 
