@@ -74,11 +74,11 @@ public:
     ActivityManager();
 
     int openContentUri(const String16& stringUri);
-    void registerUidObserver(const sp<IUidObserver>& observer,
+    status_t registerUidObserver(const sp<IUidObserver>& observer,
                              const int32_t event,
                              const int32_t cutpoint,
                              const String16& callingPackage);
-    void unregisterUidObserver(const sp<IUidObserver>& observer);
+    status_t unregisterUidObserver(const sp<IUidObserver>& observer);
     bool isUidActive(const uid_t uid, const String16& callingPackage);
     int getUidProcessState(const uid_t uid, const String16& callingPackage);
     status_t checkPermission(const String16& permission, const pid_t pid, const uid_t uid, int32_t* outResult);

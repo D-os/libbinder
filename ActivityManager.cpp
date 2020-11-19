@@ -62,23 +62,27 @@ int ActivityManager::openContentUri(const String16& stringUri)
     return service != nullptr ? service->openContentUri(stringUri) : -1;
 }
 
-void ActivityManager::registerUidObserver(const sp<IUidObserver>& observer,
+status_t ActivityManager::registerUidObserver(const sp<IUidObserver>& observer,
                                           const int32_t event,
                                           const int32_t cutpoint,
                                           const String16& callingPackage)
 {
     sp<IActivityManager> service = getService();
     if (service != nullptr) {
-        service->registerUidObserver(observer, event, cutpoint, callingPackage);
+        return service->registerUidObserver(observer, event, cutpoint, callingPackage);
     }
+    // ActivityManagerService appears dead. Return usual error code for dead service.
+    return DEAD_OBJECT;
 }
 
-void ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
+status_t ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
 {
     sp<IActivityManager> service = getService();
     if (service != nullptr) {
-        service->unregisterUidObserver(observer);
+        return service->unregisterUidObserver(observer);
     }
+    // ActivityManagerService appears dead. Return usual error code for dead service.
+    return DEAD_OBJECT;
 }
 
 bool ActivityManager::isUidActive(const uid_t uid, const String16& callingPackage)
