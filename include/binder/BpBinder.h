@@ -109,14 +109,12 @@ public:
         KeyedVector<const void*, entry_t> mObjects;
     };
 
-protected:
+private:
                         BpBinder(int32_t handle,int32_t trackedUid);
     virtual             ~BpBinder();
     virtual void        onFirstRef();
     virtual void        onLastStrongRef(const void* id);
     virtual bool        onIncStrongAttempted(uint32_t flags, const void* id);
-
-private:
 
     friend ::android::internal::Stability;
             int32_t             mStability;
