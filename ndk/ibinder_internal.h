@@ -112,7 +112,8 @@ struct AIBinder_Class {
     AIBinder_Class(const char* interfaceDescriptor, AIBinder_Class_onCreate onCreate,
                    AIBinder_Class_onDestroy onDestroy, AIBinder_Class_onTransact onTransact);
 
-    const ::android::String16& getInterfaceDescriptor() const { return mInterfaceDescriptor; }
+    const ::android::String16& getInterfaceDescriptor() const { return mWideInterfaceDescriptor; }
+    const char* getInterfaceDescriptorUtf8() const { return mInterfaceDescriptor.c_str(); }
 
     // required to be non-null, implemented for every class
     const AIBinder_Class_onCreate onCreate;
@@ -124,9 +125,11 @@ struct AIBinder_Class {
     AIBinder_handleShellCommand handleShellCommand;
 
    private:
+    // Copy of the raw char string for when we don't have to return UTF-16
+    const std::string mInterfaceDescriptor;
     // This must be a String16 since BBinder virtual getInterfaceDescriptor returns a reference to
     // one.
-    const ::android::String16 mInterfaceDescriptor;
+    const ::android::String16 mWideInterfaceDescriptor;
 };
 
 // Ownership is like this (when linked to death):

@@ -39,6 +39,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
+#include "android/binder_ibinder.h"
 
 using namespace android;
 
@@ -521,6 +522,10 @@ TEST(NdkBinder, UseHandleShellCommand) {
     EXPECT_EQ("", shellCmdToString(testService, {"", ""}));
     EXPECT_EQ("Hello world!", shellCmdToString(testService, {"Hello ", "world!"}));
     EXPECT_EQ("CMD", shellCmdToString(testService, {"C", "M", "D"}));
+}
+
+TEST(NdkBinder, GetClassInterfaceDescriptor) {
+    ASSERT_STREQ(IFoo::kIFooDescriptor, AIBinder_Class_getDescriptor(IFoo::kClass));
 }
 
 int main(int argc, char* argv[]) {
