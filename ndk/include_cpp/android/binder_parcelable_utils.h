@@ -82,13 +82,13 @@ class AParcelableHolder {
     }
 
     template <typename T>
-    bool setParcelable(T* p) {
-        if (p && this->mStability > T::_aidl_stability) {
+    bool setParcelable(const T& p) {
+        if (this->mStability > T::_aidl_stability) {
             return false;
         }
         AParcel_reset(mParcel.get());
         AParcel_writeString(mParcel.get(), T::descriptor, strlen(T::descriptor));
-        p->writeToParcel(mParcel.get());
+        p.writeToParcel(mParcel.get());
         return true;
     }
 
@@ -111,6 +111,8 @@ class AParcelableHolder {
         }
         return std::move(ret);
     }
+
+    void reset() { AParcel_reset(mParcel.get()); }
 
    private:
     mutable ndk::ScopedAParcel mParcel;
