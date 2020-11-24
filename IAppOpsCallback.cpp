@@ -43,7 +43,7 @@ public:
     }
 };
 
-IMPLEMENT_META_INTERFACE(AppOpsCallback, "com.android.internal.app.IAppOpsCallback");
+IMPLEMENT_META_INTERFACE(AppOpsCallback, "com.android.internal.app.IAppOpsCallback")
 
 // ----------------------------------------------------------------------
 

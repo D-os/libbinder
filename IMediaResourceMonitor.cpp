@@ -38,7 +38,7 @@ public:
     }
 };
 
-IMPLEMENT_META_INTERFACE(MediaResourceMonitor, "android.media.IMediaResourceMonitor");
+IMPLEMENT_META_INTERFACE(MediaResourceMonitor, "android.media.IMediaResourceMonitor")
 
 // ----------------------------------------------------------------------
 

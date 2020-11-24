@@ -25,7 +25,7 @@ namespace android {
 class IShellCallback : public IInterface
 {
 public:
-    DECLARE_META_INTERFACE(ShellCallback);
+    DECLARE_META_INTERFACE(ShellCallback)
 
     virtual int openFile(const String16& path, const String16& seLinuxContext,
             const String16& mode) = 0;

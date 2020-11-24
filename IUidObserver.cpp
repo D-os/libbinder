@@ -71,7 +71,7 @@ public:
 
 // ----------------------------------------------------------------------
 
-IMPLEMENT_META_INTERFACE(UidObserver, "android.app.IUidObserver");
+IMPLEMENT_META_INTERFACE(UidObserver, "android.app.IUidObserver")
 
 // ----------------------------------------------------------------------
 
