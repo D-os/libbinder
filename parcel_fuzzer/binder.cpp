@@ -86,6 +86,8 @@ struct ExampleLightFlattenable : public android::LightFlattenablePod<ExampleLigh
     PARCEL_READ_WITH_STATUS(T, FUN), \
     PARCEL_READ_NO_STATUS(T, FUN)
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 // clang-format off
 std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_NO_STATUS(size_t, dataSize),
@@ -296,3 +298,4 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_WITH_STATUS(android::os::PersistableBundle, readParcelable),
 };
 // clang-format on
+#pragma clang diagnostic pop
