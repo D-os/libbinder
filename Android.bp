@@ -145,6 +145,7 @@ cc_library {
     cflags: [
         "-Wall",
         "-Wextra",
+        "-Wextra-semi",
         "-Werror",
         "-Wzero-as-null-pointer-constant",
         "-DANDROID_BASE_UNIQUE_FD_DISABLE_IMPLICIT_CONVERSION",

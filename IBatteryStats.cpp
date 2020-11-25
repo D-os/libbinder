@@ -130,7 +130,7 @@ public:
 
 };
 
-IMPLEMENT_META_INTERFACE(BatteryStats, "com.android.internal.app.IBatteryStats");
+IMPLEMENT_META_INTERFACE(BatteryStats, "com.android.internal.app.IBatteryStats")
 
 // ----------------------------------------------------------------------
 

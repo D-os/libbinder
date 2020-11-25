@@ -135,6 +135,6 @@ public:
 
 // ------------------------------------------------------------------------------------
 
-IMPLEMENT_META_INTERFACE(ActivityManager, "android.app.IActivityManager");
+IMPLEMENT_META_INTERFACE(ActivityManager, "android.app.IActivityManager")
 
 } // namespace android

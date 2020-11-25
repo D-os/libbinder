@@ -30,7 +30,7 @@ namespace os {
 class ParcelableHolder : public android::Parcelable {
 public:
     ParcelableHolder() = delete;
-    explicit ParcelableHolder(Stability stability) : mStability(stability){};
+    explicit ParcelableHolder(Stability stability) : mStability(stability){}
     virtual ~ParcelableHolder() = default;
     ParcelableHolder(const ParcelableHolder& other) {
         mParcelable = other.mParcelable;
@@ -40,7 +40,7 @@ public:
             mParcelPtr->appendFrom(other.mParcelPtr.get(), 0, other.mParcelPtr->dataSize());
         }
         mStability = other.mStability;
-    };
+    }
 
     status_t writeToParcel(Parcel* parcel) const override;
     status_t readFromParcel(const Parcel* parcel) override;

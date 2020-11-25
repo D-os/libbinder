@@ -27,7 +27,7 @@ namespace android {
 
 // ----------------------------------------------------------------------------
 
-ANDROID_SINGLETON_STATIC_INSTANCE(PermissionCache) ;
+ANDROID_SINGLETON_STATIC_INSTANCE(PermissionCache)
 
 // ----------------------------------------------------------------------------
 

@@ -42,7 +42,7 @@ public:
     }
 };
 
-IMPLEMENT_META_INTERFACE(ResultReceiver, "com.android.internal.os.IResultReceiver");
+IMPLEMENT_META_INTERFACE(ResultReceiver, "com.android.internal.os.IResultReceiver")
 
 // ----------------------------------------------------------------------
 

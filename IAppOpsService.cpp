@@ -162,7 +162,7 @@ public:
     }
 };
 
-IMPLEMENT_META_INTERFACE(AppOpsService, "com.android.internal.app.IAppOpsService");
+IMPLEMENT_META_INTERFACE(AppOpsService, "com.android.internal.app.IAppOpsService")
 
 // ----------------------------------------------------------------------
 
