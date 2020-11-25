@@ -103,7 +103,7 @@ public:
     }
 };
 
-IMPLEMENT_META_INTERFACE(PermissionController, "android.os.IPermissionController");
+IMPLEMENT_META_INTERFACE(PermissionController, "android.os.IPermissionController")
 
 // ----------------------------------------------------------------------
 
