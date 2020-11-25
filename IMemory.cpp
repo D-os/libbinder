@@ -223,7 +223,7 @@ sp<IMemoryHeap> BpMemory::getMemory(ssize_t* offset, size_t* size) const
 
 // ---------------------------------------------------------------------------
 
-IMPLEMENT_META_INTERFACE(Memory, "android.utils.IMemory");
+IMPLEMENT_META_INTERFACE(Memory, "android.utils.IMemory")
 
 BnMemory::BnMemory() {
 }
@@ -388,7 +388,7 @@ off_t BpMemoryHeap::getOffset() const {
 
 // ---------------------------------------------------------------------------
 
-IMPLEMENT_META_INTERFACE(MemoryHeap, "android.utils.IMemoryHeap");
+IMPLEMENT_META_INTERFACE(MemoryHeap, "android.utils.IMemoryHeap")
 
 BnMemoryHeap::BnMemoryHeap() {
 }

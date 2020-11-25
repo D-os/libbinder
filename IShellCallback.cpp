@@ -52,7 +52,7 @@ public:
     }
 };
 
-IMPLEMENT_META_INTERFACE(ShellCallback, "com.android.internal.os.IShellCallback");
+IMPLEMENT_META_INTERFACE(ShellCallback, "com.android.internal.os.IShellCallback")
 
 // ----------------------------------------------------------------------
 

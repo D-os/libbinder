@@ -184,7 +184,7 @@ private:
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
-IMPLEMENT_META_INTERFACE(Callback, "android.gfx.tests.ICallback");
+IMPLEMENT_META_INTERFACE(Callback, "android.gfx.tests.ICallback")
 #pragma clang diagnostic pop
 
 class BnCallback : public SafeBnInterface<ICallback> {
@@ -373,7 +373,7 @@ private:
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
-IMPLEMENT_META_INTERFACE(SafeInterfaceTest, "android.gfx.tests.ISafeInterfaceTest");
+IMPLEMENT_META_INTERFACE(SafeInterfaceTest, "android.gfx.tests.ISafeInterfaceTest")
 
 static sp<IBinder::DeathRecipient> getDeathRecipient() {
     static sp<IBinder::DeathRecipient> recipient = new ExitOnDeath;

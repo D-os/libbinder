@@ -84,7 +84,7 @@ public:
     }
 };
 
-IMPLEMENT_META_INTERFACE(ProcessInfoService, "android.os.IProcessInfoService");
+IMPLEMENT_META_INTERFACE(ProcessInfoService, "android.os.IProcessInfoService")
 
 // ----------------------------------------------------------------------
 

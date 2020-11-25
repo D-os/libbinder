@@ -99,6 +99,6 @@ void ProcessInfoService::updateBinderLocked() {
     }
 }
 
-ANDROID_SINGLETON_STATIC_INSTANCE(ProcessInfoService);
+ANDROID_SINGLETON_STATIC_INSTANCE(ProcessInfoService)
 
 } // namespace android
