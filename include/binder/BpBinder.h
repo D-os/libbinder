@@ -28,7 +28,7 @@ namespace android {
 
 namespace internal {
 class Stability;
-};
+}
 
 using binder_proxy_limit_callback = void(*)(int);
 
