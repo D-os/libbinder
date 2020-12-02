@@ -164,12 +164,8 @@ static void release_object(const sp<ProcessState>& proc,
     ALOGE("Invalid object type 0x%08x", obj.hdr.type);
 }
 
-status_t Parcel::finishFlattenBinder(
-    const sp<IBinder>& binder, const flat_binder_object& flat)
+status_t Parcel::finishFlattenBinder(const sp<IBinder>& binder)
 {
-    status_t status = writeObject(flat, false);
-    if (status != OK) return status;
-
     internal::Stability::tryMarkCompilationUnit(binder.get());
     auto category = internal::Stability::getCategory(binder.get());
     return writeInt32(category.repr());
@@ -238,7 +234,10 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
 
     obj.flags |= schedBits;
 
-    return finishFlattenBinder(binder, obj);
+    status_t status = writeObject(obj, false);
+    if (status != OK) return status;
+
+    return finishFlattenBinder(binder);
 }
 
 status_t Parcel::unflattenBinder(sp<IBinder>* out) const
