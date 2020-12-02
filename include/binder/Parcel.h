@@ -522,8 +522,7 @@ private:
     status_t            validateReadData(size_t len) const;
     void                updateWorkSourceRequestHeaderPosition() const;
 
-    status_t            finishFlattenBinder(const sp<IBinder>& binder,
-                                            const flat_binder_object& flat);
+    status_t            finishFlattenBinder(const sp<IBinder>& binder);
     status_t            finishUnflattenBinder(const sp<IBinder>& binder, sp<IBinder>* out) const;
     status_t            flattenBinder(const sp<IBinder>& binder);
     status_t            unflattenBinder(sp<IBinder>* out) const;
