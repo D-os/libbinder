@@ -36,11 +36,14 @@
 #include <optional>
 
 #include <sys/eventfd.h>
+#include <sys/prctl.h>
 
 using namespace std::chrono_literals; // NOLINT - google-build-using-namespace
 
 namespace android {
 namespace tests {
+
+static const String16 kServiceName("SafeInterfaceTest");
 
 enum class TestEnum : uint32_t {
     INVALID = 0,
@@ -601,40 +604,13 @@ private:
     static constexpr const char* getLogTag() { return "SafeInterfaceTest"; }
 
     sp<ISafeInterfaceTest> getRemoteService() {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-        static std::mutex sMutex;
-        static sp<ISafeInterfaceTest> sService;
-        static sp<IBinder> sDeathToken = new BBinder;
-#pragma clang diagnostic pop
+        sp<IBinder> binder = defaultServiceManager()->getService(kServiceName);
+        sp<ISafeInterfaceTest> iface = interface_cast<ISafeInterfaceTest>(binder);
+        EXPECT_TRUE(iface != nullptr);
 
-        std::unique_lock<decltype(sMutex)> lock;
-        if (sService == nullptr) {
-            ALOG(LOG_INFO, getLogTag(), "Forking remote process");
-            pid_t forkPid = fork();
-            EXPECT_NE(forkPid, -1);
+        iface->setDeathToken(new BBinder);
 
-            const String16 serviceName("SafeInterfaceTest");
-
-            if (forkPid == 0) {
-                ALOG(LOG_INFO, getLogTag(), "Remote process checking in");
-                sp<ISafeInterfaceTest> nativeService = new BnSafeInterfaceTest;
-                defaultServiceManager()->addService(serviceName,
-                                                    IInterface::asBinder(nativeService));
-                ProcessState::self()->startThreadPool();
-                IPCThreadState::self()->joinThreadPool();
-                // We shouldn't get to this point
-                [&]() { FAIL(); }();
-            }
-
-            sp<IBinder> binder = defaultServiceManager()->getService(serviceName);
-            sService = interface_cast<ISafeInterfaceTest>(binder);
-            EXPECT_TRUE(sService != nullptr);
-
-            sService->setDeathToken(sDeathToken);
-        }
-
-        return sService;
+        return iface;
     }
 };
 
@@ -838,6 +814,24 @@ TEST_F(SafeInterfaceTest, TestIncrementTwo) {
     ASSERT_EQ(NO_ERROR, result);
     ASSERT_EQ(a + 1, aPlusOne);
     ASSERT_EQ(b + 1, bPlusOne);
+}
+
+extern "C" int main(int argc, char **argv) {
+    testing::InitGoogleTest(&argc, argv);
+
+    if (fork() == 0) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP);
+        sp<BnSafeInterfaceTest> nativeService = new BnSafeInterfaceTest;
+        status_t status = defaultServiceManager()->addService(kServiceName, nativeService);
+        if (status != OK) {
+            ALOG(LOG_INFO, "SafeInterfaceServer", "could not register");
+            return EXIT_FAILURE;
+        }
+        IPCThreadState::self()->joinThreadPool();
+        return EXIT_FAILURE;
+    }
+
+    return RUN_ALL_TESTS();
 }
 
 } // namespace tests
