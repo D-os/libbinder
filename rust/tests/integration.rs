@@ -173,30 +173,6 @@ impl ITest for Binder<BnTest> {
     }
 }
 
-/// Trivial testing binder interface
-pub trait ITestSameDescriptor: Interface {}
-
-declare_binder_interface! {
-    ITestSameDescriptor["android.os.ITest"] {
-        native: BnTestSameDescriptor(on_transact_same_descriptor),
-        proxy: BpTestSameDescriptor,
-    }
-}
-
-fn on_transact_same_descriptor(
-    _service: &dyn ITestSameDescriptor,
-    _code: TransactionCode,
-    _data: &Parcel,
-    _reply: &mut Parcel,
-) -> binder::Result<()> {
-    Ok(())
-}
-
-impl ITestSameDescriptor for BpTestSameDescriptor {}
-
-impl ITestSameDescriptor for Binder<BnTestSameDescriptor> {}
-
-
 #[cfg(test)]
 mod tests {
     use selinux_bindgen as selinux_sys;
@@ -209,9 +185,9 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use binder::{Binder, DeathRecipient, FromIBinder, IBinder, Interface, SpIBinder, StatusCode};
+    use binder::{DeathRecipient, FromIBinder, IBinder, SpIBinder, StatusCode};
 
-    use super::{BnTest, ITest, ITestSameDescriptor, RUST_SERVICE_BINARY, TestService};
+    use super::{ITest, RUST_SERVICE_BINARY};
 
     pub struct ScopedServiceProcess(Child);
 
@@ -458,28 +434,5 @@ mod tests {
 
             assert_eq!(extension.test().unwrap(), extension_name);
         }
-    }
-
-    /// Test re-associating a local binder object with a different class.
-    ///
-    /// This is needed because different binder service (e.g. NDK vs Rust)
-    /// implementations are incompatible and must not be interchanged. A local
-    /// service with the same descriptor string but a different class pointer
-    /// may have been created by an NDK service and is therefore incompatible
-    /// with the Rust service implementation. It must be treated as remote and
-    /// all API calls parceled and sent through transactions.
-    ///
-    /// Further tests of this behavior with the C NDK and Rust API are in
-    /// rust_ndk_interop.rs
-    #[test]
-    fn associate_existing_class() {
-        let service = Binder::new(BnTest(Box::new(TestService {
-            s: "testing_service".to_string(),
-        })));
-
-        // This should succeed although we will have to treat the service as
-        // remote.
-        let _interface: Box<dyn ITestSameDescriptor> = FromIBinder::try_from(service.as_binder())
-            .expect("Could not re-interpret service as the ITestSameDescriptor interface");
     }
 }

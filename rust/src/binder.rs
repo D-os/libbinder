@@ -21,8 +21,7 @@ use crate::parcel::Parcel;
 use crate::proxy::{DeathRecipient, SpIBinder};
 use crate::sys;
 
-use std::ffi::{c_void, CStr, CString};
-use std::os::raw::c_char;
+use std::ffi::{c_void, CString};
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 
@@ -205,22 +204,6 @@ impl InterfaceClass {
     /// `AIBinder_Class`.
     pub(crate) unsafe fn from_ptr(ptr: *const sys::AIBinder_Class) -> InterfaceClass {
         InterfaceClass(ptr)
-    }
-
-    /// Get the interface descriptor string of this class.
-    pub fn get_descriptor(&self) -> String {
-        unsafe {
-            // SAFETY: The descriptor returned by AIBinder_Class_getDescriptor
-            // is always a two-byte null terminated sequence of u16s. Thus, we
-            // can continue reading from the pointer until we hit a null value,
-            // and this pointer can be a valid slice if the slice length is <=
-            // the number of u16 elements before the null terminator.
-
-            let raw_descriptor: *const c_char = sys::AIBinder_Class_getDescriptor(self.0);
-            CStr::from_ptr(raw_descriptor).to_str()
-                .expect("Expected valid UTF-8 string from AIBinder_Class_getDescriptor")
-                .into()
-        }
     }
 }
 
@@ -524,7 +507,12 @@ macro_rules! declare_binder_interface {
             }
 
             fn from_binder(mut binder: $crate::SpIBinder) -> $crate::Result<Self> {
-                Ok(Self { binder, $($fname: $finit),* })
+                use $crate::AssociateClass;
+                if binder.associate_class(<$native as $crate::Remotable>::get_class()) {
+                    Ok(Self { binder, $($fname: $finit),* })
+                } else {
+                    Err($crate::StatusCode::BAD_TYPE)
+                }
             }
         }
 
@@ -579,33 +567,16 @@ macro_rules! declare_binder_interface {
         impl $crate::FromIBinder for dyn $interface {
             fn try_from(mut ibinder: $crate::SpIBinder) -> $crate::Result<Box<dyn $interface>> {
                 use $crate::AssociateClass;
-
-                let existing_class = ibinder.get_class();
-                if let Some(class) = existing_class {
-                    if class != <$native as $crate::Remotable>::get_class() &&
-                        class.get_descriptor() == <$native as $crate::Remotable>::get_descriptor()
-                    {
-                        // The binder object's descriptor string matches what we
-                        // expect. We still need to treat this local or already
-                        // associated object as remote, because we can't cast it
-                        // into a Rust service object without a matching class
-                        // pointer.
-                        return Ok(Box::new(<$proxy as $crate::Proxy>::from_binder(ibinder)?));
-                    }
-                } else if ibinder.associate_class(<$native as $crate::Remotable>::get_class()) {
-                    let service: $crate::Result<$crate::Binder<$native>> =
-                        std::convert::TryFrom::try_from(ibinder.clone());
-                    if let Ok(service) = service {
-                        // We were able to associate with our expected class and
-                        // the service is local.
-                        return Ok(Box::new(service));
-                    } else {
-                        // Service is remote
-                        return Ok(Box::new(<$proxy as $crate::Proxy>::from_binder(ibinder)?));
-                    }
+                if !ibinder.associate_class(<$native as $crate::Remotable>::get_class()) {
+                    return Err($crate::StatusCode::BAD_TYPE.into());
                 }
 
-                Err($crate::StatusCode::BAD_TYPE.into())
+                let service: $crate::Result<$crate::Binder<$native>> = std::convert::TryFrom::try_from(ibinder.clone());
+                if let Ok(service) = service {
+                    Ok(Box::new(service))
+                } else {
+                    Ok(Box::new(<$proxy as $crate::Proxy>::from_binder(ibinder)?))
+                }
             }
         }
 
