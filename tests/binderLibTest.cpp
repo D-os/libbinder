@@ -30,6 +30,7 @@
 #include <binder/IServiceManager.h>
 
 #include <private/binder/binder_module.h>
+#include <linux/sched.h>
 #include <sys/epoll.h>
 #include <sys/prctl.h>
 
@@ -53,6 +54,7 @@ static char binderserverarg[] = "--binderserver";
 
 static constexpr int kSchedPolicy = SCHED_RR;
 static constexpr int kSchedPriority = 7;
+static constexpr int kSchedPriorityMore = 8;
 
 static String16 binderLibTestServiceName = String16("test.binderLib");
 
@@ -1088,6 +1090,25 @@ TEST_F(BinderLibTest, SchedPolicySet) {
     EXPECT_EQ(kSchedPriority, priority);
 }
 
+TEST_F(BinderLibTest, InheritRt) {
+    sp<IBinder> server = addServer();
+    ASSERT_TRUE(server != nullptr);
+
+    const struct sched_param param {
+        .sched_priority = kSchedPriorityMore,
+    };
+    EXPECT_EQ(0, sched_setscheduler(getpid(), SCHED_RR, &param));
+
+    Parcel data, reply;
+    status_t ret = server->transact(BINDER_LIB_TEST_GET_SCHEDULING_POLICY, data, &reply);
+    EXPECT_EQ(NO_ERROR, ret);
+
+    int policy = reply.readInt32();
+    int priority = reply.readInt32();
+
+    EXPECT_EQ(kSchedPolicy, policy & (~SCHED_RESET_ON_FORK));
+    EXPECT_EQ(kSchedPriorityMore, priority);
+}
 
 TEST_F(BinderLibTest, VectorSent) {
     Parcel data, reply;
@@ -1459,6 +1480,8 @@ int run_server(int index, int readypipefd, bool usePoll)
         sp<BinderLibTestService> testService = new BinderLibTestService(index);
 
         testService->setMinSchedulerPolicy(kSchedPolicy, kSchedPriority);
+
+        testService->setInheritRt(true);
 
         /*
          * Normally would also contain functionality as well, but we are only
