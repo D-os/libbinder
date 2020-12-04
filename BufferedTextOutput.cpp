@@ -18,7 +18,6 @@
 #include <binder/Debug.h>
 
 #include <cutils/atomic.h>
-#include <cutils/threads.h>
 #include <utils/Log.h>
 #include <utils/RefBase.h>
 #include <utils/Vector.h>
@@ -90,22 +89,6 @@ struct BufferedTextOutput::ThreadState
 };
 
 static pthread_mutex_t gMutex = PTHREAD_MUTEX_INITIALIZER;
-
-static thread_store_t   tls;
-
-BufferedTextOutput::ThreadState* BufferedTextOutput::getThreadState()
-{
-    ThreadState*  ts = (ThreadState*) thread_store_get( &tls );
-    if (ts) return ts;
-    ts = new ThreadState;
-    thread_store_set( &tls, ts, threadDestructor );
-    return ts;
-}
-
-void BufferedTextOutput::threadDestructor(void *st)
-{
-    delete ((ThreadState*)st);
-}
 
 static volatile int32_t gSequence = 0;
 
@@ -266,16 +249,14 @@ void BufferedTextOutput::popBundle()
 BufferedTextOutput::BufferState* BufferedTextOutput::getBuffer() const
 {
     if ((mFlags&MULTITHREADED) != 0) {
-        ThreadState* ts = getThreadState();
-        if (ts) {
-            while (ts->states.size() <= (size_t)mIndex) ts->states.add(nullptr);
-            BufferState* bs = ts->states[mIndex].get();
-            if (bs != nullptr && bs->seq == mSeq) return bs;
-            
-            ts->states.editItemAt(mIndex) = new BufferState(mIndex);
-            bs = ts->states[mIndex].get();
-            if (bs != nullptr) return bs;
-        }
+        thread_local ThreadState ts;
+        while (ts.states.size() <= (size_t)mIndex) ts.states.add(nullptr);
+        BufferState* bs = ts.states[mIndex].get();
+        if (bs != nullptr && bs->seq == mSeq) return bs;
+
+        ts.states.editItemAt(mIndex) = new BufferState(mIndex);
+        bs = ts.states[mIndex].get();
+        if (bs != nullptr) return bs;
     }
     
     return mGlobalState;
