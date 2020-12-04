@@ -37,8 +37,8 @@ static const std::vector<std::function<void(FuzzedDataProvider*, const sp<BBinde
                                   bbinder->isRequestingSid();
                               },
                               [](FuzzedDataProvider* fdp, const sp<BBinder>& bbinder) -> void {
-                                  bool request_sid = fdp->ConsumeBool();
-                                  bbinder->setRequestingSid(request_sid);
+                                  bool requestSid = fdp->ConsumeBool();
+                                  bbinder->setRequestingSid(requestSid);
                               },
                               [](FuzzedDataProvider*, const sp<BBinder>& bbinder) -> void {
                                   bbinder->getExtension();
@@ -62,6 +62,13 @@ static const std::vector<std::function<void(FuzzedDataProvider*, const sp<BBinde
                               },
                               [](FuzzedDataProvider*, const sp<BBinder>& bbinder) -> void {
                                   bbinder->getMinSchedulerPriority();
+                              },
+                              [](FuzzedDataProvider* fdp, const sp<BBinder>& bbinder) -> void {
+                                  bool inheritRt = fdp->ConsumeBool();
+                                  bbinder->setInheritRt(inheritRt);
+                              },
+                              [](FuzzedDataProvider*, const sp<BBinder>& bbinder) -> void {
+                                  bbinder->isInheritRt();
                               },
                               [](FuzzedDataProvider*, const sp<BBinder>& bbinder) -> void {
                                   bbinder->getDebugPid();
