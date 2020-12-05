@@ -91,7 +91,7 @@ impl SpIBinder {
 
     /// Return the interface class of this binder object, if associated with
     /// one.
-    pub(crate) fn get_class(&mut self) -> Option<InterfaceClass> {
+    pub fn get_class(&mut self) -> Option<InterfaceClass> {
         unsafe {
             // Safety: `SpIBinder` guarantees that it always contains a valid
             // `AIBinder` pointer. `AIBinder_getClass` returns either a null
