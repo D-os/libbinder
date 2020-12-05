@@ -222,6 +222,9 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
             if (local->isRequestingSid()) {
                 obj.flags |= FLAT_BINDER_FLAG_TXN_SECURITY_CTX;
             }
+            if (local->isInheritRt()) {
+                obj.flags |= FLAT_BINDER_FLAG_INHERIT_RT;
+            }
             obj.hdr.type = BINDER_TYPE_BINDER;
             obj.binder = reinterpret_cast<uintptr_t>(local->getWeakRefs());
             obj.cookie = reinterpret_cast<uintptr_t>(local);
