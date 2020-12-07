@@ -114,6 +114,13 @@ class SpAIBinder {
      */
     AIBinder** getR() { return &mBinder; }
 
+    bool operator!=(const SpAIBinder& rhs) const { return get() != rhs.get(); }
+    bool operator<(const SpAIBinder& rhs) const { return get() < rhs.get(); }
+    bool operator<=(const SpAIBinder& rhs) const { return get() <= rhs.get(); }
+    bool operator==(const SpAIBinder& rhs) const { return get() == rhs.get(); }
+    bool operator>(const SpAIBinder& rhs) const { return get() > rhs.get(); }
+    bool operator>=(const SpAIBinder& rhs) const { return get() >= rhs.get(); }
+
    private:
     AIBinder* mBinder = nullptr;
 };
@@ -200,6 +207,13 @@ class ScopedAParcel : public impl::ScopedAResource<AParcel*, void, AParcel_delet
     ~ScopedAParcel() {}
     ScopedAParcel(ScopedAParcel&&) = default;
     ScopedAParcel& operator=(ScopedAParcel&&) = default;
+
+    bool operator!=(const ScopedAParcel& rhs) const { return get() != rhs.get(); }
+    bool operator<(const ScopedAParcel& rhs) const { return get() < rhs.get(); }
+    bool operator<=(const ScopedAParcel& rhs) const { return get() <= rhs.get(); }
+    bool operator==(const ScopedAParcel& rhs) const { return get() == rhs.get(); }
+    bool operator>(const ScopedAParcel& rhs) const { return get() > rhs.get(); }
+    bool operator>=(const ScopedAParcel& rhs) const { return get() >= rhs.get(); }
 };
 
 /**
@@ -323,6 +337,13 @@ class ScopedFileDescriptor : public impl::ScopedAResource<int, int, close, -1> {
     ~ScopedFileDescriptor() {}
     ScopedFileDescriptor(ScopedFileDescriptor&&) = default;
     ScopedFileDescriptor& operator=(ScopedFileDescriptor&&) = default;
+
+    bool operator!=(const ScopedFileDescriptor& rhs) const { return get() != rhs.get(); }
+    bool operator<(const ScopedFileDescriptor& rhs) const { return get() < rhs.get(); }
+    bool operator<=(const ScopedFileDescriptor& rhs) const { return get() <= rhs.get(); }
+    bool operator==(const ScopedFileDescriptor& rhs) const { return get() == rhs.get(); }
+    bool operator>(const ScopedFileDescriptor& rhs) const { return get() > rhs.get(); }
+    bool operator>=(const ScopedFileDescriptor& rhs) const { return get() >= rhs.get(); }
 };
 
 }  // namespace ndk
