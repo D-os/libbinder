@@ -20,12 +20,16 @@
 #include "hwbinder.h"
 #include "util.h"
 
+#include <iostream>
+
 #include <android-base/logging.h>
 #include <fuzzbinder/random_parcel.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include <cstdlib>
 #include <ctime>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 using android::fillRandomParcel;
 
@@ -77,7 +81,25 @@ void doFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
     }
 }
 
+size_t getHardMemoryLimit() {
+    struct rlimit limit;
+    CHECK(0 == getrlimit(RLIMIT_AS, &limit)) << errno;
+    return limit.rlim_max;
+}
+
+void setMemoryLimit(size_t cur, size_t max) {
+    const struct rlimit kLimit = {
+       .rlim_cur = cur,
+       .rlim_max = max,
+    };
+    CHECK(0 == setrlimit(RLIMIT_AS, &kLimit)) << errno;
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+    static constexpr size_t kMemLimit = 1 * 1024 * 1024;
+    size_t hardLimit = getHardMemoryLimit();
+    setMemoryLimit(std::min(kMemLimit, hardLimit), hardLimit);
+
     if (size <= 1) return 0;  // no use
 
     // avoid timeouts, see b/142617274, b/142473153
@@ -101,6 +123,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     };
 
     provider.PickValueInArray(fuzzBackend)(std::move(provider));
+
+    setMemoryLimit(hardLimit, hardLimit);
 
     return 0;
 }
