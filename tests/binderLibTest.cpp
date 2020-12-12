@@ -404,6 +404,13 @@ TEST_F(BinderLibTest, NopTransaction) {
     EXPECT_EQ(NO_ERROR, ret);
 }
 
+TEST_F(BinderLibTest, NopTransactionOneway) {
+    status_t ret;
+    Parcel data, reply;
+    ret = m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION, data, &reply, TF_ONE_WAY);
+    EXPECT_EQ(NO_ERROR, ret);
+}
+
 TEST_F(BinderLibTest, NopTransactionClear) {
     status_t ret;
     Parcel data, reply;
@@ -1182,9 +1189,6 @@ class BinderLibTestService : public BBinder
         virtual status_t onTransact(uint32_t code,
                                     const Parcel& data, Parcel* reply,
                                     uint32_t flags = 0) {
-            //printf("%s: code %d\n", __func__, code);
-            (void)flags;
-
             if (getuid() != (uid_t)IPCThreadState::self()->getCallingUid()) {
                 return PERMISSION_DENIED;
             }
@@ -1258,8 +1262,12 @@ class BinderLibTestService : public BBinder
                 return NO_ERROR;
             case BINDER_LIB_TEST_NOP_TRANSACTION_WAIT:
                 usleep(5000);
-                return NO_ERROR;
+                [[fallthrough]];
             case BINDER_LIB_TEST_NOP_TRANSACTION:
+                // oneway error codes should be ignored
+                if (flags & TF_ONE_WAY) {
+                    return UNKNOWN_ERROR;
+                }
                 return NO_ERROR;
             case BINDER_LIB_TEST_DELAYED_CALL_BACK: {
                 // Note: this transaction is only designed for use with a
