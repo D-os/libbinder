@@ -136,7 +136,9 @@ public:
         OP_PHONE_CALL_MICROPHONE = 100,
         OP_PHONE_CALL_CAMERA = 101,
         OP_RECORD_AUDIO_HOTWORD = 102,
-        _NUM_OP = 103
+        // Ops 103-105 are currently unused in native, and intentionally omitted
+        OP_RECORD_AUDIO_OUTPUT = 106,
+        _NUM_OP = 107
     };
 
     AppOpsManager();
