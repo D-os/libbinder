@@ -105,6 +105,14 @@ cc_library {
     ],
     tidy_checks_as_errors: [
         "*",
+        "-clang-analyzer-core.CallAndMessage",
+        "-clang-analyzer-core.uninitialized.Assign",
+        "-clang-analyzer-unix.Malloc,",
+        "-clang-analyzer-deadcode.DeadStores",
+        "-clang-analyzer-optin.cplusplus.UninitializedObject",
+        "-misc-no-recursion",
+        "-misc-redundant-expression",
+        "-misc-unused-using-decls",
     ],
 }
 
