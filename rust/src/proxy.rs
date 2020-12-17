@@ -102,6 +102,11 @@ impl SpIBinder {
             class.as_ref().map(|p| InterfaceClass::from_ptr(p))
         }
     }
+
+    /// Creates a new weak reference to this binder object.
+    pub fn downgrade(&mut self) -> WpIBinder {
+        WpIBinder::new(self)
+    }
 }
 
 /// An object that can be associate with an [`InterfaceClass`].
@@ -370,15 +375,25 @@ impl DeserializeArray for Option<SpIBinder> {}
 
 /// A weak reference to a Binder remote object.
 ///
-/// This struct encapsulates the C++ `wp<IBinder>` class. However, this wrapper
-/// is untyped, so properly typed versions implementing a particular binder
-/// interface should be crated with [`declare_binder_interface!`].
+/// This struct encapsulates the generic C++ `wp<IBinder>` class. This wrapper
+/// is untyped; typed interface access is implemented by the AIDL compiler.
 pub struct WpIBinder(*mut sys::AIBinder_Weak);
+
+impl fmt::Debug for WpIBinder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("WpIBinder")
+    }
+}
+
+/// # Safety
+///
+/// A `WpIBinder` is a handle to a C++ IBinder, which is thread-safe.
+unsafe impl Send for WpIBinder {}
 
 impl WpIBinder {
     /// Create a new weak reference from an object that can be converted into a
     /// raw `AIBinder` pointer.
-    pub fn new<B: AsNative<sys::AIBinder>>(binder: &mut B) -> WpIBinder {
+    fn new<B: AsNative<sys::AIBinder>>(binder: &mut B) -> WpIBinder {
         let ptr = unsafe {
             // Safety: `SpIBinder` guarantees that `binder` always contains a
             // valid pointer to an `AIBinder`.
