@@ -504,9 +504,6 @@ private:
                                             const binder_size_t* objects, size_t objectsCount,
                                             release_func relFunc);
 
-                        Parcel(const Parcel& o);
-    Parcel&             operator=(const Parcel& o);
-    
     status_t            finishWrite(size_t len);
     void                releaseObjects();
     void                acquireObjects();
