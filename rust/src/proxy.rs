@@ -416,6 +416,16 @@ impl WpIBinder {
     }
 }
 
+impl Drop for WpIBinder {
+    fn drop(&mut self) {
+        unsafe {
+            // Safety: WpIBinder always holds a valid `AIBinder_Weak` pointer, so we
+            // know this pointer is safe to pass to `AIBinder_Weak_delete` here.
+            sys::AIBinder_Weak_delete(self.0);
+        }
+    }
+}
+
 /// Rust wrapper around DeathRecipient objects.
 #[repr(C)]
 pub struct DeathRecipient {
