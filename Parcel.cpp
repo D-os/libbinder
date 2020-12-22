@@ -206,7 +206,7 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
             if (proxy == nullptr) {
                 ALOGE("null proxy");
             }
-            const int32_t handle = proxy ? proxy->handle() : 0;
+            const int32_t handle = proxy ? proxy->getPrivateAccessorForHandle().handle() : 0;
             obj.hdr.type = BINDER_TYPE_HANDLE;
             obj.binder = 0; /* Don't pass uninitialized stack data to a remote process */
             obj.handle = handle;

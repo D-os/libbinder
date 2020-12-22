@@ -70,7 +70,7 @@ public:
                                 // 2. Temporary strong references held by the kernel during a
                                 //    transaction on the node.
                                 // It does NOT include local strong references to the node
-            ssize_t             getStrongRefCountForNodeByHandle(int32_t handle);
+            ssize_t             getStrongRefCountForNode(const sp<BpBinder>& binder);
 
             enum class CallRestriction {
                 // all calls okay
