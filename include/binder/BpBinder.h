@@ -29,6 +29,7 @@ namespace android {
 namespace internal {
 class Stability;
 }
+class ProcessState;
 
 using binder_proxy_limit_callback = void(*)(int);
 
@@ -36,8 +37,6 @@ class BpBinder : public IBinder
 {
 public:
     static BpBinder*    create(int32_t handle);
-
-    int32_t             handle() const;
 
     virtual const String16&    getInterfaceDescriptor() const;
     virtual bool        isBinderAlive() const;
@@ -109,7 +108,23 @@ public:
         KeyedVector<const void*, entry_t> mObjects;
     };
 
+    class PrivateAccessorForHandle {
+    private:
+        friend BpBinder;
+        friend ::android::Parcel;
+        friend ::android::ProcessState;
+        explicit PrivateAccessorForHandle(const BpBinder* binder) : mBinder(binder) {}
+        int32_t handle() const { return mBinder->handle(); }
+        const BpBinder* mBinder;
+    };
+    const PrivateAccessorForHandle getPrivateAccessorForHandle() const {
+        return PrivateAccessorForHandle(this);
+    }
+
 private:
+    friend PrivateAccessorForHandle;
+
+    int32_t             handle() const;
                         BpBinder(int32_t handle,int32_t trackedUid);
     virtual             ~BpBinder();
     virtual void        onFirstRef();
