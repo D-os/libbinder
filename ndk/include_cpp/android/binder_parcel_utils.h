@@ -27,6 +27,7 @@
 #pragma once
 
 #include <android/binder_auto_utils.h>
+#include <android/binder_internal_logging.h>
 #include <android/binder_parcel.h>
 
 #include <optional>
@@ -179,6 +180,7 @@ static inline binder_status_t AParcel_readNullableStrongBinder(const AParcel* pa
 static inline binder_status_t AParcel_writeRequiredStrongBinder(AParcel* parcel,
                                                                 const SpAIBinder& binder) {
     if (binder.get() == nullptr) {
+        syslog(LOG_ERR, "Passing null binder object as non-@nullable AIDL IBinder");
         return STATUS_UNEXPECTED_NULL;
     }
     return AParcel_writeStrongBinder(parcel, binder.get());
@@ -228,6 +230,7 @@ static inline binder_status_t AParcel_readNullableParcelFileDescriptor(const APa
 static inline binder_status_t AParcel_writeRequiredParcelFileDescriptor(
         AParcel* parcel, const ScopedFileDescriptor& fd) {
     if (fd.get() < 0) {
+        syslog(LOG_ERR, "Passing -1 file descriptor as non-@nullable AIDL ParcelFileDescriptor");
         return STATUS_UNEXPECTED_NULL;
     }
     return AParcel_writeParcelFileDescriptor(parcel, fd.get());
