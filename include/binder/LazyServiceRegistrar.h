@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include <binder/IServiceManager.h>
 #include <binder/Status.h>
 #include <utils/StrongPointer.h>
@@ -52,6 +54,40 @@ class LazyServiceRegistrar {
       * or there may be a race with the default dynamic shutdown.
       */
      void forcePersist(bool persist);
+
+     /**
+      * Set a callback that is executed when the total number of services with
+      * clients changes.
+      * The callback takes an argument, which is the number of registered
+      * lazy services for this process which have clients.
+      *
+      * Callback return value:
+      * - false: Default behavior for lazy services (shut down the process if there
+      *          are no clients).
+      * - true:  Don't shut down the process even if there are no clients.
+      *
+      * This callback gives a chance to:
+      * 1 - Perform some additional operations before exiting;
+      * 2 - Prevent the process from exiting by returning "true" from the
+      *     callback.
+      *
+      * This method should be called before 'registerService' to avoid races.
+      */
+     void setActiveServicesCountCallback(const std::function<bool(int)>&
+                                         activeServicesCountCallback);
+
+    /**
+      * Try to unregister all services previously registered with 'registerService'.
+      * Returns 'true' if successful.
+      */
+     bool tryUnregister();
+
+     /**
+      * Re-register services that were unregistered by 'tryUnregister'.
+      * This method should be called in the case 'tryUnregister' fails
+      * (and should be called on the same thread).
+      */
+     void reRegister();
 
    private:
      std::shared_ptr<internal::ClientCounterCallback> mClientCC;
