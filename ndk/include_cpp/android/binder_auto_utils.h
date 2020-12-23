@@ -27,18 +27,11 @@
 #pragma once
 
 #include <android/binder_ibinder.h>
+#include <android/binder_internal_logging.h>
 #include <android/binder_parcel.h>
 #include <android/binder_status.h>
 
 #include <assert.h>
-
-// defined differently by liblog
-#pragma push_macro("LOG_PRI")
-#ifdef LOG_PRI
-#undef LOG_PRI
-#endif
-#include <syslog.h>
-#pragma pop_macro("LOG_PRI")
 
 #include <unistd.h>
 #include <cstddef>
