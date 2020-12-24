@@ -114,24 +114,12 @@ class AParcelableHolder {
 
     void reset() { AParcel_reset(mParcel.get()); }
 
-    inline bool operator!=(const AParcelableHolder& rhs) const {
-        return std::tie(mParcel, mStability) != std::tie(rhs.mParcel, rhs.mStability);
-    }
-    inline bool operator<(const AParcelableHolder& rhs) const {
-        return std::tie(mParcel, mStability) < std::tie(rhs.mParcel, rhs.mStability);
-    }
-    inline bool operator<=(const AParcelableHolder& rhs) const {
-        return std::tie(mParcel, mStability) <= std::tie(rhs.mParcel, rhs.mStability);
-    }
-    inline bool operator==(const AParcelableHolder& rhs) const {
-        return std::tie(mParcel, mStability) == std::tie(rhs.mParcel, rhs.mStability);
-    }
-    inline bool operator>(const AParcelableHolder& rhs) const {
-        return std::tie(mParcel, mStability) > std::tie(rhs.mParcel, rhs.mStability);
-    }
-    inline bool operator>=(const AParcelableHolder& rhs) const {
-        return std::tie(mParcel, mStability) >= std::tie(rhs.mParcel, rhs.mStability);
-    }
+    inline bool operator!=(const AParcelableHolder& rhs) const { return this != &rhs; }
+    inline bool operator<(const AParcelableHolder& rhs) const { return this < &rhs; }
+    inline bool operator<=(const AParcelableHolder& rhs) const { return this <= &rhs; }
+    inline bool operator==(const AParcelableHolder& rhs) const { return this == &rhs; }
+    inline bool operator>(const AParcelableHolder& rhs) const { return this > &rhs; }
+    inline bool operator>=(const AParcelableHolder& rhs) const { return this >= &rhs; }
 
    private:
     mutable ndk::ScopedAParcel mParcel;
