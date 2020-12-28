@@ -82,34 +82,37 @@ class AParcelableHolder {
     }
 
     template <typename T>
-    bool setParcelable(const T& p) {
+    binder_status_t setParcelable(const T& p) {
         if (this->mStability > T::_aidl_stability) {
-            return false;
+            return STATUS_BAD_VALUE;
         }
         AParcel_reset(mParcel.get());
         AParcel_writeString(mParcel.get(), T::descriptor, strlen(T::descriptor));
         p.writeToParcel(mParcel.get());
-        return true;
+        return STATUS_OK;
     }
 
     template <typename T>
-    std::unique_ptr<T> getParcelable() const {
+    binder_status_t getParcelable(std::optional<T>* ret) const {
         const std::string parcelableDesc(T::descriptor);
         AParcel_setDataPosition(mParcel.get(), 0);
         if (AParcel_getDataSize(mParcel.get()) == 0) {
-            return nullptr;
+            *ret = std::nullopt;
+            return STATUS_OK;
         }
         std::string parcelableDescInParcel;
         binder_status_t status = AParcel_readString(mParcel.get(), &parcelableDescInParcel);
         if (status != STATUS_OK || parcelableDesc != parcelableDescInParcel) {
-            return nullptr;
+            *ret = std::nullopt;
+            return status;
         }
-        std::unique_ptr<T> ret = std::make_unique<T>();
-        status = ret->readFromParcel(this->mParcel.get());
+        *ret = std::make_optional<T>();
+        status = (*ret)->readFromParcel(this->mParcel.get());
         if (status != STATUS_OK) {
-            return nullptr;
+            *ret = std::nullopt;
+            return status;
         }
-        return std::move(ret);
+        return STATUS_OK;
     }
 
     void reset() { AParcel_reset(mParcel.get()); }
