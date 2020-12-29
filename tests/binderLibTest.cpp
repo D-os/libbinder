@@ -443,6 +443,14 @@ class TestDeathRecipient : public IBinder::DeathRecipient, public BinderLibTestE
         };
 };
 
+TEST_F(BinderLibTest, WasParceled) {
+    auto binder = sp<BBinder>::make();
+    EXPECT_FALSE(binder->wasParceled());
+    Parcel data;
+    data.writeStrongBinder(binder);
+    EXPECT_TRUE(binder->wasParceled());
+}
+
 TEST_F(BinderLibTest, NopTransaction) {
     Parcel data, reply;
     EXPECT_THAT(m_server->transact(BINDER_LIB_TEST_NOP_TRANSACTION, data, &reply),

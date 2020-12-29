@@ -196,8 +196,11 @@ static constexpr inline int schedPolicyMask(int policy, int priority) {
     return (priority & FLAT_BINDER_FLAG_PRIORITY_MASK) | ((policy & 3) << FLAT_BINDER_FLAG_SCHED_POLICY_SHIFT);
 }
 
-status_t Parcel::flattenBinder(const sp<IBinder>& binder)
-{
+status_t Parcel::flattenBinder(const sp<IBinder>& binder) {
+    BBinder* local = nullptr;
+    if (binder) local = binder->localBinder();
+    if (local) local->setParceled();
+
     if (isForRpc()) {
         if (binder) {
             status_t status = writeInt32(1); // non-null
@@ -223,7 +226,6 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
     }
 
     if (binder != nullptr) {
-        BBinder *local = binder->localBinder();
         if (!local) {
             BpBinder *proxy = binder->remoteBinder();
             if (proxy == nullptr) {
