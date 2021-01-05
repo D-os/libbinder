@@ -104,28 +104,22 @@ public:
     Stability getStability() const override { return mStability; }
 
     inline bool operator!=(const ParcelableHolder& rhs) const {
-        return std::tie(mParcelable, mParcelPtr, mStability) !=
-                std::tie(rhs.mParcelable, rhs.mParcelPtr, rhs.mStability);
+        return this != &rhs;
     }
     inline bool operator<(const ParcelableHolder& rhs) const {
-        return std::tie(mParcelable, mParcelPtr, mStability) <
-                std::tie(rhs.mParcelable, rhs.mParcelPtr, rhs.mStability);
+        return this < &rhs;
     }
     inline bool operator<=(const ParcelableHolder& rhs) const {
-        return std::tie(mParcelable, mParcelPtr, mStability) <=
-                std::tie(rhs.mParcelable, rhs.mParcelPtr, rhs.mStability);
+        return this <= &rhs;
     }
     inline bool operator==(const ParcelableHolder& rhs) const {
-        return std::tie(mParcelable, mParcelPtr, mStability) ==
-                std::tie(rhs.mParcelable, rhs.mParcelPtr, rhs.mStability);
+        return this == &rhs;
     }
     inline bool operator>(const ParcelableHolder& rhs) const {
-        return std::tie(mParcelable, mParcelPtr, mStability) >
-                std::tie(rhs.mParcelable, rhs.mParcelPtr, rhs.mStability);
+        return this > &rhs;
     }
     inline bool operator>=(const ParcelableHolder& rhs) const {
-        return std::tie(mParcelable, mParcelPtr, mStability) >=
-                std::tie(rhs.mParcelable, rhs.mParcelPtr, rhs.mStability);
+        return this >= &rhs;
     }
 
 private:
