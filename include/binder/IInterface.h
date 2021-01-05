@@ -232,7 +232,6 @@ constexpr const char* const kManualInterfaces[] = {
   "android.gui.IGraphicBufferConsumer",
   "android.gui.IRegionSamplingListener",
   "android.gui.ITransactionComposerListener",
-  "android.gui.IScreenCaptureListener",
   "android.gui.SensorEventConnection",
   "android.gui.SensorServer",
   "android.hardware.ICamera",
