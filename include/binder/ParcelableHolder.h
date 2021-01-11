@@ -18,6 +18,7 @@
 
 #include <binder/Parcel.h>
 #include <binder/Parcelable.h>
+#include <utils/String16.h>
 #include <mutex>
 #include <optional>
 #include <tuple>
@@ -72,7 +73,7 @@ public:
     template <typename T>
     status_t getParcelable(std::shared_ptr<T>* ret) const {
         static_assert(std::is_base_of<Parcelable, T>::value, "T must be derived from Parcelable");
-        const std::string& parcelableDesc = T::getParcelableDescriptor();
+        const String16& parcelableDesc = T::getParcelableDescriptor();
         if (!this->mParcelPtr) {
             if (!this->mParcelable || !this->mParcelableName) {
                 ALOGD("empty ParcelableHolder");
@@ -80,7 +81,7 @@ public:
                 return android::OK;
             } else if (parcelableDesc != *mParcelableName) {
                 ALOGD("extension class name mismatch expected:%s actual:%s",
-                      mParcelableName->c_str(), parcelableDesc.c_str());
+                      String8(*mParcelableName).c_str(), String8(parcelableDesc).c_str());
                 *ret = nullptr;
                 return android::BAD_VALUE;
             }
@@ -88,7 +89,7 @@ public:
             return android::OK;
         }
         this->mParcelPtr->setDataPosition(0);
-        status_t status = this->mParcelPtr->readUtf8FromUtf16(&this->mParcelableName);
+        status_t status = this->mParcelPtr->readString16(&this->mParcelableName);
         if (status != android::OK || parcelableDesc != this->mParcelableName) {
             this->mParcelableName = std::nullopt;
             *ret = nullptr;
@@ -130,7 +131,7 @@ public:
 
 private:
     mutable std::shared_ptr<Parcelable> mParcelable;
-    mutable std::optional<std::string> mParcelableName;
+    mutable std::optional<String16> mParcelableName;
     mutable std::unique_ptr<Parcel> mParcelPtr;
     Stability mStability;
 };
