@@ -37,7 +37,7 @@ status_t ParcelableHolder::writeToParcel(Parcel* p) const {
         size_t sizePos = p->dataPosition();
         RETURN_ON_FAILURE(p->writeInt32(0));
         size_t dataStartPos = p->dataPosition();
-        RETURN_ON_FAILURE(p->writeUtf8AsUtf16(this->mParcelableName));
+        RETURN_ON_FAILURE(p->writeString16(this->mParcelableName));
         this->mParcelable->writeToParcel(p);
         size_t dataSize = p->dataPosition() - dataStartPos;
 
