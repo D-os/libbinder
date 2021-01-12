@@ -157,6 +157,24 @@ cc_test {
     require_root: true,
 }
 
+cc_test {
+    name: "binderClearBufTest",
+    defaults: ["binder_test_defaults"],
+    srcs: [
+        "binderClearBufTest.cpp",
+    ],
+
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "liblog",
+        "libutils",
+    ],
+
+    test_suites: ["general-tests"],
+    require_root: true,
+}
+
 aidl_interface {
     name: "binderStabilityTestIface",
     unstable: true,
