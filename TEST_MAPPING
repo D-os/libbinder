@@ -10,6 +10,9 @@
       "name": "binderAllocationLimits"
     },
     {
+      "name": "binderClearBufTest"
+    },
+    {
       "name": "binderDriverInterfaceTest"
     },
     {
