@@ -301,6 +301,26 @@ AIBinder* AIBinder_Weak_promote(AIBinder_Weak* weakBinder) {
     return binder.get();
 }
 
+AIBinder_Weak* AIBinder_Weak_clone(const AIBinder_Weak* weak) {
+    if (weak == nullptr) {
+        return nullptr;
+    }
+
+    return new AIBinder_Weak{weak->binder};
+}
+
+bool AIBinder_lt(const AIBinder* lhs, const AIBinder* rhs) {
+    if (lhs == nullptr || rhs == nullptr) return lhs < rhs;
+
+    return const_cast<AIBinder*>(lhs)->getBinder() < const_cast<AIBinder*>(rhs)->getBinder();
+}
+
+bool AIBinder_Weak_lt(const AIBinder_Weak* lhs, const AIBinder_Weak* rhs) {
+    if (lhs == nullptr || rhs == nullptr) return lhs < rhs;
+
+    return lhs->binder < rhs->binder;
+}
+
 AIBinder_Class::AIBinder_Class(const char* interfaceDescriptor, AIBinder_Class_onCreate onCreate,
                                AIBinder_Class_onDestroy onDestroy,
                                AIBinder_Class_onTransact onTransact)
