@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -28,6 +29,7 @@
 #include <binder/IBinder.h>
 #include <binder/IPCThreadState.h>
 #include <binder/IServiceManager.h>
+#include <binder/ParcelRef.h>
 
 #include <private/binder/binder_module.h>
 #include <linux/sched.h>
@@ -907,6 +909,36 @@ TEST_F(BinderLibTest, FreedBinder) {
          */
         strong->handle = oldHandle;
     }
+}
+
+TEST_F(BinderLibTest, ParcelAllocatedOnAnotherThread) {
+    sp<IBinder> server = addServer();
+    ASSERT_TRUE(server != nullptr);
+
+    Parcel data;
+    sp<ParcelRef> reply = ParcelRef::create();
+
+    // when we have a Parcel which is deleted on another thread, if it gets
+    // deleted, it will tell the kernel this, and it will drop strong references
+    // to binder, so that we can't BR_ACQUIRE would fail
+    IPCThreadState::self()->createTransactionReference(reply.get());
+    ASSERT_EQ(NO_ERROR, server->transact(BINDER_LIB_TEST_CREATE_BINDER_TRANSACTION,
+                                         data,
+                                         reply.get()));
+
+    // we have sp to binder, but it is not actually acquired by kernel, the
+    // transaction is sitting on an out buffer
+    sp<IBinder> binder = reply->readStrongBinder();
+
+    std::thread([&] {
+        // without the transaction reference, this would cause the Parcel to be
+        // deallocated before the first thread flushes BR_ACQUIRE
+        reply = nullptr;
+        IPCThreadState::self()->flushCommands();
+    }).join();
+
+    ASSERT_NE(nullptr, binder);
+    ASSERT_EQ(NO_ERROR, binder->pingBinder());
 }
 
 TEST_F(BinderLibTest, CheckNoHeaderMappedInUser) {
