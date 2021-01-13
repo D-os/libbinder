@@ -83,7 +83,8 @@ class SharedRefBase {
     template <class T, class... Args>
     static std::shared_ptr<T> make(Args&&... args) {
         T* t = new T(std::forward<Args>(args)...);
-        return t->template ref<T>();
+        // warning: Potential leak of memory pointed to by 't' [clang-analyzer-unix.Malloc]
+        return t->template ref<T>();  // NOLINT(clang-analyzer-unix.Malloc)
     }
 
     static void operator delete(void* p) { std::free(p); }
