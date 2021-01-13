@@ -181,15 +181,26 @@ cc_library {
         "--header-filter=^.*frameworks/native/libs/binder/.*.h$",
     ],
     tidy_checks_as_errors: [
-        "*",
+        // Explicitly list the checks that should not occur in this module.
+        "abseil-*",
+        "android-*",
+        "bugprone-*",
+        "cert-*",
+        "clang-analyzer-*",
         "-clang-analyzer-core.CallAndMessage",
         "-clang-analyzer-core.uninitialized.Assign",
         "-clang-analyzer-unix.Malloc",
         "-clang-analyzer-deadcode.DeadStores",
         "-clang-analyzer-optin.cplusplus.UninitializedObject",
+        "google-*",
+        "-google-readability-*",
+        "-google-runtime-references",
+        "misc-*",
         "-misc-no-recursion",
         "-misc-redundant-expression",
         "-misc-unused-using-decls",
+        "performance*",
+        "portability*",
     ],
 }
 
