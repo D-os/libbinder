@@ -69,3 +69,18 @@ cc_fuzz {
     defaults: ["binder_fuzz_defaults"],
     srcs: ["TextOutputFuzz.cpp"],
 }
+
+cc_fuzz {
+    name: "binder_bufferedTextOutputFuzz",
+    include_dirs: [
+        "frameworks/native/libs/binder",
+    ],
+    defaults: ["binder_fuzz_defaults"],
+    srcs: ["BufferedTextOutputFuzz.cpp"],
+}
+
+cc_fuzz {
+    name: "binder_memoryDealerFuzz",
+    defaults: ["binder_fuzz_defaults"],
+    srcs: ["MemoryDealerFuzz.cpp"],
+}
