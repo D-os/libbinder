@@ -15,15 +15,17 @@
  */
 
 use crate::binder::{AsNative, FromIBinder};
-use crate::error::{status_result, Result, Status, StatusCode};
+use crate::error::{status_result, status_t, Result, Status, StatusCode};
 use crate::parcel::Parcel;
 use crate::proxy::SpIBinder;
 use crate::sys;
 
 use std::convert::TryInto;
 use std::ffi::c_void;
-use std::os::raw::c_char;
+use std::os::raw::{c_char, c_ulong};
+use std::mem::{self, MaybeUninit};
 use std::ptr;
+use std::slice;
 
 /// A struct whose instances can be written to a [`Parcel`].
 // Might be able to hook this up as a serde backend in the future?
@@ -49,14 +51,44 @@ pub trait Deserialize: Sized {
 pub trait SerializeArray: Serialize + Sized {
     /// Serialize an array of this type into the given [`Parcel`].
     fn serialize_array(slice: &[Self], parcel: &mut Parcel) -> Result<()> {
-        parcel.write_slice_size(Some(slice))?;
-
-        for item in slice {
-            parcel.write(item)?;
-        }
-
-        Ok(())
+        let res = unsafe {
+            // Safety: Safe FFI, slice will always be a safe pointer to pass.
+            sys::AParcel_writeParcelableArray(
+                parcel.as_native_mut(),
+                slice.as_ptr() as *const c_void,
+                slice.len().try_into().or(Err(StatusCode::BAD_VALUE))?,
+                Some(serialize_element::<Self>),
+            )
+        };
+        status_result(res)
     }
+}
+
+/// Callback to serialize an element of a generic parcelable array.
+///
+/// Safety: We are relying on binder_ndk to not overrun our slice. As long as it
+/// doesn't provide an index larger than the length of the original slice in
+/// serialize_array, this operation is safe. The index provided is zero-based.
+unsafe extern "C" fn serialize_element<T: Serialize>(
+    parcel: *mut sys::AParcel,
+    array: *const c_void,
+    index: c_ulong,
+) -> status_t {
+    // c_ulong and usize are the same, but we need the explicitly sized version
+    // so the function signature matches what bindgen generates.
+    let index = index as usize;
+
+    let slice: &[T] = slice::from_raw_parts(array.cast(), index+1);
+
+    let mut parcel = match Parcel::borrowed(parcel) {
+        None => return StatusCode::UNEXPECTED_NULL as status_t,
+        Some(p) => p,
+    };
+
+    slice[index].serialize(&mut parcel)
+                .err()
+                .unwrap_or(StatusCode::OK)
+        as status_t
 }
 
 /// Helper trait for types that can be deserialized as arrays.
@@ -65,20 +97,61 @@ pub trait SerializeArray: Serialize + Sized {
 pub trait DeserializeArray: Deserialize {
     /// Deserialize an array of type from the given [`Parcel`].
     fn deserialize_array(parcel: &Parcel) -> Result<Option<Vec<Self>>> {
-        let len: i32 = parcel.read()?;
-        if len < 0 {
-            return Ok(None);
-        }
-
-        // TODO: Assumes that usize is at least 32 bits
-        let mut vec = Vec::with_capacity(len as usize);
-
-        for _ in 0..len {
-            vec.push(parcel.read()?);
-        }
-
-        Ok(Some(vec))
+        let mut vec: Option<Vec<MaybeUninit<Self>>> = None;
+        let res = unsafe {
+            // Safety: Safe FFI, vec is the correct opaque type expected by
+            // allocate_vec and deserialize_element.
+            sys::AParcel_readParcelableArray(
+                parcel.as_native(),
+                &mut vec as *mut _ as *mut c_void,
+                Some(allocate_vec::<Self>),
+                Some(deserialize_element::<Self>),
+            )
+        };
+        status_result(res)?;
+        let vec: Option<Vec<Self>> = unsafe {
+            // Safety: We are assuming that the NDK correctly initialized every
+            // element of the vector by now, so we know that all the
+            // MaybeUninits are now properly initialized. We can transmute from
+            // Vec<MaybeUninit<T>> to Vec<T> because MaybeUninit<T> has the same
+            // alignment and size as T, so the pointer to the vector allocation
+            // will be compatible.
+            mem::transmute(vec)
+        };
+        Ok(vec)
     }
+}
+
+/// Callback to deserialize a parcelable element.
+///
+/// The opaque array data pointer must be a mutable pointer to an
+/// `Option<Vec<MaybeUninit<T>>>` with at least enough elements for `index` to be valid
+/// (zero-based).
+unsafe extern "C" fn deserialize_element<T: Deserialize>(
+    parcel: *const sys::AParcel,
+    array: *mut c_void,
+    index: c_ulong,
+) -> status_t {
+    // c_ulong and usize are the same, but we need the explicitly sized version
+    // so the function signature matches what bindgen generates.
+    let index = index as usize;
+
+    let vec = &mut *(array as *mut Option<Vec<MaybeUninit<T>>>);
+    let vec = match vec {
+        Some(v) => v,
+        None => return StatusCode::BAD_INDEX as status_t,
+    };
+
+    let parcel = match Parcel::borrowed(parcel as *mut _) {
+        None => return StatusCode::UNEXPECTED_NULL as status_t,
+        Some(p) => p,
+    };
+    let element = match parcel.read() {
+        Ok(e) => e,
+        Err(code) => return code as status_t,
+    };
+    ptr::write(vec[index].as_mut_ptr(), element);
+    StatusCode::OK as status_t
 }
 
 /// Helper trait for types that can be nullable when serialized.
@@ -115,27 +188,53 @@ pub trait DeserializeOption: Deserialize {
 
 /// Callback to allocate a vector for parcel array read functions.
 ///
+/// This variant is for APIs which use an out buffer pointer.
+///
 /// # Safety
 ///
 /// The opaque data pointer passed to the array read function must be a mutable
-/// pointer to an `Option<Vec<T>>`. `buffer` will be assigned a mutable pointer
+/// pointer to an `Option<Vec<MaybeUninit<T>>>`. `buffer` will be assigned a mutable pointer
 /// to the allocated vector data if this function returns true.
-unsafe extern "C" fn allocate_vec<T: Clone + Default>(
+unsafe extern "C" fn allocate_vec_with_buffer<T>(
     data: *mut c_void,
     len: i32,
     buffer: *mut *mut T,
 ) -> bool {
-    let vec = &mut *(data as *mut Option<Vec<T>>);
+    let res = allocate_vec::<T>(data, len);
+    let vec = &mut *(data as *mut Option<Vec<MaybeUninit<T>>>);
+    if let Some(new_vec) = vec {
+        *buffer = new_vec.as_mut_ptr() as *mut T;
+    }
+    res
+}
+
+/// Callback to allocate a vector for parcel array read functions.
+///
+/// # Safety
+///
+/// The opaque data pointer passed to the array read function must be a mutable
+/// pointer to an `Option<Vec<MaybeUninit<T>>>`.
+unsafe extern "C" fn allocate_vec<T>(
+    data: *mut c_void,
+    len: i32,
+) -> bool {
+    let vec = &mut *(data as *mut Option<Vec<MaybeUninit<T>>>);
     if len < 0 {
         *vec = None;
         return true;
     }
-    let mut new_vec: Vec<T> = Vec::with_capacity(len as usize);
-    new_vec.resize_with(len as usize, Default::default);
-    *buffer = new_vec.as_mut_ptr();
-    *vec = Some(new_vec);
+    let mut new_vec: Vec<MaybeUninit<T>> = Vec::with_capacity(len as usize);
+
+    // Safety: We are filling the vector with uninitialized data here, but this
+    // is safe because the vector contains MaybeUninit elements which can be
+    // uninitialized. We're putting off the actual unsafe bit, transmuting the
+    // vector to a Vec<T> until the contents are initialized.
+    new_vec.set_len(len as usize);
+
+    ptr::write(vec, Some(new_vec));
     true
 }
+
 
 macro_rules! parcelable_primitives {
     {
@@ -204,19 +303,29 @@ macro_rules! impl_parcelable {
     {DeserializeArray, $ty:ty, $read_array_fn:path} => {
         impl DeserializeArray for $ty {
             fn deserialize_array(parcel: &Parcel) -> Result<Option<Vec<Self>>> {
-                let mut vec: Option<Vec<Self>> = None;
+                let mut vec: Option<Vec<MaybeUninit<Self>>> = None;
                 let status = unsafe {
                     // Safety: `Parcel` always contains a valid pointer to an
                     // `AParcel`. `allocate_vec<T>` expects the opaque pointer to
-                    // be of type `*mut Option<Vec<T>>`, so `&mut vec` is
+                    // be of type `*mut Option<Vec<MaybeUninit<T>>>`, so `&mut vec` is
                     // correct for it.
                     $read_array_fn(
                         parcel.as_native(),
                         &mut vec as *mut _ as *mut c_void,
-                        Some(allocate_vec),
+                        Some(allocate_vec_with_buffer),
                     )
                 };
                 status_result(status)?;
+                let vec: Option<Vec<Self>> = unsafe {
+                    // Safety: We are assuming that the NDK correctly
+                    // initialized every element of the vector by now, so we
+                    // know that all the MaybeUninits are now properly
+                    // initialized. We can transmute from Vec<MaybeUninit<T>> to
+                    // Vec<T> because MaybeUninit<T> has the same alignment and
+                    // size as T, so the pointer to the vector allocation will
+                    // be compatible.
+                    mem::transmute(vec)
+                };
                 Ok(vec)
             }
         }
@@ -414,7 +523,7 @@ impl Deserialize for Option<String> {
             sys::AParcel_readString(
                 parcel.as_native(),
                 &mut vec as *mut _ as *mut c_void,
-                Some(allocate_vec),
+                Some(allocate_vec_with_buffer),
             )
         };
 
