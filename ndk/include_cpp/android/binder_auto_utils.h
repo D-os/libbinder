@@ -265,7 +265,18 @@ class ScopedAStatus : public impl::ScopedAResource<AStatus*, AStatus_delete, nul
             AStatus_deleteDescription(cStr);
             return ret;
         }
-        return "(not available)";
+        binder_exception_t exception = getExceptionCode();
+        std::string desc = std::to_string(exception);
+        if (exception == EX_SERVICE_SPECIFIC) {
+            desc += " (" + std::to_string(getServiceSpecificError()) + ")";
+        } else if (exception == EX_TRANSACTION_FAILED) {
+            desc += " (" + std::to_string(getStatus()) + ")";
+        }
+        if (const char* msg = getMessage(); msg != nullptr) {
+            desc += ": ";
+            desc += msg;
+        }
+        return desc;
     }
 
     /**
