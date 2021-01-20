@@ -56,10 +56,10 @@ class LazyServiceRegistrar {
      void forcePersist(bool persist);
 
      /**
-      * Set a callback that is executed when the total number of services with
-      * clients changes.
-      * The callback takes an argument, which is the number of registered
-      * lazy services for this process which have clients.
+      * Set a callback that is invoked when the active service count (i.e. services with clients)
+      * registered with this process drops to zero (or becomes nonzero).
+      * The callback takes a boolean argument, which is 'true' if there is
+      * at least one service with clients.
       *
       * Callback return value:
       * - false: Default behavior for lazy services (shut down the process if there
@@ -73,8 +73,7 @@ class LazyServiceRegistrar {
       *
       * This method should be called before 'registerService' to avoid races.
       */
-     void setActiveServicesCountCallback(const std::function<bool(int)>&
-                                         activeServicesCountCallback);
+     void setActiveServicesCallback(const std::function<bool(bool)>& activeServicesCallback);
 
     /**
       * Try to unregister all services previously registered with 'registerService'.
