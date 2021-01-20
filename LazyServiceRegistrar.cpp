@@ -38,8 +38,7 @@ public:
                          bool allowIsolated, int dumpFlags);
     void forcePersist(bool persist);
 
-    void setActiveServicesCountCallback(const std::function<bool(int)>&
-                                        activeServicesCountCallback);
+    void setActiveServicesCallback(const std::function<bool(bool)>& activeServicesCallback);
 
     bool tryUnregister();
 
@@ -82,13 +81,16 @@ private:
     // count of services with clients
     size_t mNumConnectedServices;
 
+    // previous value passed to the active services callback
+    std::optional<bool> mPreviousHasClients;
+
     // map of registered names and services
     std::map<std::string, Service> mRegisteredServices;
 
     bool mForcePersist;
 
-    // Callback used to report the number of services with clients
-    std::function<bool(int)> mActiveServicesCountCallback;
+    // Callback used to report if there are services with clients
+    std::function<bool(bool)> mActiveServicesCallback;
 };
 
 class ClientCounterCallback {
@@ -103,8 +105,7 @@ public:
      */
     void forcePersist(bool persist);
 
-    void setActiveServicesCountCallback(const std::function<bool(int)>&
-                                        activeServicesCountCallback);
+    void setActiveServicesCallback(const std::function<bool(bool)>& activeServicesCallback);
 
     bool tryUnregister();
 
@@ -158,7 +159,7 @@ std::map<std::string, ClientCounterCallbackImpl::Service>::iterator ClientCounte
 
 void ClientCounterCallbackImpl::forcePersist(bool persist) {
     mForcePersist = persist;
-    if (!mForcePersist && mNumConnectedServices == 0) {
+    if (!mForcePersist) {
         // Attempt a shutdown in case the number of clients hit 0 while the flag was on
         maybeTryShutdown();
     }
@@ -204,8 +205,12 @@ void ClientCounterCallbackImpl::maybeTryShutdown() {
     }
 
     bool handledInCallback = false;
-    if (mActiveServicesCountCallback != nullptr) {
-        handledInCallback = mActiveServicesCountCallback(mNumConnectedServices);
+    if (mActiveServicesCallback != nullptr) {
+        bool hasClients = mNumConnectedServices != 0;
+        if (hasClients != mPreviousHasClients) {
+            handledInCallback = mActiveServicesCallback(hasClients);
+            mPreviousHasClients = hasClients;
+        }
     }
 
     // If there is no callback defined or the callback did not handle this
@@ -256,9 +261,9 @@ Status ClientCounterCallbackImpl::onClients(const sp<IBinder>& service, bool cli
     reRegister();
 }
 
-void ClientCounterCallbackImpl::setActiveServicesCountCallback(const std::function<bool(int)>&
-                                                               activeServicesCountCallback) {
-    mActiveServicesCountCallback = activeServicesCountCallback;
+void ClientCounterCallbackImpl::setActiveServicesCallback(const std::function<bool(bool)>&
+                                                          activeServicesCallback) {
+    mActiveServicesCallback = activeServicesCallback;
 }
 
 ClientCounterCallback::ClientCounterCallback() {
@@ -274,9 +279,9 @@ void ClientCounterCallback::forcePersist(bool persist) {
     mImpl->forcePersist(persist);
 }
 
-void ClientCounterCallback::setActiveServicesCountCallback(const std::function<bool(int)>&
-                                                           activeServicesCountCallback) {
-    mImpl->setActiveServicesCountCallback(activeServicesCountCallback);
+void ClientCounterCallback::setActiveServicesCallback(const std::function<bool(bool)>&
+                                                      activeServicesCallback) {
+    mImpl->setActiveServicesCallback(activeServicesCallback);
 }
 
 bool ClientCounterCallback::tryUnregister() {
@@ -310,9 +315,9 @@ void LazyServiceRegistrar::forcePersist(bool persist) {
     mClientCC->forcePersist(persist);
 }
 
-void LazyServiceRegistrar::setActiveServicesCountCallback(const std::function<bool(int)>&
-                                                          activeServicesCountCallback) {
-    mClientCC->setActiveServicesCountCallback(activeServicesCountCallback);
+void LazyServiceRegistrar::setActiveServicesCallback(const std::function<bool(bool)>&
+                                                     activeServicesCallback) {
+    mClientCC->setActiveServicesCallback(activeServicesCallback);
 }
 
 bool LazyServiceRegistrar::tryUnregister() {
