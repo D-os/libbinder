@@ -660,13 +660,15 @@ const char* AIBinder_Class_getDescriptor(const AIBinder_Class* clazz) __INTRODUC
 /**
  * Whether AIBinder is less than another.
  *
- * This provides a per-process-unique total ordering of binders determined by
- * an underlying allocation address where a null AIBinder* is considered to be
- * ordered before all other binders.
+ * This provides a per-process-unique total ordering of binders where a null
+ * AIBinder* object is considered to be before all other binder objects.
+ * For instance, two binders refer to the same object in a local or remote
+ * process when both AIBinder_lt(a, b) and AIBinder(b, a) are false. This API
+ * might be used to insert and lookup binders in binary search trees.
  *
  * AIBinder* pointers themselves actually also create a per-process-unique total
  * ordering. However, this ordering is inconsistent with AIBinder_Weak_lt for
- * remote binders.
+ * remote binders. So, in general, this function should be preferred.
  *
  * Available since API level 31.
  *
@@ -698,14 +700,21 @@ AIBinder_Weak* AIBinder_Weak_clone(const AIBinder_Weak* weak);
  * the same as AIBinder_lt. Similarly, a null AIBinder_Weak* is considered to be
  * ordered before all other weak references.
  *
- * If you have many AIBinder_Weak* objects which are all references to distinct
- * binder objects which happen to have the same underlying address (as ordered
- * by AIBinder_lt), these AIBinder_Weak* objects will retain the same order with
- * respect to all other AIBinder_Weak* pointers with different underlying
- * addresses and are also guaranteed to have a per-process-unique ordering. That
- * is, even though multiple AIBinder* instances may happen to be allocated at
- * the same underlying address, this function will still correctly distinguish
- * that these are weak pointers to different binder objects.
+ * This function correctly distinguishes binders even if one is deallocated. So,
+ * for instance, an AIBinder_Weak* entry representing a deleted binder will
+ * never compare as equal to an AIBinder_Weak* entry which represents a
+ * different allocation of a binder, even if the two binders were originally
+ * allocated at the same address. That is:
+ *
+ *     AIBinder* a = ...; // imagine this has address 0x8
+ *     AIBinder_Weak* bWeak = AIBinder_Weak_new(a);
+ *     AIBinder_decStrong(a); // a may be deleted, if this is the last reference
+ *     AIBinder* b = ...; // imagine this has address 0x8 (same address as b)
+ *     AIBinder_Weak* bWeak = AIBinder_Weak_new(b);
+ *
+ * Then when a/b are compared with other binders, their order will be preserved,
+ * and it will either be the case that AIBinder_Weak_lt(aWeak, bWeak) OR
+ * AIBinder_Weak_lt(bWeak, aWeak), but not both.
  *
  * Unlike AIBinder*, the AIBinder_Weak* addresses themselves have nothing to do
  * with the underlying binder.
