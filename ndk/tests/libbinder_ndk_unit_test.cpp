@@ -355,8 +355,7 @@ TEST(NdkBinder, ABpBinderRefCount) {
 
     AIBinder_decStrong(binder);
 
-    // assert because would need to decStrong if non-null and we shouldn't need to add a no-op here
-    ASSERT_NE(nullptr, AIBinder_Weak_promote(wBinder));
+    ASSERT_EQ(nullptr, AIBinder_Weak_promote(wBinder));
 
     AIBinder_Weak_delete(wBinder);
 }
