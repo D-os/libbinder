@@ -70,6 +70,20 @@ impl SpIBinder {
         ptr.as_mut().map(|p| Self(p))
     }
 
+    /// Extract a raw `AIBinder` pointer from this wrapper.
+    ///
+    /// This method should _only_ be used for testing. Do not try to use the NDK
+    /// interface directly for anything else.
+    ///
+    /// # Safety
+    ///
+    /// The resulting pointer is valid only as long as the SpIBinder is alive.
+    /// The SpIBinder object retains ownership of the AIBinder and the caller
+    /// should not attempt to free the returned pointer.
+    pub unsafe fn as_raw(&self) -> *mut sys::AIBinder {
+        self.0
+    }
+
     /// Return true if this binder object is hosted in a different process than
     /// the current one.
     pub fn is_remote(&self) -> bool {
