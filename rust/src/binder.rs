@@ -613,7 +613,7 @@ macro_rules! declare_binder_interface {
 
         impl $crate::parcel::Serialize for dyn $interface + '_
         where
-            $interface: $crate::Interface
+            dyn $interface: $crate::Interface
         {
             fn serialize(&self, parcel: &mut $crate::parcel::Parcel) -> $crate::Result<()> {
                 let binder = $crate::Interface::as_binder(self);
