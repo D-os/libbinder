@@ -79,3 +79,50 @@ rust_ffi_static {
         "IBinderRustNdkInteropTest-rust",
     ],
 }
+
+cc_test {
+    name: "rustBinderSerializationTest",
+    shared_libs: [
+        "libbinder",
+        "libbinder_ndk",
+        "libutils",
+        "libbase",
+    ],
+    static_libs: [
+        "libbinder_rs_serialization_test"
+    ],
+    srcs: [
+        "serialization.cpp",
+    ],
+    auto_gen_config: true,
+    test_suites: ["general-tests"],
+}
+
+rust_bindgen {
+    name: "libbinder_rs_serialization_bindgen",
+    crate_name: "binder_rs_serialization_bindgen",
+    wrapper_src: "serialization.hpp",
+    source_stem: "bindings",
+    cpp_std: "gnu++17",
+    bindgen_flags: [
+        "--whitelist-type", "Transaction",
+        "--whitelist-var", "TESTDATA_.*",
+    ],
+
+    shared_libs: [
+        "libbinder",
+        "libc++",
+    ],
+}
+
+rust_ffi_static {
+    name: "libbinder_rs_serialization_test",
+    crate_name: "binder_rs_serialization_test",
+    srcs: [
+        "serialization.rs",
+        ":libbinder_rs_serialization_bindgen",
+    ],
+    rustlibs: [
+        "libbinder_rs",
+    ],
+}
