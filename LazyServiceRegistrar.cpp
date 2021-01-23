@@ -42,8 +42,7 @@ public:
      */
     void forcePersist(bool persist);
 
-    void setActiveServicesCountCallback(const std::function<bool(int)>&
-                                        activeServicesCountCallback);
+    void setActiveServicesCallback(const std::function<bool(bool)>& activeServicesCallback);
 
     bool tryUnregister();
 
@@ -86,13 +85,16 @@ private:
     // count of services with clients
     size_t mNumConnectedServices;
 
+    // previous value passed to the active services callback
+    std::optional<bool> mPreviousHasClients;
+
     // map of registered names and services
     std::map<std::string, Service> mRegisteredServices;
 
     bool mForcePersist;
 
-    // Callback used to report the number of services with clients
-    std::function<bool(int)> mActiveServicesCountCallback;
+    // Callback used to report if there are services with clients
+    std::function<bool(bool)> mActiveServicesCallback;
 };
 
 bool ClientCounterCallback::registerService(const sp<IBinder>& service, const std::string& name,
@@ -139,7 +141,7 @@ std::map<std::string, ClientCounterCallback::Service>::iterator ClientCounterCal
 
 void ClientCounterCallback::forcePersist(bool persist) {
     mForcePersist = persist;
-    if (!mForcePersist && mNumConnectedServices == 0) {
+    if (!mForcePersist) {
         // Attempt a shutdown in case the number of clients hit 0 while the flag was on
         maybeTryShutdown();
     }
@@ -185,8 +187,12 @@ void ClientCounterCallback::maybeTryShutdown() {
     }
 
     bool handledInCallback = false;
-    if (mActiveServicesCountCallback != nullptr) {
-        handledInCallback = mActiveServicesCountCallback(mNumConnectedServices);
+    if (mActiveServicesCallback != nullptr) {
+        bool hasClients = mNumConnectedServices != 0;
+        if (hasClients != mPreviousHasClients) {
+            handledInCallback = mActiveServicesCallback(hasClients);
+            mPreviousHasClients = hasClients;
+        }
     }
 
     // If there is no callback defined or the callback did not handle this
@@ -238,9 +244,9 @@ void ClientCounterCallback::tryShutdown() {
     reRegister();
 }
 
-void ClientCounterCallback::setActiveServicesCountCallback(const std::function<bool(int)>&
-                                                           activeServicesCountCallback) {
-    mActiveServicesCountCallback = activeServicesCountCallback;
+void ClientCounterCallback::setActiveServicesCallback(const std::function<bool(bool)>&
+                                                      activeServicesCallback) {
+    mActiveServicesCallback = activeServicesCallback;
 }
 
 }  // namespace internal
@@ -266,9 +272,9 @@ void LazyServiceRegistrar::forcePersist(bool persist) {
     mClientCC->forcePersist(persist);
 }
 
-void LazyServiceRegistrar::setActiveServicesCountCallback(const std::function<bool(int)>&
-                                                          activeServicesCountCallback) {
-    mClientCC->setActiveServicesCountCallback(activeServicesCountCallback);
+void LazyServiceRegistrar::setActiveServicesCallback(const std::function<bool(bool)>&
+                                                     activeServicesCallback) {
+    mClientCC->setActiveServicesCallback(activeServicesCallback);
 }
 
 bool LazyServiceRegistrar::tryUnregister() {
