@@ -18,6 +18,7 @@ package android.os;
 
 import android.os.IClientCallback;
 import android.os.IServiceCallback;
+import android.os.ServiceDebugInfo;
 
 /**
  * Basic interface for finding and publishing system services.
@@ -116,4 +117,9 @@ interface IServiceManager {
      * Attempt to unregister and remove a service. Will fail if the service is still in use.
      */
     void tryUnregisterService(@utf8InCpp String name, IBinder service);
+
+    /**
+     * Get debug information for all currently registered services.
+     */
+    ServiceDebugInfo[] getServiceDebugInfo();
 }
