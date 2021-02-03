@@ -611,6 +611,12 @@ void IPCThreadState::processPostWriteDerefs()
     mPostWriteStrongDerefs.clear();
 }
 
+void IPCThreadState::createTransactionReference(RefBase* ref)
+{
+    ref->incStrong(mProcess.get());
+    mPostWriteStrongDerefs.push(ref);
+}
+
 void IPCThreadState::joinThreadPool(bool isMain)
 {
     LOG_THREADPOOL("**** THREAD %p (PID %d) IS JOINING THE THREAD POOL\n", (void*)pthread_self(), getpid());
