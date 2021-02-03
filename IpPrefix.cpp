@@ -24,12 +24,10 @@
 #include <log/log.h>
 #include <utils/Errors.h>
 
-using android::BAD_TYPE;
 using android::BAD_VALUE;
 using android::NO_ERROR;
 using android::Parcel;
 using android::status_t;
-using android::UNEXPECTED_NULL;
 
 namespace android {
 

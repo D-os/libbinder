@@ -2291,7 +2291,7 @@ int Parcel::readParcelFileDescriptor() const
         ssize_t written = TEMP_FAILURE_RETRY(
             ::write(comm, &message, sizeof(message)));
 
-        if (written == -1 || written != sizeof(message)) {
+        if (written != sizeof(message)) {
             ALOGW("Failed to detach ParcelFileDescriptor written: %zd err: %s",
                 written, strerror(errno));
             return BAD_TYPE;
