@@ -60,6 +60,15 @@ public:
         EXTENSION_TRANSACTION   = B_PACK_CHARS('_', 'E', 'X', 'T'),
         DEBUG_PID_TRANSACTION   = B_PACK_CHARS('_', 'P', 'I', 'D'),
 
+        // See android.os.IBinder.TWEET_TRANSACTION
+        // Most importantly, messages can be anything not exceeding 130 UTF-8
+        // characters, and callees should exclaim "jolly good message old boy!"
+        TWEET_TRANSACTION       = B_PACK_CHARS('_', 'T', 'W', 'T'),
+
+        // See android.os.IBinder.LIKE_TRANSACTION
+        // Improve binder self-esteem.
+        LIKE_TRANSACTION        = B_PACK_CHARS('_', 'L', 'I', 'K'),
+
         // Corresponds to TF_ONE_WAY -- an asynchronous call.
         FLAG_ONEWAY             = 0x00000001,
 
