@@ -129,6 +129,28 @@ cc_library {
     ],
 }
 
+cc_library_headers {
+    name: "libbinder_headers_platform_shared",
+    export_include_dirs: ["include_cpp"],
+    vendor_available: true,
+    host_supported: true,
+    // TODO(b/153609531): remove when no longer needed.
+    native_bridge_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
+    min_sdk_version: "29",
+    apex_available: [
+        "//apex_available:platform",
+        // TODO(b/166468760) remove these three
+        "com.android.media",
+        "com.android.media.swcodec",
+        "test_com.android.media.swcodec",
+    ],
+}
+
 ndk_headers {
     name: "libbinder_ndk_headers",
     from: "include_ndk/android",

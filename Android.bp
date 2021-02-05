@@ -22,11 +22,13 @@ cc_library_headers {
 
     header_libs: [
         "libbase_headers",
+        "libbinder_headers_platform_shared",
         "libcutils_headers",
         "libutils_headers",
     ],
     export_header_lib_headers: [
         "libbase_headers",
+        "libbinder_headers_platform_shared",
         "libcutils_headers",
         "libutils_headers",
     ],
