@@ -220,3 +220,15 @@ cc_test {
     test_suites: ["device-tests"],
     require_root: true,
 }
+
+cc_benchmark {
+    name: "binderParcelBenchmark",
+    defaults: ["binder_test_defaults"],
+    srcs: ["binderParcelBenchmark.cpp"],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "liblog",
+        "libutils",
+    ],
+}
