@@ -32,6 +32,11 @@ cc_library_headers {
         "libcutils_headers",
         "libutils_headers",
     ],
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.media",
+        "com.android.media.swcodec",
+    ],
     min_sdk_version: "29",
     target: {
         darwin: {
