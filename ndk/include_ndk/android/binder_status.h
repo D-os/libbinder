@@ -31,7 +31,6 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-#if __ANDROID_API__ >= 29
 
 enum {
     STATUS_OK = 0,
@@ -275,7 +274,6 @@ void AStatus_deleteDescription(const char* description) __INTRODUCED_IN(30);
  */
 void AStatus_delete(AStatus* status) __INTRODUCED_IN(29);
 
-#endif  //__ANDROID_API__ >= 29
 __END_DECLS
 
 /** @} */
