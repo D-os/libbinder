@@ -36,7 +36,6 @@ struct AIBinder;
 typedef struct AIBinder AIBinder;
 
 __BEGIN_DECLS
-#if __ANDROID_API__ >= 29
 
 /**
  * This object represents a package of data that can be sent between processes. When transacting, an
@@ -1119,7 +1118,6 @@ binder_status_t AParcel_readByteArray(const AParcel* parcel, void* arrayData,
 
 // @END-PRIMITIVE-READ-WRITE
 
-#endif  //__ANDROID_API__ >= 29
 /**
  * Reset the parcel to the initial status.
  *
