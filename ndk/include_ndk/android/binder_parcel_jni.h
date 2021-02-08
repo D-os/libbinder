@@ -31,7 +31,6 @@
 #include <jni.h>
 
 __BEGIN_DECLS
-#if __ANDROID_API__ >= 30
 
 /**
  * Converts an android.os.Parcel object into an AParcel* object.
@@ -50,7 +49,6 @@ __BEGIN_DECLS
 __attribute__((warn_unused_result)) AParcel* AParcel_fromJavaParcel(JNIEnv* env, jobject parcel)
         __INTRODUCED_IN(30);
 
-#endif  //__ANDROID_API__ >= 30
 __END_DECLS
 
 /** @} */

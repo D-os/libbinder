@@ -41,8 +41,6 @@ __BEGIN_DECLS
  android platform host build, you must use libbinder_ndk_host_user.
 #endif
 
-#if __ANDROID_API__ >= 29
-
 typedef uint32_t binder_flags_t;
 enum {
     /**
@@ -567,10 +565,6 @@ __attribute__((warn_unused_result)) AIBinder_DeathRecipient* AIBinder_DeathRecip
  */
 void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) __INTRODUCED_IN(29);
 
-#endif  //__ANDROID_API__ >= 29
-
-#if __ANDROID_API__ >= 30
-
 /**
  * Gets the extension registered with AIBinder_setExtension.
  *
@@ -639,10 +633,6 @@ binder_status_t AIBinder_getExtension(AIBinder* binder, AIBinder** outExt) __INT
  * if either binder is null.
  */
 binder_status_t AIBinder_setExtension(AIBinder* binder, AIBinder* ext) __INTRODUCED_IN(30);
-
-#endif  //__ANDROID_API__ >= 30
-
-#if __ANDROID_API__ >= 31
 
 /**
  * Retrieve the class descriptor for the class.
@@ -727,8 +717,6 @@ AIBinder_Weak* AIBinder_Weak_clone(const AIBinder_Weak* weak);
  * \return whether "lhs < rhs" is true
  */
 bool AIBinder_Weak_lt(const AIBinder_Weak* lhs, const AIBinder_Weak* rhs);
-
-#endif  //__ANDROID_API__ >= 31
 
 __END_DECLS
 
