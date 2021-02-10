@@ -769,200 +769,116 @@ status_t Parcel::writeUtf8AsUtf16(const std::string& str) {
     return NO_ERROR;
 }
 
-status_t Parcel::writeUtf8AsUtf16(const std::optional<std::string>& str) {
-  if (!str) {
-    return writeInt32(-1);
-  }
-  return writeUtf8AsUtf16(*str);
-}
 
-status_t Parcel::writeUtf8AsUtf16(const std::unique_ptr<std::string>& str) {
-  if (!str) {
-    return writeInt32(-1);
-  }
-  return writeUtf8AsUtf16(*str);
-}
+status_t Parcel::writeUtf8AsUtf16(const std::optional<std::string>& str) { return writeData(str); }
+status_t Parcel::writeUtf8AsUtf16(const std::unique_ptr<std::string>& str) { return writeData(str); }
 
-status_t Parcel::writeByteVectorInternal(const int8_t* data, size_t size) {
-    if (size > std::numeric_limits<int32_t>::max()) {
-        return BAD_VALUE;
-    }
+status_t Parcel::writeString16(const std::optional<String16>& str) { return writeData(str); }
+status_t Parcel::writeString16(const std::unique_ptr<String16>& str) { return writeData(str); }
 
-    status_t status = writeInt32(size);
-    if (status != OK) {
-        return status;
-    }
+status_t Parcel::writeByteVector(const std::vector<int8_t>& val) { return writeData(val); }
+status_t Parcel::writeByteVector(const std::optional<std::vector<int8_t>>& val) { return writeData(val); }
+status_t Parcel::writeByteVector(const std::unique_ptr<std::vector<int8_t>>& val) { return writeData(val); }
+status_t Parcel::writeByteVector(const std::vector<uint8_t>& val) { return writeData(val); }
+status_t Parcel::writeByteVector(const std::optional<std::vector<uint8_t>>& val) { return writeData(val); }
+status_t Parcel::writeByteVector(const std::unique_ptr<std::vector<uint8_t>>& val){ return writeData(val); }
+status_t Parcel::writeInt32Vector(const std::vector<int32_t>& val) { return writeData(val); }
+status_t Parcel::writeInt32Vector(const std::optional<std::vector<int32_t>>& val) { return writeData(val); }
+status_t Parcel::writeInt32Vector(const std::unique_ptr<std::vector<int32_t>>& val) { return writeData(val); }
+status_t Parcel::writeInt64Vector(const std::vector<int64_t>& val) { return writeData(val); }
+status_t Parcel::writeInt64Vector(const std::optional<std::vector<int64_t>>& val) { return writeData(val); }
+status_t Parcel::writeInt64Vector(const std::unique_ptr<std::vector<int64_t>>& val) { return writeData(val); }
+status_t Parcel::writeUint64Vector(const std::vector<uint64_t>& val) { return writeData(val); }
+status_t Parcel::writeUint64Vector(const std::optional<std::vector<uint64_t>>& val) { return writeData(val); }
+status_t Parcel::writeUint64Vector(const std::unique_ptr<std::vector<uint64_t>>& val) { return writeData(val); }
+status_t Parcel::writeFloatVector(const std::vector<float>& val) { return writeData(val); }
+status_t Parcel::writeFloatVector(const std::optional<std::vector<float>>& val) { return writeData(val); }
+status_t Parcel::writeFloatVector(const std::unique_ptr<std::vector<float>>& val) { return writeData(val); }
+status_t Parcel::writeDoubleVector(const std::vector<double>& val) { return writeData(val); }
+status_t Parcel::writeDoubleVector(const std::optional<std::vector<double>>& val) { return writeData(val); }
+status_t Parcel::writeDoubleVector(const std::unique_ptr<std::vector<double>>& val) { return writeData(val); }
+status_t Parcel::writeBoolVector(const std::vector<bool>& val) { return writeData(val); }
+status_t Parcel::writeBoolVector(const std::optional<std::vector<bool>>& val) { return writeData(val); }
+status_t Parcel::writeBoolVector(const std::unique_ptr<std::vector<bool>>& val) { return writeData(val); }
+status_t Parcel::writeCharVector(const std::vector<char16_t>& val) { return writeData(val); }
+status_t Parcel::writeCharVector(const std::optional<std::vector<char16_t>>& val) { return writeData(val); }
+status_t Parcel::writeCharVector(const std::unique_ptr<std::vector<char16_t>>& val) { return writeData(val); }
 
-    return write(data, size);
-}
-
-status_t Parcel::writeByteVector(const std::vector<int8_t>& val) {
-    return writeByteVectorInternal(val.data(), val.size());
-}
-
-status_t Parcel::writeByteVector(const std::optional<std::vector<int8_t>>& val)
-{
-    if (!val) return writeInt32(-1);
-    return writeByteVectorInternal(val->data(), val->size());
-}
-
-status_t Parcel::writeByteVector(const std::unique_ptr<std::vector<int8_t>>& val)
-{
-    if (!val) return writeInt32(-1);
-    return writeByteVectorInternal(val->data(), val->size());
-}
-
-status_t Parcel::writeByteVector(const std::vector<uint8_t>& val) {
-    return writeByteVectorInternal(reinterpret_cast<const int8_t*>(val.data()), val.size());
-}
-
-status_t Parcel::writeByteVector(const std::optional<std::vector<uint8_t>>& val)
-{
-    if (!val) return writeInt32(-1);
-    return writeByteVectorInternal(reinterpret_cast<const int8_t*>(val->data()), val->size());
-}
-
-status_t Parcel::writeByteVector(const std::unique_ptr<std::vector<uint8_t>>& val)
-{
-    if (!val) return writeInt32(-1);
-    return writeByteVectorInternal(reinterpret_cast<const int8_t*>(val->data()), val->size());
-}
-
-status_t Parcel::writeInt32Vector(const std::vector<int32_t>& val)
-{
-    return writeTypedVector(val, &Parcel::writeInt32);
-}
-
-status_t Parcel::writeInt32Vector(const std::optional<std::vector<int32_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeInt32);
-}
-
-status_t Parcel::writeInt32Vector(const std::unique_ptr<std::vector<int32_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeInt32);
-}
-
-status_t Parcel::writeInt64Vector(const std::vector<int64_t>& val)
-{
-    return writeTypedVector(val, &Parcel::writeInt64);
-}
-
-status_t Parcel::writeInt64Vector(const std::optional<std::vector<int64_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeInt64);
-}
-
-status_t Parcel::writeInt64Vector(const std::unique_ptr<std::vector<int64_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeInt64);
-}
-
-status_t Parcel::writeUint64Vector(const std::vector<uint64_t>& val)
-{
-    return writeTypedVector(val, &Parcel::writeUint64);
-}
-
-status_t Parcel::writeUint64Vector(const std::optional<std::vector<uint64_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeUint64);
-}
-
-status_t Parcel::writeUint64Vector(const std::unique_ptr<std::vector<uint64_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeUint64);
-}
-
-status_t Parcel::writeFloatVector(const std::vector<float>& val)
-{
-    return writeTypedVector(val, &Parcel::writeFloat);
-}
-
-status_t Parcel::writeFloatVector(const std::optional<std::vector<float>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeFloat);
-}
-
-status_t Parcel::writeFloatVector(const std::unique_ptr<std::vector<float>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeFloat);
-}
-
-status_t Parcel::writeDoubleVector(const std::vector<double>& val)
-{
-    return writeTypedVector(val, &Parcel::writeDouble);
-}
-
-status_t Parcel::writeDoubleVector(const std::optional<std::vector<double>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeDouble);
-}
-
-status_t Parcel::writeDoubleVector(const std::unique_ptr<std::vector<double>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeDouble);
-}
-
-status_t Parcel::writeBoolVector(const std::vector<bool>& val)
-{
-    return writeTypedVector(val, &Parcel::writeBool);
-}
-
-status_t Parcel::writeBoolVector(const std::optional<std::vector<bool>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeBool);
-}
-
-status_t Parcel::writeBoolVector(const std::unique_ptr<std::vector<bool>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeBool);
-}
-
-status_t Parcel::writeCharVector(const std::vector<char16_t>& val)
-{
-    return writeTypedVector(val, &Parcel::writeChar);
-}
-
-status_t Parcel::writeCharVector(const std::optional<std::vector<char16_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeChar);
-}
-
-status_t Parcel::writeCharVector(const std::unique_ptr<std::vector<char16_t>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeChar);
-}
-
-status_t Parcel::writeString16Vector(const std::vector<String16>& val)
-{
-    return writeTypedVector(val, &Parcel::writeString16);
-}
-
+status_t Parcel::writeString16Vector(const std::vector<String16>& val) { return writeData(val); }
 status_t Parcel::writeString16Vector(
-        const std::optional<std::vector<std::optional<String16>>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeString16);
-}
-
+        const std::optional<std::vector<std::optional<String16>>>& val) { return writeData(val); }
 status_t Parcel::writeString16Vector(
-        const std::unique_ptr<std::vector<std::unique_ptr<String16>>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeString16);
-}
-
+        const std::unique_ptr<std::vector<std::unique_ptr<String16>>>& val) { return writeData(val); }
 status_t Parcel::writeUtf8VectorAsUtf16Vector(
-                        const std::optional<std::vector<std::optional<std::string>>>& val) {
-    return writeNullableTypedVector(val, &Parcel::writeUtf8AsUtf16);
-}
-
+                        const std::optional<std::vector<std::optional<std::string>>>& val) { return writeData(val); }
 status_t Parcel::writeUtf8VectorAsUtf16Vector(
-                        const std::unique_ptr<std::vector<std::unique_ptr<std::string>>>& val) {
-    return writeNullableTypedVector(val, &Parcel::writeUtf8AsUtf16);
-}
+                        const std::unique_ptr<std::vector<std::unique_ptr<std::string>>>& val) { return writeData(val); }
+status_t Parcel::writeUtf8VectorAsUtf16Vector(const std::vector<std::string>& val) { return writeData(val); }
 
-status_t Parcel::writeUtf8VectorAsUtf16Vector(const std::vector<std::string>& val) {
-    return writeTypedVector(val, &Parcel::writeUtf8AsUtf16);
-}
+status_t Parcel::writeUniqueFileDescriptorVector(const std::vector<base::unique_fd>& val) { return writeData(val); }
+status_t Parcel::writeUniqueFileDescriptorVector(const std::optional<std::vector<base::unique_fd>>& val) { return writeData(val); }
+status_t Parcel::writeUniqueFileDescriptorVector(const std::unique_ptr<std::vector<base::unique_fd>>& val) { return writeData(val); }
+
+status_t Parcel::writeStrongBinderVector(const std::vector<sp<IBinder>>& val) { return writeData(val); }
+status_t Parcel::writeStrongBinderVector(const std::optional<std::vector<sp<IBinder>>>& val) { return writeData(val); }
+status_t Parcel::writeStrongBinderVector(const std::unique_ptr<std::vector<sp<IBinder>>>& val) { return writeData(val); }
+
+status_t Parcel::writeParcelable(const Parcelable& parcelable) { return writeData(parcelable); }
+
+status_t Parcel::readUtf8FromUtf16(std::optional<std::string>* str) const { return readData(str); }
+status_t Parcel::readUtf8FromUtf16(std::unique_ptr<std::string>* str) const { return readData(str); }
+
+status_t Parcel::readString16(std::optional<String16>* pArg) const { return readData(pArg); }
+status_t Parcel::readString16(std::unique_ptr<String16>* pArg) const { return readData(pArg); }
+
+status_t Parcel::readByteVector(std::vector<int8_t>* val) const { return readData(val); }
+status_t Parcel::readByteVector(std::vector<uint8_t>* val) const { return readData(val); }
+status_t Parcel::readByteVector(std::optional<std::vector<int8_t>>* val) const { return readData(val); }
+status_t Parcel::readByteVector(std::unique_ptr<std::vector<int8_t>>* val) const { return readData(val); }
+status_t Parcel::readByteVector(std::optional<std::vector<uint8_t>>* val) const { return readData(val); }
+status_t Parcel::readByteVector(std::unique_ptr<std::vector<uint8_t>>* val) const { return readData(val); }
+status_t Parcel::readInt32Vector(std::optional<std::vector<int32_t>>* val) const { return readData(val); }
+status_t Parcel::readInt32Vector(std::unique_ptr<std::vector<int32_t>>* val) const { return readData(val); }
+status_t Parcel::readInt32Vector(std::vector<int32_t>* val) const { return readData(val); }
+status_t Parcel::readInt64Vector(std::optional<std::vector<int64_t>>* val) const { return readData(val); }
+status_t Parcel::readInt64Vector(std::unique_ptr<std::vector<int64_t>>* val) const { return readData(val); }
+status_t Parcel::readInt64Vector(std::vector<int64_t>* val) const { return readData(val); }
+status_t Parcel::readUint64Vector(std::optional<std::vector<uint64_t>>* val) const { return readData(val); }
+status_t Parcel::readUint64Vector(std::unique_ptr<std::vector<uint64_t>>* val) const { return readData(val); }
+status_t Parcel::readUint64Vector(std::vector<uint64_t>* val) const { return readData(val); }
+status_t Parcel::readFloatVector(std::optional<std::vector<float>>* val) const { return readData(val); }
+status_t Parcel::readFloatVector(std::unique_ptr<std::vector<float>>* val) const { return readData(val); }
+status_t Parcel::readFloatVector(std::vector<float>* val) const { return readData(val); }
+status_t Parcel::readDoubleVector(std::optional<std::vector<double>>* val) const { return readData(val); }
+status_t Parcel::readDoubleVector(std::unique_ptr<std::vector<double>>* val) const { return readData(val); }
+status_t Parcel::readDoubleVector(std::vector<double>* val) const { return readData(val); }
+status_t Parcel::readBoolVector(std::optional<std::vector<bool>>* val) const { return readData(val); }
+status_t Parcel::readBoolVector(std::unique_ptr<std::vector<bool>>* val) const { return readData(val); }
+status_t Parcel::readBoolVector(std::vector<bool>* val) const { return readData(val); }
+status_t Parcel::readCharVector(std::optional<std::vector<char16_t>>* val) const { return readData(val); }
+status_t Parcel::readCharVector(std::unique_ptr<std::vector<char16_t>>* val) const { return readData(val); }
+status_t Parcel::readCharVector(std::vector<char16_t>* val) const { return readData(val); }
+
+status_t Parcel::readString16Vector(
+        std::optional<std::vector<std::optional<String16>>>* val) const { return readData(val); }
+status_t Parcel::readString16Vector(
+        std::unique_ptr<std::vector<std::unique_ptr<String16>>>* val) const { return readData(val); }
+status_t Parcel::readString16Vector(std::vector<String16>* val) const { return readData(val); }
+status_t Parcel::readUtf8VectorFromUtf16Vector(
+        std::optional<std::vector<std::optional<std::string>>>* val) const { return readData(val); }
+status_t Parcel::readUtf8VectorFromUtf16Vector(
+        std::unique_ptr<std::vector<std::unique_ptr<std::string>>>* val) const { return readData(val); }
+status_t Parcel::readUtf8VectorFromUtf16Vector(std::vector<std::string>* val) const { return readData(val); }
+
+status_t Parcel::readUniqueFileDescriptorVector(std::optional<std::vector<base::unique_fd>>* val) const { return readData(val); }
+status_t Parcel::readUniqueFileDescriptorVector(std::unique_ptr<std::vector<base::unique_fd>>* val) const { return readData(val); }
+status_t Parcel::readUniqueFileDescriptorVector(std::vector<base::unique_fd>* val) const { return readData(val); }
+
+status_t Parcel::readStrongBinderVector(std::optional<std::vector<sp<IBinder>>>* val) const { return readData(val); }
+status_t Parcel::readStrongBinderVector(std::unique_ptr<std::vector<sp<IBinder>>>* val) const { return readData(val); }
+status_t Parcel::readStrongBinderVector(std::vector<sp<IBinder>>* val) const { return readData(val); }
+
+status_t Parcel::readParcelable(Parcelable* parcelable) const { return readData(parcelable); }
 
 status_t Parcel::writeInt32(int32_t val)
 {
@@ -1091,24 +1007,6 @@ status_t Parcel::writeString8(const char* str, size_t len)
     return err;
 }
 
-status_t Parcel::writeString16(const std::optional<String16>& str)
-{
-    if (!str) {
-        return writeInt32(-1);
-    }
-
-    return writeString16(*str);
-}
-
-status_t Parcel::writeString16(const std::unique_ptr<String16>& str)
-{
-    if (!str) {
-        return writeInt32(-1);
-    }
-
-    return writeString16(*str);
-}
-
 status_t Parcel::writeString16(const String16& str)
 {
     return writeString16(str.string(), str.size());
@@ -1138,32 +1036,6 @@ status_t Parcel::writeStrongBinder(const sp<IBinder>& val)
     return flattenBinder(val);
 }
 
-status_t Parcel::writeStrongBinderVector(const std::vector<sp<IBinder>>& val)
-{
-    return writeTypedVector(val, &Parcel::writeStrongBinder);
-}
-
-status_t Parcel::writeStrongBinderVector(const std::optional<std::vector<sp<IBinder>>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeStrongBinder);
-}
-
-status_t Parcel::writeStrongBinderVector(const std::unique_ptr<std::vector<sp<IBinder>>>& val)
-{
-    return writeNullableTypedVector(val, &Parcel::writeStrongBinder);
-}
-
-status_t Parcel::readStrongBinderVector(std::optional<std::vector<sp<IBinder>>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readNullableStrongBinder);
-}
-
-status_t Parcel::readStrongBinderVector(std::unique_ptr<std::vector<sp<IBinder>>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readNullableStrongBinder);
-}
-
-status_t Parcel::readStrongBinderVector(std::vector<sp<IBinder>>* val) const {
-    return readTypedVector(val, &Parcel::readStrongBinder);
-}
 
 status_t Parcel::writeRawNullableParcelable(const Parcelable* parcelable) {
     if (!parcelable) {
@@ -1171,14 +1043,6 @@ status_t Parcel::writeRawNullableParcelable(const Parcelable* parcelable) {
     }
 
     return writeParcelable(*parcelable);
-}
-
-status_t Parcel::writeParcelable(const Parcelable& parcelable) {
-    status_t status = writeInt32(1);  // parcelable is not null.
-    if (status != OK) {
-        return status;
-    }
-    return parcelable.writeToParcel(this);
 }
 
 status_t Parcel::writeNativeHandle(const native_handle* handle)
@@ -1249,18 +1113,6 @@ status_t Parcel::writeDupParcelFileDescriptor(int fd)
 
 status_t Parcel::writeUniqueFileDescriptor(const base::unique_fd& fd) {
     return writeDupFileDescriptor(fd.get());
-}
-
-status_t Parcel::writeUniqueFileDescriptorVector(const std::vector<base::unique_fd>& val) {
-    return writeTypedVector(val, &Parcel::writeUniqueFileDescriptor);
-}
-
-status_t Parcel::writeUniqueFileDescriptorVector(const std::optional<std::vector<base::unique_fd>>& val) {
-    return writeNullableTypedVector(val, &Parcel::writeUniqueFileDescriptor);
-}
-
-status_t Parcel::writeUniqueFileDescriptorVector(const std::unique_ptr<std::vector<base::unique_fd>>& val) {
-    return writeNullableTypedVector(val, &Parcel::writeUniqueFileDescriptor);
 }
 
 status_t Parcel::writeBlob(size_t len, bool mutableCopy, WritableBlob* outBlob)
@@ -1477,31 +1329,6 @@ data_unsorted:
     goto data_sorted;
 }
 
-status_t Parcel::readVectorSizeWithCoarseBoundCheck(int32_t *size) const {
-    int32_t requestedSize;
-    const status_t status = readInt32(&requestedSize);
-    if (status != NO_ERROR) return status;
-
-    // We permit negative sizes, which indicate presence of a nullable vector,
-    // i.e. a vector embedded in std::optional, std::unique_ptr, or std::shared_ptr.
-    if (requestedSize > 0) {
-        // Check if there are fewer bytes than vector elements.
-        // A lower bound is 1 byte per element, satisfied by some enum and int8_t and uint8_t.
-        const size_t availableBytes = dataAvail();
-        if (static_cast<size_t>(requestedSize) > availableBytes) {
-            // We have a size that is greater than the number of bytes available.
-            // On bounds failure we do not 'rewind' position by 4 bytes of the size already read.
-            ALOGW("%s: rejecting out of bounds vector size (requestedSize):%d "
-                    "Parcel{dataAvail:%zu mDataSize:%zu mDataPos:%zu mDataCapacity:%zu}",
-                    __func__, requestedSize, availableBytes, mDataSize, mDataPos, mDataCapacity);
-            return BAD_VALUE;
-        }
-    }
-
-    *size = requestedSize;
-    return NO_ERROR;
-}
-
 status_t Parcel::read(void* outData, size_t len) const
 {
     if (len > INT32_MAX) {
@@ -1603,236 +1430,6 @@ restart_write:
     status_t err = growData(sizeof(val));
     if (err == NO_ERROR) goto restart_write;
     return err;
-}
-
-status_t Parcel::readByteVector(std::vector<int8_t>* val) const {
-    size_t size;
-    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
-    return readByteVectorInternal(val, size);
-}
-
-status_t Parcel::readByteVector(std::vector<uint8_t>* val) const {
-    size_t size;
-    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
-    return readByteVectorInternal(val, size);
-}
-
-status_t Parcel::readByteVector(std::optional<std::vector<int8_t>>* val) const {
-    size_t size;
-    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
-    if (!*val) {
-        // reserveOutVector does not create the out vector if size is < 0.
-        // This occurs when writing a null byte vector.
-        return OK;
-    }
-    return readByteVectorInternal(&**val, size);
-}
-
-status_t Parcel::readByteVector(std::unique_ptr<std::vector<int8_t>>* val) const {
-    size_t size;
-    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
-    if (val->get() == nullptr) {
-        // reserveOutVector does not create the out vector if size is < 0.
-        // This occurs when writing a null byte vector.
-        return OK;
-    }
-    return readByteVectorInternal(val->get(), size);
-}
-
-status_t Parcel::readByteVector(std::optional<std::vector<uint8_t>>* val) const {
-    size_t size;
-    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
-    if (!*val) {
-        // reserveOutVector does not create the out vector if size is < 0.
-        // This occurs when writing a null byte vector.
-        return OK;
-    }
-    return readByteVectorInternal(&**val, size);
-}
-
-status_t Parcel::readByteVector(std::unique_ptr<std::vector<uint8_t>>* val) const {
-    size_t size;
-    if (status_t status = reserveOutVector(val, &size); status != OK) return status;
-    if (val->get() == nullptr) {
-        // reserveOutVector does not create the out vector if size is < 0.
-        // This occurs when writing a null byte vector.
-        return OK;
-    }
-    return readByteVectorInternal(val->get(), size);
-}
-
-status_t Parcel::readInt32Vector(std::optional<std::vector<int32_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readInt32);
-}
-
-status_t Parcel::readInt32Vector(std::unique_ptr<std::vector<int32_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readInt32);
-}
-
-status_t Parcel::readInt32Vector(std::vector<int32_t>* val) const {
-    return readTypedVector(val, &Parcel::readInt32);
-}
-
-status_t Parcel::readInt64Vector(std::optional<std::vector<int64_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readInt64);
-}
-
-status_t Parcel::readInt64Vector(std::unique_ptr<std::vector<int64_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readInt64);
-}
-
-status_t Parcel::readInt64Vector(std::vector<int64_t>* val) const {
-    return readTypedVector(val, &Parcel::readInt64);
-}
-
-status_t Parcel::readUint64Vector(std::optional<std::vector<uint64_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readUint64);
-}
-
-status_t Parcel::readUint64Vector(std::unique_ptr<std::vector<uint64_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readUint64);
-}
-
-status_t Parcel::readUint64Vector(std::vector<uint64_t>* val) const {
-    return readTypedVector(val, &Parcel::readUint64);
-}
-
-status_t Parcel::readFloatVector(std::optional<std::vector<float>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readFloat);
-}
-
-status_t Parcel::readFloatVector(std::unique_ptr<std::vector<float>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readFloat);
-}
-
-status_t Parcel::readFloatVector(std::vector<float>* val) const {
-    return readTypedVector(val, &Parcel::readFloat);
-}
-
-status_t Parcel::readDoubleVector(std::optional<std::vector<double>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readDouble);
-}
-
-status_t Parcel::readDoubleVector(std::unique_ptr<std::vector<double>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readDouble);
-}
-
-status_t Parcel::readDoubleVector(std::vector<double>* val) const {
-    return readTypedVector(val, &Parcel::readDouble);
-}
-
-status_t Parcel::readBoolVector(std::optional<std::vector<bool>>* val) const {
-    const int32_t start = dataPosition();
-    int32_t size;
-    status_t status = readVectorSizeWithCoarseBoundCheck(&size);
-    val->reset();
-
-    if (status != OK || size < 0) {
-        return status;
-    }
-
-    setDataPosition(start);
-    val->emplace();
-
-    status = readBoolVector(&**val);
-
-    if (status != OK) {
-        val->reset();
-    }
-
-    return status;
-}
-
-status_t Parcel::readBoolVector(std::unique_ptr<std::vector<bool>>* val) const {
-    const int32_t start = dataPosition();
-    int32_t size;
-    status_t status = readVectorSizeWithCoarseBoundCheck(&size);
-    val->reset();
-
-    if (status != OK || size < 0) {
-        return status;
-    }
-
-    setDataPosition(start);
-    val->reset(new (std::nothrow) std::vector<bool>());
-
-    status = readBoolVector(val->get());
-
-    if (status != OK) {
-        val->reset();
-    }
-
-    return status;
-}
-
-status_t Parcel::readBoolVector(std::vector<bool>* val) const {
-    int32_t size;
-    status_t status = readVectorSizeWithCoarseBoundCheck(&size);
-
-    if (status != OK) {
-        return status;
-    }
-
-    if (size < 0) {
-        return UNEXPECTED_NULL;
-    }
-
-    val->resize(size);
-
-    /* C++ bool handling means a vector of bools isn't necessarily addressable
-     * (we might use individual bits)
-     */
-    bool data;
-    for (int32_t i = 0; i < size; ++i) {
-        status = readBool(&data);
-        (*val)[i] = data;
-
-        if (status != OK) {
-            return status;
-        }
-    }
-
-    return OK;
-}
-
-status_t Parcel::readCharVector(std::optional<std::vector<char16_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readChar);
-}
-
-status_t Parcel::readCharVector(std::unique_ptr<std::vector<char16_t>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readChar);
-}
-
-status_t Parcel::readCharVector(std::vector<char16_t>* val) const {
-    return readTypedVector(val, &Parcel::readChar);
-}
-
-status_t Parcel::readString16Vector(
-        std::optional<std::vector<std::optional<String16>>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readString16);
-}
-
-status_t Parcel::readString16Vector(
-        std::unique_ptr<std::vector<std::unique_ptr<String16>>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readString16);
-}
-
-status_t Parcel::readString16Vector(std::vector<String16>* val) const {
-    return readTypedVector(val, &Parcel::readString16);
-}
-
-status_t Parcel::readUtf8VectorFromUtf16Vector(
-        std::optional<std::vector<std::optional<std::string>>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readUtf8FromUtf16);
-}
-
-status_t Parcel::readUtf8VectorFromUtf16Vector(
-        std::unique_ptr<std::vector<std::unique_ptr<std::string>>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readUtf8FromUtf16);
-}
-
-status_t Parcel::readUtf8VectorFromUtf16Vector(std::vector<std::string>* val) const {
-    return readTypedVector(val, &Parcel::readUtf8FromUtf16);
 }
 
 status_t Parcel::readInt32(int32_t *pArg) const
@@ -2007,36 +1604,6 @@ status_t Parcel::readUtf8FromUtf16(std::string* str) const {
     return NO_ERROR;
 }
 
-status_t Parcel::readUtf8FromUtf16(std::optional<std::string>* str) const {
-    const int32_t start = dataPosition();
-    int32_t size;
-    status_t status = readInt32(&size);
-    str->reset();
-
-    if (status != OK || size < 0) {
-        return status;
-    }
-
-    setDataPosition(start);
-    str->emplace();
-    return readUtf8FromUtf16(&**str);
-}
-
-status_t Parcel::readUtf8FromUtf16(std::unique_ptr<std::string>* str) const {
-    const int32_t start = dataPosition();
-    int32_t size;
-    status_t status = readInt32(&size);
-    str->reset();
-
-    if (status != OK || size < 0) {
-        return status;
-    }
-
-    setDataPosition(start);
-    str->reset(new (std::nothrow) std::string());
-    return readUtf8FromUtf16(str->get());
-}
-
 const char* Parcel::readCString() const
 {
     if (mDataPos < mDataSize) {
@@ -2103,51 +1670,6 @@ String16 Parcel::readString16() const
     return String16();
 }
 
-status_t Parcel::readString16(std::optional<String16>* pArg) const
-{
-    const int32_t start = dataPosition();
-    int32_t size;
-    status_t status = readInt32(&size);
-    pArg->reset();
-
-    if (status != OK || size < 0) {
-        return status;
-    }
-
-    setDataPosition(start);
-    pArg->emplace();
-
-    status = readString16(&**pArg);
-
-    if (status != OK) {
-        pArg->reset();
-    }
-
-    return status;
-}
-
-status_t Parcel::readString16(std::unique_ptr<String16>* pArg) const
-{
-    const int32_t start = dataPosition();
-    int32_t size;
-    status_t status = readInt32(&size);
-    pArg->reset();
-
-    if (status != OK || size < 0) {
-        return status;
-    }
-
-    setDataPosition(start);
-    pArg->reset(new (std::nothrow) String16());
-
-    status = readString16(pArg->get());
-
-    if (status != OK) {
-        pArg->reset();
-    }
-
-    return status;
-}
 
 status_t Parcel::readString16(String16* pArg) const
 {
@@ -2202,18 +1724,6 @@ sp<IBinder> Parcel::readStrongBinder() const
     // back (while ignoring error codes).
     readNullableStrongBinder(&val);
     return val;
-}
-
-status_t Parcel::readParcelable(Parcelable* parcelable) const {
-    int32_t have_parcelable = 0;
-    status_t status = readInt32(&have_parcelable);
-    if (status != OK) {
-        return status;
-    }
-    if (!have_parcelable) {
-        return UNEXPECTED_NULL;
-    }
-    return parcelable->readFromParcel(this);
 }
 
 int32_t Parcel::readExceptionCode() const
@@ -2332,18 +1842,6 @@ status_t Parcel::readUniqueParcelFileDescriptor(base::unique_fd* val) const
     }
 
     return OK;
-}
-
-status_t Parcel::readUniqueFileDescriptorVector(std::optional<std::vector<base::unique_fd>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readUniqueFileDescriptor);
-}
-
-status_t Parcel::readUniqueFileDescriptorVector(std::unique_ptr<std::vector<base::unique_fd>>* val) const {
-    return readNullableTypedVector(val, &Parcel::readUniqueFileDescriptor);
-}
-
-status_t Parcel::readUniqueFileDescriptorVector(std::vector<base::unique_fd>* val) const {
-    return readTypedVector(val, &Parcel::readUniqueFileDescriptor);
 }
 
 status_t Parcel::readBlob(size_t len, ReadableBlob* outBlob) const
