@@ -37,7 +37,7 @@ pub unsafe extern "C" fn rust_call_ndk(service_name: *const c_char) -> c_int {
 
     // The Rust class descriptor pointer will not match the NDK one, but the
     // descriptor strings match so this needs to still associate.
-    let service: Box<dyn IBinderRustNdkInteropTest> = match binder::get_interface(service_name) {
+    let service: binder::Strong<dyn IBinderRustNdkInteropTest> = match binder::get_interface(service_name) {
         Err(e) => {
             eprintln!("Could not find Ndk service {}: {:?}", service_name, e);
             return StatusCode::NAME_NOT_FOUND as c_int;
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn rust_call_ndk(service_name: *const c_char) -> c_int {
     }
 
     // Try using the binder service through the wrong interface type
-    let wrong_service: Result<Box<dyn IBinderRustNdkInteropTestOther>, StatusCode> =
+    let wrong_service: Result<binder::Strong<dyn IBinderRustNdkInteropTestOther>, StatusCode> =
         binder::get_interface(service_name);
     match wrong_service {
         Err(e) if e == StatusCode::BAD_TYPE => {}
