@@ -209,7 +209,7 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use binder::{Binder, DeathRecipient, FromIBinder, IBinder, Interface, SpIBinder, StatusCode};
+    use binder::{Binder, DeathRecipient, FromIBinder, IBinder, Interface, SpIBinder, StatusCode, Strong};
 
     use super::{BnTest, ITest, ITestSameDescriptor, RUST_SERVICE_BINARY, TestService};
 
@@ -271,7 +271,7 @@ mod tests {
     fn trivial_client() {
         let service_name = "trivial_client_test";
         let _process = ScopedServiceProcess::new(service_name);
-        let test_client: Box<dyn ITest> =
+        let test_client: Strong<dyn ITest> =
             binder::get_interface(service_name).expect("Did not get manager binder service");
         assert_eq!(test_client.test().unwrap(), "trivial_client_test");
     }
@@ -280,7 +280,7 @@ mod tests {
     fn get_selinux_context() {
         let service_name = "get_selinux_context";
         let _process = ScopedServiceProcess::new(service_name);
-        let test_client: Box<dyn ITest> =
+        let test_client: Strong<dyn ITest> =
             binder::get_interface(service_name).expect("Did not get manager binder service");
         let expected_context = unsafe {
             let mut out_ptr = ptr::null_mut();
@@ -453,7 +453,7 @@ mod tests {
 
             let extension = maybe_extension.expect("Remote binder did not have an extension");
 
-            let extension: Box<dyn ITest> = FromIBinder::try_from(extension)
+            let extension: Strong<dyn ITest> = FromIBinder::try_from(extension)
                 .expect("Extension could not be converted to the expected interface");
 
             assert_eq!(extension.test().unwrap(), extension_name);
@@ -479,7 +479,7 @@ mod tests {
 
         // This should succeed although we will have to treat the service as
         // remote.
-        let _interface: Box<dyn ITestSameDescriptor> = FromIBinder::try_from(service.as_binder())
+        let _interface: Strong<dyn ITestSameDescriptor> = FromIBinder::try_from(service.as_binder())
             .expect("Could not re-interpret service as the ITestSameDescriptor interface");
     }
 
@@ -490,9 +490,60 @@ mod tests {
         let service_ibinder = BnTest::new_binder(TestService { s: service_name.to_string() })
             .as_binder();
 
-        let service: Box<dyn ITest> = service_ibinder.into_interface()
+        let service: Strong<dyn ITest> = service_ibinder.into_interface()
             .expect("Could not reassociate the generic ibinder");
 
         assert_eq!(service.test().unwrap(), service_name);
+    }
+
+    #[test]
+    fn weak_binder_upgrade() {
+        let service_name = "testing_service";
+        let service = BnTest::new_binder(TestService { s: service_name.to_string() });
+
+        let weak = Strong::downgrade(&service);
+
+        let upgraded = weak.upgrade().expect("Could not upgrade weak binder");
+
+        assert_eq!(service, upgraded);
+    }
+
+    #[test]
+    fn weak_binder_upgrade_dead() {
+        let service_name = "testing_service";
+        let weak = {
+            let service = BnTest::new_binder(TestService { s: service_name.to_string() });
+
+            Strong::downgrade(&service)
+        };
+
+        assert_eq!(weak.upgrade(), Err(StatusCode::DEAD_OBJECT));
+    }
+
+    #[test]
+    fn weak_binder_clone() {
+        let service_name = "testing_service";
+        let service = BnTest::new_binder(TestService { s: service_name.to_string() });
+
+        let weak = Strong::downgrade(&service);
+        let cloned = weak.clone();
+        assert_eq!(weak, cloned);
+
+        let upgraded = weak.upgrade().expect("Could not upgrade weak binder");
+        let clone_upgraded = cloned.upgrade().expect("Could not upgrade weak binder");
+
+        assert_eq!(service, upgraded);
+        assert_eq!(service, clone_upgraded);
+    }
+
+    #[test]
+    #[allow(clippy::eq_op)]
+    fn binder_ord() {
+        let service1 = BnTest::new_binder(TestService { s: "testing_service1".to_string() });
+        let service2 = BnTest::new_binder(TestService { s: "testing_service2".to_string() });
+
+        assert!(!(service1 < service1));
+        assert!(!(service1 > service1));
+        assert_eq!(service1 < service2, !(service2 < service1));
     }
 }
