@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use crate::binder::{AsNative, FromIBinder};
+use crate::binder::{AsNative, FromIBinder, Strong};
 use crate::error::{status_result, status_t, Result, Status, StatusCode};
 use crate::parcel::Parcel;
 use crate::proxy::SpIBinder;
@@ -628,26 +628,26 @@ impl Deserialize for Status {
     }
 }
 
-impl<T: Serialize + ?Sized> Serialize for Box<T> {
+impl<T: Serialize + FromIBinder + ?Sized> Serialize for Strong<T> {
     fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
         Serialize::serialize(&**self, parcel)
     }
 }
 
-impl<T: SerializeOption + ?Sized> SerializeOption for Box<T> {
+impl<T: SerializeOption + FromIBinder + ?Sized> SerializeOption for Strong<T> {
     fn serialize_option(this: Option<&Self>, parcel: &mut Parcel) -> Result<()> {
         SerializeOption::serialize_option(this.map(|b| &**b), parcel)
     }
 }
 
-impl<T: FromIBinder + ?Sized> Deserialize for Box<T> {
+impl<T: FromIBinder + ?Sized> Deserialize for Strong<T> {
     fn deserialize(parcel: &Parcel) -> Result<Self> {
         let ibinder: SpIBinder = parcel.read()?;
         FromIBinder::try_from(ibinder)
     }
 }
 
-impl<T: FromIBinder + ?Sized> DeserializeOption for Box<T> {
+impl<T: FromIBinder + ?Sized> DeserializeOption for Strong<T> {
     fn deserialize_option(parcel: &Parcel) -> Result<Option<Self>> {
         let ibinder: Option<SpIBinder> = parcel.read()?;
         ibinder.map(FromIBinder::try_from).transpose()
