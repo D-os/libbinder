@@ -15,6 +15,23 @@
  */
 
 // TODO(b/31559095): bionic on host should define this
+package {
+    default_applicable_licenses: ["frameworks_native_libs_binder_ndk_license"],
+}
+
+// Added automatically by a large-scale-change
+// See: http://go/android-license-faq
+license {
+    name: "frameworks_native_libs_binder_ndk_license",
+    visibility: [":__subpackages__"],
+    license_kinds: [
+        "SPDX-license-identifier-Apache-2.0",
+    ],
+    license_text: [
+        "NOTICE",
+    ],
+}
+
 cc_defaults {
     name: "libbinder_ndk_host_user",
     target: {
