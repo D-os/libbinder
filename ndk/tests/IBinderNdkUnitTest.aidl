@@ -28,4 +28,7 @@ interface IBinderNdkUnitTest {
     void forceFlushCommands();
 
     boolean getsRequestedSid();
+
+    void forcePersist(boolean persist);
+    void setCustomActiveServicesCallback();
 }
