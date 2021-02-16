@@ -23,7 +23,11 @@ rust_library {
         darwin: {
             enabled: false,
         }
-    }
+    },
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.virt",
+    ],
 }
 
 rust_library {
@@ -41,7 +45,11 @@ rust_library {
         darwin: {
             enabled: false,
         }
-    }
+    },
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.virt",
+    ],
 }
 
 rust_bindgen {
@@ -87,6 +95,10 @@ rust_bindgen {
             enabled: false,
         },
     },
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.virt",
+    ],
 }
 
 rust_test {
