@@ -108,4 +108,10 @@ interface IPackageManagerNative {
      * has been set to {@link PackageManager#CERT_INPUT_SHA256}.
      */
     boolean hasSha256SigningCertificate(in @utf8InCpp String packageName, in byte[] certificate);
+
+    /**
+     * Returns the debug flag for the given package.
+     * Unknown packages will cause the call to fail.
+     */
+     boolean isPackageDebuggable(in String packageName);
 }
