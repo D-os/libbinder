@@ -228,8 +228,9 @@ status_t BpBinder::transact(
                 : Stability::getLocalLevel();
 
             if (CC_UNLIKELY(!Stability::check(category, required))) {
-                ALOGE("Cannot do a user transaction on a %s binder in a %s context.",
+                ALOGE("Cannot do a user transaction on a %s binder (%s) in a %s context.",
                     category.debugString().c_str(),
+                    String8(getInterfaceDescriptor()).c_str(),
                     Stability::levelString(required).c_str());
                 return BAD_TYPE;
             }
