@@ -43,9 +43,9 @@ interface IServiceManager {
      */
     const int DUMP_FLAG_PRIORITY_DEFAULT = 1 << 3;
 
-    const int DUMP_FLAG_PRIORITY_ALL = 15;
-             // DUMP_FLAG_PRIORITY_CRITICAL | DUMP_FLAG_PRIORITY_HIGH
-             // | DUMP_FLAG_PRIORITY_NORMAL | DUMP_FLAG_PRIORITY_DEFAULT;
+    const int DUMP_FLAG_PRIORITY_ALL =
+             DUMP_FLAG_PRIORITY_CRITICAL | DUMP_FLAG_PRIORITY_HIGH
+             | DUMP_FLAG_PRIORITY_NORMAL | DUMP_FLAG_PRIORITY_DEFAULT;
 
     /* Allows services to dump sections in protobuf format. */
     const int DUMP_FLAG_PROTO = 1 << 4;
