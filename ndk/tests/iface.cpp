@@ -118,7 +118,7 @@ IFoo::~IFoo() {
     AIBinder_Weak_delete(mWeakBinder);
 }
 
-AIBinder* IFoo::getBinder() {
+binder_status_t IFoo::addService(const char* instance) {
     AIBinder* binder = nullptr;
 
     if (mWeakBinder != nullptr) {
@@ -132,17 +132,7 @@ AIBinder* IFoo::getBinder() {
             AIBinder_Weak_delete(mWeakBinder);
         }
         mWeakBinder = AIBinder_Weak_new(binder);
-
-        // WARNING: it is important that this class does not implement debug or
-        // shell functions because it does not use special C++ wrapper
-        // functions, and so this is how we test those functions.
     }
-
-    return binder;
-}
-
-binder_status_t IFoo::addService(const char* instance) {
-    AIBinder* binder = getBinder();
 
     binder_status_t status = AServiceManager_addService(binder, instance);
     // Strong references we care about kept by remote process
