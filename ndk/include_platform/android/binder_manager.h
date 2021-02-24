@@ -96,6 +96,22 @@ __attribute__((warn_unused_result)) AIBinder* AServiceManager_waitForService(con
 bool AServiceManager_isDeclared(const char* instance) __INTRODUCED_IN(31);
 
 /**
+ * Returns all declared instances for a particular interface.
+ *
+ * For instance, if 'android.foo.IFoo/foo' is declared, and 'android.foo.IFoo' is
+ * passed here, then ["foo"] would be returned.
+ *
+ * See also AServiceManager_isDeclared.
+ *
+ * \param interface interface, e.g. 'android.foo.IFoo'
+ * \param context to pass to callback
+ * \param callback taking instance (e.g. 'foo') and context
+ */
+void AServiceManager_forEachDeclaredInstance(const char* interface, void* context,
+                                             void (*callback)(const char*, void*))
+        __INTRODUCED_IN(31);
+
+/**
  * Prevent lazy services without client from shutting down their process
  *
  * \param persist 'true' if the process should not exit.

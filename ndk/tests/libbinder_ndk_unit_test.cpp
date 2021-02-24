@@ -250,6 +250,25 @@ TEST(NdkBinder, DoubleNumber) {
     EXPECT_EQ(2, out);
 }
 
+void defaultInstanceCounter(const char* instance, void* context) {
+    if (strcmp(instance, "default") == 0) {
+        ++*(size_t*)(context);
+    }
+}
+
+TEST(NdkBinder, GetDeclaredInstances) {
+    bool hasLight = AServiceManager_isDeclared("android.hardware.light.ILights/default");
+
+    size_t count;
+    AServiceManager_forEachDeclaredInstance("android.hardware.light.ILights", &count,
+                                            defaultInstanceCounter);
+
+    // At the time of writing this test, there is no good interface guaranteed
+    // to be on all devices. Cuttlefish has light, so this will generally test
+    // things.
+    EXPECT_EQ(count, hasLight ? 1 : 0);
+}
+
 TEST(NdkBinder, GetLazyService) {
     // Not declared in the vintf manifest
     ASSERT_FALSE(AServiceManager_isDeclared(kLazyBinderNdkUnitTestService));

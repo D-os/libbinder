@@ -118,6 +118,7 @@ LIBBINDER_NDK31 { # introduced=31
     AIBinder_getCallingSid; # apex
     AIBinder_setRequestingSid; # apex
     AServiceManager_isDeclared; # apex llndk
+    AServiceManager_forEachDeclaredInstance; # apex llndk
     AServiceManager_registerLazyService; # llndk
     AServiceManager_waitForService; # apex llndk
     AServiceManager_forceLazyServicesPersist; # llndk
