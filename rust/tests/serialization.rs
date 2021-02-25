@@ -40,6 +40,41 @@ mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+macro_rules! assert_eq {
+    ($left:expr, $right:expr $(,)?) => {
+        match (&$left, &$right) {
+            (left, right) => {
+                if *left != *right {
+                    eprintln!(
+                        "assertion failed: `{:?}` == `{:?}`, {}:{}:{}",
+                        &*left,
+                        &*right,
+                        file!(),
+                        line!(),
+                        column!()
+                    );
+                    return Err(StatusCode::FAILED_TRANSACTION);
+                }
+            }
+        }
+    };
+}
+
+macro_rules! assert {
+    ($expr:expr) => {
+        if !$expr {
+            eprintln!(
+                "assertion failed: `{:?}`, {}:{}:{}",
+                $expr,
+                file!(),
+                line!(),
+                column!()
+            );
+            return Err(StatusCode::FAILED_TRANSACTION);
+        }
+    };
+}
+
 static SERVICE_ONCE: Once = Once::new();
 static mut SERVICE: Option<SpIBinder> = None;
 
@@ -282,7 +317,7 @@ fn on_transact(_service: &dyn ReadParcelTest, code: TransactionCode,
             ))?;
         }
         bindings::Transaction_TEST_FAIL => {
-            return Err(StatusCode::FAILED_TRANSACTION)
+            assert!(false);
         }
         _ => return Err(StatusCode::UNKNOWN_TRANSACTION),
     }
