@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use crate::binder::{AsNative, Interface, InterfaceClassMethods, Remotable, TransactionCode};
+use crate::binder::{AsNative, Interface, InterfaceClassMethods, Remotable, Stability, TransactionCode};
 use crate::error::{status_result, status_t, Result, StatusCode};
 use crate::parcel::{Parcel, Serialize};
 use crate::proxy::SpIBinder;
@@ -49,11 +49,19 @@ pub struct Binder<T: Remotable> {
 unsafe impl<T: Remotable> Send for Binder<T> {}
 
 impl<T: Remotable> Binder<T> {
-    /// Create a new Binder remotable object.
+    /// Create a new Binder remotable object with default stability
     ///
     /// This moves the `rust_object` into an owned [`Box`] and Binder will
     /// manage its lifetime.
     pub fn new(rust_object: T) -> Binder<T> {
+        Self::new_with_stability(rust_object, Stability::default())
+    }
+
+    /// Create a new Binder remotable object with the given stability
+    ///
+    /// This moves the `rust_object` into an owned [`Box`] and Binder will
+    /// manage its lifetime.
+    pub fn new_with_stability(rust_object: T, stability: Stability) -> Binder<T> {
         let class = T::get_class();
         let rust_object = Box::into_raw(Box::new(rust_object));
         let ibinder = unsafe {
@@ -65,10 +73,12 @@ impl<T: Remotable> Binder<T> {
             // ends.
             sys::AIBinder_new(class.into(), rust_object as *mut c_void)
         };
-        Binder {
+        let mut binder = Binder {
             ibinder,
             rust_object,
-        }
+        };
+        binder.mark_stability(stability);
+        binder
     }
 
     /// Set the extension of a binder interface. This allows a downstream
@@ -160,6 +170,42 @@ impl<T: Remotable> Binder<T> {
     /// interface.
     pub fn get_descriptor() -> &'static str {
         T::get_descriptor()
+    }
+
+    /// Mark this binder object with the given stability guarantee
+    fn mark_stability(&mut self, stability: Stability) {
+        match stability {
+            Stability::Local => self.mark_local_stability(),
+            Stability::Vintf => {
+                unsafe {
+                    // Safety: Self always contains a valid `AIBinder` pointer, so
+                    // we can always call this C API safely.
+                    sys::AIBinder_markVintfStability(self.as_native_mut());
+                }
+            }
+        }
+    }
+
+    /// Mark this binder object with local stability, which is vendor if we are
+    /// building for the VNDK and system otherwise.
+    #[cfg(vendor_ndk)]
+    fn mark_local_stability(&mut self) {
+        unsafe {
+            // Safety: Self always contains a valid `AIBinder` pointer, so
+            // we can always call this C API safely.
+            sys::AIBinder_markVendorStability(self.as_native_mut());
+        }
+    }
+
+    /// Mark this binder object with local stability, which is vendor if we are
+    /// building for the VNDK and system otherwise.
+    #[cfg(not(vendor_ndk))]
+    fn mark_local_stability(&mut self) {
+        unsafe {
+            // Safety: Self always contains a valid `AIBinder` pointer, so
+            // we can always call this C API safely.
+            sys::AIBinder_markSystemStability(self.as_native_mut());
+        }
     }
 }
 

@@ -21,6 +21,7 @@
 #include <android/binder_parcel_platform.h>
 #include <android/binder_process.h>
 #include <android/binder_shell.h>
+#include <android/binder_stability.h>
 #include <android/binder_status.h>
 
 namespace android {
@@ -80,6 +81,7 @@ enum {
 enum {
     FLAG_ONEWAY = FLAG_ONEWAY,
     FLAG_CLEAR_BUF = FLAG_CLEAR_BUF,
+    FLAG_PRIVATE_LOCAL = FLAG_PRIVATE_LOCAL,
 };
 
 } // namespace consts
