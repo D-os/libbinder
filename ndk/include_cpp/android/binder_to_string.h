@@ -136,8 +136,7 @@ class ToEmptyString {
     template <typename _U>
     static std::enable_if_t<
 #ifdef HAS_NDK_INTERFACE
-            std::is_base_of_v<::ndk::ICInterface, _U> || std::is_same_v<::ndk::SpAIBinder, _U> ||
-                    std::is_same_v<::ndk::ScopedFileDescriptor, _U> ||
+            std::is_base_of_v<::ndk::ICInterface, _U> ||
                     std::is_same_v<::ndk::AParcelableHolder, _U>
 #else
             std::is_base_of_v<IInterface, _U> || std::is_same_v<IBinder, _U> ||
@@ -168,13 +167,19 @@ std::string ToString(const _T& t) {
         return std::to_string(t);
     } else if constexpr (std::is_same_v<std::string, _T>) {
         return t;
+#ifdef HAS_NDK_INTERFACE
+    } else if constexpr (std::is_same_v<::ndk::SpAIBinder, _T>) {
+        return (t.get() == nullptr) ? "(null)" : "";
+    } else if constexpr (std::is_same_v<::ndk::ScopedFileDescriptor, _T>) {
+        return (t.get() == -1) ? "(null)" : "";
+#endif
 #ifdef HAS_STRING16
     } else if constexpr (std::is_same_v<String16, _T>) {
         std::stringstream out;
         out << t;
         return out.str();
 #endif
-    } else if constexpr (details::IsPointerLike<_T>::value) {
+    } else if constexpr (details::IsPointerLike<_T>::value || std::is_pointer_v<_T>) {
         if (!t) return "(null)";
         std::stringstream out;
         out << ToString(*t);
