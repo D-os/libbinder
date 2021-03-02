@@ -113,5 +113,14 @@ interface IPackageManagerNative {
      * Returns the debug flag for the given package.
      * Unknown packages will cause the call to fail.
      */
-     boolean isPackageDebuggable(in String packageName);
+    boolean isPackageDebuggable(in String packageName);
+
+    /**
+     * Check whether the given feature name and version is one of the available
+     * features as returned by {@link PackageManager#getSystemAvailableFeatures()}. Since
+     * features are defined to always be backwards compatible, this returns true
+     * if the available feature version is greater than or equal to the
+     * requested version.
+     */
+    boolean hasSystemFeature(in String featureName, in int version);
 }
