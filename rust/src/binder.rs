@@ -33,13 +33,13 @@ use std::ptr;
 
 /// Binder action to perform.
 ///
-/// This must be a number between [`IBinder::FIRST_CALL_TRANSACTION`] and
-/// [`IBinder::LAST_CALL_TRANSACTION`].
+/// This must be a number between [`FIRST_CALL_TRANSACTION`] and
+/// [`LAST_CALL_TRANSACTION`].
 pub type TransactionCode = u32;
 
 /// Additional operation flags.
 ///
-/// `IBinder::FLAG_*` values.
+/// `FLAG_*` values.
 pub type TransactionFlags = u32;
 
 /// Super-trait for Binder interfaces.
@@ -85,20 +85,22 @@ pub trait Remotable: Send + Sync {
     fn get_class() -> InterfaceClass;
 }
 
-/// Interface of binder local or remote objects.
+/// First transaction code available for user commands (inclusive)
+pub const FIRST_CALL_TRANSACTION: TransactionCode = sys::FIRST_CALL_TRANSACTION;
+/// Last transaction code available for user commands (inclusive)
+pub const LAST_CALL_TRANSACTION: TransactionCode = sys::LAST_CALL_TRANSACTION;
+
+/// Corresponds to TF_ONE_WAY -- an asynchronous call.
+pub const FLAG_ONEWAY: TransactionFlags = sys::FLAG_ONEWAY;
+/// Corresponds to TF_CLEAR_BUF -- clear transaction buffers after call is made.
+pub const FLAG_CLEAR_BUF: TransactionFlags = sys::FLAG_CLEAR_BUF;
+
+/// Internal interface of binder local or remote objects for making
+/// transactions.
 ///
-/// This trait corresponds to the interface of the C++ `IBinder` class.
-pub trait IBinder {
-    /// First transaction code available for user commands (inclusive)
-    const FIRST_CALL_TRANSACTION: TransactionCode = sys::FIRST_CALL_TRANSACTION;
-    /// Last transaction code available for user commands (inclusive)
-    const LAST_CALL_TRANSACTION: TransactionCode = sys::LAST_CALL_TRANSACTION;
-
-    /// Corresponds to TF_ONE_WAY -- an asynchronous call.
-    const FLAG_ONEWAY: TransactionFlags = sys::FLAG_ONEWAY;
-    /// Corresponds to TF_CLEAR_BUF -- clear transaction buffers after call is made.
-    const FLAG_CLEAR_BUF: TransactionFlags = sys::FLAG_CLEAR_BUF;
-
+/// This trait corresponds to the parts of the interface of the C++ `IBinder`
+/// class which are internal implementation details.
+pub trait IBinderInternal: IBinder {
     /// Is this object still alive?
     fn is_binder_alive(&self) -> bool;
 
@@ -122,19 +124,24 @@ pub trait IBinder {
     /// * `data` - [`Parcel`] with input data
     /// * `reply` - Optional [`Parcel`] for reply data
     /// * `flags` - Transaction flags, e.g. marking the transaction as
-    /// asynchronous ([`FLAG_ONEWAY`](IBinder::FLAG_ONEWAY))
+    ///   asynchronous ([`FLAG_ONEWAY`](FLAG_ONEWAY))
     fn transact<F: FnOnce(&mut Parcel) -> Result<()>>(
         &self,
         code: TransactionCode,
         flags: TransactionFlags,
         input_callback: F,
     ) -> Result<Parcel>;
+}
 
+/// Interface of binder local or remote objects.
+///
+/// This trait corresponds to the parts of the interface of the C++ `IBinder`
+/// class which are public.
+pub trait IBinder {
     /// Register the recipient for a notification if this binder
     /// goes away. If this binder object unexpectedly goes away
     /// (typically because its hosting process has been killed),
-    /// then DeathRecipient::binder_died() will be called with a reference
-    /// to this.
+    /// then the `DeathRecipient`'s callback will be called.
     ///
     /// You will only receive death notifications for remote binders,
     /// as local binders by definition can't die without you dying as well.
@@ -142,11 +149,6 @@ pub trait IBinder {
     /// INVALID_OPERATION code being returned and nothing happening.
     ///
     /// This link always holds a weak reference to its recipient.
-    ///
-    /// You will only receive a weak reference to the dead
-    /// binder. You should not try to promote this to a strong reference.
-    /// (Nor should you need to, as there is nothing useful you can
-    /// directly do with it now that it has passed on.)
     fn link_to_death(&mut self, recipient: &mut DeathRecipient) -> Result<()>;
 
     /// Remove a previously registered death notification.
@@ -222,7 +224,8 @@ impl InterfaceClass {
             // the number of u16 elements before the null terminator.
 
             let raw_descriptor: *const c_char = sys::AIBinder_Class_getDescriptor(self.0);
-            CStr::from_ptr(raw_descriptor).to_str()
+            CStr::from_ptr(raw_descriptor)
+                .to_str()
                 .expect("Expected valid UTF-8 string from AIBinder_Class_getDescriptor")
                 .into()
         }

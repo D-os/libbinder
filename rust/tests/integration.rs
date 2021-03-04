@@ -18,7 +18,10 @@
 
 use binder::declare_binder_interface;
 use binder::parcel::Parcel;
-use binder::{Binder, IBinder, Interface, SpIBinder, StatusCode, ThreadState, TransactionCode};
+use binder::{
+    Binder, IBinderInternal, Interface, StatusCode, ThreadState, TransactionCode,
+    FIRST_CALL_TRANSACTION,
+};
 use std::convert::{TryFrom, TryInto};
 
 /// Name of service runner.
@@ -83,7 +86,7 @@ struct TestService {
 
 #[repr(u32)]
 enum TestTransactionCode {
-    Test = SpIBinder::FIRST_CALL_TRANSACTION,
+    Test = FIRST_CALL_TRANSACTION,
     GetSelinuxContext,
 }
 
@@ -196,7 +199,6 @@ impl ITestSameDescriptor for BpTestSameDescriptor {}
 
 impl ITestSameDescriptor for Binder<BnTestSameDescriptor> {}
 
-
 #[cfg(test)]
 mod tests {
     use selinux_bindgen as selinux_sys;
@@ -209,9 +211,12 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use binder::{Binder, DeathRecipient, FromIBinder, IBinder, Interface, SpIBinder, StatusCode, Strong};
+    use binder::{
+        Binder, DeathRecipient, FromIBinder, IBinder, IBinderInternal, Interface, SpIBinder,
+        StatusCode, Strong,
+    };
 
-    use super::{BnTest, ITest, ITestSameDescriptor, RUST_SERVICE_BINARY, TestService};
+    use super::{BnTest, ITest, ITestSameDescriptor, TestService, RUST_SERVICE_BINARY};
 
     pub struct ScopedServiceProcess(Child);
 
@@ -290,7 +295,9 @@ mod tests {
         };
         assert_eq!(
             test_client.get_selinux_context().unwrap(),
-            expected_context.to_str().expect("context was invalid UTF-8"),
+            expected_context
+                .to_str()
+                .expect("context was invalid UTF-8"),
         );
     }
 
@@ -479,18 +486,22 @@ mod tests {
 
         // This should succeed although we will have to treat the service as
         // remote.
-        let _interface: Strong<dyn ITestSameDescriptor> = FromIBinder::try_from(service.as_binder())
-            .expect("Could not re-interpret service as the ITestSameDescriptor interface");
+        let _interface: Strong<dyn ITestSameDescriptor> =
+            FromIBinder::try_from(service.as_binder())
+                .expect("Could not re-interpret service as the ITestSameDescriptor interface");
     }
 
     /// Test that we can round-trip a rust service through a generic IBinder
     #[test]
     fn reassociate_rust_binder() {
         let service_name = "testing_service";
-        let service_ibinder = BnTest::new_binder(TestService { s: service_name.to_string() })
-            .as_binder();
+        let service_ibinder = BnTest::new_binder(TestService {
+            s: service_name.to_string(),
+        })
+        .as_binder();
 
-        let service: Strong<dyn ITest> = service_ibinder.into_interface()
+        let service: Strong<dyn ITest> = service_ibinder
+            .into_interface()
             .expect("Could not reassociate the generic ibinder");
 
         assert_eq!(service.test().unwrap(), service_name);
@@ -499,7 +510,9 @@ mod tests {
     #[test]
     fn weak_binder_upgrade() {
         let service_name = "testing_service";
-        let service = BnTest::new_binder(TestService { s: service_name.to_string() });
+        let service = BnTest::new_binder(TestService {
+            s: service_name.to_string(),
+        });
 
         let weak = Strong::downgrade(&service);
 
@@ -512,7 +525,9 @@ mod tests {
     fn weak_binder_upgrade_dead() {
         let service_name = "testing_service";
         let weak = {
-            let service = BnTest::new_binder(TestService { s: service_name.to_string() });
+            let service = BnTest::new_binder(TestService {
+                s: service_name.to_string(),
+            });
 
             Strong::downgrade(&service)
         };
@@ -523,7 +538,9 @@ mod tests {
     #[test]
     fn weak_binder_clone() {
         let service_name = "testing_service";
-        let service = BnTest::new_binder(TestService { s: service_name.to_string() });
+        let service = BnTest::new_binder(TestService {
+            s: service_name.to_string(),
+        });
 
         let weak = Strong::downgrade(&service);
         let cloned = weak.clone();
@@ -539,8 +556,12 @@ mod tests {
     #[test]
     #[allow(clippy::eq_op)]
     fn binder_ord() {
-        let service1 = BnTest::new_binder(TestService { s: "testing_service1".to_string() });
-        let service2 = BnTest::new_binder(TestService { s: "testing_service2".to_string() });
+        let service1 = BnTest::new_binder(TestService {
+            s: "testing_service1".to_string(),
+        });
+        let service2 = BnTest::new_binder(TestService {
+            s: "testing_service2".to_string(),
+        });
 
         assert!(!(service1 < service1));
         assert!(!(service1 > service1));
