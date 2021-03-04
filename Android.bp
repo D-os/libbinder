@@ -218,6 +218,11 @@ cc_library {
         "performance*",
         "portability*",
     ],
+
+    pgo: {
+        sampling: true,
+        profile_file: "libbinder/libbinder.profdata",
+    },
 }
 
 // AIDL interface between libbinder and framework.jar
