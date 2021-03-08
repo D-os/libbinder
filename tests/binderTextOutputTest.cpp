@@ -26,7 +26,6 @@
 
 #include <binder/Parcel.h>
 #include <binder/TextOutput.h>
-#include <binder/Debug.h>
 
 static void CheckMessage(CapturedStderr& cap,
                          const char* expected,
