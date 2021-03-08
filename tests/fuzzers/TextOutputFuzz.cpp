@@ -16,7 +16,6 @@
 
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include <binder/Debug.h>
 #include <binder/Parcel.h>
 #include <binder/TextOutput.h>
 #include "android-base/file.h"
