@@ -77,9 +77,7 @@ fn parse_exception_code(code: i32) -> ExceptionCode {
         e if e == ExceptionCode::ILLEGAL_ARGUMENT as i32 => ExceptionCode::ILLEGAL_ARGUMENT,
         e if e == ExceptionCode::NULL_POINTER as i32 => ExceptionCode::NULL_POINTER,
         e if e == ExceptionCode::ILLEGAL_STATE as i32 => ExceptionCode::ILLEGAL_STATE,
-        e if e == ExceptionCode::NETWORK_MAIN_THREAD as i32 => {
-            ExceptionCode::NETWORK_MAIN_THREAD
-        }
+        e if e == ExceptionCode::NETWORK_MAIN_THREAD as i32 => ExceptionCode::NETWORK_MAIN_THREAD,
         e if e == ExceptionCode::UNSUPPORTED_OPERATION as i32 => {
             ExceptionCode::UNSUPPORTED_OPERATION
         }
@@ -95,6 +93,16 @@ fn parse_exception_code(code: i32) -> ExceptionCode {
 ///
 /// Used in AIDL transactions to represent failed transactions.
 pub struct Status(*mut sys::AStatus);
+
+// Safety: The `AStatus` that the `Status` points to must have an entirely thread-safe API for the
+// duration of the `Status` object's lifetime. We ensure this by not allowing mutation of a `Status`
+// in Rust, and the NDK API says we're the owner of our `AStatus` objects so outside code should not
+// be mutating them underneath us.
+unsafe impl Sync for Status {}
+
+// Safety: `Status` always contains an owning pointer to a global, immutable, interned `AStatus`.
+// A thread-local `AStatus` would not be valid.
+unsafe impl Send for Status {}
 
 impl Status {
     /// Create a status object representing a successful transaction.
