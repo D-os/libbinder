@@ -15,7 +15,6 @@
  */
 
 #include "BufferedTextOutput.h"
-#include <binder/Debug.h>
 
 #include <cutils/atomic.h>
 #include <utils/Log.h>
@@ -26,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Debug.h"
 #include "Static.h"
 
 // ---------------------------------------------------------------------------

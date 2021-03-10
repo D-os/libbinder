@@ -16,7 +16,7 @@
 
 #include <binder/TextOutput.h>
 
-#include <binder/Debug.h>
+#include "Debug.h"
 
 #include <utils/String8.h>
 #include <utils/String16.h>

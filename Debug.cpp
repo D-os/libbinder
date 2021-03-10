@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#include <binder/Debug.h>
+#include "Debug.h"
+
 #include <binder/ProcessState.h>
 
 #include <utils/misc.h>
