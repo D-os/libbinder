@@ -216,6 +216,7 @@ cc_library {
         "-misc-redundant-expression",
         "-misc-unused-using-decls",
         "performance*",
+        "-performance-no-int-to-ptr",
         "portability*",
     ],
 
