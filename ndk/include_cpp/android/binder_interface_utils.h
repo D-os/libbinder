@@ -82,7 +82,10 @@ class SharedRefBase {
      */
     template <class T, class... Args>
     static std::shared_ptr<T> make(Args&&... args) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         T* t = new T(std::forward<Args>(args)...);
+#pragma clang diagnostic pop
         // warning: Potential leak of memory pointed to by 't' [clang-analyzer-unix.Malloc]
         return t->template ref<T>();  // NOLINT(clang-analyzer-unix.Malloc)
     }
