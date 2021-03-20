@@ -142,7 +142,8 @@ public:
         OP_FINE_LOCATION_SOURCE = 108,
         OP_COARSE_LOCATION_SOURCE = 109,
         OP_MANAGE_MEDIA = 110,
-        _NUM_OP = 111
+        OP_BLUETOOTH_CONNECT = 111,
+        _NUM_OP = 112
     };
 
     AppOpsManager();
