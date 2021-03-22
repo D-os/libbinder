@@ -32,6 +32,11 @@
 
 __BEGIN_DECLS
 
+#ifndef __ANDROID_API__
+#error Android builds must be compiled against a specific API. If this is an \
+ android platform host build, you must use libbinder_ndk_host_user.
+#endif
+
 /**
  * Low-level status types for use in binder. This is the least preferable way to
  * return an error for binder services (where binder_exception_t should be used,
