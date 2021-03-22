@@ -32,6 +32,11 @@
 
 __BEGIN_DECLS
 
+/**
+ * Low-level status types for use in binder. This is the least preferable way to
+ * return an error for binder services (where binder_exception_t should be used,
+ * particularly EX_SERVICE_SPECIFIC).
+ */
 enum {
     STATUS_OK = 0,
 
@@ -62,6 +67,10 @@ enum {
  */
 typedef int32_t binder_status_t;
 
+/**
+ * Top level exceptions types for Android binder errors, mapping to Java
+ * exceptions. Also see Parcel.java.
+ */
 enum {
     EX_NONE = 0,
     EX_SECURITY = -1,
@@ -170,7 +179,8 @@ __attribute__((warn_unused_result)) AStatus* AStatus_fromServiceSpecificErrorWit
 /**
  * New status with binder_status_t. This is typically for low level failures when a binder_status_t
  * is returned by an API on AIBinder or AParcel, and that is to be returned from a method returning
- * an AStatus instance.
+ * an AStatus instance. This is the least preferable way to return errors.
+ * Prefer exceptions (particularly service-specific errors) when possible.
  *
  * Available since API level 29.
  *
