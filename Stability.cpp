@@ -38,6 +38,18 @@ Stability::Category Stability::Category::currentFromLevel(Level level) {
     };
 }
 
+void Stability::forceDowngradeCompilationUnit(const sp<IBinder>& binder) {
+    // Downgrading a remote binder would require also copying the version from
+    // the binder sent here. In practice though, we don't need to downgrade the
+    // stability of a remote binder, since this would as an effect only restrict
+    // what we can do to it.
+    LOG_ALWAYS_FATAL_IF(!binder || !binder->localBinder(), "Can only downgrade local binder");
+
+    auto stability = Category::currentFromLevel(getLocalLevel());
+    status_t result = setRepr(binder.get(), stability.repr(), REPR_LOG | REPR_ALLOW_DOWNGRADE);
+    LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
+}
+
 std::string Stability::Category::debugString() {
     return levelString(level) + " wire protocol version "
         + std::to_string(version);
@@ -45,13 +57,13 @@ std::string Stability::Category::debugString() {
 
 void Stability::markCompilationUnit(IBinder* binder) {
     auto stability = Category::currentFromLevel(getLocalLevel());
-    status_t result = setRepr(binder, stability.repr(), true /*log*/);
+    status_t result = setRepr(binder, stability.repr(), REPR_LOG);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
 void Stability::markVintf(IBinder* binder) {
     auto stability = Category::currentFromLevel(Level::VINTF);
-    status_t result = setRepr(binder, stability.repr(), true /*log*/);
+    status_t result = setRepr(binder, stability.repr(), REPR_LOG);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
@@ -62,7 +74,7 @@ void Stability::debugLogStability(const std::string& tag, const sp<IBinder>& bin
 
 void Stability::markVndk(IBinder* binder) {
     auto stability = Category::currentFromLevel(Level::VENDOR);
-    status_t result = setRepr(binder, stability.repr(), true /*log*/);
+    status_t result = setRepr(binder, stability.repr(), REPR_LOG);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
@@ -72,7 +84,7 @@ bool Stability::requiresVintfDeclaration(const sp<IBinder>& binder) {
 
 void Stability::tryMarkCompilationUnit(IBinder* binder) {
     auto stability = Category::currentFromLevel(getLocalLevel());
-    (void) setRepr(binder, stability.repr(), false /*log*/);
+    (void) setRepr(binder, stability.repr(), REPR_NONE);
 }
 
 Stability::Level Stability::getLocalLevel() {
@@ -94,7 +106,10 @@ Stability::Level Stability::getLocalLevel() {
 #endif
 }
 
-status_t Stability::setRepr(IBinder* binder, int32_t representation, bool log) {
+status_t Stability::setRepr(IBinder* binder, int32_t representation, uint32_t flags) {
+    bool log = flags & REPR_LOG;
+    bool allowDowngrade = flags & REPR_ALLOW_DOWNGRADE;
+
     auto current = getCategory(binder);
     auto setting = Category::fromRepr(representation);
 
@@ -129,7 +144,11 @@ status_t Stability::setRepr(IBinder* binder, int32_t representation, bool log) {
         return BAD_TYPE;
     }
 
-    if (current.repr() != 0 && current != setting) {
+    if (current == setting) return OK;
+
+    bool hasAlreadyBeenSet = current.repr() != 0;
+    bool isAllowedDowngrade = allowDowngrade && check(current, setting.level);
+    if (hasAlreadyBeenSet && !isAllowedDowngrade) {
         if (log) {
             ALOGE("Interface being set with %s but it is already marked as %s",
                   setting.debugString().c_str(),
@@ -138,7 +157,11 @@ status_t Stability::setRepr(IBinder* binder, int32_t representation, bool log) {
         return BAD_TYPE;
     }
 
-    if (current == setting) return OK;
+    if (isAllowedDowngrade) {
+        ALOGI("Interface set with %s downgraded to %s stability",
+              current.debugString().c_str(),
+              setting.debugString().c_str());
+    }
 
     BBinder* local = binder->localBinder();
     if (local != nullptr) {
