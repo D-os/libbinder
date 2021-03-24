@@ -131,6 +131,17 @@ TEST(BinderStability, OnlyVintfStabilityBinderNeedsVintfDeclaration) {
     EXPECT_TRUE(Stability::requiresVintfDeclaration(BadStableBinder::vintf()));
 }
 
+TEST(BinderStability, ForceDowngradeStability) {
+    sp<IBinder> someBinder = BadStableBinder::vintf();
+
+    EXPECT_TRUE(Stability::requiresVintfDeclaration(someBinder));
+
+    // silly to do this after already using the binder, but it's for the test
+    Stability::forceDowngradeCompilationUnit(someBinder);
+
+    EXPECT_FALSE(Stability::requiresVintfDeclaration(someBinder));
+}
+
 TEST(BinderStability, VintfStabilityServerMustBeDeclaredInManifest) {
     sp<IBinder> vintfServer = BadStableBinder::vintf();
 
