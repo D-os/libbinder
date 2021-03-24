@@ -48,6 +48,7 @@
 #include <utils/String16.h>
 
 #include <private/binder/binder_module.h>
+#include "RpcState.h"
 #include "Static.h"
 #include "Utils.h"
 
@@ -191,6 +192,22 @@ static constexpr inline int schedPolicyMask(int policy, int priority) {
 
 status_t Parcel::flattenBinder(const sp<IBinder>& binder)
 {
+    if (isForRpc()) {
+        if (binder) {
+            status_t status = writeInt32(1); // non-null
+            if (status != OK) return status;
+            RpcAddress address = RpcAddress::zero();
+            status = mConnection->state()->onBinderLeaving(mConnection, binder, &address);
+            if (status != OK) return status;
+            status = address.writeToParcel(this);
+            if (status != OK) return status;
+        } else {
+            status_t status = writeInt32(0); // null
+            if (status != OK) return status;
+        }
+        return finishFlattenBinder(binder);
+    }
+
     flat_binder_object obj;
     obj.flags = FLAT_BINDER_FLAG_ACCEPTS_FDS;
 
@@ -205,8 +222,13 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
             BpBinder *proxy = binder->remoteBinder();
             if (proxy == nullptr) {
                 ALOGE("null proxy");
+            } else {
+                if (proxy->isRpcBinder()) {
+                    ALOGE("Sending a socket binder over RPC is prohibited");
+                    return INVALID_OPERATION;
+                }
             }
-            const int32_t handle = proxy ? proxy->getPrivateAccessorForHandle().handle() : 0;
+            const int32_t handle = proxy ? proxy->getPrivateAccessorForId().binderHandle() : 0;
             obj.hdr.type = BINDER_TYPE_HANDLE;
             obj.binder = 0; /* Don't pass uninitialized stack data to a remote process */
             obj.handle = handle;
@@ -245,6 +267,26 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder)
 
 status_t Parcel::unflattenBinder(sp<IBinder>* out) const
 {
+    if (isForRpc()) {
+        LOG_ALWAYS_FATAL_IF(mConnection == nullptr,
+                            "RpcConnection required to read from remote parcel");
+
+        int32_t isNull;
+        status_t status = readInt32(&isNull);
+        if (status != OK) return status;
+
+        sp<IBinder> binder;
+
+        if (isNull & 1) {
+            auto addr = RpcAddress::zero();
+            status_t status = addr.readFromParcel(*this);
+            if (status != OK) return status;
+            binder = mConnection->state()->onBinderEntering(mConnection, addr);
+        }
+
+        return finishUnflattenBinder(binder, out);
+    }
+
     const flat_binder_object* flat = readObject(false);
 
     if (flat) {
@@ -509,6 +551,21 @@ bool Parcel::hasFileDescriptors() const
 void Parcel::markSensitive() const
 {
     mDeallocZero = true;
+}
+
+void Parcel::markForBinder(const sp<IBinder>& binder) {
+    if (binder && binder->remoteBinder() && binder->remoteBinder()->isRpcBinder()) {
+        markForRpc(binder->remoteBinder()->getPrivateAccessorForId().rpcConnection());
+    }
+}
+
+void Parcel::markForRpc(const sp<RpcConnection>& connection) {
+    LOG_ALWAYS_FATAL_IF(connection == nullptr, "markForRpc requires connection");
+    mConnection = connection;
+}
+
+bool Parcel::isForRpc() const {
+    return mConnection != nullptr;
 }
 
 void Parcel::updateWorkSourceRequestHeaderPosition() const {
@@ -1070,6 +1127,11 @@ status_t Parcel::writeNativeHandle(const native_handle* handle)
 
 status_t Parcel::writeFileDescriptor(int fd, bool takeOwnership)
 {
+    if (isForRpc()) {
+        ALOGE("Cannot write file descriptor to remote binder.");
+        return BAD_TYPE;
+    }
+
     flat_binder_object obj;
     obj.hdr.type = BINDER_TYPE_FD;
     obj.flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
@@ -2413,6 +2475,7 @@ void Parcel::initState()
     mDataPos = 0;
     ALOGV("initState Setting data size of %p to %zu", this, mDataSize);
     ALOGV("initState Setting data pos of %p to %zu", this, mDataPos);
+    mConnection = nullptr;
     mObjects = nullptr;
     mObjectsSize = 0;
     mObjectsCapacity = 0;

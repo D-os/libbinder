@@ -105,6 +105,26 @@ cc_test {
 }
 
 cc_test {
+    name: "binderRpcTest",
+    defaults: ["binder_test_defaults"],
+
+    srcs: [
+        "IBinderRpcSession.aidl",
+        "IBinderRpcTest.aidl",
+        "binderRpcTest.cpp",
+    ],
+    shared_libs: [
+        "libbinder",
+        "libbase",
+        "libutils",
+        "libcutils",
+        "liblog",
+    ],
+    test_suites: ["general-tests"],
+    require_root: true,
+}
+
+cc_test {
     name: "binderThroughputTest",
     defaults: ["binder_test_defaults"],
     srcs: ["binderThroughputTest.cpp"],
