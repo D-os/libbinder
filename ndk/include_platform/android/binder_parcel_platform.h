@@ -20,9 +20,7 @@
 
 __BEGIN_DECLS
 
-#if defined(__ANDROID_APEX__) || defined(__ANDROID_VNDK__)
-#error this is only for platform code
-#endif
+#if !defined(__ANDROID_APEX__) && !defined(__ANDROID_VNDK__)
 
 /**
  * Gets whether or not FDs are allowed by this AParcel
@@ -33,6 +31,9 @@ __BEGIN_DECLS
  */
 bool AParcel_getAllowFds(const AParcel*);
 
+#endif
+
+#if !defined(__ANDROID_APEX__)
 /**
  * Data written to the parcel will be zero'd before being deleted or realloced.
  *
@@ -43,5 +44,6 @@ bool AParcel_getAllowFds(const AParcel*);
  * \param parcel The parcel to clear associated data from.
  */
 void AParcel_markSensitive(const AParcel* parcel);
+#endif
 
 __END_DECLS
