@@ -205,10 +205,12 @@ ssize_t ProcessState::getKernelReferences(size_t buf_count, uintptr_t* buf)
 //
 // Returns -1 in case of failure, otherwise the strong reference count.
 ssize_t ProcessState::getStrongRefCountForNode(const sp<BpBinder>& binder) {
+    if (binder->isRpcBinder()) return -1;
+
     binder_node_info_for_ref info;
     memset(&info, 0, sizeof(binder_node_info_for_ref));
 
-    info.handle = binder->getPrivateAccessorForHandle().handle();
+    info.handle = binder->getPrivateAccessorForId().binderHandle();
 
     status_t result = ioctl(mDriverFD, BINDER_GET_NODE_INFO_FOR_REF, &info);
 
