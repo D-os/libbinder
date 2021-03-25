@@ -36,11 +36,6 @@
 
 __BEGIN_DECLS
 
-#ifndef __ANDROID_API__
-#error Android builds must be compiled against a specific API. If this is an \
- android platform host build, you must use libbinder_ndk_host_user.
-#endif
-
 typedef uint32_t binder_flags_t;
 enum {
     /**
