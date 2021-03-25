@@ -25,6 +25,9 @@
       "name": "binderLibTest"
     },
     {
+      "name": "binderRpcTest"
+    },
+    {
       "name": "binderStabilityTest"
     },
     {

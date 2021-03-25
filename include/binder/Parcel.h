@@ -50,11 +50,14 @@ template <typename T> class LightFlattenable;
 class IBinder;
 class IPCThreadState;
 class ProcessState;
+class RpcConnection;
 class String8;
 class TextOutput;
 
 class Parcel {
     friend class IPCThreadState;
+    friend class RpcState;
+
 public:
     class ReadableBlob;
     class WritableBlob;
@@ -92,7 +95,21 @@ public:
     // In order to verify this, heap dumps should be used.
     void                markSensitive() const;
 
-    // Writes the RPC header.
+    // For a 'data' Parcel, this should mark the Parcel as being prepared for a
+    // transaction on this specific binder object. Based on this, the format of
+    // the wire binder protocol may change (data is written differently when it
+    // is for an RPC transaction).
+    void markForBinder(const sp<IBinder>& binder);
+
+    // Whenever possible, markForBinder should be preferred. This method is
+    // called automatically on reply Parcels for RPC transactions.
+    void markForRpc(const sp<RpcConnection>& connection);
+
+    // Whether this Parcel is written for RPC transactions (after calls to
+    // markForBinder or markForRpc).
+    bool isForRpc() const;
+
+    // Writes the IPC/RPC header.
     status_t            writeInterfaceToken(const String16& interface);
     status_t            writeInterfaceToken(const char16_t* str, size_t len);
 
@@ -1106,6 +1123,7 @@ private:
     mutable bool        mObjectsSorted;
 
     mutable bool        mRequestHeaderPresent;
+
     mutable size_t      mWorkSourceRequestHeaderPosition;
 
     mutable bool        mFdsKnown;
@@ -1118,8 +1136,7 @@ private:
 
     release_func        mOwner;
 
-    // TODO(167966510): reserved for binder/version/stability
-    void*               mReserved = reinterpret_cast<void*>(0xAAAAAAAA);
+    sp<RpcConnection> mConnection;
 
     class Blob {
     public:
