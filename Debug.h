@@ -37,8 +37,7 @@ void printHexData(int32_t indent, const void *buf, size_t length,
     size_t alignment=0, bool cArrayStyle=false,
     debugPrintFunc func = nullptr, void* cookie = nullptr);
 
-
-ssize_t getBinderKernelReferences(size_t count, uintptr_t* buf);
+extern "C" ssize_t getBinderKernelReferences(size_t count, uintptr_t* buf);
 
 // ---------------------------------------------------------------------------
 } // namespace android
