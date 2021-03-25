@@ -17,13 +17,13 @@
 #pragma once
 
 #include <stdint.h>
-#include <sys/cdefs.h>
 #include <sys/types.h>
+#include <string>
 
 namespace android {
 // ---------------------------------------------------------------------------
 
-__BEGIN_DECLS
+std::string hexString(const void* data, size_t size);
 
 const char* stringForIndent(int32_t indentLevel);
 
@@ -39,8 +39,6 @@ void printHexData(int32_t indent, const void *buf, size_t length,
 
 
 ssize_t getBinderKernelReferences(size_t count, uintptr_t* buf);
-
-__END_DECLS
 
 // ---------------------------------------------------------------------------
 } // namespace android
