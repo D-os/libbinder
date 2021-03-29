@@ -56,6 +56,26 @@ pub trait Interface: Send {
     }
 }
 
+/// Interface stability promise
+///
+/// An interface can promise to be a stable vendor interface ([`Vintf`]), or
+/// makes no stability guarantees ([`Local`]). [`Local`] is
+/// currently the default stability.
+pub enum Stability {
+    /// Default stability, visible to other modules in the same compilation
+    /// context (e.g. modules on system.img)
+    Local,
+
+    /// A Vendor Interface Object, which promises to be stable
+    Vintf,
+}
+
+impl Default for Stability {
+    fn default() -> Self {
+        Stability::Local
+    }
+}
+
 /// A local service that can be remotable via Binder.
 ///
 /// An object that implement this interface made be made into a Binder service
@@ -94,6 +114,8 @@ pub const LAST_CALL_TRANSACTION: TransactionCode = sys::LAST_CALL_TRANSACTION;
 pub const FLAG_ONEWAY: TransactionFlags = sys::FLAG_ONEWAY;
 /// Corresponds to TF_CLEAR_BUF -- clear transaction buffers after call is made.
 pub const FLAG_CLEAR_BUF: TransactionFlags = sys::FLAG_CLEAR_BUF;
+/// Set to the vendor flag if we are building for the VNDK, 0 otherwise
+pub const FLAG_PRIVATE_LOCAL: TransactionFlags = sys::FLAG_PRIVATE_LOCAL;
 
 /// Internal interface of binder local or remote objects for making
 /// transactions.
@@ -602,6 +624,23 @@ macro_rules! declare_binder_interface {
             $interface[$descriptor] {
                 native: $native($on_transact),
                 proxy: $proxy {},
+                stability: $crate::Stability::default(),
+            }
+        }
+    };
+
+    {
+        $interface:path[$descriptor:expr] {
+            native: $native:ident($on_transact:path),
+            proxy: $proxy:ident,
+            stability: $stability:expr,
+        }
+    } => {
+        $crate::declare_binder_interface! {
+            $interface[$descriptor] {
+                native: $native($on_transact),
+                proxy: $proxy {},
+                stability: $stability,
             }
         }
     };
@@ -616,12 +655,33 @@ macro_rules! declare_binder_interface {
     } => {
         $crate::declare_binder_interface! {
             $interface[$descriptor] {
+                native: $native($on_transact),
+                proxy: $proxy {
+                    $($fname: $fty = $finit),*
+                },
+                stability: $crate::Stability::default(),
+            }
+        }
+    };
+
+    {
+        $interface:path[$descriptor:expr] {
+            native: $native:ident($on_transact:path),
+            proxy: $proxy:ident {
+                $($fname:ident: $fty:ty = $finit:expr),*
+            },
+            stability: $stability:expr,
+        }
+    } => {
+        $crate::declare_binder_interface! {
+            $interface[$descriptor] {
                 @doc[concat!("A binder [`Remotable`]($crate::Remotable) that holds an [`", stringify!($interface), "`] object.")]
                 native: $native($on_transact),
                 @doc[concat!("A binder [`Proxy`]($crate::Proxy) that holds an [`", stringify!($interface), "`] remote interface.")]
                 proxy: $proxy {
                     $($fname: $fty = $finit),*
                 },
+                stability: $stability,
             }
         }
     };
@@ -635,6 +695,8 @@ macro_rules! declare_binder_interface {
             proxy: $proxy:ident {
                 $($fname:ident: $fty:ty = $finit:expr),*
             },
+
+            stability: $stability:expr,
         }
     } => {
         #[doc = $proxy_doc]
@@ -669,7 +731,7 @@ macro_rules! declare_binder_interface {
         impl $native {
             /// Create a new binder service.
             pub fn new_binder<T: $interface + Sync + Send + 'static>(inner: T) -> $crate::Strong<dyn $interface> {
-                let binder = $crate::Binder::new($native(Box::new(inner)));
+                let binder = $crate::Binder::new_with_stability($native(Box::new(inner)), $stability);
                 $crate::Strong::new(Box::new(binder))
             }
         }
