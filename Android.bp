@@ -130,6 +130,7 @@ cc_library {
         "Status.cpp",
         "TextOutput.cpp",
         "Utils.cpp",
+        ":packagemanager_aidl",
         ":libbinder_aidl",
         ":activity_manager_procstate_aidl",
     ],
@@ -232,13 +233,20 @@ cc_library {
 filegroup {
     name: "libbinder_aidl",
     srcs: [
-        "aidl/android/content/pm/IPackageChangeObserver.aidl",
-        "aidl/android/content/pm/IPackageManagerNative.aidl",
-        "aidl/android/content/pm/PackageChangeEvent.aidl",
         "aidl/android/os/IClientCallback.aidl",
         "aidl/android/os/IServiceCallback.aidl",
         "aidl/android/os/IServiceManager.aidl",
         "aidl/android/os/ServiceDebugInfo.aidl",
+    ],
+    path: "aidl",
+}
+
+filegroup {
+    name: "packagemanager_aidl",
+    srcs: [
+        "aidl/android/content/pm/IPackageChangeObserver.aidl",
+        "aidl/android/content/pm/IPackageManagerNative.aidl",
+        "aidl/android/content/pm/PackageChangeEvent.aidl",
     ],
     path: "aidl",
 }
