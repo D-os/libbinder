@@ -41,11 +41,12 @@
 #include <binder/TextOutput.h>
 
 #include <cutils/ashmem.h>
+#include <cutils/compiler.h>
 #include <utils/Flattenable.h>
 #include <utils/Log.h>
-#include <utils/misc.h>
-#include <utils/String8.h>
 #include <utils/String16.h>
+#include <utils/String8.h>
+#include <utils/misc.h>
 
 #include <private/binder/binder_module.h>
 #include "RpcState.h"
@@ -590,12 +591,14 @@ status_t Parcel::writeInterfaceToken(const String16& interface)
 }
 
 status_t Parcel::writeInterfaceToken(const char16_t* str, size_t len) {
-    const IPCThreadState* threadState = IPCThreadState::self();
-    writeInt32(threadState->getStrictModePolicy() | STRICT_MODE_PENALTY_GATHER);
-    updateWorkSourceRequestHeaderPosition();
-    writeInt32(threadState->shouldPropagateWorkSource() ?
-            threadState->getCallingWorkSourceUid() : IPCThreadState::kUnsetWorkSource);
-    writeInt32(kHeader);
+    if (CC_LIKELY(!isForRpc())) {
+        const IPCThreadState* threadState = IPCThreadState::self();
+        writeInt32(threadState->getStrictModePolicy() | STRICT_MODE_PENALTY_GATHER);
+        updateWorkSourceRequestHeaderPosition();
+        writeInt32(threadState->shouldPropagateWorkSource() ? threadState->getCallingWorkSourceUid()
+                                                            : IPCThreadState::kUnsetWorkSource);
+        writeInt32(kHeader);
+    }
 
     // currently the interface identification token is just its name as a string
     return writeString16(str, len);
@@ -642,31 +645,34 @@ bool Parcel::enforceInterface(const char16_t* interface,
                               size_t len,
                               IPCThreadState* threadState) const
 {
-    // StrictModePolicy.
-    int32_t strictPolicy = readInt32();
-    if (threadState == nullptr) {
-        threadState = IPCThreadState::self();
+    if (CC_LIKELY(!isForRpc())) {
+        // StrictModePolicy.
+        int32_t strictPolicy = readInt32();
+        if (threadState == nullptr) {
+            threadState = IPCThreadState::self();
+        }
+        if ((threadState->getLastTransactionBinderFlags() & IBinder::FLAG_ONEWAY) != 0) {
+            // For one-way calls, the callee is running entirely
+            // disconnected from the caller, so disable StrictMode entirely.
+            // Not only does disk/network usage not impact the caller, but
+            // there's no way to communicate back violations anyway.
+            threadState->setStrictModePolicy(0);
+        } else {
+            threadState->setStrictModePolicy(strictPolicy);
+        }
+        // WorkSource.
+        updateWorkSourceRequestHeaderPosition();
+        int32_t workSource = readInt32();
+        threadState->setCallingWorkSourceUidWithoutPropagation(workSource);
+        // vendor header
+        int32_t header = readInt32();
+        if (header != kHeader) {
+            ALOGE("Expecting header 0x%x but found 0x%x. Mixing copies of libbinder?", kHeader,
+                  header);
+            return false;
+        }
     }
-    if ((threadState->getLastTransactionBinderFlags() &
-         IBinder::FLAG_ONEWAY) != 0) {
-      // For one-way calls, the callee is running entirely
-      // disconnected from the caller, so disable StrictMode entirely.
-      // Not only does disk/network usage not impact the caller, but
-      // there's no way to commuicate back any violations anyway.
-      threadState->setStrictModePolicy(0);
-    } else {
-      threadState->setStrictModePolicy(strictPolicy);
-    }
-    // WorkSource.
-    updateWorkSourceRequestHeaderPosition();
-    int32_t workSource = readInt32();
-    threadState->setCallingWorkSourceUidWithoutPropagation(workSource);
-    // vendor header
-    int32_t header = readInt32();
-    if (header != kHeader) {
-        ALOGE("Expecting header 0x%x but found 0x%x. Mixing copies of libbinder?", kHeader, header);
-        return false;
-    }
+
     // Interface descriptor.
     size_t parcel_interface_len;
     const char16_t* parcel_interface = readString16Inplace(&parcel_interface_len);
