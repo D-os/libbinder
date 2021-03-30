@@ -30,6 +30,8 @@ enum {
     FLAG_PRIVATE_VENDOR = 0x10000000,
 };
 
+// TODO(b/180646847): __ANDROID_APEX__ here is what allows product partition to
+// talk to system.
 #if defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
 
 enum {
