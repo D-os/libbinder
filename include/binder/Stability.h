@@ -54,8 +54,33 @@ public:
     // Given a binder interface at a certain stability, there may be some
     // requirements associated with that higher stability level. For instance, a
     // VINTF stability binder is required to be in the VINTF manifest. This API
-    // can be called to use that same interface within a partition.
-    static void forceDowngradeCompilationUnit(const sp<IBinder>& binder);
+    // can be called to use that same interface within the local partition.
+    static void forceDowngradeToLocalStability(const sp<IBinder>& binder);
+
+    // WARNING: The only client of
+    //      - forceDowngradeToSystemStability() and;
+    //      - korceDowngradeToVendorStability()
+    //  should be AIBinder_forceDowngradeToLocalStability().
+    //
+    // getLocalLevel() in libbinder returns Level::SYSTEM when called
+    // from libbinder_ndk (even on vendor partition). So we explicitly provide
+    // these methods for use by the NDK API:
+    //      AIBinder_forceDowngradeToLocalStability().
+    //
+    // This allows correctly downgrading the binder's stability to either system/vendor,
+    // depending on the partition.
+
+    // Given a binder interface at a certain stability, there may be some
+    // requirements associated with that higher stability level. For instance, a
+    // VINTF stability binder is required to be in the VINTF manifest. This API
+    // can be called to use that same interface within the vendor partition.
+    static void forceDowngradeToVendorStability(const sp<IBinder>& binder);
+
+    // Given a binder interface at a certain stability, there may be some
+    // requirements associated with that higher stability level. For instance, a
+    // VINTF stability binder is required to be in the VINTF manifest. This API
+    // can be called to use that same interface within the system partition.
+    static void forceDowngradeToSystemStability(const sp<IBinder>& binder);
 
     // WARNING: Below APIs are only ever expected to be called by auto-generated code.
     //     Instead of calling them, you should set the stability of a .aidl interface
@@ -145,6 +170,9 @@ private:
 
     // returns the stability according to how this was built
     static Level getLocalLevel();
+
+    // Downgrades binder stability to the specified level.
+    static void forceDowngradeToStability(const sp<IBinder>& binder, Level level);
 
     enum {
       REPR_NONE = 0,
