@@ -383,6 +383,12 @@ TEST_P(BinderRpc, Ping) {
     EXPECT_EQ(OK, proc.rootBinder->pingBinder());
 }
 
+TEST_P(BinderRpc, GetInterfaceDescriptor) {
+    auto proc = createRpcTestSocketServerProcess(1);
+    ASSERT_NE(proc.rootBinder, nullptr);
+    EXPECT_EQ(IBinderRpcTest::descriptor, proc.rootBinder->getInterfaceDescriptor());
+}
+
 TEST_P(BinderRpc, TransactionsMustBeMarkedRpc) {
     auto proc = createRpcTestSocketServerProcess(1);
     Parcel data;
