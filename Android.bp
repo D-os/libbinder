@@ -58,13 +58,13 @@ cc_library_headers {
 // transport itself and should be moved to AIDL or in domain-specific libs.
 //
 // Currently, these are only on system android (not vendor, not host)
+// TODO(b/183654927) - move these into separate libraries
 libbinder_device_interface_sources = [
     "ActivityManager.cpp",
     "AppOpsManager.cpp",
     "IActivityManager.cpp",
     "IAppOpsCallback.cpp",
     "IAppOpsService.cpp",
-    "IBatteryStats.cpp",
     "IMediaResourceMonitor.cpp",
     "IPermissionController.cpp",
     "IProcessInfoService.cpp",
@@ -262,4 +262,24 @@ aidl_interface {
             enabled: false,
         },
     },
+}
+
+// libbinder historically contained additional interfaces that provided specific
+// functionality in the platform but have nothing to do with binder itself. These
+// are moved out of libbinder in order to avoid the overhead of their vtables.
+// If you are working on or own one of these interfaces, the responsible things
+// to would be:
+// - give them a new home
+// - convert them to AIDL instead of having manually written parceling code
+
+cc_library {
+    name: "libbatterystats_aidl",
+    srcs: [
+        "IBatteryStats.cpp",
+    ],
+    export_include_dirs: ["include_batterystats"],
+    shared_libs: [
+        "libbinder",
+        "libutils",
+    ],
 }
