@@ -30,7 +30,10 @@
 #include <iostream>
 #include <thread>
 
+#ifdef __BIONIC__
 #include <linux/vm_sockets.h>
+#endif //__BIONIC__
+
 #include <sys/prctl.h>
 #include <unistd.h>
 
@@ -186,8 +189,13 @@ private:
 
 static std::string allocateSocketAddress() {
     static size_t id = 0;
+    static bool gUseTmp = access("/tmp/", F_OK) != -1;
 
-    return "/dev/binderRpcTest_" + std::to_string(id++);
+    if (gUseTmp) {
+        return "/tmp/binderRpcTest_" + std::to_string(id++);
+    } else {
+        return "/dev/binderRpcTest_" + std::to_string(id++);
+    }
 };
 
 struct ProcessConnection {
@@ -241,14 +249,18 @@ struct BinderRpcTestProcessConnection {
 
 enum class SocketType {
     UNIX,
+#ifdef __BIONIC__
     VSOCK,
+#endif // __BIONIC__
 };
 static inline std::string PrintSocketType(const testing::TestParamInfo<SocketType>& info) {
     switch (info.param) {
         case SocketType::UNIX:
             return "unix_domain_socket";
+#ifdef __BIONIC__
         case SocketType::VSOCK:
             return "vm_socket";
+#endif // __BIONIC__
         default:
             LOG_ALWAYS_FATAL("Unknown socket type");
             return "";
@@ -283,9 +295,11 @@ public:
                         case SocketType::UNIX:
                             CHECK(connection->setupUnixDomainServer(addr.c_str())) << addr;
                             break;
+#ifdef __BIONIC__
                         case SocketType::VSOCK:
                             CHECK(connection->setupVsockServer(port));
                             break;
+#endif // __BIONIC__
                         default:
                             LOG_ALWAYS_FATAL("Unknown socket type");
                     }
@@ -311,9 +325,11 @@ public:
                     case SocketType::UNIX:
                         if (ret.connection->addUnixDomainClient(addr.c_str())) goto success;
                         break;
+#ifdef __BIONIC__
                     case SocketType::VSOCK:
                         if (ret.connection->addVsockClient(VMADDR_CID_LOCAL, port)) goto success;
                         break;
+#endif // __BIONIC__
                     default:
                         LOG_ALWAYS_FATAL("Unknown socket type");
                 }
@@ -791,7 +807,13 @@ TEST_P(BinderRpc, Fds) {
 }
 
 INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc,
-                        ::testing::Values(SocketType::UNIX, SocketType::VSOCK), PrintSocketType);
+                        ::testing::Values(SocketType::UNIX
+#ifdef __BIONIC__
+                                          ,
+                                          SocketType::VSOCK
+#endif // __BIONIC__
+                                          ),
+                        PrintSocketType);
 
 } // namespace android
 
