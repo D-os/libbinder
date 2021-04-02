@@ -192,7 +192,7 @@ bool RpcState::rpcSend(const base::unique_fd& fd, const char* what, const void* 
         return false;
     }
 
-    ssize_t sent = TEMP_FAILURE_RETRY(send(fd.get(), data, size, 0));
+    ssize_t sent = TEMP_FAILURE_RETRY(send(fd.get(), data, size, MSG_NOSIGNAL));
 
     if (sent < 0 || sent != static_cast<ssize_t>(size)) {
         ALOGE("Failed to send %s (sent %zd of %zu bytes) on fd %d, error: %s", what, sent, size,
@@ -212,7 +212,7 @@ bool RpcState::rpcRec(const base::unique_fd& fd, const char* what, void* data, s
         return false;
     }
 
-    ssize_t recd = TEMP_FAILURE_RETRY(recv(fd.get(), data, size, MSG_WAITALL));
+    ssize_t recd = TEMP_FAILURE_RETRY(recv(fd.get(), data, size, MSG_WAITALL | MSG_NOSIGNAL));
 
     if (recd < 0 || recd != static_cast<ssize_t>(size)) {
         terminate();
