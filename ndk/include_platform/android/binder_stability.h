@@ -65,6 +65,12 @@ static inline void AIBinder_markCompilationUnitStability(AIBinder* binder) {
 #endif  // defined(__ANDROID_VENDOR__)
 
 /**
+ * WARNING: this is not expected to be used manually. When the build system has
+ * versioned checks in place for an interface that prevent it being changed year
+ * over year (specifically like those for @VintfStability stable AIDL
+ * interfaces), this could be called. Calling this without this or equivalent
+ * infrastructure will lead to de facto frozen APIs or GSI test failures.
+ *
  * This interface has system<->vendor stability
  */
 void AIBinder_markVintfStability(AIBinder* binder);
