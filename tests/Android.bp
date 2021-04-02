@@ -104,6 +104,21 @@ cc_test {
     require_root: true,
 }
 
+aidl_interface {
+    name: "binderRpcTestIface",
+    host_supported: true,
+    unstable: true,
+    srcs: [
+        "IBinderRpcSession.aidl",
+        "IBinderRpcTest.aidl",
+    ],
+    backend: {
+        java: {
+            enabled: false,
+        },
+    },
+}
+
 cc_test {
     name: "binderRpcTest",
     host_supported: true,
@@ -112,19 +127,25 @@ cc_test {
             enabled: false,
         },
     },
-    defaults: ["binder_test_defaults"],
+    defaults: [
+        "binder_test_defaults",
+        "libbinder_ndk_host_user",
+    ],
 
     srcs: [
-        "IBinderRpcSession.aidl",
-        "IBinderRpcTest.aidl",
         "binderRpcTest.cpp",
     ],
     shared_libs: [
         "libbinder",
+        "libbinder_ndk",
         "libbase",
         "libutils",
         "libcutils",
         "liblog",
+    ],
+    static_libs: [
+        "binderRpcTestIface-cpp",
+        "binderRpcTestIface-ndk_platform",
     ],
     test_suites: ["general-tests"],
     require_root: true,
@@ -216,6 +237,11 @@ aidl_interface {
     srcs: [
         "IBinderStabilityTest.aidl",
     ],
+    backend: {
+        java: {
+            enabled: false,
+        },
+    },
 }
 
 cc_test {
