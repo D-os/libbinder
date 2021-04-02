@@ -765,9 +765,6 @@ TEST_P(BinderRpc, OnewayCallQueueing) {
 }
 
 TEST_P(BinderRpc, Die) {
-    // TODO(b/183141167): handle this in library
-    signal(SIGPIPE, SIG_IGN);
-
     for (bool doDeathCleanup : {true, false}) {
         auto proc = createRpcTestSocketServerProcess(1);
 
