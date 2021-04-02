@@ -2100,6 +2100,9 @@ size_t Parcel::ipcObjectsCount() const
 void Parcel::ipcSetDataReference(const uint8_t* data, size_t dataSize,
     const binder_size_t* objects, size_t objectsCount, release_func relFunc)
 {
+    // this code uses 'mOwner == nullptr' to understand whether it owns memory
+    LOG_ALWAYS_FATAL_IF(relFunc == nullptr, "must provide cleanup function");
+
     freeData();
 
     mData = const_cast<uint8_t*>(data);
