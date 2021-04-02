@@ -555,12 +555,17 @@ void Parcel::markSensitive() const
 }
 
 void Parcel::markForBinder(const sp<IBinder>& binder) {
+    LOG_ALWAYS_FATAL_IF(mData != nullptr, "format must be set before data is written");
+
     if (binder && binder->remoteBinder() && binder->remoteBinder()->isRpcBinder()) {
         markForRpc(binder->remoteBinder()->getPrivateAccessorForId().rpcConnection());
     }
 }
 
 void Parcel::markForRpc(const sp<RpcConnection>& connection) {
+    LOG_ALWAYS_FATAL_IF(mData != nullptr && mOwner == nullptr,
+                        "format must be set before data is written OR on IPC data");
+
     LOG_ALWAYS_FATAL_IF(connection == nullptr, "markForRpc requires connection");
     mConnection = connection;
 }
