@@ -66,11 +66,9 @@ libbinder_device_interface_sources = [
     "IAppOpsCallback.cpp",
     "IAppOpsService.cpp",
     "IPermissionController.cpp",
-    "IProcessInfoService.cpp",
     "IUidObserver.cpp",
     "PermissionCache.cpp",
     "PermissionController.cpp",
-    "ProcessInfoService.cpp",
     "IpPrefix.cpp",
     ":activity_manager_procstate_aidl",
 ]
@@ -283,5 +281,19 @@ cc_library {
     shared_libs: [
         "libbinder",
         "libutils",
+    ],
+}
+
+cc_library {
+    name: "libprocessinfoservice_aidl",
+    srcs: [
+        "IProcessInfoService.cpp",
+        "ProcessInfoService.cpp",
+    ],
+    export_include_dirs: ["include_processinfo"],
+    shared_libs: [
+        "libbinder",
+        "libutils",
+        "liblog",
     ],
 }
