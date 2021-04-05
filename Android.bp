@@ -65,7 +65,6 @@ libbinder_device_interface_sources = [
     "IActivityManager.cpp",
     "IAppOpsCallback.cpp",
     "IAppOpsService.cpp",
-    "IMediaResourceMonitor.cpp",
     "IPermissionController.cpp",
     "IProcessInfoService.cpp",
     "IUidObserver.cpp",
