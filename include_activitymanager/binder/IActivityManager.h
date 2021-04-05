@@ -18,8 +18,8 @@
 
 #ifndef __ANDROID_VNDK__
 
-#include <binder/IInterface.h>
 #include <binder/IUidObserver.h>
+#include <binder/IInterface.h>
 
 namespace android {
 
