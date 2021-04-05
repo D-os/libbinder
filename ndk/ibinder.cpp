@@ -598,6 +598,8 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
     }
 
     *in = new AParcel(binder);
+    (*in)->get()->markForBinder(binder->getBinder());
+
     status_t status = (*in)->get()->writeInterfaceToken(clazz->getInterfaceDescriptor());
     binder_status_t ret = PruneStatusT(status);
 
