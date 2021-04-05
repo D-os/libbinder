@@ -186,7 +186,7 @@ template<typename INTERFACE>
 inline sp<IInterface> BnInterface<INTERFACE>::queryLocalInterface(
         const String16& _descriptor)
 {
-    if (_descriptor == INTERFACE::descriptor) return this;
+    if (_descriptor == INTERFACE::descriptor) return sp<IInterface>::fromExisting(this);
     return nullptr;
 }
 
