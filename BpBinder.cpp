@@ -194,10 +194,13 @@ bool BpBinder::isDescriptorCached() const {
 const String16& BpBinder::getInterfaceDescriptor() const
 {
     if (isDescriptorCached() == false) {
-        Parcel send, reply;
+        sp<BpBinder> thiz = const_cast<BpBinder*>(this);
+
+        Parcel data;
+        data.markForBinder(thiz);
+        Parcel reply;
         // do the IPC without a lock held.
-        status_t err = const_cast<BpBinder*>(this)->transact(
-                INTERFACE_TRANSACTION, send, &reply);
+        status_t err = thiz->transact(INTERFACE_TRANSACTION, data, &reply);
         if (err == NO_ERROR) {
             String16 res(reply.readString16());
             Mutex::Autolock _l(mLock);
