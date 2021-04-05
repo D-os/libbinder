@@ -101,10 +101,6 @@ public:
     // is for an RPC transaction).
     void markForBinder(const sp<IBinder>& binder);
 
-    // Whenever possible, markForBinder should be preferred. This method is
-    // called automatically on reply Parcels for RPC transactions.
-    void markForRpc(const sp<RpcConnection>& connection);
-
     // Whether this Parcel is written for RPC transactions (after calls to
     // markForBinder or markForRpc).
     bool isForRpc() const;
@@ -539,6 +535,10 @@ private:
     void                ipcSetDataReference(const uint8_t* data, size_t dataSize,
                                             const binder_size_t* objects, size_t objectsCount,
                                             release_func relFunc);
+
+    // Whenever possible, markForBinder should be preferred. This method is
+    // called automatically on reply Parcels for RPC transactions.
+    void markForRpc(const sp<RpcConnection>& connection);
 
     status_t            finishWrite(size_t len);
     void                releaseObjects();
