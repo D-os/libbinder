@@ -312,8 +312,8 @@ status_t RpcState::transact(const base::unique_fd& fd, const RpcAddress& address
     return waitForReply(fd, connection, reply);
 }
 
-static void cleanup_data(Parcel* p, const uint8_t* data, size_t dataSize,
-                         const binder_size_t* objects, size_t objectsCount) {
+static void cleanup_reply_data(Parcel* p, const uint8_t* data, size_t dataSize,
+                               const binder_size_t* objects, size_t objectsCount) {
     (void)p;
     delete[] const_cast<uint8_t*>(data - offsetof(RpcWireReply, data));
     (void)dataSize;
@@ -351,7 +351,7 @@ status_t RpcState::waitForReply(const base::unique_fd& fd, const sp<RpcConnectio
     if (rpcReply->status != OK) return rpcReply->status;
 
     reply->ipcSetDataReference(rpcReply->data, command.bodySize - offsetof(RpcWireReply, data),
-                               nullptr, 0, cleanup_data);
+                               nullptr, 0, cleanup_reply_data);
 
     reply->markForRpc(connection);
 
@@ -427,6 +427,15 @@ status_t RpcState::processTransact(const base::unique_fd& fd, const sp<RpcConnec
     return processTransactInternal(fd, connection, std::move(transactionData));
 }
 
+static void do_nothing_to_transact_data(Parcel* p, const uint8_t* data, size_t dataSize,
+                                        const binder_size_t* objects, size_t objectsCount) {
+    (void)p;
+    (void)data;
+    (void)dataSize;
+    (void)objects;
+    (void)objectsCount;
+}
+
 status_t RpcState::processTransactInternal(const base::unique_fd& fd,
                                            const sp<RpcConnection>& connection,
                                            std::vector<uint8_t>&& transactionData) {
@@ -490,7 +499,12 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd,
     }
 
     Parcel data;
-    data.setData(transaction->data, transactionData.size() - offsetof(RpcWireTransaction, data));
+    // transaction->data is owned by this function. Parcel borrows this data and
+    // only holds onto it for the duration of this function call. Parcel will be
+    // deleted before the 'transactionData' object.
+    data.ipcSetDataReference(transaction->data,
+                             transactionData.size() - offsetof(RpcWireTransaction, data),
+                             nullptr /*object*/, 0 /*objectCount*/, do_nothing_to_transact_data);
     data.markForRpc(connection);
 
     Parcel reply;
