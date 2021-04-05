@@ -29,11 +29,7 @@ struct AParcel {
 
     explicit AParcel(AIBinder* binder) : AParcel(binder, new ::android::Parcel, true /*owns*/) {}
     AParcel(AIBinder* binder, ::android::Parcel* parcel, bool owns)
-        : mBinder(binder), mParcel(parcel), mOwns(owns) {
-        if (binder != nullptr) {
-            parcel->markForBinder(binder->getBinder());
-        }
-    }
+        : mBinder(binder), mParcel(parcel), mOwns(owns) {}
 
     ~AParcel() {
         if (mOwns) {
