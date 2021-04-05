@@ -189,7 +189,7 @@ __attribute__((warn_unused_result)) AStatus* AStatus_fromServiceSpecificErrorWit
  *
  * Available since API level 29.
  *
- * \param a low-level error to associate with this status object.
+ * \param status a low-level error to associate with this status object.
  *
  * \return a newly constructed status object that the caller owns.
  */
