@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <android/binder_libbinder.h>
 #include <android/binder_manager.h>
 #include <android/binder_stability.h>
 #include <binder/Binder.h>
@@ -137,7 +138,18 @@ TEST(BinderStability, ForceDowngradeStability) {
     EXPECT_TRUE(Stability::requiresVintfDeclaration(someBinder));
 
     // silly to do this after already using the binder, but it's for the test
-    Stability::forceDowngradeCompilationUnit(someBinder);
+    Stability::forceDowngradeToLocalStability(someBinder);
+
+    EXPECT_FALSE(Stability::requiresVintfDeclaration(someBinder));
+}
+
+TEST(BinderStability, NdkForceDowngradeStability) {
+    sp<IBinder> someBinder = BadStableBinder::vintf();
+
+    EXPECT_TRUE(Stability::requiresVintfDeclaration(someBinder));
+
+    // silly to do this after already using the binder, but it's for the test
+    AIBinder_forceDowngradeToLocalStability(AIBinder_fromPlatformBinder(someBinder));
 
     EXPECT_FALSE(Stability::requiresVintfDeclaration(someBinder));
 }
