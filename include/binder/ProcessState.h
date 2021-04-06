@@ -124,7 +124,6 @@ private:
 
             Vector<handle_entry>mHandleToObject;
 
-            String8             mRootDir;
             bool                mThreadPoolStarted;
     volatile int32_t            mThreadPoolSeq;
 
