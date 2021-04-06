@@ -69,7 +69,6 @@ libbinder_device_interface_sources = [
     "IUidObserver.cpp",
     "PermissionCache.cpp",
     "PermissionController.cpp",
-    "IpPrefix.cpp",
     ":activity_manager_procstate_aidl",
 ]
 
