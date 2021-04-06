@@ -36,6 +36,9 @@
 
 __BEGIN_DECLS
 
+/**
+ * Flags for AIBinder_transact.
+ */
 typedef uint32_t binder_flags_t;
 enum {
     /**
@@ -47,7 +50,10 @@ enum {
     FLAG_ONEWAY = 0x01,
 };
 
-// Also see IBinder.h in libbinder
+/**
+ * Codes for AIBinder_transact. This defines the range of codes available for
+ * usage. Other codes are used or reserved by the Android system.
+ */
 typedef uint32_t transaction_code_t;
 enum {
     /**
@@ -202,7 +208,8 @@ typedef binder_status_t (*AIBinder_onDump)(AIBinder* binder, int fd, const char*
  *
  * Available since API level 29.
  *
- * \param dump function to call when an instance of this binder class is being dumped.
+ * \param clazz class which should use this dump function
+ * \param onDump function to call when an instance of this binder class is being dumped.
  */
 void AIBinder_Class_setOnDump(AIBinder_Class* clazz, AIBinder_onDump onDump) __INTRODUCED_IN(29);
 
