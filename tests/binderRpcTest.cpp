@@ -406,6 +406,19 @@ TEST_P(BinderRpc, TransactionsMustBeMarkedRpc) {
     EXPECT_EQ(BAD_TYPE, proc.rootBinder->transact(IBinder::PING_TRANSACTION, data, &reply, 0));
 }
 
+TEST_P(BinderRpc, AppendSeparateFormats) {
+    auto proc = createRpcTestSocketServerProcess(1);
+
+    Parcel p1;
+    p1.markForBinder(proc.rootBinder);
+    p1.writeInt32(3);
+
+    Parcel p2;
+
+    EXPECT_EQ(BAD_TYPE, p1.appendFrom(&p2, 0, p2.dataSize()));
+    EXPECT_EQ(BAD_TYPE, p2.appendFrom(&p1, 0, p1.dataSize()));
+}
+
 TEST_P(BinderRpc, UnknownTransaction) {
     auto proc = createRpcTestSocketServerProcess(1);
     Parcel data;
