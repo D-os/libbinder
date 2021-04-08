@@ -363,7 +363,8 @@ const char* AIBinder_Class_getDescriptor(const AIBinder_Class* clazz) {
 }
 
 void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinder>& who) {
-    CHECK(who == mWho);
+    CHECK(who == mWho) << who.unsafe_get() << "(" << who.get_refs() << ") vs " << mWho.unsafe_get()
+                       << " (" << mWho.get_refs() << ")";
 
     mOnDied(mCookie);
 
