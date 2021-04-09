@@ -60,16 +60,13 @@ cc_library_headers {
 // Currently, these are only on system android (not vendor, not host)
 // TODO(b/183654927) - move these into separate libraries
 libbinder_device_interface_sources = [
-    "ActivityManager.cpp",
     "AppOpsManager.cpp",
-    "IActivityManager.cpp",
     "IAppOpsCallback.cpp",
     "IAppOpsService.cpp",
+
     "IPermissionController.cpp",
-    "IUidObserver.cpp",
     "PermissionCache.cpp",
     "PermissionController.cpp",
-    ":activity_manager_procstate_aidl",
 ]
 
 cc_library {
@@ -294,13 +291,21 @@ cc_library {
     ],
 }
 
-// TODO(b/183654927): initially empty lib to work around some merge conflicts
 cc_library {
     name: "libactivitymanager_aidl",
-    srcs: [],
+    srcs: [
+        "ActivityManager.cpp",
+        "IActivityManager.cpp",
+        "IUidObserver.cpp",
+        ":activity_manager_procstate_aidl",
+    ],
+    export_include_dirs: ["include_activitymanager"],
     shared_libs: [
         "libbinder",
         "libutils",
         "liblog",
     ],
+    aidl: {
+        export_aidl_headers: true,
+    },
 }
