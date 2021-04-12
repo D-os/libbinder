@@ -40,8 +40,8 @@ using binder_proxy_limit_callback = void(*)(int);
 class BpBinder : public IBinder
 {
 public:
-    static BpBinder*    create(int32_t handle);
-    static BpBinder* create(const sp<RpcConnection>& connection, const RpcAddress& address);
+    static sp<BpBinder> create(int32_t handle);
+    static sp<BpBinder> create(const sp<RpcConnection>& connection, const RpcAddress& address);
 
     /**
      * Return value:
@@ -143,6 +143,7 @@ public:
 
 private:
     friend PrivateAccessorForId;
+    friend class sp<BpBinder>;
 
     struct BinderHandle {
         int32_t handle;
