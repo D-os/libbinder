@@ -105,7 +105,7 @@ sp<ProcessState> ProcessState::init(const char *driver, bool requireDefault)
         }
 
         std::lock_guard<std::mutex> l(gProcessMutex);
-        gProcess = new ProcessState(driver);
+        gProcess = sp<ProcessState>::make(driver);
     });
 
     if (requireDefault) {
@@ -299,8 +299,8 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
                    return nullptr;
             }
 
-            b = BpBinder::create(handle);
-            e->binder = b;
+            sp<BpBinder> b = BpBinder::create(handle);
+            e->binder = b.get();
             if (b) e->refs = b->getWeakRefs();
             result = b;
         } else {
@@ -340,7 +340,7 @@ void ProcessState::spawnPooledThread(bool isMain)
     if (mThreadPoolStarted) {
         String8 name = makeBinderThreadName();
         ALOGV("Spawning new pooled thread, name=%s\n", name.string());
-        sp<Thread> t = new PoolThread(isMain);
+        sp<Thread> t = sp<PoolThread>::make(isMain);
         t->run(name.string());
     }
 }

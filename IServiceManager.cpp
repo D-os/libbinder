@@ -102,7 +102,7 @@ sp<IServiceManager> defaultServiceManager()
             }
         }
 
-        gDefaultServiceManager = new ServiceManagerShim(sm);
+        gDefaultServiceManager = sp<ServiceManagerShim>::make(sm);
     });
 
     return gDefaultServiceManager;
@@ -324,7 +324,7 @@ sp<IBinder> ServiceManagerShim::waitForService(const String16& name16)
     }
     if (out != nullptr) return out;
 
-    sp<Waiter> waiter = new Waiter;
+    sp<Waiter> waiter = sp<Waiter>::make();
     if (!mTheRealServiceManager->registerForNotifications(
             name, waiter).isOk()) {
         return nullptr;

@@ -228,10 +228,8 @@ Allocation::~Allocation()
 // ----------------------------------------------------------------------------
 
 MemoryDealer::MemoryDealer(size_t size, const char* name, uint32_t flags)
-    : mHeap(new MemoryHeapBase(size, flags, name)),
-    mAllocator(new SimpleBestFitAllocator(size))
-{    
-}
+      : mHeap(sp<MemoryHeapBase>::make(size, flags, name)),
+        mAllocator(new SimpleBestFitAllocator(size)) {}
 
 MemoryDealer::~MemoryDealer()
 {
@@ -243,7 +241,7 @@ sp<IMemory> MemoryDealer::allocate(size_t size)
     sp<IMemory> memory;
     const ssize_t offset = allocator()->allocate(size);
     if (offset >= 0) {
-        memory = new Allocation(this, heap(), offset, size);
+        memory = sp<Allocation>::make(sp<MemoryDealer>::fromExisting(this), heap(), offset, size);
     }
     return memory;
 }

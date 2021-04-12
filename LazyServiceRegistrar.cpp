@@ -129,7 +129,9 @@ bool ClientCounterCallbackImpl::registerService(const sp<IBinder>& service, cons
     }
 
     if (!reRegister) {
-        if(!manager->registerClientCallback(name, service, this).isOk()) {
+        if (!manager->registerClientCallback(name, service,
+                                             sp<android::os::IClientCallback>::fromExisting(this))
+                     .isOk()) {
             ALOGE("Failed to add client callback for service %s", name.c_str());
             return false;
         }
