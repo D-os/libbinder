@@ -37,7 +37,7 @@ static const sp<IBinder>& getClientId() {
 
     pthread_mutex_lock(&gClientIdMutex);
     if (gClientId == nullptr) {
-        gClientId = new BBinder();
+        gClientId = sp<BBinder>::make();
     }
     pthread_mutex_unlock(&gClientIdMutex);
     return gClientId;

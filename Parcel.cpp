@@ -293,7 +293,8 @@ status_t Parcel::unflattenBinder(sp<IBinder>* out) const
     if (flat) {
         switch (flat->hdr.type) {
             case BINDER_TYPE_BINDER: {
-                sp<IBinder> binder = reinterpret_cast<IBinder*>(flat->cookie);
+                sp<IBinder> binder =
+                        sp<IBinder>::fromExisting(reinterpret_cast<IBinder*>(flat->cookie));
                 return finishUnflattenBinder(binder, out);
             }
             case BINDER_TYPE_HANDLE: {

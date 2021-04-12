@@ -72,6 +72,7 @@ public:
     ~RpcServer();
 
 private:
+    friend sp<RpcServer>;
     RpcServer();
 
     bool mAgreedExperimental = false;

@@ -54,7 +54,7 @@ RpcConnection::~RpcConnection() {
 }
 
 sp<RpcConnection> RpcConnection::make() {
-    return new RpcConnection;
+    return sp<RpcConnection>::make();
 }
 
 class UnixSocketAddress : public RpcConnection::SocketAddress {
@@ -120,20 +120,21 @@ bool RpcConnection::addVsockClient(unsigned int cid, unsigned int port) {
 #endif // __BIONIC__
 
 sp<IBinder> RpcConnection::getRootObject() {
-    ExclusiveSocket socket(this, SocketUse::CLIENT);
-    return state()->getRootObject(socket.fd(), this);
+    ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this), SocketUse::CLIENT);
+    return state()->getRootObject(socket.fd(), sp<RpcConnection>::fromExisting(this));
 }
 
 status_t RpcConnection::transact(const RpcAddress& address, uint32_t code, const Parcel& data,
                                  Parcel* reply, uint32_t flags) {
-    ExclusiveSocket socket(this,
+    ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this),
                            (flags & IBinder::FLAG_ONEWAY) ? SocketUse::CLIENT_ASYNC
                                                           : SocketUse::CLIENT);
-    return state()->transact(socket.fd(), address, code, data, this, reply, flags);
+    return state()->transact(socket.fd(), address, code, data,
+                             sp<RpcConnection>::fromExisting(this), reply, flags);
 }
 
 status_t RpcConnection::sendDecStrong(const RpcAddress& address) {
-    ExclusiveSocket socket(this, SocketUse::CLIENT_REFCOUNT);
+    ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this), SocketUse::CLIENT_REFCOUNT);
     return state()->sendDecStrong(socket.fd(), address);
 }
 
@@ -157,10 +158,11 @@ void RpcConnection::join() {
     // We may not use the connection we just established (two threads might
     // establish connections for each other), but for now, just use one
     // server/socket connection.
-    ExclusiveSocket socket(this, SocketUse::SERVER);
+    ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this), SocketUse::SERVER);
 
     while (true) {
-        status_t error = state()->getAndExecuteCommand(socket.fd(), this);
+        status_t error =
+                state()->getAndExecuteCommand(socket.fd(), sp<RpcConnection>::fromExisting(this));
 
         if (error != OK) {
             ALOGI("Binder socket thread closing w/ status %s", statusToString(error).c_str());
@@ -221,7 +223,7 @@ bool RpcConnection::addClient(const SocketAddress& addr) {
     LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
 
     std::lock_guard<std::mutex> _l(mSocketMutex);
-    sp<ConnectionSocket> connection = new ConnectionSocket();
+    sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
     connection->fd = std::move(serverFd);
     mClients.push_back(connection);
     return true;
@@ -229,7 +231,7 @@ bool RpcConnection::addClient(const SocketAddress& addr) {
 
 void RpcConnection::assignServerToThisThread(base::unique_fd&& fd) {
     std::lock_guard<std::mutex> _l(mSocketMutex);
-    sp<ConnectionSocket> connection = new ConnectionSocket();
+    sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
     connection->fd = std::move(fd);
     mServers.push_back(connection);
 }
