@@ -160,6 +160,7 @@ cc_library {
         "-Werror",
         "-Wzero-as-null-pointer-constant",
         "-DANDROID_BASE_UNIQUE_FD_DISABLE_IMPLICIT_CONVERSION",
+        "-DANDROID_UTILS_REF_BASE_DISABLE_IMPLICIT_CONSTRUCTION",
     ],
     product_variables: {
         binder32bit: {

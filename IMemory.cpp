@@ -68,7 +68,7 @@ private:
     // TODO: Reimplemement based on standard C++ container?
 };
 
-static sp<HeapCache> gHeapCache = new HeapCache();
+static sp<HeapCache> gHeapCache = sp<HeapCache>::make();
 
 /******************************************************************************/
 
@@ -288,7 +288,7 @@ void BpMemoryHeap::assertMapped() const
     int32_t heapId = mHeapId.load(memory_order_acquire);
     if (heapId == -1) {
         sp<IBinder> binder(IInterface::asBinder(const_cast<BpMemoryHeap*>(this)));
-        sp<BpMemoryHeap> heap(static_cast<BpMemoryHeap*>(find_heap(binder).get()));
+        sp<BpMemoryHeap> heap = sp<BpMemoryHeap>::cast(find_heap(binder));
         heap->assertReallyMapped();
         if (heap->mBase != MAP_FAILED) {
             Mutex::Autolock _l(mLock);

@@ -36,7 +36,7 @@ RpcServer::RpcServer() {}
 RpcServer::~RpcServer() {}
 
 sp<RpcServer> RpcServer::make() {
-    return new RpcServer;
+    return sp<RpcServer>::make();
 }
 
 void RpcServer::iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction() {
@@ -47,7 +47,7 @@ sp<RpcConnection> RpcServer::addClientConnection() {
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
 
     auto connection = RpcConnection::make();
-    connection->setForServer(this);
+    connection->setForServer(sp<RpcServer>::fromExisting(this));
     mConnections.push_back(connection);
     return connection;
 }

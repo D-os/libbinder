@@ -143,11 +143,10 @@ public:                                                                 \
     {                                                                   \
         ::android::sp<I##INTERFACE> intr;                               \
         if (obj != nullptr) {                                           \
-            intr = static_cast<I##INTERFACE*>(                          \
-                obj->queryLocalInterface(                               \
-                        I##INTERFACE::descriptor).get());               \
+            intr = ::android::sp<I##INTERFACE>::cast(                   \
+                obj->queryLocalInterface(I##INTERFACE::descriptor));    \
             if (intr == nullptr) {                                      \
-                intr = new Bp##INTERFACE(obj);                          \
+                intr = ::android::sp<Bp##INTERFACE>::make(obj);         \
             }                                                           \
         }                                                               \
         return intr;                                                    \
