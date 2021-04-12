@@ -88,7 +88,8 @@ private:
     static  sp<ProcessState>    init(const char *defaultDriver, bool requireDefault);
 
     friend class IPCThreadState;
-    
+    friend class sp<ProcessState>;
+
             explicit            ProcessState(const char* driver);
                                 ~ProcessState();
 
