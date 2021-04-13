@@ -78,11 +78,11 @@ private:
 };
 
 bool RpcConnection::setupUnixDomainServer(const char* path) {
-    return addServer(UnixSocketAddress(path));
+    return setupSocketServer(UnixSocketAddress(path));
 }
 
 bool RpcConnection::addUnixDomainClient(const char* path) {
-    return addClient(UnixSocketAddress(path));
+    return addSocketClient(UnixSocketAddress(path));
 }
 
 #ifdef __BIONIC__
@@ -110,14 +110,26 @@ bool RpcConnection::setupVsockServer(unsigned int port) {
     // realizing value w/ this type at compile time to avoid ubsan abort
     constexpr unsigned int kAnyCid = VMADDR_CID_ANY;
 
-    return addServer(VsockSocketAddress(kAnyCid, port));
+    return setupSocketServer(VsockSocketAddress(kAnyCid, port));
 }
 
 bool RpcConnection::addVsockClient(unsigned int cid, unsigned int port) {
-    return addClient(VsockSocketAddress(cid, port));
+    return addSocketClient(VsockSocketAddress(cid, port));
 }
 
 #endif // __BIONIC__
+
+bool RpcConnection::addNullDebuggingClient() {
+    unique_fd serverFd(TEMP_FAILURE_RETRY(open("/dev/null", O_WRONLY | O_CLOEXEC)));
+
+    if (serverFd == -1) {
+        ALOGE("Could not connect to /dev/null: %s", strerror(errno));
+        return false;
+    }
+
+    addClient(std::move(serverFd));
+    return true;
+}
 
 sp<IBinder> RpcConnection::getRootObject() {
     ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this), SocketUse::CLIENT);
@@ -179,7 +191,7 @@ wp<RpcServer> RpcConnection::server() {
     return mForServer;
 }
 
-bool RpcConnection::addServer(const SocketAddress& addr) {
+bool RpcConnection::setupSocketServer(const SocketAddress& addr) {
     LOG_ALWAYS_FATAL_IF(mServer.get() != -1, "Each RpcConnection can only have one server.");
 
     unique_fd serverFd(
@@ -205,7 +217,7 @@ bool RpcConnection::addServer(const SocketAddress& addr) {
     return true;
 }
 
-bool RpcConnection::addClient(const SocketAddress& addr) {
+bool RpcConnection::addSocketClient(const SocketAddress& addr) {
     unique_fd serverFd(
             TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
     if (serverFd == -1) {
@@ -222,14 +234,18 @@ bool RpcConnection::addClient(const SocketAddress& addr) {
 
     LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
 
-    std::lock_guard<std::mutex> _l(mSocketMutex);
-    sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
-    connection->fd = std::move(serverFd);
-    mClients.push_back(connection);
+    addClient(std::move(serverFd));
     return true;
 }
 
-void RpcConnection::assignServerToThisThread(base::unique_fd&& fd) {
+void RpcConnection::addClient(unique_fd&& fd) {
+    std::lock_guard<std::mutex> _l(mSocketMutex);
+    sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
+    connection->fd = std::move(fd);
+    mClients.push_back(connection);
+}
+
+void RpcConnection::assignServerToThisThread(unique_fd&& fd) {
     std::lock_guard<std::mutex> _l(mSocketMutex);
     sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
     connection->fd = std::move(fd);
