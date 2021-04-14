@@ -226,7 +226,7 @@ public:
         IncrementNativeHandle,
         IncrementNoCopyNoMove,
         IncrementParcelableVector,
-        ToUpper,
+        DoubleString,
         CallMeBack,
         IncrementInt32,
         IncrementUint32,
@@ -256,7 +256,7 @@ public:
     virtual status_t increment(const NoCopyNoMove& a, NoCopyNoMove* aPlusOne) const = 0;
     virtual status_t increment(const std::vector<TestParcelable>& a,
                                std::vector<TestParcelable>* aPlusOne) const = 0;
-    virtual status_t toUpper(const String8& str, String8* upperStr) const = 0;
+    virtual status_t doubleString(const String8& str, String8* doubleStr) const = 0;
     // As mentioned above, sp<IBinder> is already tested by setDeathToken
     virtual void callMeBack(const sp<ICallback>& callback, int32_t a) const = 0;
     virtual status_t increment(int32_t a, int32_t* aPlusOne) const = 0;
@@ -329,9 +329,10 @@ public:
                                                            std::vector<TestParcelable>*);
         return callRemote<Signature>(Tag::IncrementParcelableVector, a, aPlusOne);
     }
-    status_t toUpper(const String8& str, String8* upperStr) const override {
+    status_t doubleString(const String8& str, String8* doubleStr) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
-        return callRemote<decltype(&ISafeInterfaceTest::toUpper)>(Tag::ToUpper, str, upperStr);
+        return callRemote<decltype(&ISafeInterfaceTest::doubleString)>(Tag::DoubleString, str,
+                                                                       doubleStr);
     }
     void callMeBack(const sp<ICallback>& callback, int32_t a) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
@@ -454,10 +455,9 @@ public:
         }
         return NO_ERROR;
     }
-    status_t toUpper(const String8& str, String8* upperStr) const override {
+    status_t doubleString(const String8& str, String8* doubleStr) const override {
         ALOG(LOG_INFO, getLogTag(), "%s", __PRETTY_FUNCTION__);
-        *upperStr = str;
-        upperStr->toUpper();
+        *doubleStr = str + str;
         return NO_ERROR;
     }
     void callMeBack(const sp<ICallback>& callback, int32_t a) const override {
@@ -548,8 +548,8 @@ public:
                                                          std::vector<TestParcelable>*) const;
                 return callLocal<Signature>(data, reply, &ISafeInterfaceTest::increment);
             }
-            case ISafeInterfaceTest::Tag::ToUpper: {
-                return callLocal(data, reply, &ISafeInterfaceTest::toUpper);
+            case ISafeInterfaceTest::Tag::DoubleString: {
+                return callLocal(data, reply, &ISafeInterfaceTest::doubleString);
             }
             case ISafeInterfaceTest::Tag::CallMeBack: {
                 return callLocalAsync(data, reply, &ISafeInterfaceTest::callMeBack);
@@ -726,12 +726,12 @@ TEST_F(SafeInterfaceTest, TestIncremementParcelableVector) {
     }
 }
 
-TEST_F(SafeInterfaceTest, TestToUpper) {
-    const String8 str{"Hello, world!"};
-    String8 upperStr;
-    status_t result = mSafeInterfaceTest->toUpper(str, &upperStr);
+TEST_F(SafeInterfaceTest, TestDoubleString) {
+    const String8 str{"asdf"};
+    String8 doubleStr;
+    status_t result = mSafeInterfaceTest->doubleString(str, &doubleStr);
     ASSERT_EQ(NO_ERROR, result);
-    ASSERT_TRUE(upperStr == String8{"HELLO, WORLD!"});
+    ASSERT_TRUE(doubleStr == String8{"asdfasdf"});
 }
 
 TEST_F(SafeInterfaceTest, TestCallMeBack) {
