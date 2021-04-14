@@ -257,6 +257,7 @@ enum class SocketType {
 #ifdef __BIONIC__
     VSOCK,
 #endif // __BIONIC__
+    INET,
 };
 static inline std::string PrintSocketType(const testing::TestParamInfo<SocketType>& info) {
     switch (info.param) {
@@ -266,6 +267,8 @@ static inline std::string PrintSocketType(const testing::TestParamInfo<SocketTyp
         case SocketType::VSOCK:
             return "vm_socket";
 #endif // __BIONIC__
+        case SocketType::INET:
+            return "inet_socket";
         default:
             LOG_ALWAYS_FATAL("Unknown socket type");
             return "";
@@ -305,6 +308,9 @@ public:
                             CHECK(connection->setupVsockServer(port));
                             break;
 #endif // __BIONIC__
+                        case SocketType::INET:
+                            CHECK(connection->setupInetServer(port));
+                            break;
                         default:
                             LOG_ALWAYS_FATAL("Unknown socket type");
                     }
@@ -335,6 +341,9 @@ public:
                         if (ret.connection->addVsockClient(VMADDR_CID_LOCAL, port)) goto success;
                         break;
 #endif // __BIONIC__
+                    case SocketType::INET:
+                        if (ret.connection->addInetClient("127.0.0.1", port)) goto success;
+                        break;
                     default:
                         LOG_ALWAYS_FATAL("Unknown socket type");
                 }
@@ -852,12 +861,13 @@ TEST_P(BinderRpc, Fds) {
 }
 
 INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc,
-                        ::testing::Values(SocketType::UNIX
+                        ::testing::ValuesIn({
+                                SocketType::UNIX,
 #ifdef __BIONIC__
-                                          ,
-                                          SocketType::VSOCK
+                                SocketType::VSOCK,
 #endif // __BIONIC__
-                                          ),
+                                SocketType::INET,
+                        }),
                         PrintSocketType);
 
 } // namespace android
