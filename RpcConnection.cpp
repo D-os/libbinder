@@ -61,7 +61,8 @@ class UnixSocketAddress : public RpcConnection::SocketAddress {
 public:
     explicit UnixSocketAddress(const char* path) : mAddr({.sun_family = AF_UNIX}) {
         unsigned int pathLen = strlen(path) + 1;
-        LOG_ALWAYS_FATAL_IF(pathLen > sizeof(mAddr.sun_path), "%u %s", pathLen, path);
+        LOG_ALWAYS_FATAL_IF(pathLen > sizeof(mAddr.sun_path), "Socket path is too long: %u %s",
+                            pathLen, path);
         memcpy(mAddr.sun_path, path, pathLen);
     }
     virtual ~UnixSocketAddress() {}
