@@ -97,7 +97,7 @@ public:
             }) {}
     virtual ~VsockSocketAddress() {}
     std::string toString() const override {
-        return String8::format("cid %du port %du", mAddr.svm_cid, mAddr.svm_port).c_str();
+        return String8::format("cid %u port %u", mAddr.svm_cid, mAddr.svm_port).c_str();
     }
     const sockaddr* addr() const override { return reinterpret_cast<const sockaddr*>(&mAddr); }
     size_t addrSize() const override { return sizeof(mAddr); }
