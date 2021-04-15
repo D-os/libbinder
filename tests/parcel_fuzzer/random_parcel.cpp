@@ -75,4 +75,9 @@ void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider) {
     }
 }
 
+void fillRandomParcelData(Parcel* p, FuzzedDataProvider&& provider) {
+    std::vector<uint8_t> data = provider.ConsumeBytes<uint8_t>(provider.remaining_bytes());
+    CHECK(OK == p->write(data.data(), data.size()));
+}
+
 } // namespace android
