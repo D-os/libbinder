@@ -151,6 +151,22 @@ cc_test {
     require_root: true,
 }
 
+cc_benchmark {
+    name: "binderRpcBenchmark",
+    defaults: ["binder_test_defaults"],
+    host_supported: true,
+    srcs: [
+        "binderRpcBenchmark.cpp",
+        "IBinderRpcBenchmark.aidl",
+    ],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "liblog",
+        "libutils",
+    ],
+}
+
 cc_test {
     name: "binderThroughputTest",
     defaults: ["binder_test_defaults"],
