@@ -74,6 +74,15 @@ public:
 #endif // __BIONIC__
 
     /**
+     * For debugging!
+     *
+     * Sets up an empty socket. All queries to this socket which require a
+     * response will never be satisfied. All data sent here will be
+     * unceremoniously cast down the bottomless pit, /dev/null.
+     */
+    [[nodiscard]] bool addNullDebuggingClient();
+
+    /**
      * Query the other side of the connection for the root object hosted by that
      * process's RpcServer (if one exists)
      */
@@ -109,8 +118,9 @@ private:
     friend sp<RpcConnection>;
     RpcConnection();
 
-    bool addServer(const SocketAddress& address);
-    bool addClient(const SocketAddress& address);
+    bool setupSocketServer(const SocketAddress& address);
+    bool addSocketClient(const SocketAddress& address);
+    void addClient(base::unique_fd&& fd);
     void assignServerToThisThread(base::unique_fd&& fd);
 
     struct ConnectionSocket : public RefBase {
