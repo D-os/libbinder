@@ -669,7 +669,7 @@ const char* AIBinder_Class_getDescriptor(const AIBinder_Class* clazz) __INTRODUC
  *
  * \return whether "lhs < rhs" is true
  */
-bool AIBinder_lt(const AIBinder* lhs, const AIBinder* rhs);
+bool AIBinder_lt(const AIBinder* lhs, const AIBinder* rhs) __INTRODUCED_IN(31);
 
 /**
  * Clone an AIBinder_Weak. Useful because even if a weak binder promotes to a
@@ -683,7 +683,7 @@ bool AIBinder_lt(const AIBinder* lhs, const AIBinder* rhs);
  * \return clone of the input parameter. This must be deleted with
  * AIBinder_Weak_delete. Null if weak input parameter is also null.
  */
-AIBinder_Weak* AIBinder_Weak_clone(const AIBinder_Weak* weak);
+AIBinder_Weak* AIBinder_Weak_clone(const AIBinder_Weak* weak) __INTRODUCED_IN(31);
 
 /**
  * Whether AIBinder_Weak is less than another.
@@ -718,7 +718,7 @@ AIBinder_Weak* AIBinder_Weak_clone(const AIBinder_Weak* weak);
  *
  * \return whether "lhs < rhs" is true
  */
-bool AIBinder_Weak_lt(const AIBinder_Weak* lhs, const AIBinder_Weak* rhs);
+bool AIBinder_Weak_lt(const AIBinder_Weak* lhs, const AIBinder_Weak* rhs) __INTRODUCED_IN(31);
 
 __END_DECLS
 
