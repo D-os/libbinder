@@ -498,19 +498,20 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd,
         }
     }
 
-    Parcel data;
-    // transaction->data is owned by this function. Parcel borrows this data and
-    // only holds onto it for the duration of this function call. Parcel will be
-    // deleted before the 'transactionData' object.
-    data.ipcSetDataReference(transaction->data,
-                             transactionData.size() - offsetof(RpcWireTransaction, data),
-                             nullptr /*object*/, 0 /*objectCount*/, do_nothing_to_transact_data);
-    data.markForRpc(connection);
-
     Parcel reply;
     reply.markForRpc(connection);
 
     if (replyStatus == OK) {
+        Parcel data;
+        // transaction->data is owned by this function. Parcel borrows this data and
+        // only holds onto it for the duration of this function call. Parcel will be
+        // deleted before the 'transactionData' object.
+        data.ipcSetDataReference(transaction->data,
+                                 transactionData.size() - offsetof(RpcWireTransaction, data),
+                                 nullptr /*object*/, 0 /*objectCount*/,
+                                 do_nothing_to_transact_data);
+        data.markForRpc(connection);
+
         if (target) {
             replyStatus = target->transact(transaction->code, data, &reply, transaction->flags);
         } else {
