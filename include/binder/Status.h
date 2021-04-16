@@ -91,6 +91,9 @@ public:
     static Status fromExceptionCode(int32_t exceptionCode,
                                     const char* message);
 
+    // warning: this is still considered an error if it is constructed with a
+    // zero value error code. Please use Status::ok() instead and avoid zero
+    // error codes
     static Status fromServiceSpecificError(int32_t serviceSpecificErrorCode);
     static Status fromServiceSpecificError(int32_t serviceSpecificErrorCode,
                                            const String8& message);
