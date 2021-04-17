@@ -40,7 +40,7 @@ status_t RpcState::onBinderLeaving(const sp<RpcConnection>& connection, const sp
         // We need to be able to send instructions over the socket for how to
         // connect to a different server, and we also need to let the host
         // process know that this is happening.
-        ALOGE("Canot send binder from unrelated binder RPC connection.");
+        ALOGE("Cannot send binder from unrelated binder RPC connection.");
         return INVALID_OPERATION;
     }
 
