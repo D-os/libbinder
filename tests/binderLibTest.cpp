@@ -88,6 +88,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_GETPID,
     BINDER_LIB_TEST_ECHO_VECTOR,
     BINDER_LIB_TEST_REJECT_BUF,
+    BINDER_LIB_TEST_CAN_GET_SID,
 };
 
 pid_t start_server_process(int arg2, bool usePoll = false)
@@ -1192,6 +1193,14 @@ TEST_F(BinderLibTest, BufRejected) {
     EXPECT_NE(NO_ERROR, ret);
 }
 
+TEST_F(BinderLibTest, GotSid) {
+    sp<IBinder> server = addServer();
+
+    Parcel data;
+    status_t ret = server->transact(BINDER_LIB_TEST_CAN_GET_SID, data, nullptr);
+    EXPECT_EQ(OK, ret);
+}
+
 class BinderLibTestService : public BBinder
 {
     public:
@@ -1493,6 +1502,9 @@ class BinderLibTestService : public BBinder
             }
             case BINDER_LIB_TEST_REJECT_BUF: {
                 return data.objectsCount() == 0 ? BAD_VALUE : NO_ERROR;
+            }
+            case BINDER_LIB_TEST_CAN_GET_SID: {
+                return IPCThreadState::self()->getCallingSid() == nullptr ? BAD_VALUE : NO_ERROR;
             }
             default:
                 return UNKNOWN_TRANSACTION;
