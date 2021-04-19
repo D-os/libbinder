@@ -60,10 +60,6 @@ cc_library_headers {
 // Currently, these are only on system android (not vendor, not host)
 // TODO(b/183654927) - move these into separate libraries
 libbinder_device_interface_sources = [
-    "AppOpsManager.cpp",
-    "IAppOpsCallback.cpp",
-    "IAppOpsService.cpp",
-
     "IPermissionController.cpp",
     "PermissionCache.cpp",
     "PermissionController.cpp",
