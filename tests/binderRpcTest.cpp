@@ -80,11 +80,10 @@ public:
     sp<RpcConnection> connection;
 
     Status sendString(const std::string& str) override {
-        std::cout << "Child received string: " << str << std::endl;
+        (void)str;
         return Status::ok();
     }
     Status doubleString(const std::string& str, std::string* strstr) override {
-        std::cout << "Child received string to double: " << str << std::endl;
         *strstr = str + str;
         return Status::ok();
     }
@@ -740,9 +739,31 @@ TEST_P(BinderRpc, ThreadingStressTest) {
         threads.push_back(std::thread([&] {
             for (size_t j = 0; j < kNumCalls; j++) {
                 sp<IBinder> out;
-                proc.rootIface->repeatBinder(proc.rootBinder, &out);
+                EXPECT_OK(proc.rootIface->repeatBinder(proc.rootBinder, &out));
                 EXPECT_EQ(proc.rootBinder, out);
             }
+        }));
+    }
+
+    for (auto& t : threads) t.join();
+}
+
+TEST_P(BinderRpc, OnewayStressTest) {
+    constexpr size_t kNumClientThreads = 10;
+    constexpr size_t kNumServerThreads = 10;
+    constexpr size_t kNumCalls = 100;
+
+    auto proc = createRpcTestSocketServerProcess(kNumServerThreads);
+
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < kNumClientThreads; i++) {
+        threads.push_back(std::thread([&] {
+            for (size_t j = 0; j < kNumCalls; j++) {
+                EXPECT_OK(proc.rootIface->sendString("a"));
+            }
+
+            // check threads are not stuck
+            EXPECT_OK(proc.rootIface->sleepMs(250));
         }));
     }
 
