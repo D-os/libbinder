@@ -114,8 +114,8 @@ rust_bindgen {
     source_stem: "bindings",
     cpp_std: "gnu++17",
     bindgen_flags: [
-        "--whitelist-type", "Transaction",
-        "--whitelist-var", "TESTDATA_.*",
+        "--allowlist-type", "Transaction",
+        "--allowlist-var", "TESTDATA_.*",
     ],
 
     shared_libs: [
