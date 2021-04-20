@@ -18,17 +18,22 @@
 
 #include <binder/RpcConnection.h>
 
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#include <string_view>
+
 #include <binder/Parcel.h>
 #include <binder/Stability.h>
 #include <utils/String8.h>
 
 #include "RpcState.h"
 #include "RpcWireFormat.h"
-
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
 
 #ifdef __GLIBC__
 extern "C" pid_t gettid();
@@ -41,6 +46,7 @@ extern "C" pid_t gettid();
 namespace android {
 
 using base::unique_fd;
+using AddrInfo = std::unique_ptr<addrinfo, decltype(&freeaddrinfo)>;
 
 RpcConnection::SocketAddress::~SocketAddress() {}
 
@@ -119,6 +125,70 @@ bool RpcConnection::addVsockClient(unsigned int cid, unsigned int port) {
 }
 
 #endif // __BIONIC__
+
+class SocketAddressImpl : public RpcConnection::SocketAddress {
+public:
+    SocketAddressImpl(const sockaddr* addr, size_t size, const String8& desc)
+          : mAddr(addr), mSize(size), mDesc(desc) {}
+    [[nodiscard]] std::string toString() const override {
+        return std::string(mDesc.c_str(), mDesc.size());
+    }
+    [[nodiscard]] const sockaddr* addr() const override { return mAddr; }
+    [[nodiscard]] size_t addrSize() const override { return mSize; }
+    void set(const sockaddr* addr, size_t size) {
+        mAddr = addr;
+        mSize = size;
+    }
+
+private:
+    const sockaddr* mAddr = nullptr;
+    size_t mSize = 0;
+    String8 mDesc;
+};
+
+AddrInfo GetAddrInfo(const char* addr, unsigned int port) {
+    addrinfo hint{
+            .ai_flags = 0,
+            .ai_family = AF_UNSPEC,
+            .ai_socktype = SOCK_STREAM,
+            .ai_protocol = 0,
+    };
+    addrinfo* aiStart = nullptr;
+    if (int rc = getaddrinfo(addr, std::to_string(port).data(), &hint, &aiStart); 0 != rc) {
+        ALOGE("Unable to resolve %s:%u: %s", addr, port, gai_strerror(rc));
+        return AddrInfo(nullptr, nullptr);
+    }
+    if (aiStart == nullptr) {
+        ALOGE("Unable to resolve %s:%u: getaddrinfo returns null", addr, port);
+        return AddrInfo(nullptr, nullptr);
+    }
+    return AddrInfo(aiStart, &freeaddrinfo);
+}
+
+bool RpcConnection::setupInetServer(unsigned int port) {
+    auto aiStart = GetAddrInfo("127.0.0.1", port);
+    if (aiStart == nullptr) return false;
+    SocketAddressImpl socketAddress(nullptr, 0, String8::format("127.0.0.1:%u", port));
+    for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
+        socketAddress.set(ai->ai_addr, ai->ai_addrlen);
+        if (setupSocketServer(socketAddress)) return true;
+    }
+    ALOGE("None of the socket address resolved for 127.0.0.1:%u can be set up as inet server.",
+          port);
+    return false;
+}
+
+bool RpcConnection::addInetClient(const char* addr, unsigned int port) {
+    auto aiStart = GetAddrInfo(addr, port);
+    if (aiStart == nullptr) return false;
+    SocketAddressImpl socketAddress(nullptr, 0, String8::format("%s:%u", addr, port));
+    for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
+        socketAddress.set(ai->ai_addr, ai->ai_addrlen);
+        if (addSocketClient(socketAddress)) return true;
+    }
+    ALOGE("None of the socket address resolved for %s:%u can be added as inet client.", addr, port);
+    return false;
+}
 
 bool RpcConnection::addNullDebuggingClient() {
     unique_fd serverFd(TEMP_FAILURE_RETRY(open("/dev/null", O_WRONLY | O_CLOEXEC)));
