@@ -192,6 +192,8 @@ TEST(BinderStability, VintfStabilityServerMustBeDeclaredInManifest) {
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
             android::defaultServiceManager()->addService(String16("."), vintfServer)) << instance8;
         EXPECT_FALSE(android::defaultServiceManager()->isDeclared(instance)) << instance8;
+        EXPECT_EQ(std::nullopt, android::defaultServiceManager()->updatableViaApex(instance))
+                << instance8;
     }
 }
 

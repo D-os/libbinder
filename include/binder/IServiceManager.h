@@ -20,6 +20,8 @@
 #include <utils/Vector.h>
 #include <utils/String16.h>
 
+#include <optional>
+
 namespace android {
 
 // ----------------------------------------------------------------------
@@ -99,6 +101,12 @@ public:
      * Get all instances of a service as declared in the VINTF manifest
      */
     virtual Vector<String16> getDeclaredInstances(const String16& interface) = 0;
+
+    /**
+     * If this instance is updatable via an APEX, returns the APEX with which
+     * this can be updated.
+     */
+    virtual std::optional<String16> updatableViaApex(const String16& name) = 0;
 };
 
 sp<IServiceManager> defaultServiceManager();
