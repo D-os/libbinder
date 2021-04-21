@@ -300,6 +300,11 @@ TEST(NdkBinder, GetLazyService) {
     EXPECT_EQ(STATUS_OK, AIBinder_ping(binder.get()));
 }
 
+TEST(NdkBinder, IsUpdatable) {
+    bool isUpdatable = AServiceManager_isUpdatableViaApex("android.hardware.light.ILights/default");
+    EXPECT_EQ(isUpdatable, false);
+}
+
 // This is too slow
 TEST(NdkBinder, CheckLazyServiceShutDown) {
     ndk::SpAIBinder binder(AServiceManager_waitForService(kLazyBinderNdkUnitTestService));
