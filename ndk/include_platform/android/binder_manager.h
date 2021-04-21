@@ -124,6 +124,15 @@ void AServiceManager_forEachDeclaredInstance(const char* interface, void* contex
         __INTRODUCED_IN(31);
 
 /**
+ * Check if a service is updatable via an APEX module.
+ *
+ * \param instance identifier of the service
+ *
+ * \return whether the interface is updatable via APEX
+ */
+bool AServiceManager_isUpdatableViaApex(const char* instance) __INTRODUCED_IN(31);
+
+/**
  * Prevent lazy services without client from shutting down their process
  *
  * \param persist 'true' if the process should not exit.

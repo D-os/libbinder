@@ -105,6 +105,14 @@ void AServiceManager_forEachDeclaredInstance(const char* interface, void* contex
         callback(String8(instance).c_str(), context);
     }
 }
+bool AServiceManager_isUpdatableViaApex(const char* instance) {
+    if (instance == nullptr) {
+        return false;
+    }
+
+    sp<IServiceManager> sm = defaultServiceManager();
+    return sm->updatableViaApex(String16(instance)) != std::nullopt;
+}
 void AServiceManager_forceLazyServicesPersist(bool persist) {
     auto serviceRegistrar = android::binder::LazyServiceRegistrar::getInstance();
     serviceRegistrar.forcePersist(persist);
