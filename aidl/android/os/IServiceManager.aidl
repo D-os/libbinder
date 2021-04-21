@@ -108,6 +108,11 @@ interface IServiceManager {
     @utf8InCpp String[] getDeclaredInstances(@utf8InCpp String iface);
 
     /**
+     * If updatable-via-apex, returns the APEX via which this is updated.
+     */
+    @nullable @utf8InCpp String updatableViaApex(@utf8InCpp String name);
+
+    /**
      * Request a callback when the number of clients of the service changes.
      * Used by LazyServiceRegistrar to dynamically stop services that have no clients.
      */
