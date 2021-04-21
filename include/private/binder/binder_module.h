@@ -32,10 +32,6 @@
 #include <sys/ioctl.h>
 #include <linux/android/binder.h>
 
-#ifdef __cplusplus
-namespace android {
-#endif
-
 #ifndef BR_FROZEN_REPLY
 // Temporary definition of BR_FROZEN_REPLY. For production
 // this will come from UAPI binder.h
@@ -88,8 +84,18 @@ struct binder_frozen_status_info {
 };
 #endif //BINDER_GET_FROZEN_INFO
 
-#ifdef __cplusplus
-}   // namespace android
-#endif
+#ifndef BR_ONEWAY_SPAM_SUSPECT
+// Temporary definition of BR_ONEWAY_SPAM_SUSPECT. For production
+// this will come from UAPI binder.h
+#define BR_ONEWAY_SPAM_SUSPECT _IO('r', 19)
+#endif //BR_ONEWAY_SPAM_SUSPECT
+
+#ifndef BINDER_ENABLE_ONEWAY_SPAM_DETECTION
+/*
+ * Temporary definitions for oneway spam detection support. For the final version
+ * these will be defined in the UAPI binder.h file from upstream kernel.
+ */
+#define BINDER_ENABLE_ONEWAY_SPAM_DETECTION _IOW('b', 16, __u32)
+#endif //BINDER_ENABLE_ONEWAY_SPAM_DETECTION
 
 #endif // _BINDER_MODULE_H_
