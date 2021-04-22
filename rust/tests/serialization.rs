@@ -18,11 +18,11 @@
 //! access.
 
 use binder::declare_binder_interface;
+use binder::parcel::ParcelFileDescriptor;
 use binder::{
-    Binder, ExceptionCode, Interface, Parcel, Result, SpIBinder, Status,
+    Binder, BinderFeatures, ExceptionCode, Interface, Parcel, Result, SpIBinder, Status,
     StatusCode, TransactionCode,
 };
-use binder::parcel::ParcelFileDescriptor;
 
 use std::ffi::{c_void, CStr, CString};
 use std::sync::Once;
@@ -85,7 +85,7 @@ static mut SERVICE: Option<SpIBinder> = None;
 pub extern "C" fn rust_service() -> *mut c_void {
     unsafe {
         SERVICE_ONCE.call_once(|| {
-            SERVICE = Some(BnReadParcelTest::new_binder(()).as_binder());
+            SERVICE = Some(BnReadParcelTest::new_binder((), BinderFeatures::default()).as_binder());
         });
         SERVICE.as_ref().unwrap().as_raw().cast()
     }
@@ -108,8 +108,12 @@ impl ReadParcelTest for BpReadParcelTest {}
 impl ReadParcelTest for () {}
 
 #[allow(clippy::float_cmp)]
-fn on_transact(_service: &dyn ReadParcelTest, code: TransactionCode,
-               parcel: &Parcel, reply: &mut Parcel) -> Result<()> {
+fn on_transact(
+    _service: &dyn ReadParcelTest,
+    code: TransactionCode,
+    parcel: &Parcel,
+    reply: &mut Parcel,
+) -> Result<()> {
     match code {
         bindings::Transaction_TEST_BOOL => {
             assert_eq!(parcel.read::<bool>()?, true);
