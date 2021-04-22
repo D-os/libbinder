@@ -60,6 +60,7 @@ public:
         SYSPROPS_TRANSACTION = B_PACK_CHARS('_', 'S', 'P', 'R'),
         EXTENSION_TRANSACTION = B_PACK_CHARS('_', 'E', 'X', 'T'),
         DEBUG_PID_TRANSACTION = B_PACK_CHARS('_', 'P', 'I', 'D'),
+        SET_RPC_CLIENT_TRANSACTION = B_PACK_CHARS('_', 'R', 'P', 'C'),
 
         // See android.os.IBinder.TWEET_TRANSACTION
         // Most importantly, messages can be anything not exceeding 130 UTF-8
@@ -151,6 +152,27 @@ public:
      * Dump PID for a binder, for debugging.
      */
     status_t                getDebugPid(pid_t* outPid);
+
+    /**
+     * Set the RPC client fd to this binder service, for debugging. This is only available on
+     * debuggable builds.
+     *
+     * |maxRpcThreads| must be positive because RPC is useless without threads.
+     *
+     * When this is called on a binder service, the service:
+     * 1. sets up RPC server
+     * 2. spawns 1 new thread that calls RpcServer::join()
+     *    - join() spawns at most |maxRpcThreads| threads that accept() connections; see RpcServer
+     *
+     * setRpcClientDebug() may only be called once.
+     * TODO(b/182914638): If allow to shut down the client, addRpcClient can be called repeatedly.
+     *
+     * Note: A thread is spawned for each accept()'ed fd, which may call into functions of the
+     * interface freely. See RpcServer::join(). To avoid such race conditions, implement the service
+     * functions with multithreading support.
+     */
+    [[nodiscard]] status_t setRpcClientDebug(android::base::unique_fd socketFd,
+                                             uint32_t maxRpcThreads);
 
     // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t        transact(   uint32_t code,
