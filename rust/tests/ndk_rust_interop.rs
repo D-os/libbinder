@@ -16,15 +16,13 @@
 
 //! Rust Binder NDK interop tests
 
-use std::ffi::CStr;
-use std::os::raw::{c_char, c_int};
-use ::IBinderRustNdkInteropTest::binder::{self, Interface, StatusCode};
 use ::IBinderRustNdkInteropTest::aidl::IBinderRustNdkInteropTest::{
     BnBinderRustNdkInteropTest, IBinderRustNdkInteropTest,
 };
-use ::IBinderRustNdkInteropTest::aidl::IBinderRustNdkInteropTestOther::{
-    IBinderRustNdkInteropTestOther,
-};
+use ::IBinderRustNdkInteropTest::aidl::IBinderRustNdkInteropTestOther::IBinderRustNdkInteropTestOther;
+use ::IBinderRustNdkInteropTest::binder::{self, BinderFeatures, Interface, StatusCode};
+use std::ffi::CStr;
+use std::os::raw::{c_char, c_int};
 
 /// Look up the provided AIDL service and call its echo method.
 ///
@@ -37,18 +35,21 @@ pub unsafe extern "C" fn rust_call_ndk(service_name: *const c_char) -> c_int {
 
     // The Rust class descriptor pointer will not match the NDK one, but the
     // descriptor strings match so this needs to still associate.
-    let service: binder::Strong<dyn IBinderRustNdkInteropTest> = match binder::get_interface(service_name) {
-        Err(e) => {
-            eprintln!("Could not find Ndk service {}: {:?}", service_name, e);
-            return StatusCode::NAME_NOT_FOUND as c_int;
-        }
-        Ok(service) => service,
-    };
+    let service: binder::Strong<dyn IBinderRustNdkInteropTest> =
+        match binder::get_interface(service_name) {
+            Err(e) => {
+                eprintln!("Could not find Ndk service {}: {:?}", service_name, e);
+                return StatusCode::NAME_NOT_FOUND as c_int;
+            }
+            Ok(service) => service,
+        };
 
     match service.echo("testing") {
-        Ok(s) => if s != "testing" {
-            return StatusCode::BAD_VALUE as c_int;
-        },
+        Ok(s) => {
+            if s != "testing" {
+                return StatusCode::BAD_VALUE as c_int;
+            }
+        }
         Err(e) => return e.into(),
     }
 
@@ -88,7 +89,7 @@ impl IBinderRustNdkInteropTest for Service {
 #[no_mangle]
 pub unsafe extern "C" fn rust_start_service(service_name: *const c_char) -> c_int {
     let service_name = CStr::from_ptr(service_name).to_str().unwrap();
-    let service = BnBinderRustNdkInteropTest::new_binder(Service);
+    let service = BnBinderRustNdkInteropTest::new_binder(Service, BinderFeatures::default());
     match binder::add_service(&service_name, service.as_binder()) {
         Ok(_) => StatusCode::OK as c_int,
         Err(e) => e as c_int,
