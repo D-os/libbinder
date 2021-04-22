@@ -548,6 +548,28 @@ unsafe impl<T, V: AsNative<T>> AsNative<T> for Option<V> {
     }
 }
 
+/// The features to enable when creating a native Binder.
+///
+/// This should always be initialised with a default value, e.g.:
+/// ```
+/// # use binder::BinderFeatures;
+/// BinderFeatures {
+///   set_requesting_sid: true,
+///   ..BinderFeatures::default(),
+/// }
+/// ```
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BinderFeatures {
+    /// Indicates that the service intends to receive caller security contexts. This must be true
+    /// for `ThreadState::with_calling_sid` to work.
+    pub set_requesting_sid: bool,
+    // Ensure that clients include a ..BinderFeatures::default() to preserve backwards compatibility
+    // when new fields are added. #[non_exhaustive] doesn't work because it prevents struct
+    // expressions entirely.
+    #[doc(hidden)]
+    pub _non_exhaustive: (),
+}
+
 /// Declare typed interfaces for a binder object.
 ///
 /// Given an interface trait and descriptor string, create a native and remote
@@ -730,8 +752,9 @@ macro_rules! declare_binder_interface {
 
         impl $native {
             /// Create a new binder service.
-            pub fn new_binder<T: $interface + Sync + Send + 'static>(inner: T) -> $crate::Strong<dyn $interface> {
-                let binder = $crate::Binder::new_with_stability($native(Box::new(inner)), $stability);
+            pub fn new_binder<T: $interface + Sync + Send + 'static>(inner: T, features: $crate::BinderFeatures) -> $crate::Strong<dyn $interface> {
+                let mut binder = $crate::Binder::new_with_stability($native(Box::new(inner)), $stability);
+                $crate::IBinderInternal::set_requesting_sid(&mut binder, features.set_requesting_sid);
                 $crate::Strong::new(Box::new(binder))
             }
         }
