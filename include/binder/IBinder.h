@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <android-base/unique_fd.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 #include <utils/String16.h>
