@@ -49,39 +49,39 @@ class [[clang::lto_visibility_public]] IBinder : public virtual RefBase
 {
 public:
     enum {
-        FIRST_CALL_TRANSACTION  = 0x00000001,
-        LAST_CALL_TRANSACTION   = 0x00ffffff,
+        FIRST_CALL_TRANSACTION = 0x00000001,
+        LAST_CALL_TRANSACTION = 0x00ffffff,
 
-        PING_TRANSACTION        = B_PACK_CHARS('_','P','N','G'),
-        DUMP_TRANSACTION        = B_PACK_CHARS('_','D','M','P'),
-        SHELL_COMMAND_TRANSACTION = B_PACK_CHARS('_','C','M','D'),
-        INTERFACE_TRANSACTION   = B_PACK_CHARS('_', 'N', 'T', 'F'),
-        SYSPROPS_TRANSACTION    = B_PACK_CHARS('_', 'S', 'P', 'R'),
-        EXTENSION_TRANSACTION   = B_PACK_CHARS('_', 'E', 'X', 'T'),
-        DEBUG_PID_TRANSACTION   = B_PACK_CHARS('_', 'P', 'I', 'D'),
+        PING_TRANSACTION = B_PACK_CHARS('_', 'P', 'N', 'G'),
+        DUMP_TRANSACTION = B_PACK_CHARS('_', 'D', 'M', 'P'),
+        SHELL_COMMAND_TRANSACTION = B_PACK_CHARS('_', 'C', 'M', 'D'),
+        INTERFACE_TRANSACTION = B_PACK_CHARS('_', 'N', 'T', 'F'),
+        SYSPROPS_TRANSACTION = B_PACK_CHARS('_', 'S', 'P', 'R'),
+        EXTENSION_TRANSACTION = B_PACK_CHARS('_', 'E', 'X', 'T'),
+        DEBUG_PID_TRANSACTION = B_PACK_CHARS('_', 'P', 'I', 'D'),
 
         // See android.os.IBinder.TWEET_TRANSACTION
         // Most importantly, messages can be anything not exceeding 130 UTF-8
         // characters, and callees should exclaim "jolly good message old boy!"
-        TWEET_TRANSACTION       = B_PACK_CHARS('_', 'T', 'W', 'T'),
+        TWEET_TRANSACTION = B_PACK_CHARS('_', 'T', 'W', 'T'),
 
         // See android.os.IBinder.LIKE_TRANSACTION
         // Improve binder self-esteem.
-        LIKE_TRANSACTION        = B_PACK_CHARS('_', 'L', 'I', 'K'),
+        LIKE_TRANSACTION = B_PACK_CHARS('_', 'L', 'I', 'K'),
 
         // Corresponds to TF_ONE_WAY -- an asynchronous call.
-        FLAG_ONEWAY             = 0x00000001,
+        FLAG_ONEWAY = 0x00000001,
 
         // Corresponds to TF_CLEAR_BUF -- clear transaction buffers after call
         // is made
-        FLAG_CLEAR_BUF          = 0x00000020,
+        FLAG_CLEAR_BUF = 0x00000020,
 
         // Private userspace flag for transaction which is being requested from
         // a vendor context.
-        FLAG_PRIVATE_VENDOR     = 0x10000000,
+        FLAG_PRIVATE_VENDOR = 0x10000000,
     };
 
-                          IBinder();
+    IBinder();
 
     /**
      * Check if this IBinder implements the interface named by
