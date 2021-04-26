@@ -130,9 +130,9 @@ bool RpcConnection::addVsockClient(unsigned int cid, unsigned int port) {
 
 #endif // __BIONIC__
 
-class SocketAddressImpl : public RpcConnection::SocketAddress {
+class InetSocketAddress : public RpcConnection::SocketAddress {
 public:
-    SocketAddressImpl(const sockaddr* sockAddr, size_t size, const char* addr, unsigned int port)
+    InetSocketAddress(const sockaddr* sockAddr, size_t size, const char* addr, unsigned int port)
           : mSockAddr(sockAddr), mSize(size), mAddr(addr), mPort(port) {}
     [[nodiscard]] std::string toString() const override {
         return String8::format("%s:%u", mAddr, mPort).c_str();
@@ -172,7 +172,7 @@ bool RpcConnection::setupInetServer(unsigned int port) {
     auto aiStart = GetAddrInfo(kAddr, port);
     if (aiStart == nullptr) return false;
     for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
-        SocketAddressImpl socketAddress(ai->ai_addr, ai->ai_addrlen, kAddr, port);
+        InetSocketAddress socketAddress(ai->ai_addr, ai->ai_addrlen, kAddr, port);
         if (setupSocketServer(socketAddress)) return true;
     }
     ALOGE("None of the socket address resolved for %s:%u can be set up as inet server.", kAddr,
@@ -184,7 +184,7 @@ bool RpcConnection::addInetClient(const char* addr, unsigned int port) {
     auto aiStart = GetAddrInfo(addr, port);
     if (aiStart == nullptr) return false;
     for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
-        SocketAddressImpl socketAddress(ai->ai_addr, ai->ai_addrlen, addr, port);
+        InetSocketAddress socketAddress(ai->ai_addr, ai->ai_addrlen, addr, port);
         if (addSocketClient(socketAddress)) return true;
     }
     ALOGE("None of the socket address resolved for %s:%u can be added as inet client.", addr, port);
