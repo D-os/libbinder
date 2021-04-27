@@ -30,8 +30,6 @@
 
 namespace android {
 
-using base::unique_fd;
-
 RpcServer::RpcServer() {}
 RpcServer::~RpcServer() {}
 
