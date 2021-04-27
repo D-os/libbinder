@@ -35,6 +35,7 @@ cc_test {
     name: "binderDriverInterfaceTest_IPC_32",
     defaults: ["binder_test_defaults"],
     srcs: ["binderDriverInterfaceTest.cpp"],
+    header_libs: ["libbinder_headers"],
     compile_multilib: "32",
     multilib: { lib32: { suffix: "" } },
     cflags: ["-DBINDER_IPC_32BIT=1"],
@@ -49,7 +50,7 @@ cc_test {
             cflags: ["-DBINDER_IPC_32BIT=1"],
         },
     },
-
+    header_libs: ["libbinder_headers"],
     srcs: ["binderDriverInterfaceTest.cpp"],
     test_suites: ["device-tests", "vts"],
 }
