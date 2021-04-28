@@ -19,6 +19,7 @@
 #include <binder/RpcConnection.h>
 
 #include <arpa/inet.h>
+#include <inttypes.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -45,8 +46,54 @@ extern "C" pid_t gettid();
 
 namespace android {
 
+using base::borrowed_fd;
 using base::unique_fd;
 using AddrInfo = std::unique_ptr<addrinfo, decltype(&freeaddrinfo)>;
+
+namespace {
+bool checkSockaddrSize(const char* name, size_t actual, size_t expected) {
+    if (actual >= expected) return true;
+    ALOGW("getSockaddrPort: family is %s but size is %zu < %zu", name, actual, expected);
+    return false;
+}
+
+// Get the port number of |storage| for certain families. Requires storage->sa_family to be
+// set to a known family; otherwise, return nullopt.
+std::optional<unsigned int> getSockaddrPort(const sockaddr* storage, socklen_t len) {
+    switch (storage->sa_family) {
+        case AF_INET: {
+            if (!checkSockaddrSize("INET", len, sizeof(sockaddr_in))) return std::nullopt;
+            auto inetStorage = reinterpret_cast<const sockaddr_in*>(storage);
+            return ntohs(inetStorage->sin_port);
+        }
+        default: {
+            uint16_t family = storage->sa_family;
+            ALOGW("Don't know how to infer port for family %" PRIu16, family);
+            return std::nullopt;
+        }
+    }
+}
+
+std::optional<unsigned int> getSocketPort(borrowed_fd socketfd,
+                                          const RpcConnection::SocketAddress& socketAddress) {
+    sockaddr_storage storage{};
+    socklen_t len = sizeof(storage);
+    auto storagePtr = reinterpret_cast<sockaddr*>(&storage);
+    if (0 != getsockname(socketfd.get(), storagePtr, &len)) {
+        int savedErrno = errno;
+        ALOGE("Could not getsockname at %s: %s", socketAddress.toString().c_str(),
+              strerror(savedErrno));
+        return std::nullopt;
+    }
+
+    // getsockname does not fill in family, but getSockaddrPort() needs it.
+    if (storage.ss_family == AF_UNSPEC) {
+        storage.ss_family = socketAddress.addr()->sa_family;
+    }
+    return getSockaddrPort(storagePtr, len);
+}
+
+} // namespace
 
 RpcConnection::SocketAddress::~SocketAddress() {}
 
@@ -166,14 +213,27 @@ AddrInfo GetAddrInfo(const char* addr, unsigned int port) {
     return AddrInfo(aiStart, &freeaddrinfo);
 }
 
-bool RpcConnection::setupInetServer(unsigned int port) {
+bool RpcConnection::setupInetServer(unsigned int port, unsigned int* assignedPort) {
     const char* kAddr = "127.0.0.1";
 
+    if (assignedPort != nullptr) *assignedPort = 0;
     auto aiStart = GetAddrInfo(kAddr, port);
     if (aiStart == nullptr) return false;
     for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
         InetSocketAddress socketAddress(ai->ai_addr, ai->ai_addrlen, kAddr, port);
-        if (setupSocketServer(socketAddress)) return true;
+        if (!setupSocketServer(socketAddress)) {
+            continue;
+        }
+        auto realPort = getSocketPort(mServer.get(), socketAddress);
+        LOG_ALWAYS_FATAL_IF(!realPort.has_value(), "Unable to get port number after setting up %s",
+                            socketAddress.toString().c_str());
+        LOG_ALWAYS_FATAL_IF(port != 0 && *realPort != port,
+                            "Requesting inet server on %s but it is set up on %u.",
+                            socketAddress.toString().c_str(), *realPort);
+        if (assignedPort != nullptr) {
+            *assignedPort = *realPort;
+        }
+        return true;
     }
     ALOGE("None of the socket address resolved for %s:%u can be set up as inet server.", kAddr,
           port);
