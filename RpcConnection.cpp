@@ -139,8 +139,8 @@ bool RpcConnection::setupUnixDomainServer(const char* path) {
     return setupSocketServer(UnixSocketAddress(path));
 }
 
-bool RpcConnection::addUnixDomainClient(const char* path) {
-    return addSocketClient(UnixSocketAddress(path));
+bool RpcConnection::setupUnixDomainClient(const char* path) {
+    return setupSocketClient(UnixSocketAddress(path));
 }
 
 #ifdef __BIONIC__
@@ -171,8 +171,8 @@ bool RpcConnection::setupVsockServer(unsigned int port) {
     return setupSocketServer(VsockSocketAddress(kAnyCid, port));
 }
 
-bool RpcConnection::addVsockClient(unsigned int cid, unsigned int port) {
-    return addSocketClient(VsockSocketAddress(cid, port));
+bool RpcConnection::setupVsockClient(unsigned int cid, unsigned int port) {
+    return setupSocketClient(VsockSocketAddress(cid, port));
 }
 
 #endif // __BIONIC__
@@ -240,12 +240,12 @@ bool RpcConnection::setupInetServer(unsigned int port, unsigned int* assignedPor
     return false;
 }
 
-bool RpcConnection::addInetClient(const char* addr, unsigned int port) {
+bool RpcConnection::setupInetClient(const char* addr, unsigned int port) {
     auto aiStart = GetAddrInfo(addr, port);
     if (aiStart == nullptr) return false;
     for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
         InetSocketAddress socketAddress(ai->ai_addr, ai->ai_addrlen, addr, port);
-        if (addSocketClient(socketAddress)) return true;
+        if (setupSocketClient(socketAddress)) return true;
     }
     ALOGE("None of the socket address resolved for %s:%u can be added as inet client.", addr, port);
     return false;
@@ -266,6 +266,11 @@ bool RpcConnection::addNullDebuggingClient() {
 sp<IBinder> RpcConnection::getRootObject() {
     ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this), SocketUse::CLIENT);
     return state()->getRootObject(socket.fd(), sp<RpcConnection>::fromExisting(this));
+}
+
+status_t RpcConnection::getMaxThreads(size_t* maxThreads) {
+    ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this), SocketUse::CLIENT);
+    return state()->getMaxThreads(socket.fd(), sp<RpcConnection>::fromExisting(this), maxThreads);
 }
 
 status_t RpcConnection::transact(const RpcAddress& address, uint32_t code, const Parcel& data,
@@ -348,7 +353,39 @@ bool RpcConnection::setupSocketServer(const SocketAddress& addr) {
     return true;
 }
 
-bool RpcConnection::addSocketClient(const SocketAddress& addr) {
+bool RpcConnection::setupSocketClient(const SocketAddress& addr) {
+    {
+        std::lock_guard<std::mutex> _l(mSocketMutex);
+        LOG_ALWAYS_FATAL_IF(mClients.size() != 0,
+                            "Must only setup connection once, but already has %zu clients",
+                            mClients.size());
+    }
+
+    if (!setupOneSocketClient(addr)) return false;
+
+    // TODO(b/185167543): we should add additional connections dynamically
+    // instead of all at once.
+    // TODO(b/186470974): first risk of blocking
+    size_t numThreadsAvailable;
+    if (status_t status = getMaxThreads(&numThreadsAvailable); status != OK) {
+        ALOGE("Could not get max threads after initial connection to %s: %s",
+              addr.toString().c_str(), statusToString(status).c_str());
+        return false;
+    }
+
+    // we've already setup one client
+    for (size_t i = 0; i + 1 < numThreadsAvailable; i++) {
+        // TODO(b/185167543): avoid race w/ accept4 not being called on server
+        for (size_t tries = 0; tries < 5; tries++) {
+            if (setupOneSocketClient(addr)) break;
+            usleep(10000);
+        }
+    }
+
+    return true;
+}
+
+bool RpcConnection::setupOneSocketClient(const SocketAddress& addr) {
     unique_fd serverFd(
             TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
     if (serverFd == -1) {

@@ -51,6 +51,8 @@ public:
     ~RpcState();
 
     sp<IBinder> getRootObject(const base::unique_fd& fd, const sp<RpcConnection>& connection);
+    status_t getMaxThreads(const base::unique_fd& fd, const sp<RpcConnection>& connection,
+                           size_t* maxThreadsOut);
 
     [[nodiscard]] status_t transact(const base::unique_fd& fd, const RpcAddress& address,
                                     uint32_t code, const Parcel& data,
