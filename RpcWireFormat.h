@@ -47,6 +47,7 @@ enum : uint32_t {
  */
 enum : uint32_t {
     RPC_SPECIAL_TRANSACT_GET_ROOT = 0,
+    RPC_SPECIAL_TRANSACT_GET_MAX_THREADS = 1,
 };
 
 // serialization is like:
