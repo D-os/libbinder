@@ -17,6 +17,7 @@
 #include <BnBinderRpcSession.h>
 #include <BnBinderRpcTest.h>
 #include <aidl/IBinderRpcTest.h>
+#include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android/binder_auto_utils.h>
 #include <android/binder_libbinder.h>
@@ -176,14 +177,27 @@ public:
 };
 sp<IBinder> MyBinderRpcTest::mHeldBinder;
 
+class Pipe {
+public:
+    Pipe() { CHECK(android::base::Pipe(&mRead, &mWrite)); }
+    Pipe(Pipe&&) = default;
+    android::base::borrowed_fd readEnd() { return mRead; }
+    android::base::borrowed_fd writeEnd() { return mWrite; }
+
+private:
+    android::base::unique_fd mRead;
+    android::base::unique_fd mWrite;
+};
+
 class Process {
 public:
-    Process(const std::function<void()>& f) {
+    Process(Process&&) = default;
+    Process(const std::function<void(Pipe*)>& f) {
         if (0 == (mPid = fork())) {
             // racey: assume parent doesn't crash before this is set
             prctl(PR_SET_PDEATHSIG, SIGHUP);
 
-            f();
+            f(&mPipe);
         }
     }
     ~Process() {
@@ -191,9 +205,11 @@ public:
             kill(mPid, SIGKILL);
         }
     }
+    Pipe* getPipe() { return &mPipe; }
 
 private:
     pid_t mPid = 0;
+    Pipe mPipe;
 };
 
 static std::string allocateSocketAddress() {
@@ -215,6 +231,7 @@ struct ProcessConnection {
     // whether connection should be invalidated by end of run
     bool expectInvalid = false;
 
+    ProcessConnection(ProcessConnection&&) = default;
     ~ProcessConnection() {
         rootBinder = nullptr;
         EXPECT_NE(nullptr, connection);
@@ -238,6 +255,7 @@ struct BinderRpcTestProcessConnection {
     // pre-casted root object
     sp<IBinderRpcTest> rootIface;
 
+    BinderRpcTestProcessConnection(BinderRpcTestProcessConnection&&) = default;
     ~BinderRpcTestProcessConnection() {
         if (!proc.expectInvalid) {
             int32_t remoteBinders = 0;
@@ -286,11 +304,11 @@ public:
 
         std::string addr = allocateSocketAddress();
         unlink(addr.c_str());
-        static unsigned int port = 3456;
-        port++;
+        static unsigned int vsockPort = 3456;
+        vsockPort++;
 
         auto ret = ProcessConnection{
-                .host = Process([&] {
+                .host = Process([&](Pipe* pipe) {
                     sp<RpcServer> server = RpcServer::make();
 
                     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
@@ -304,12 +322,17 @@ public:
                             break;
 #ifdef __BIONIC__
                         case SocketType::VSOCK:
-                            CHECK(connection->setupVsockServer(port));
+                            CHECK(connection->setupVsockServer(vsockPort));
                             break;
 #endif // __BIONIC__
-                        case SocketType::INET:
-                            CHECK(connection->setupInetServer(port));
+                        case SocketType::INET: {
+                            unsigned int outPort = 0;
+                            CHECK(connection->setupInetServer(0, &outPort));
+                            CHECK_NE(0, outPort);
+                            CHECK(android::base::WriteFully(pipe->writeEnd(), &outPort,
+                                                            sizeof(outPort)));
                             break;
+                        }
                         default:
                             LOG_ALWAYS_FATAL("Unknown socket type");
                     }
@@ -327,6 +350,13 @@ public:
                 .connection = RpcConnection::make(),
         };
 
+        unsigned int inetPort = 0;
+        if (socketType == SocketType::INET) {
+            CHECK(android::base::ReadFully(ret.host.getPipe()->readEnd(), &inetPort,
+                                           sizeof(inetPort)));
+            CHECK_NE(0, inetPort);
+        }
+
         // create remainder of connections
         for (size_t i = 0; i < numThreads; i++) {
             for (size_t tries = 0; tries < 5; tries++) {
@@ -337,11 +367,12 @@ public:
                         break;
 #ifdef __BIONIC__
                     case SocketType::VSOCK:
-                        if (ret.connection->addVsockClient(VMADDR_CID_LOCAL, port)) goto success;
+                        if (ret.connection->addVsockClient(VMADDR_CID_LOCAL, vsockPort))
+                            goto success;
                         break;
 #endif // __BIONIC__
                     case SocketType::INET:
-                        if (ret.connection->addInetClient("127.0.0.1", port)) goto success;
+                        if (ret.connection->addInetClient("127.0.0.1", inetPort)) goto success;
                         break;
                     default:
                         LOG_ALWAYS_FATAL("Unknown socket type");
