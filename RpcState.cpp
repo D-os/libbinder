@@ -248,6 +248,31 @@ sp<IBinder> RpcState::getRootObject(const base::unique_fd& fd,
     return reply.readStrongBinder();
 }
 
+status_t RpcState::getMaxThreads(const base::unique_fd& fd, const sp<RpcConnection>& connection,
+                                 size_t* maxThreads) {
+    Parcel data;
+    data.markForRpc(connection);
+    Parcel reply;
+
+    status_t status = transact(fd, RpcAddress::zero(), RPC_SPECIAL_TRANSACT_GET_MAX_THREADS, data,
+                               connection, &reply, 0);
+    if (status != OK) {
+        ALOGE("Error getting max threads: %s", statusToString(status).c_str());
+        return status;
+    }
+
+    int32_t threads;
+    status = reply.readInt32(&threads);
+    if (status != OK) return status;
+    if (threads <= 0) {
+        ALOGE("Error invalid max threads: %d", threads);
+        return BAD_VALUE;
+    }
+
+    *maxThreads = threads;
+    return OK;
+}
+
 status_t RpcState::transact(const base::unique_fd& fd, const RpcAddress& address, uint32_t code,
                             const Parcel& data, const sp<RpcConnection>& connection, Parcel* reply,
                             uint32_t flags) {
@@ -516,23 +541,25 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd,
             replyStatus = target->transact(transaction->code, data, &reply, transaction->flags);
         } else {
             LOG_RPC_DETAIL("Got special transaction %u", transaction->code);
-            // special case for 'zero' address (special server commands)
-            switch (transaction->code) {
-                case RPC_SPECIAL_TRANSACT_GET_ROOT: {
-                    sp<IBinder> root;
-                    sp<RpcServer> server = connection->server().promote();
-                    if (server) {
-                        root = server->getRootObject();
-                    } else {
-                        ALOGE("Root object requested, but no server attached.");
-                    }
 
-                    replyStatus = reply.writeStrongBinder(root);
-                    break;
+            sp<RpcServer> server = connection->server().promote();
+            if (server) {
+                // special case for 'zero' address (special server commands)
+                switch (transaction->code) {
+                    case RPC_SPECIAL_TRANSACT_GET_ROOT: {
+                        replyStatus = reply.writeStrongBinder(server->getRootObject());
+                        break;
+                    }
+                    case RPC_SPECIAL_TRANSACT_GET_MAX_THREADS: {
+                        replyStatus = reply.writeInt32(server->getMaxThreads());
+                        break;
+                    }
+                    default: {
+                        replyStatus = UNKNOWN_TRANSACTION;
+                    }
                 }
-                default: {
-                    replyStatus = UNKNOWN_TRANSACTION;
-                }
+            } else {
+                ALOGE("Special command sent, but no server object attached.");
             }
         }
     }

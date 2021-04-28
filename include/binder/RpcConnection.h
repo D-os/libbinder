@@ -59,7 +59,7 @@ public:
      * This should be called once per thread, matching 'join' in the remote
      * process.
      */
-    [[nodiscard]] bool addUnixDomainClient(const char* path);
+    [[nodiscard]] bool setupUnixDomainClient(const char* path);
 
 #ifdef __BIONIC__
     /**
@@ -70,7 +70,7 @@ public:
     /**
      * Connects to an RPC server at the CVD & port.
      */
-    [[nodiscard]] bool addVsockClient(unsigned int cvd, unsigned int port);
+    [[nodiscard]] bool setupVsockClient(unsigned int cvd, unsigned int port);
 #endif // __BIONIC__
 
     /**
@@ -87,7 +87,7 @@ public:
     /**
      * Connects to an RPC server at the given address and port.
      */
-    [[nodiscard]] bool addInetClient(const char* addr, unsigned int port);
+    [[nodiscard]] bool setupInetClient(const char* addr, unsigned int port);
 
     /**
      * For debugging!
@@ -104,15 +104,15 @@ public:
      */
     sp<IBinder> getRootObject();
 
+    /**
+     * Query the other side of the connection for the maximum number of threads
+     * it supports (maximum number of concurrent non-nested synchronous transactions)
+     */
+    status_t getMaxThreads(size_t* maxThreads);
+
     [[nodiscard]] status_t transact(const RpcAddress& address, uint32_t code, const Parcel& data,
                                     Parcel* reply, uint32_t flags);
     [[nodiscard]] status_t sendDecStrong(const RpcAddress& address);
-
-    /**
-     * Adds a server thread accepting connections. Must be called after
-     * setup*Server.
-     */
-    void join();
 
     ~RpcConnection();
 
@@ -132,7 +132,10 @@ public:
 
 private:
     friend sp<RpcConnection>;
+    friend RpcServer;
     RpcConnection();
+
+    void join();
 
     struct ConnectionSocket : public RefBase {
         base::unique_fd fd;
@@ -143,7 +146,8 @@ private:
     };
 
     bool setupSocketServer(const SocketAddress& address);
-    bool addSocketClient(const SocketAddress& address);
+    bool setupSocketClient(const SocketAddress& address);
+    bool setupOneSocketClient(const SocketAddress& address);
     void addClient(base::unique_fd&& fd);
     sp<ConnectionSocket> assignServerToThisThread(base::unique_fd&& fd);
     bool removeServerSocket(const sp<ConnectionSocket>& socket);
