@@ -115,6 +115,24 @@ status_t RpcConnection::sendDecStrong(const RpcAddress& address) {
     return state()->sendDecStrong(socket.fd(), address);
 }
 
+status_t RpcConnection::readId() {
+    {
+        std::lock_guard<std::mutex> _l(mSocketMutex);
+        LOG_ALWAYS_FATAL_IF(mForServer != nullptr, "Can only update ID for client.");
+    }
+
+    int32_t id;
+
+    ExclusiveSocket socket(sp<RpcConnection>::fromExisting(this), SocketUse::CLIENT);
+    status_t status =
+            state()->getConnectionId(socket.fd(), sp<RpcConnection>::fromExisting(this), &id);
+    if (status != OK) return status;
+
+    LOG_RPC_DETAIL("RpcConnection %p has id %d", this, id);
+    mId = id;
+    return OK;
+}
+
 void RpcConnection::join(unique_fd client) {
     // must be registered to allow arbitrary client code executing commands to
     // be able to do nested calls (we can't only read from it)
@@ -132,10 +150,6 @@ void RpcConnection::join(unique_fd client) {
 
     LOG_ALWAYS_FATAL_IF(!removeServerSocket(socket),
                         "bad state: socket object guaranteed to be in list");
-}
-
-void RpcConnection::setForServer(const wp<RpcServer>& server) {
-    mForServer = server;
 }
 
 wp<RpcServer> RpcConnection::server() {
@@ -158,6 +172,12 @@ bool RpcConnection::setupSocketClient(const RpcSocketAddress& addr) {
     size_t numThreadsAvailable;
     if (status_t status = getMaxThreads(&numThreadsAvailable); status != OK) {
         ALOGE("Could not get max threads after initial connection to %s: %s",
+              addr.toString().c_str(), statusToString(status).c_str());
+        return false;
+    }
+
+    if (status_t status = readId(); status != OK) {
+        ALOGE("Could not get connection id after initial connection to %s; %s",
               addr.toString().c_str(), statusToString(status).c_str());
         return false;
     }
@@ -200,6 +220,11 @@ void RpcConnection::addClient(unique_fd fd) {
     sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
     connection->fd = std::move(fd);
     mClients.push_back(connection);
+}
+
+void RpcConnection::setForServer(const wp<RpcServer>& server, int32_t connectionId) {
+    mId = connectionId;
+    mForServer = server;
 }
 
 sp<RpcConnection::ConnectionSocket> RpcConnection::assignServerToThisThread(unique_fd fd) {

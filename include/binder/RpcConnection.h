@@ -88,16 +88,30 @@ public:
 
     ~RpcConnection();
 
-    void setForServer(const wp<RpcServer>& server);
     wp<RpcServer> server();
 
     // internal only
     const std::unique_ptr<RpcState>& state() { return mState; }
 
+    class PrivateAccessorForId {
+    private:
+        friend class RpcConnection;
+        friend class RpcState;
+        explicit PrivateAccessorForId(const RpcConnection* connection) : mConnection(connection) {}
+
+        const std::optional<int32_t> get() { return mConnection->mId; }
+
+        const RpcConnection* mConnection;
+    };
+    PrivateAccessorForId getPrivateAccessorForId() const { return PrivateAccessorForId(this); }
+
 private:
+    friend PrivateAccessorForId;
     friend sp<RpcConnection>;
     friend RpcServer;
     RpcConnection();
+
+    status_t readId();
 
     void join(base::unique_fd client);
 
@@ -112,6 +126,7 @@ private:
     bool setupSocketClient(const RpcSocketAddress& address);
     bool setupOneSocketClient(const RpcSocketAddress& address);
     void addClient(base::unique_fd fd);
+    void setForServer(const wp<RpcServer>& server, int32_t connectionId);
     sp<ConnectionSocket> assignServerToThisThread(base::unique_fd fd);
     bool removeServerSocket(const sp<ConnectionSocket>& socket);
 
@@ -157,6 +172,9 @@ private:
     // serve calls to the server at all times (e.g. if it hosts a callback)
 
     wp<RpcServer> mForServer; // maybe null, for client connections
+
+    // TODO(b/183988761): this shouldn't be guessable
+    std::optional<int32_t> mId;
 
     std::unique_ptr<RpcState> mState;
 

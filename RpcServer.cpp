@@ -128,7 +128,7 @@ void RpcServer::join() {
         LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
         // TODO(b/185167543): support more than one client at once
         mConnection = RpcConnection::make();
-        mConnection->setForServer(sp<RpcServer>::fromExisting(this));
+        mConnection->setForServer(sp<RpcServer>::fromExisting(this), 42 /*placeholder id*/);
 
         mStarted = true;
             for (size_t i = 0; i < mMaxThreads; i++) {
