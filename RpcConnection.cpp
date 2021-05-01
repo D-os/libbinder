@@ -18,13 +18,7 @@
 
 #include <binder/RpcConnection.h>
 
-#include <arpa/inet.h>
 #include <inttypes.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
 #include <unistd.h>
 
 #include <string_view>
@@ -33,6 +27,7 @@
 #include <binder/Stability.h>
 #include <utils/String8.h>
 
+#include "RpcSocketAddress.h"
 #include "RpcState.h"
 #include "RpcWireFormat.h"
 
@@ -40,16 +35,9 @@
 extern "C" pid_t gettid();
 #endif
 
-#ifdef __BIONIC__
-#include <linux/vm_sockets.h>
-#endif
-
 namespace android {
 
 using base::unique_fd;
-using AddrInfo = std::unique_ptr<addrinfo, decltype(&freeaddrinfo)>;
-
-RpcConnection::SocketAddress::~SocketAddress() {}
 
 RpcConnection::RpcConnection() {
     LOG_RPC_DETAIL("RpcConnection created %p", this);
@@ -68,62 +56,11 @@ sp<RpcConnection> RpcConnection::make() {
     return sp<RpcConnection>::make();
 }
 
-class UnixSocketAddress : public RpcConnection::SocketAddress {
-public:
-    explicit UnixSocketAddress(const char* path) : mAddr({.sun_family = AF_UNIX}) {
-        unsigned int pathLen = strlen(path) + 1;
-        LOG_ALWAYS_FATAL_IF(pathLen > sizeof(mAddr.sun_path), "Socket path is too long: %u %s",
-                            pathLen, path);
-        memcpy(mAddr.sun_path, path, pathLen);
-    }
-    virtual ~UnixSocketAddress() {}
-    std::string toString() const override {
-        return String8::format("path '%.*s'", static_cast<int>(sizeof(mAddr.sun_path)),
-                               mAddr.sun_path)
-                .c_str();
-    }
-    const sockaddr* addr() const override { return reinterpret_cast<const sockaddr*>(&mAddr); }
-    size_t addrSize() const override { return sizeof(mAddr); }
-
-private:
-    sockaddr_un mAddr;
-};
-
-bool RpcConnection::setupUnixDomainServer(const char* path) {
-    return setupSocketServer(UnixSocketAddress(path));
-}
-
 bool RpcConnection::setupUnixDomainClient(const char* path) {
     return setupSocketClient(UnixSocketAddress(path));
 }
 
 #ifdef __BIONIC__
-
-class VsockSocketAddress : public RpcConnection::SocketAddress {
-public:
-    VsockSocketAddress(unsigned int cid, unsigned int port)
-          : mAddr({
-                    .svm_family = AF_VSOCK,
-                    .svm_port = port,
-                    .svm_cid = cid,
-            }) {}
-    virtual ~VsockSocketAddress() {}
-    std::string toString() const override {
-        return String8::format("cid %u port %u", mAddr.svm_cid, mAddr.svm_port).c_str();
-    }
-    const sockaddr* addr() const override { return reinterpret_cast<const sockaddr*>(&mAddr); }
-    size_t addrSize() const override { return sizeof(mAddr); }
-
-private:
-    sockaddr_vm mAddr;
-};
-
-bool RpcConnection::setupVsockServer(unsigned int port) {
-    // realizing value w/ this type at compile time to avoid ubsan abort
-    constexpr unsigned int kAnyCid = VMADDR_CID_ANY;
-
-    return setupSocketServer(VsockSocketAddress(kAnyCid, port));
-}
 
 bool RpcConnection::setupVsockClient(unsigned int cid, unsigned int port) {
     return setupSocketClient(VsockSocketAddress(cid, port));
@@ -131,83 +68,8 @@ bool RpcConnection::setupVsockClient(unsigned int cid, unsigned int port) {
 
 #endif // __BIONIC__
 
-class InetSocketAddress : public RpcConnection::SocketAddress {
-public:
-    InetSocketAddress(const sockaddr* sockAddr, size_t size, const char* addr, unsigned int port)
-          : mSockAddr(sockAddr), mSize(size), mAddr(addr), mPort(port) {}
-    [[nodiscard]] std::string toString() const override {
-        return String8::format("%s:%u", mAddr, mPort).c_str();
-    }
-    [[nodiscard]] const sockaddr* addr() const override { return mSockAddr; }
-    [[nodiscard]] size_t addrSize() const override { return mSize; }
-
-private:
-    const sockaddr* mSockAddr;
-    size_t mSize;
-    const char* mAddr;
-    unsigned int mPort;
-};
-
-AddrInfo GetAddrInfo(const char* addr, unsigned int port) {
-    addrinfo hint{
-            .ai_flags = 0,
-            .ai_family = AF_UNSPEC,
-            .ai_socktype = SOCK_STREAM,
-            .ai_protocol = 0,
-    };
-    addrinfo* aiStart = nullptr;
-    if (int rc = getaddrinfo(addr, std::to_string(port).data(), &hint, &aiStart); 0 != rc) {
-        ALOGE("Unable to resolve %s:%u: %s", addr, port, gai_strerror(rc));
-        return AddrInfo(nullptr, nullptr);
-    }
-    if (aiStart == nullptr) {
-        ALOGE("Unable to resolve %s:%u: getaddrinfo returns null", addr, port);
-        return AddrInfo(nullptr, nullptr);
-    }
-    return AddrInfo(aiStart, &freeaddrinfo);
-}
-
-bool RpcConnection::setupInetServer(unsigned int port, unsigned int* assignedPort) {
-    const char* kAddr = "127.0.0.1";
-
-    if (assignedPort != nullptr) *assignedPort = 0;
-    auto aiStart = GetAddrInfo(kAddr, port);
-    if (aiStart == nullptr) return false;
-    for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
-        InetSocketAddress socketAddress(ai->ai_addr, ai->ai_addrlen, kAddr, port);
-        if (!setupSocketServer(socketAddress)) {
-            continue;
-        }
-
-        LOG_ALWAYS_FATAL_IF(socketAddress.addr()->sa_family != AF_INET, "expecting inet");
-        sockaddr_in addr{};
-        socklen_t len = sizeof(addr);
-        if (0 != getsockname(mServer.get(), reinterpret_cast<sockaddr*>(&addr), &len)) {
-            int savedErrno = errno;
-            ALOGE("Could not getsockname at %s: %s", socketAddress.toString().c_str(),
-                  strerror(savedErrno));
-            return false;
-        }
-        LOG_ALWAYS_FATAL_IF(len != sizeof(addr), "Wrong socket type: len %zu vs len %zu",
-                            static_cast<size_t>(len), sizeof(addr));
-        unsigned int realPort = ntohs(addr.sin_port);
-        LOG_ALWAYS_FATAL_IF(port != 0 && realPort != port,
-                            "Requesting inet server on %s but it is set up on %u.",
-                            socketAddress.toString().c_str(), realPort);
-
-        if (assignedPort != nullptr) {
-            *assignedPort = realPort;
-        }
-
-        return true;
-    }
-    ALOGE("None of the socket address resolved for %s:%u can be set up as inet server.", kAddr,
-          port);
-    return false;
-}
-
 bool RpcConnection::setupInetClient(const char* addr, unsigned int port) {
-    auto aiStart = GetAddrInfo(addr, port);
+    auto aiStart = InetSocketAddress::getAddrInfo(addr, port);
     if (aiStart == nullptr) return false;
     for (auto ai = aiStart.get(); ai != nullptr; ai = ai->ai_next) {
         InetSocketAddress socketAddress(ai->ai_addr, ai->ai_addrlen, addr, port);
@@ -253,23 +115,10 @@ status_t RpcConnection::sendDecStrong(const RpcAddress& address) {
     return state()->sendDecStrong(socket.fd(), address);
 }
 
-void RpcConnection::join() {
-    // TODO(b/185167543): do this dynamically, instead of from a static number
-    // of threads
-    unique_fd clientFd(
-            TEMP_FAILURE_RETRY(accept4(mServer.get(), nullptr, 0 /*length*/, SOCK_CLOEXEC)));
-    if (clientFd < 0) {
-        // If this log becomes confusing, should save more state from setupUnixDomainServer
-        // in order to output here.
-        ALOGE("Could not accept4 socket: %s", strerror(errno));
-        return;
-    }
-
-    LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
-
+void RpcConnection::join(unique_fd client) {
     // must be registered to allow arbitrary client code executing commands to
     // be able to do nested calls (we can't only read from it)
-    sp<ConnectionSocket> socket = assignServerToThisThread(std::move(clientFd));
+    sp<ConnectionSocket> socket = assignServerToThisThread(std::move(client));
 
     while (true) {
         status_t error =
@@ -293,33 +142,7 @@ wp<RpcServer> RpcConnection::server() {
     return mForServer;
 }
 
-bool RpcConnection::setupSocketServer(const SocketAddress& addr) {
-    LOG_ALWAYS_FATAL_IF(mServer.get() != -1, "Each RpcConnection can only have one server.");
-
-    unique_fd serverFd(
-            TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
-    if (serverFd == -1) {
-        ALOGE("Could not create socket: %s", strerror(errno));
-        return false;
-    }
-
-    if (0 != TEMP_FAILURE_RETRY(bind(serverFd.get(), addr.addr(), addr.addrSize()))) {
-        int savedErrno = errno;
-        ALOGE("Could not bind socket at %s: %s", addr.toString().c_str(), strerror(savedErrno));
-        return false;
-    }
-
-    if (0 != TEMP_FAILURE_RETRY(listen(serverFd.get(), 1 /*backlog*/))) {
-        int savedErrno = errno;
-        ALOGE("Could not listen socket at %s: %s", addr.toString().c_str(), strerror(savedErrno));
-        return false;
-    }
-
-    mServer = std::move(serverFd);
-    return true;
-}
-
-bool RpcConnection::setupSocketClient(const SocketAddress& addr) {
+bool RpcConnection::setupSocketClient(const RpcSocketAddress& addr) {
     {
         std::lock_guard<std::mutex> _l(mSocketMutex);
         LOG_ALWAYS_FATAL_IF(mClients.size() != 0,
@@ -351,7 +174,7 @@ bool RpcConnection::setupSocketClient(const SocketAddress& addr) {
     return true;
 }
 
-bool RpcConnection::setupOneSocketClient(const SocketAddress& addr) {
+bool RpcConnection::setupOneSocketClient(const RpcSocketAddress& addr) {
     unique_fd serverFd(
             TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
     if (serverFd == -1) {
