@@ -133,6 +133,21 @@ status_t RpcConnection::readId() {
     return OK;
 }
 
+void RpcConnection::startThread(unique_fd client) {
+    std::lock_guard<std::mutex> _l(mSocketMutex);
+    sp<RpcConnection> holdThis = sp<RpcConnection>::fromExisting(this);
+    int fd = client.release();
+    auto thread = std::thread([=] {
+        holdThis->join(unique_fd(fd));
+        {
+            std::lock_guard<std::mutex> _l(holdThis->mSocketMutex);
+            size_t erased = mThreads.erase(std::this_thread::get_id());
+            LOG_ALWAYS_FATAL_IF(erased != 0, "Could not erase thread.");
+        }
+    });
+    mThreads[thread.get_id()] = std::move(thread);
+}
+
 void RpcConnection::join(unique_fd client) {
     // must be registered to allow arbitrary client code executing commands to
     // be able to do nested calls (we can't only read from it)
@@ -164,7 +179,7 @@ bool RpcConnection::setupSocketClient(const RpcSocketAddress& addr) {
                             mClients.size());
     }
 
-    if (!setupOneSocketClient(addr)) return false;
+    if (!setupOneSocketClient(addr, RPC_CONNECTION_ID_NEW)) return false;
 
     // TODO(b/185167543): we should add additional connections dynamically
     // instead of all at once.
@@ -186,7 +201,7 @@ bool RpcConnection::setupSocketClient(const RpcSocketAddress& addr) {
     for (size_t i = 0; i + 1 < numThreadsAvailable; i++) {
         // TODO(b/185167543): avoid race w/ accept4 not being called on server
         for (size_t tries = 0; tries < 5; tries++) {
-            if (setupOneSocketClient(addr)) break;
+            if (setupOneSocketClient(addr, mId.value())) break;
             usleep(10000);
         }
     }
@@ -194,7 +209,7 @@ bool RpcConnection::setupSocketClient(const RpcSocketAddress& addr) {
     return true;
 }
 
-bool RpcConnection::setupOneSocketClient(const RpcSocketAddress& addr) {
+bool RpcConnection::setupOneSocketClient(const RpcSocketAddress& addr, int32_t id) {
     unique_fd serverFd(
             TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
     if (serverFd == -1) {
@@ -206,6 +221,13 @@ bool RpcConnection::setupOneSocketClient(const RpcSocketAddress& addr) {
     if (0 != TEMP_FAILURE_RETRY(connect(serverFd.get(), addr.addr(), addr.addrSize()))) {
         int savedErrno = errno;
         ALOGE("Could not connect socket at %s: %s", addr.toString().c_str(), strerror(savedErrno));
+        return false;
+    }
+
+    if (sizeof(id) != TEMP_FAILURE_RETRY(write(serverFd.get(), &id, sizeof(id)))) {
+        int savedErrno = errno;
+        ALOGE("Could not write id to socket at %s: %s", addr.toString().c_str(),
+              strerror(savedErrno));
         return false;
     }
 

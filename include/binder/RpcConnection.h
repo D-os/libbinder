@@ -21,7 +21,9 @@
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 
+#include <map>
 #include <optional>
+#include <thread>
 #include <vector>
 
 // WARNING: This is a feature which is still in development, and it is subject
@@ -113,6 +115,7 @@ private:
 
     status_t readId();
 
+    void startThread(base::unique_fd client);
     void join(base::unique_fd client);
 
     struct ConnectionSocket : public RefBase {
@@ -124,7 +127,7 @@ private:
     };
 
     bool setupSocketClient(const RpcSocketAddress& address);
-    bool setupOneSocketClient(const RpcSocketAddress& address);
+    bool setupOneSocketClient(const RpcSocketAddress& address, int32_t connectionId);
     void addClient(base::unique_fd fd);
     void setForServer(const wp<RpcServer>& server, int32_t connectionId);
     sp<ConnectionSocket> assignServerToThisThread(base::unique_fd fd);
@@ -179,11 +182,18 @@ private:
     std::unique_ptr<RpcState> mState;
 
     std::mutex mSocketMutex;           // for all below
+
     std::condition_variable mSocketCv; // for mWaitingThreads
     size_t mWaitingThreads = 0;
     size_t mClientsOffset = 0; // hint index into clients, ++ when sending an async transaction
     std::vector<sp<ConnectionSocket>> mClients;
     std::vector<sp<ConnectionSocket>> mServers;
+
+    // TODO(b/185167543): use for reverse connections (allow client to also
+    // serve calls on a connection).
+    // TODO(b/185167543): allow sharing between different connections in a
+    // process? (or combine with mServers)
+    std::map<std::thread::id, std::thread> mThreads;
 };
 
 } // namespace android
