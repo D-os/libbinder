@@ -148,8 +148,8 @@ private:
     bool setupSocketServer(const SocketAddress& address);
     bool setupSocketClient(const SocketAddress& address);
     bool setupOneSocketClient(const SocketAddress& address);
-    void addClient(base::unique_fd&& fd);
-    sp<ConnectionSocket> assignServerToThisThread(base::unique_fd&& fd);
+    void addClient(base::unique_fd fd);
+    sp<ConnectionSocket> assignServerToThisThread(base::unique_fd fd);
     bool removeServerSocket(const sp<ConnectionSocket>& socket);
 
     enum class SocketUse {

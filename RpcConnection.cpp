@@ -406,14 +406,14 @@ bool RpcConnection::setupOneSocketClient(const SocketAddress& addr) {
     return true;
 }
 
-void RpcConnection::addClient(unique_fd&& fd) {
+void RpcConnection::addClient(unique_fd fd) {
     std::lock_guard<std::mutex> _l(mSocketMutex);
     sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
     connection->fd = std::move(fd);
     mClients.push_back(connection);
 }
 
-sp<RpcConnection::ConnectionSocket> RpcConnection::assignServerToThisThread(unique_fd&& fd) {
+sp<RpcConnection::ConnectionSocket> RpcConnection::assignServerToThisThread(unique_fd fd) {
     std::lock_guard<std::mutex> _l(mSocketMutex);
     sp<ConnectionSocket> connection = sp<ConnectionSocket>::make();
     connection->fd = std::move(fd);
