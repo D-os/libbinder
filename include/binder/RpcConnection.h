@@ -32,6 +32,7 @@ namespace android {
 
 class Parcel;
 class RpcServer;
+class RpcSocketAddress;
 class RpcState;
 
 /**
@@ -43,19 +44,6 @@ public:
     static sp<RpcConnection> make();
 
     /**
-     * This represents a connection for responses, e.g.:
-     *
-     *     process A serves binder a
-     *     process B opens a connection to process A
-     *     process B makes binder b and sends it to A
-     *     A uses this 'back connection' to send things back to B
-     *
-     * This should be called once, and then a call should be made to join per
-     * connection thread.
-     */
-    [[nodiscard]] bool setupUnixDomainServer(const char* path);
-
-    /**
      * This should be called once per thread, matching 'join' in the remote
      * process.
      */
@@ -63,26 +51,10 @@ public:
 
 #ifdef __BIONIC__
     /**
-     * Creates an RPC server at the current port.
-     */
-    [[nodiscard]] bool setupVsockServer(unsigned int port);
-
-    /**
      * Connects to an RPC server at the CVD & port.
      */
     [[nodiscard]] bool setupVsockClient(unsigned int cvd, unsigned int port);
 #endif // __BIONIC__
-
-    /**
-     * Creates an RPC server at the current port using IPv4.
-     *
-     * TODO(b/182914638): IPv6 support
-     *
-     * Set |port| to 0 to pick an ephemeral port; see discussion of
-     * /proc/sys/net/ipv4/ip_local_port_range in ip(7). In this case, |assignedPort|
-     * will be set to the picked port number, if it is not null.
-     */
-    [[nodiscard]] bool setupInetServer(unsigned int port, unsigned int* assignedPort);
 
     /**
      * Connects to an RPC server at the given address and port.
@@ -116,26 +88,32 @@ public:
 
     ~RpcConnection();
 
-    void setForServer(const wp<RpcServer>& server);
     wp<RpcServer> server();
 
     // internal only
     const std::unique_ptr<RpcState>& state() { return mState; }
 
-    class SocketAddress {
-    public:
-        virtual ~SocketAddress();
-        virtual std::string toString() const = 0;
-        virtual const sockaddr* addr() const = 0;
-        virtual size_t addrSize() const = 0;
+    class PrivateAccessorForId {
+    private:
+        friend class RpcConnection;
+        friend class RpcState;
+        explicit PrivateAccessorForId(const RpcConnection* connection) : mConnection(connection) {}
+
+        const std::optional<int32_t> get() { return mConnection->mId; }
+
+        const RpcConnection* mConnection;
     };
+    PrivateAccessorForId getPrivateAccessorForId() const { return PrivateAccessorForId(this); }
 
 private:
+    friend PrivateAccessorForId;
     friend sp<RpcConnection>;
     friend RpcServer;
     RpcConnection();
 
-    void join();
+    status_t readId();
+
+    void join(base::unique_fd client);
 
     struct ConnectionSocket : public RefBase {
         base::unique_fd fd;
@@ -145,11 +123,11 @@ private:
         std::optional<pid_t> exclusiveTid;
     };
 
-    bool setupSocketServer(const SocketAddress& address);
-    bool setupSocketClient(const SocketAddress& address);
-    bool setupOneSocketClient(const SocketAddress& address);
-    void addClient(base::unique_fd&& fd);
-    sp<ConnectionSocket> assignServerToThisThread(base::unique_fd&& fd);
+    bool setupSocketClient(const RpcSocketAddress& address);
+    bool setupOneSocketClient(const RpcSocketAddress& address);
+    void addClient(base::unique_fd fd);
+    void setForServer(const wp<RpcServer>& server, int32_t connectionId);
+    sp<ConnectionSocket> assignServerToThisThread(base::unique_fd fd);
     bool removeServerSocket(const sp<ConnectionSocket>& socket);
 
     enum class SocketUse {
@@ -195,9 +173,10 @@ private:
 
     wp<RpcServer> mForServer; // maybe null, for client connections
 
-    std::unique_ptr<RpcState> mState;
+    // TODO(b/183988761): this shouldn't be guessable
+    std::optional<int32_t> mId;
 
-    base::unique_fd mServer; // socket we are accepting connections on
+    std::unique_ptr<RpcState> mState;
 
     std::mutex mSocketMutex;           // for all below
     std::condition_variable mSocketCv; // for mWaitingThreads
