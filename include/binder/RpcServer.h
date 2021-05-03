@@ -29,13 +29,51 @@
 
 namespace android {
 
+class RpcSocketAddress;
+
 /**
  * This represents a server of an interface, which may be connected to by any
  * number of clients over sockets.
+ *
+ * Usage:
+ *     auto server = RpcServer::make();
+ *     // only supports one now
+ *     if (!server->setup*Server(...)) {
+ *         :(
+ *     }
+ *     server->join();
  */
 class RpcServer final : public virtual RefBase {
 public:
     static sp<RpcServer> make();
+
+    /**
+     * This represents a connection for responses, e.g.:
+     *
+     *     process A serves binder a
+     *     process B opens a connection to process A
+     *     process B makes binder b and sends it to A
+     *     A uses this 'back connection' to send things back to B
+     */
+    [[nodiscard]] bool setupUnixDomainServer(const char* path);
+
+#ifdef __BIONIC__
+    /**
+     * Creates an RPC server at the current port.
+     */
+    [[nodiscard]] bool setupVsockServer(unsigned int port);
+#endif // __BIONIC__
+
+    /**
+     * Creates an RPC server at the current port using IPv4.
+     *
+     * TODO(b/182914638): IPv6 support
+     *
+     * Set |port| to 0 to pick an ephemeral port; see discussion of
+     * /proc/sys/net/ipv4/ip_local_port_range in ip(7). In this case, |assignedPort|
+     * will be set to the picked port number, if it is not null.
+     */
+    [[nodiscard]] bool setupInetServer(unsigned int port, unsigned int* assignedPort);
 
     void iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
 
@@ -58,19 +96,14 @@ public:
     sp<IBinder> getRootObject();
 
     /**
-     * Setup a static connection, when the number of clients are known.
-     *
-     * Each call to this function corresponds to a different client, and clients
-     * each have their own threadpools.
-     *
-     * TODO(b/167966510): support dynamic creation of connections/threads
-     */
-    sp<RpcConnection> addClientConnection();
-
-    /**
      * You must have at least one client connection before calling this.
      */
     void join();
+
+    /**
+     * For debugging!
+     */
+    std::vector<sp<RpcConnection>> listConnections();
 
     ~RpcServer();
 
@@ -78,13 +111,16 @@ private:
     friend sp<RpcServer>;
     RpcServer();
 
+    bool setupSocketServer(const RpcSocketAddress& address);
+
     bool mAgreedExperimental = false;
     bool mStarted = false; // TODO(b/185167543): support dynamically added clients
     size_t mMaxThreads = 1;
+    base::unique_fd mServer; // socket we are accepting connections on
 
     std::mutex mLock; // for below
     sp<IBinder> mRootObject;
-    std::vector<sp<RpcConnection>> mConnections; // per-client
+    sp<RpcConnection> mConnection;
 };
 
 } // namespace android
