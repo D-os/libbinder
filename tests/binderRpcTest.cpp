@@ -34,14 +34,11 @@
 #include <iostream>
 #include <thread>
 
-#ifdef __BIONIC__
-#include <linux/vm_sockets.h>
-#endif //__BIONIC__
-
 #include <sys/prctl.h>
 #include <unistd.h>
 
-#include "../RpcState.h" // for debugging
+#include "../RpcState.h"   // for debugging
+#include "../vm_sockets.h" // for VMADDR_*
 
 namespace android {
 
@@ -291,19 +288,15 @@ struct BinderRpcTestProcessSession {
 
 enum class SocketType {
     UNIX,
-#ifdef __BIONIC__
     VSOCK,
-#endif // __BIONIC__
     INET,
 };
 static inline std::string PrintSocketType(const testing::TestParamInfo<SocketType>& info) {
     switch (info.param) {
         case SocketType::UNIX:
             return "unix_domain_socket";
-#ifdef __BIONIC__
         case SocketType::VSOCK:
             return "vm_socket";
-#endif // __BIONIC__
         case SocketType::INET:
             return "inet_socket";
         default:
@@ -338,11 +331,9 @@ public:
                         case SocketType::UNIX:
                             CHECK(server->setupUnixDomainServer(addr.c_str())) << addr;
                             break;
-#ifdef __BIONIC__
                         case SocketType::VSOCK:
                             CHECK(server->setupVsockServer(vsockPort));
                             break;
-#endif // __BIONIC__
                         case SocketType::INET: {
                             unsigned int outPort = 0;
                             CHECK(server->setupInetServer(0, &outPort));
@@ -376,11 +367,9 @@ public:
                     case SocketType::UNIX:
                         if (session->setupUnixDomainClient(addr.c_str())) goto success;
                         break;
-#ifdef __BIONIC__
                     case SocketType::VSOCK:
                         if (session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort)) goto success;
                         break;
-#endif // __BIONIC__
                     case SocketType::INET:
                         if (session->setupInetClient("127.0.0.1", inetPort)) goto success;
                         break;
@@ -934,9 +923,10 @@ TEST_P(BinderRpc, Fds) {
 INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc,
                         ::testing::ValuesIn({
                                 SocketType::UNIX,
+// TODO(b/185269356): working on host
 #ifdef __BIONIC__
                                 SocketType::VSOCK,
-#endif // __BIONIC__
+#endif
                                 SocketType::INET,
                         }),
                         PrintSocketType);
