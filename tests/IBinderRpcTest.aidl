@@ -18,8 +18,8 @@ interface IBinderRpcTest {
     oneway void sendString(@utf8InCpp String str);
     @utf8InCpp String doubleString(@utf8InCpp String str);
 
-    // number of known RPC binders to process, RpcState::countBinders
-    int countBinders();
+    // number of known RPC binders to process, RpcState::countBinders by connection
+    int[] countBinders();
 
     // Caller sends server, callee pings caller's server and returns error code.
     int pingMe(IBinder binder);
