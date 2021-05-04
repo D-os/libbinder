@@ -88,24 +88,21 @@ public:
         *strstr = str + str;
         return Status::ok();
     }
-    Status countBinders(int32_t* out) override {
+    Status countBinders(std::vector<int32_t>* out) override {
         sp<RpcServer> spServer = server.promote();
         if (spServer == nullptr) {
             return Status::fromExceptionCode(Status::EX_NULL_POINTER);
         }
-        size_t count = 0;
+        out->clear();
         for (auto connection : spServer->listConnections()) {
-            count += connection->state()->countBinders();
-        }
-        // help debugging if we don't have one binder (this call is always made
-        // in this test when exactly one binder is held, which is held only to
-        // call this method - all other binders should be cleaned up)
-        if (count != 1) {
-            for (auto connection : spServer->listConnections()) {
+            size_t count = connection->state()->countBinders();
+            if (count != 1) {
+                // this is called when there is only one binder held remaining,
+                // so to aid debugging
                 connection->state()->dump();
             }
+            out->push_back(count);
         }
-        *out = count;
         return Status::ok();
     }
     Status pingMe(const sp<IBinder>& binder, int32_t* out) override {
@@ -232,25 +229,33 @@ struct ProcessConnection {
     // reference to process hosting a socket server
     Process host;
 
-    // client connection object associated with other process
-    sp<RpcConnection> connection;
+    struct ConnectionInfo {
+        sp<RpcConnection> connection;
+        sp<IBinder> root;
+    };
 
-    // pre-fetched root object
-    sp<IBinder> rootBinder;
-
-    // whether connection should be invalidated by end of run
-    bool expectInvalid = false;
+    // client connection objects associated with other process
+    // each one represents a separate connection
+    std::vector<ConnectionInfo> connections;
 
     ProcessConnection(ProcessConnection&&) = default;
     ~ProcessConnection() {
-        rootBinder = nullptr;
-        EXPECT_NE(nullptr, connection);
-        EXPECT_NE(nullptr, connection->state());
-        EXPECT_EQ(0, connection->state()->countBinders()) << (connection->state()->dump(), "dump:");
+        for (auto& connection : connections) {
+            connection.root = nullptr;
+        }
 
-        wp<RpcConnection> weakConnection = connection;
-        connection = nullptr;
-        EXPECT_EQ(nullptr, weakConnection.promote()) << "Leaked connection";
+        for (auto& info : connections) {
+            sp<RpcConnection>& connection = info.connection;
+
+            EXPECT_NE(nullptr, connection);
+            EXPECT_NE(nullptr, connection->state());
+            EXPECT_EQ(0, connection->state()->countBinders())
+                    << (connection->state()->dump(), "dump:");
+
+            wp<RpcConnection> weakConnection = connection;
+            connection = nullptr;
+            EXPECT_EQ(nullptr, weakConnection.promote()) << "Leaked connection";
+        }
     }
 };
 
@@ -259,19 +264,25 @@ struct ProcessConnection {
 struct BinderRpcTestProcessConnection {
     ProcessConnection proc;
 
-    // pre-fetched root object
+    // pre-fetched root object (for first connection)
     sp<IBinder> rootBinder;
 
-    // pre-casted root object
+    // pre-casted root object (for first connection)
     sp<IBinderRpcTest> rootIface;
+
+    // whether connection should be invalidated by end of run
+    bool expectInvalid = false;
 
     BinderRpcTestProcessConnection(BinderRpcTestProcessConnection&&) = default;
     ~BinderRpcTestProcessConnection() {
-        if (!proc.expectInvalid) {
-            int32_t remoteBinders = 0;
-            EXPECT_OK(rootIface->countBinders(&remoteBinders));
-            // should only be the root binder object, iface
-            EXPECT_EQ(remoteBinders, 1);
+        if (!expectInvalid) {
+            std::vector<int32_t> remoteCounts;
+            // calling over any connections counts across all connections
+            EXPECT_OK(rootIface->countBinders(&remoteCounts));
+            EXPECT_EQ(remoteCounts.size(), proc.connections.size());
+            for (auto remoteCount : remoteCounts) {
+                EXPECT_EQ(remoteCount, 1);
+            }
         }
 
         rootIface = nullptr;
@@ -306,7 +317,10 @@ public:
     // This creates a new process serving an interface on a certain number of
     // threads.
     ProcessConnection createRpcTestSocketServerProcess(
-            size_t numThreads, const std::function<void(const sp<RpcServer>&)>& configure) {
+            size_t numThreads, size_t numConnections,
+            const std::function<void(const sp<RpcServer>&)>& configure) {
+        CHECK_GE(numConnections, 1) << "Must have at least one connection to a server";
+
         SocketType socketType = GetParam();
 
         std::string addr = allocateSocketAddress();
@@ -346,7 +360,6 @@ public:
 
                     server->join();
                 }),
-                .connection = RpcConnection::make(),
         };
 
         unsigned int inetPort = 0;
@@ -356,35 +369,37 @@ public:
             CHECK_NE(0, inetPort);
         }
 
-        // create remainder of connections
-        for (size_t tries = 0; tries < 10; tries++) {
-            usleep(10000);
-            switch (socketType) {
-                case SocketType::UNIX:
-                    if (ret.connection->setupUnixDomainClient(addr.c_str())) goto success;
-                    break;
+        for (size_t i = 0; i < numConnections; i++) {
+            sp<RpcConnection> connection = RpcConnection::make();
+            for (size_t tries = 0; tries < 10; tries++) {
+                usleep(10000);
+                switch (socketType) {
+                    case SocketType::UNIX:
+                        if (connection->setupUnixDomainClient(addr.c_str())) goto success;
+                        break;
 #ifdef __BIONIC__
-                case SocketType::VSOCK:
-                    if (ret.connection->setupVsockClient(VMADDR_CID_LOCAL, vsockPort)) goto success;
-                    break;
+                    case SocketType::VSOCK:
+                        if (connection->setupVsockClient(VMADDR_CID_LOCAL, vsockPort)) goto success;
+                        break;
 #endif // __BIONIC__
-                case SocketType::INET:
-                    if (ret.connection->setupInetClient("127.0.0.1", inetPort)) goto success;
-                    break;
-                default:
-                    LOG_ALWAYS_FATAL("Unknown socket type");
+                    case SocketType::INET:
+                        if (connection->setupInetClient("127.0.0.1", inetPort)) goto success;
+                        break;
+                    default:
+                        LOG_ALWAYS_FATAL("Unknown socket type");
+                }
             }
+            LOG_ALWAYS_FATAL("Could not connect");
+        success:
+            ret.connections.push_back({connection, connection->getRootObject()});
         }
-        LOG_ALWAYS_FATAL("Could not connect");
-    success:
-
-        ret.rootBinder = ret.connection->getRootObject();
         return ret;
     }
 
-    BinderRpcTestProcessConnection createRpcTestSocketServerProcess(size_t numThreads) {
+    BinderRpcTestProcessConnection createRpcTestSocketServerProcess(size_t numThreads,
+                                                                    size_t numConnections = 1) {
         BinderRpcTestProcessConnection ret{
-                .proc = createRpcTestSocketServerProcess(numThreads,
+                .proc = createRpcTestSocketServerProcess(numThreads, numConnections,
                                                          [&](const sp<RpcServer>& server) {
                                                              sp<MyBinderRpcTest> service =
                                                                      new MyBinderRpcTest;
@@ -393,7 +408,7 @@ public:
                                                          }),
         };
 
-        ret.rootBinder = ret.proc.rootBinder;
+        ret.rootBinder = ret.proc.connections.at(0).root;
         ret.rootIface = interface_cast<IBinderRpcTest>(ret.rootBinder);
 
         return ret;
@@ -401,16 +416,12 @@ public:
 };
 
 TEST_P(BinderRpc, RootObjectIsNull) {
-    auto proc = createRpcTestSocketServerProcess(1, [](const sp<RpcServer>& server) {
+    auto proc = createRpcTestSocketServerProcess(1, 1, [](const sp<RpcServer>& server) {
         // this is the default, but to be explicit
         server->setRootObject(nullptr);
     });
 
-    // retrieved by getRootObject when process is created above
-    EXPECT_EQ(nullptr, proc.rootBinder);
-
-    // make sure we can retrieve it again (process doesn't crash)
-    EXPECT_EQ(nullptr, proc.connection->getRootObject());
+    EXPECT_EQ(nullptr, proc.connections.at(0).root);
 }
 
 TEST_P(BinderRpc, Ping) {
@@ -423,6 +434,14 @@ TEST_P(BinderRpc, GetInterfaceDescriptor) {
     auto proc = createRpcTestSocketServerProcess(1);
     ASSERT_NE(proc.rootBinder, nullptr);
     EXPECT_EQ(IBinderRpcTest::descriptor, proc.rootBinder->getInterfaceDescriptor());
+}
+
+TEST_P(BinderRpc, MultipleConnections) {
+    auto proc = createRpcTestSocketServerProcess(1 /*threads*/, 5 /*connections*/);
+    for (auto connection : proc.proc.connections) {
+        ASSERT_NE(nullptr, connection.root);
+        EXPECT_EQ(OK, connection.root->pingBinder());
+    }
 }
 
 TEST_P(BinderRpc, TransactionsMustBeMarkedRpc) {
@@ -570,6 +589,15 @@ TEST_P(BinderRpc, CannotMixBindersBetweenUnrelatedSocketConnections) {
     sp<IBinder> outBinder;
     EXPECT_EQ(INVALID_OPERATION,
               proc1.rootIface->repeatBinder(proc2.rootBinder, &outBinder).transactionError());
+}
+
+TEST_P(BinderRpc, CannotMixBindersBetweenTwoConnectionsToTheSameServer) {
+    auto proc = createRpcTestSocketServerProcess(1 /*threads*/, 2 /*connections*/);
+
+    sp<IBinder> outBinder;
+    EXPECT_EQ(INVALID_OPERATION,
+              proc.rootIface->repeatBinder(proc.proc.connections.at(1).root, &outBinder)
+                      .transactionError());
 }
 
 TEST_P(BinderRpc, CannotSendRegularBinderOverSocketBinder) {
@@ -856,7 +884,7 @@ TEST_P(BinderRpc, Die) {
         EXPECT_EQ(DEAD_OBJECT, proc.rootIface->die(doDeathCleanup).transactionError())
                 << "Do death cleanup: " << doDeathCleanup;
 
-        proc.proc.expectInvalid = true;
+        proc.expectInvalid = true;
     }
 }
 
