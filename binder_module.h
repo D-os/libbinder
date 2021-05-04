@@ -29,14 +29,14 @@
 #undef B_PACK_CHARS
 #endif
 
-#include <sys/ioctl.h>
 #include <linux/android/binder.h>
+#include <sys/ioctl.h>
 
 #ifndef BR_FROZEN_REPLY
 // Temporary definition of BR_FROZEN_REPLY. For production
 // this will come from UAPI binder.h
 #define BR_FROZEN_REPLY _IO('r', 18)
-#endif //BR_FROZEN_REPLY
+#endif // BR_FROZEN_REPLY
 
 #ifndef BINDER_FREEZE
 /*
@@ -49,46 +49,46 @@ struct binder_freeze_info {
     //
     // Group-leader PID of process to be frozen
     //
-    uint32_t            pid;
+    uint32_t pid;
     //
     // Enable(1) / Disable(0) freeze for given PID
     //
-    uint32_t            enable;
+    uint32_t enable;
     //
     // Timeout to wait for transactions to drain.
     // 0: don't wait (ioctl will return EAGAIN if not drained)
     // N: number of ms to wait
-    uint32_t            timeout_ms;
+    uint32_t timeout_ms;
 };
-#endif //BINDER_FREEZE
+#endif // BINDER_FREEZE
 
 #ifndef BINDER_GET_FROZEN_INFO
 
-#define BINDER_GET_FROZEN_INFO          _IOWR('b', 15, struct binder_frozen_status_info)
+#define BINDER_GET_FROZEN_INFO _IOWR('b', 15, struct binder_frozen_status_info)
 
 struct binder_frozen_status_info {
     //
     // Group-leader PID of process to be queried
     //
-    __u32            pid;
+    __u32 pid;
     //
     // Indicates whether the process has received any sync calls since last
     // freeze (cleared at freeze/unfreeze)
     //
-    __u32            sync_recv;
+    __u32 sync_recv;
     //
     // Indicates whether the process has received any async calls since last
     // freeze (cleared at freeze/unfreeze)
     //
-    __u32            async_recv;
+    __u32 async_recv;
 };
-#endif //BINDER_GET_FROZEN_INFO
+#endif // BINDER_GET_FROZEN_INFO
 
 #ifndef BR_ONEWAY_SPAM_SUSPECT
 // Temporary definition of BR_ONEWAY_SPAM_SUSPECT. For production
 // this will come from UAPI binder.h
 #define BR_ONEWAY_SPAM_SUSPECT _IO('r', 19)
-#endif //BR_ONEWAY_SPAM_SUSPECT
+#endif // BR_ONEWAY_SPAM_SUSPECT
 
 #ifndef BINDER_ENABLE_ONEWAY_SPAM_DETECTION
 /*
@@ -96,6 +96,6 @@ struct binder_frozen_status_info {
  * these will be defined in the UAPI binder.h file from upstream kernel.
  */
 #define BINDER_ENABLE_ONEWAY_SPAM_DETECTION _IOW('b', 16, __u32)
-#endif //BINDER_ENABLE_ONEWAY_SPAM_DETECTION
+#endif // BINDER_ENABLE_ONEWAY_SPAM_DETECTION
 
 #endif // _BINDER_MODULE_H_
