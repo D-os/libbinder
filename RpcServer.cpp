@@ -126,40 +126,61 @@ void RpcServer::join() {
     {
         std::lock_guard<std::mutex> _l(mLock);
         LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
-        // TODO(b/185167543): support more than one client at once
-        mConnection = RpcConnection::make();
-        mConnection->setForServer(sp<RpcServer>::fromExisting(this), 42 /*placeholder id*/);
-
-        mStarted = true;
-            for (size_t i = 0; i < mMaxThreads; i++) {
-                pool.push_back(std::thread([=] {
-                    // TODO(b/185167543): do this dynamically, instead of from a static number
-                    // of threads
-                    unique_fd clientFd(TEMP_FAILURE_RETRY(
-                            accept4(mServer.get(), nullptr, 0 /*length*/, SOCK_CLOEXEC)));
-                    if (clientFd < 0) {
-                        // If this log becomes confusing, should save more state from
-                        // setupUnixDomainServer in order to output here.
-                        ALOGE("Could not accept4 socket: %s", strerror(errno));
-                        return;
-                    }
-
-                    LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
-
-                    mConnection->join(std::move(clientFd));
-                }));
-            }
     }
 
-    // TODO(b/185167543): don't waste extra thread for join, and combine threads
-    // between clients
-    for (auto& t : pool) t.join();
+    while (true) {
+        unique_fd clientFd(
+                TEMP_FAILURE_RETRY(accept4(mServer.get(), nullptr, 0 /*length*/, SOCK_CLOEXEC)));
+
+        if (clientFd < 0) {
+            ALOGE("Could not accept4 socket: %s", strerror(errno));
+            continue;
+        }
+        LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
+
+        // TODO(b/183988761): cannot trust this simple ID
+        LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+        int32_t id;
+        if (sizeof(id) != read(clientFd.get(), &id, sizeof(id))) {
+            ALOGE("Could not read ID from fd %d", clientFd.get());
+            continue;
+        }
+
+        {
+            std::lock_guard<std::mutex> _l(mLock);
+
+            sp<RpcConnection> connection;
+            if (id == RPC_CONNECTION_ID_NEW) {
+                // new client!
+                LOG_ALWAYS_FATAL_IF(mConnectionIdCounter >= INT32_MAX, "Out of connection IDs");
+                mConnectionIdCounter++;
+
+                connection = RpcConnection::make();
+                connection->setForServer(wp<RpcServer>::fromExisting(this), mConnectionIdCounter);
+
+                mConnections[mConnectionIdCounter] = connection;
+            } else {
+                auto it = mConnections.find(id);
+                if (it == mConnections.end()) {
+                    ALOGE("Cannot add thread, no record of connection with ID %d", id);
+                    continue;
+                }
+                connection = it->second;
+            }
+
+            connection->startThread(std::move(clientFd));
+        }
+    }
 }
 
 std::vector<sp<RpcConnection>> RpcServer::listConnections() {
     std::lock_guard<std::mutex> _l(mLock);
-    if (mConnection == nullptr) return {};
-    return {mConnection};
+    std::vector<sp<RpcConnection>> connections;
+    for (auto& [id, connection] : mConnections) {
+        (void)id;
+        connections.push_back(connection);
+    }
+    return connections;
 }
 
 bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {

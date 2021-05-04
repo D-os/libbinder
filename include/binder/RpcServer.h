@@ -97,6 +97,8 @@ public:
 
     /**
      * You must have at least one client connection before calling this.
+     *
+     * TODO(b/185167543): way to shut down?
      */
     void join();
 
@@ -120,7 +122,8 @@ private:
 
     std::mutex mLock; // for below
     sp<IBinder> mRootObject;
-    sp<RpcConnection> mConnection;
+    std::map<int32_t, sp<RpcConnection>> mConnections;
+    int32_t mConnectionIdCounter = 0;
 };
 
 } // namespace android

@@ -51,6 +51,8 @@ enum : uint32_t {
     RPC_SPECIAL_TRANSACT_GET_CONNECTION_ID = 2,
 };
 
+constexpr int32_t RPC_CONNECTION_ID_NEW = -1;
+
 // serialization is like:
 // |RpcWireHeader|struct desginated by 'command'| (over and over again)
 
