@@ -28,7 +28,7 @@
 // ---------------------------------------------------------------------------
 namespace android {
 
-class RpcConnection;
+class RpcSession;
 class RpcState;
 namespace internal {
 class Stability;
@@ -41,11 +41,11 @@ class BpBinder : public IBinder
 {
 public:
     static sp<BpBinder> create(int32_t handle);
-    static sp<BpBinder> create(const sp<RpcConnection>& connection, const RpcAddress& address);
+    static sp<BpBinder> create(const sp<RpcSession>& session, const RpcAddress& address);
 
     /**
      * Return value:
-     * true - this is associated with a socket RpcConnection
+     * true - this is associated with a socket RpcSession
      * false - (usual) binder over e.g. /dev/binder
      */
     bool isRpcBinder() const;
@@ -133,7 +133,7 @@ public:
 
         // valid if isRpcBinder
         const RpcAddress& rpcAddress() const { return mBinder->rpcAddress(); }
-        const sp<RpcConnection>& rpcConnection() const { return mBinder->rpcConnection(); }
+        const sp<RpcSession>& rpcSession() const { return mBinder->rpcSession(); }
 
         const BpBinder* mBinder;
     };
@@ -148,19 +148,19 @@ private:
     struct BinderHandle {
         int32_t handle;
     };
-    struct SocketHandle {
-        sp<RpcConnection> connection;
+    struct RpcHandle {
+        sp<RpcSession> session;
         RpcAddress address;
     };
-    using Handle = std::variant<BinderHandle, SocketHandle>;
+    using Handle = std::variant<BinderHandle, RpcHandle>;
 
     int32_t binderHandle() const;
     const RpcAddress& rpcAddress() const;
-    const sp<RpcConnection>& rpcConnection() const;
+    const sp<RpcSession>& rpcSession() const;
 
     explicit BpBinder(Handle&& handle);
     BpBinder(BinderHandle&& handle, int32_t trackedUid);
-    explicit BpBinder(SocketHandle&& handle);
+    explicit BpBinder(RpcHandle&& handle);
 
     virtual             ~BpBinder();
     virtual void        onFirstRef();
