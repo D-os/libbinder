@@ -27,8 +27,8 @@
 #include <utils/String8.h>
 #include <utils/threads.h>
 
-#include <private/binder/binder_module.h>
 #include "Static.h"
+#include "binder_module.h"
 
 #include <errno.h>
 #include <fcntl.h>
