@@ -118,30 +118,33 @@ sp<IBinder> RpcServer::getRootObject() {
 }
 
 void RpcServer::join() {
+    while (true) {
+        (void)acceptOne();
+    }
+}
+
+bool RpcServer::acceptOne() {
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
+
+    unique_fd clientFd(
+            TEMP_FAILURE_RETRY(accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
+
+    if (clientFd < 0) {
+        ALOGE("Could not accept4 socket: %s", strerror(errno));
+        return false;
+    }
+    LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
+
     {
         std::lock_guard<std::mutex> _l(mLock);
-        LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
+        std::thread thread =
+                std::thread(&RpcServer::establishConnection, this,
+                            std::move(sp<RpcServer>::fromExisting(this)), std::move(clientFd));
+        mConnectingThreads[thread.get_id()] = std::move(thread);
     }
 
-    while (true) {
-        unique_fd clientFd(TEMP_FAILURE_RETRY(
-                accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
-
-        if (clientFd < 0) {
-            ALOGE("Could not accept4 socket: %s", strerror(errno));
-            continue;
-        }
-        LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
-
-        {
-            std::lock_guard<std::mutex> _l(mLock);
-            std::thread thread =
-                    std::thread(&RpcServer::establishConnection, this,
-                                std::move(sp<RpcServer>::fromExisting(this)), std::move(clientFd));
-            mConnectingThreads[thread.get_id()] = std::move(thread);
-        }
-    }
+    return true;
 }
 
 std::vector<sp<RpcSession>> RpcServer::listSessions() {
@@ -152,6 +155,11 @@ std::vector<sp<RpcSession>> RpcServer::listSessions() {
         sessions.push_back(session);
     }
     return sessions;
+}
+
+size_t RpcServer::numUninitializedSessions() {
+    std::lock_guard<std::mutex> _l(mLock);
+    return mConnectingThreads.size();
 }
 
 void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd) {
