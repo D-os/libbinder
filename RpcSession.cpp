@@ -143,8 +143,10 @@ void RpcSession::startThread(unique_fd client) {
         holdThis->join(unique_fd(fd));
         {
             std::lock_guard<std::mutex> _l(holdThis->mMutex);
-            size_t erased = mThreads.erase(std::this_thread::get_id());
-            LOG_ALWAYS_FATAL_IF(erased != 0, "Could not erase thread.");
+            auto it = mThreads.find(std::this_thread::get_id());
+            LOG_ALWAYS_FATAL_IF(it == mThreads.end());
+            it->second.detach();
+            mThreads.erase(it);
         }
     });
     mThreads[thread.get_id()] = std::move(thread);
