@@ -215,42 +215,52 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
 
     // we've already setup one client
     for (size_t i = 0; i + 1 < numThreadsAvailable; i++) {
-        // TODO(b/185167543): avoid race w/ accept4 not being called on server
-        for (size_t tries = 0; tries < 5; tries++) {
-            if (setupOneSocketClient(addr, mId.value())) break;
-            usleep(10000);
-        }
+        // TODO(b/185167543): shutdown existing connections?
+        if (!setupOneSocketClient(addr, mId.value())) return false;
     }
 
     return true;
 }
 
 bool RpcSession::setupOneSocketClient(const RpcSocketAddress& addr, int32_t id) {
-    unique_fd serverFd(
-            TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
-    if (serverFd == -1) {
-        int savedErrno = errno;
-        ALOGE("Could not create socket at %s: %s", addr.toString().c_str(), strerror(savedErrno));
-        return false;
+    for (size_t tries = 0; tries < 5; tries++) {
+        if (tries > 0) usleep(10000);
+
+        unique_fd serverFd(
+                TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
+        if (serverFd == -1) {
+            int savedErrno = errno;
+            ALOGE("Could not create socket at %s: %s", addr.toString().c_str(),
+                  strerror(savedErrno));
+            return false;
+        }
+
+        if (0 != TEMP_FAILURE_RETRY(connect(serverFd.get(), addr.addr(), addr.addrSize()))) {
+            if (errno == ECONNRESET) {
+                ALOGW("Connection reset on %s", addr.toString().c_str());
+                continue;
+            }
+            int savedErrno = errno;
+            ALOGE("Could not connect socket at %s: %s", addr.toString().c_str(),
+                  strerror(savedErrno));
+            return false;
+        }
+
+        if (sizeof(id) != TEMP_FAILURE_RETRY(write(serverFd.get(), &id, sizeof(id)))) {
+            int savedErrno = errno;
+            ALOGE("Could not write id to socket at %s: %s", addr.toString().c_str(),
+                  strerror(savedErrno));
+            return false;
+        }
+
+        LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
+
+        addClient(std::move(serverFd));
+        return true;
     }
 
-    if (0 != TEMP_FAILURE_RETRY(connect(serverFd.get(), addr.addr(), addr.addrSize()))) {
-        int savedErrno = errno;
-        ALOGE("Could not connect socket at %s: %s", addr.toString().c_str(), strerror(savedErrno));
-        return false;
-    }
-
-    if (sizeof(id) != TEMP_FAILURE_RETRY(write(serverFd.get(), &id, sizeof(id)))) {
-        int savedErrno = errno;
-        ALOGE("Could not write id to socket at %s: %s", addr.toString().c_str(),
-              strerror(savedErrno));
-        return false;
-    }
-
-    LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
-
-    addClient(std::move(serverFd));
-    return true;
+    ALOGE("Ran out of retries to connect to %s", addr.toString().c_str());
+    return false;
 }
 
 void RpcSession::addClient(unique_fd fd) {
