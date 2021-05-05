@@ -184,6 +184,8 @@ std::vector<sp<RpcConnection>> RpcServer::listConnections() {
 }
 
 bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
+    LOG_RPC_DETAIL("Setting up socket server %s", addr.toString().c_str());
+
     {
         std::lock_guard<std::mutex> _l(mLock);
         LOG_ALWAYS_FATAL_IF(mServer.get() != -1, "Each RpcServer can only have one server.");
@@ -207,6 +209,8 @@ bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
         ALOGE("Could not listen socket at %s: %s", addr.toString().c_str(), strerror(savedErrno));
         return false;
     }
+
+    LOG_RPC_DETAIL("Successfully setup socket server %s", addr.toString().c_str());
 
     mServer = std::move(serverFd);
     return true;
