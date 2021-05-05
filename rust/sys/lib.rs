@@ -16,14 +16,6 @@
 
 //! Generated Rust bindings to libbinder_ndk
 
-#![allow(
-    non_camel_case_types,
-    non_snake_case,
-    non_upper_case_globals,
-    unused,
-    improper_ctypes,
-    missing_docs
-)]
 use std::error::Error;
 use std::fmt;
 
