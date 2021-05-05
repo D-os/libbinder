@@ -31,11 +31,11 @@
 #include <binder/IServiceManager.h>
 #include <binder/ParcelRef.h>
 
-#include <private/binder/binder_module.h>
 #include <linux/sched.h>
 #include <sys/epoll.h>
 #include <sys/prctl.h>
 
+#include "../binder_module.h"
 #include "binderAbiHelper.h"
 
 #define ARRAY_SIZE(array) (sizeof array / sizeof array[0])
