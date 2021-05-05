@@ -48,10 +48,10 @@
 #include <utils/String8.h>
 #include <utils/misc.h>
 
-#include <private/binder/binder_module.h>
 #include "RpcState.h"
 #include "Static.h"
 #include "Utils.h"
+#include "binder_module.h"
 
 #define LOG_REFS(...)
 //#define LOG_REFS(...) ALOG(LOG_DEBUG, LOG_TAG, __VA_ARGS__)
