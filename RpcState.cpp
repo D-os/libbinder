@@ -511,7 +511,6 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
         auto it = mNodeForAddress.find(addr);
         if (it == mNodeForAddress.end()) {
             ALOGE("Unknown binder address %s.", addr.toString().c_str());
-            dump();
             replyStatus = BAD_VALUE;
         } else {
             target = it->second.binder.promote();
@@ -707,7 +706,6 @@ status_t RpcState::processDecStrong(const base::unique_fd& fd, const RpcWireHead
     auto it = mNodeForAddress.find(addr);
     if (it == mNodeForAddress.end()) {
         ALOGE("Unknown binder address %s for dec strong.", addr.toString().c_str());
-        dump();
         return OK;
     }
 
