@@ -18,8 +18,8 @@
 #include <android-base/logging.h>
 #include <benchmark/benchmark.h>
 #include <binder/Binder.h>
-#include <binder/RpcConnection.h>
 #include <binder/RpcServer.h>
+#include <binder/RpcSession.h>
 
 #include <thread>
 
@@ -30,8 +30,8 @@ using android::BBinder;
 using android::IBinder;
 using android::interface_cast;
 using android::OK;
-using android::RpcConnection;
 using android::RpcServer;
+using android::RpcSession;
 using android::sp;
 using android::binder::Status;
 
@@ -46,17 +46,17 @@ class MyBinderRpcBenchmark : public BnBinderRpcBenchmark {
     }
 };
 
-static sp<RpcConnection> gConnection = RpcConnection::make();
+static sp<RpcSession> gSession = RpcSession::make();
 
 void BM_getRootObject(benchmark::State& state) {
     while (state.KeepRunning()) {
-        CHECK(gConnection->getRootObject() != nullptr);
+        CHECK(gSession->getRootObject() != nullptr);
     }
 }
 BENCHMARK(BM_getRootObject);
 
 void BM_pingTransaction(benchmark::State& state) {
-    sp<IBinder> binder = gConnection->getRootObject();
+    sp<IBinder> binder = gSession->getRootObject();
     CHECK(binder != nullptr);
 
     while (state.KeepRunning()) {
@@ -66,7 +66,7 @@ void BM_pingTransaction(benchmark::State& state) {
 BENCHMARK(BM_pingTransaction);
 
 void BM_repeatString(benchmark::State& state) {
-    sp<IBinder> binder = gConnection->getRootObject();
+    sp<IBinder> binder = gSession->getRootObject();
     CHECK(binder != nullptr);
     sp<IBinderRpcBenchmark> iface = interface_cast<IBinderRpcBenchmark>(binder);
     CHECK(iface != nullptr);
@@ -95,7 +95,7 @@ void BM_repeatString(benchmark::State& state) {
 BENCHMARK(BM_repeatString);
 
 void BM_repeatBinder(benchmark::State& state) {
-    sp<IBinder> binder = gConnection->getRootObject();
+    sp<IBinder> binder = gSession->getRootObject();
     CHECK(binder != nullptr);
     sp<IBinderRpcBenchmark> iface = interface_cast<IBinderRpcBenchmark>(binder);
     CHECK(iface != nullptr);
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
     for (size_t tries = 0; tries < 5; tries++) {
         usleep(10000);
-        if (gConnection->setupUnixDomainClient(addr.c_str())) goto success;
+        if (gSession->setupUnixDomainClient(addr.c_str())) goto success;
     }
     LOG(FATAL) << "Could not connect.";
 success:
