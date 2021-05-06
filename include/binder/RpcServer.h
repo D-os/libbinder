@@ -17,7 +17,7 @@
 
 #include <android-base/unique_fd.h>
 #include <binder/IBinder.h>
-#include <binder/RpcConnection.h>
+#include <binder/RpcSession.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 
@@ -48,12 +48,12 @@ public:
     static sp<RpcServer> make();
 
     /**
-     * This represents a connection for responses, e.g.:
+     * This represents a session for responses, e.g.:
      *
      *     process A serves binder a
-     *     process B opens a connection to process A
+     *     process B opens a session to process A
      *     process B makes binder b and sends it to A
-     *     A uses this 'back connection' to send things back to B
+     *     A uses this 'back session' to send things back to B
      */
     [[nodiscard]] bool setupUnixDomainServer(const char* path);
 
@@ -78,7 +78,7 @@ public:
     void iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
 
     /**
-     * This must be called before adding a client connection.
+     * This must be called before adding a client session.
      *
      * If this is not specified, this will be a single-threaded server.
      *
@@ -96,7 +96,7 @@ public:
     sp<IBinder> getRootObject();
 
     /**
-     * You must have at least one client connection before calling this.
+     * You must have at least one client session before calling this.
      *
      * TODO(b/185167543): way to shut down?
      */
@@ -105,7 +105,7 @@ public:
     /**
      * For debugging!
      */
-    std::vector<sp<RpcConnection>> listConnections();
+    std::vector<sp<RpcSession>> listSessions();
 
     ~RpcServer();
 
@@ -118,12 +118,12 @@ private:
     bool mAgreedExperimental = false;
     bool mStarted = false; // TODO(b/185167543): support dynamically added clients
     size_t mMaxThreads = 1;
-    base::unique_fd mServer; // socket we are accepting connections on
+    base::unique_fd mServer; // socket we are accepting sessions on
 
     std::mutex mLock; // for below
     sp<IBinder> mRootObject;
-    std::map<int32_t, sp<RpcConnection>> mConnections;
-    int32_t mConnectionIdCounter = 0;
+    std::map<int32_t, sp<RpcSession>> mSessions;
+    int32_t mSessionIdCounter = 0;
 };
 
 } // namespace android
