@@ -18,7 +18,7 @@ interface IBinderRpcTest {
     oneway void sendString(@utf8InCpp String str);
     @utf8InCpp String doubleString(@utf8InCpp String str);
 
-    // number of known RPC binders to process, RpcState::countBinders by connection
+    // number of known RPC binders to process, RpcState::countBinders by session
     int[] countBinders();
 
     // Caller sends server, callee pings caller's server and returns error code.
@@ -36,7 +36,7 @@ interface IBinderRpcTest {
     // should always return the same binder
     IBinder alwaysGiveMeTheSameBinder();
 
-    // Idea is that the server will not hold onto the session, the remote connection
+    // Idea is that the server will not hold onto the session, the remote session
     // object must. This is to test lifetimes of binder objects, and consequently, also
     // identity (since by assigning sessions names, we can make sure a section always
     // references the session it was originally opened with).
