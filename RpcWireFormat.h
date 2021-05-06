@@ -48,10 +48,10 @@ enum : uint32_t {
 enum : uint32_t {
     RPC_SPECIAL_TRANSACT_GET_ROOT = 0,
     RPC_SPECIAL_TRANSACT_GET_MAX_THREADS = 1,
-    RPC_SPECIAL_TRANSACT_GET_CONNECTION_ID = 2,
+    RPC_SPECIAL_TRANSACT_GET_SESSION_ID = 2,
 };
 
-constexpr int32_t RPC_CONNECTION_ID_NEW = -1;
+constexpr int32_t RPC_SESSION_ID_NEW = -1;
 
 // serialization is like:
 // |RpcWireHeader|struct desginated by 'command'| (over and over again)
