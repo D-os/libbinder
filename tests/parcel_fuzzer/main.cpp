@@ -23,7 +23,7 @@
 #include <iostream>
 
 #include <android-base/logging.h>
-#include <binder/RpcConnection.h>
+#include <binder/RpcSession.h>
 #include <fuzzbinder/random_parcel.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -33,7 +33,7 @@
 #include <sys/time.h>
 
 using android::fillRandomParcel;
-using android::RpcConnection;
+using android::RpcSession;
 using android::sp;
 
 void fillRandomParcel(::android::hardware::Parcel* p, FuzzedDataProvider&& provider) {
@@ -61,9 +61,9 @@ void doFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
     P p;
     if constexpr (std::is_same_v<P, android::Parcel>) {
         if (provider.ConsumeBool()) {
-            auto connection = sp<RpcConnection>::make();
-            CHECK(connection->addNullDebuggingClient());
-            p.markForRpc(connection);
+            auto session = sp<RpcSession>::make();
+            CHECK(session->addNullDebuggingClient());
+            p.markForRpc(session);
             fillRandomParcelData(&p, std::move(provider));
         } else {
             fillRandomParcel(&p, std::move(provider));
