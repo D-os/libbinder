@@ -134,4 +134,5 @@ int main(int argc, char** argv) {
 success:
 
     ::benchmark::RunSpecifiedBenchmarks();
+    return 0;
 }
