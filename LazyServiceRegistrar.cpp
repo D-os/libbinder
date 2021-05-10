@@ -123,16 +123,20 @@ bool ClientCounterCallbackImpl::registerService(const sp<IBinder>& service, cons
     std::string regStr = (reRegister) ? "Re-registering" : "Registering";
     ALOGI("%s service %s", regStr.c_str(), name.c_str());
 
-    if (!manager->addService(name.c_str(), service, allowIsolated, dumpFlags).isOk()) {
-        ALOGE("Failed to register service %s", name.c_str());
+    if (Status status = manager->addService(name.c_str(), service, allowIsolated, dumpFlags);
+        !status.isOk()) {
+        ALOGE("Failed to register service %s (%s)", name.c_str(), status.toString8().c_str());
         return false;
     }
 
     if (!reRegister) {
-        if (!manager->registerClientCallback(name, service,
-                                             sp<android::os::IClientCallback>::fromExisting(this))
-                     .isOk()) {
-            ALOGE("Failed to add client callback for service %s", name.c_str());
+        if (Status status =
+                    manager->registerClientCallback(name, service,
+                                                    sp<android::os::IClientCallback>::fromExisting(
+                                                            this));
+            !status.isOk()) {
+            ALOGE("Failed to add client callback for service %s (%s)", name.c_str(),
+                  status.toString8().c_str());
             return false;
         }
 
@@ -171,10 +175,10 @@ bool ClientCounterCallbackImpl::tryUnregister() {
     auto manager = interface_cast<AidlServiceManager>(asBinder(defaultServiceManager()));
 
     for (auto& [name, entry] : mRegisteredServices) {
-        bool success = manager->tryUnregisterService(name, entry.service).isOk();
+        Status status = manager->tryUnregisterService(name, entry.service);
 
-        if (!success) {
-            ALOGI("Failed to unregister service %s", name.c_str());
+        if (!status.isOk()) {
+            ALOGI("Failed to unregister service %s (%s)", name.c_str(), status.toString8().c_str());
             return false;
         }
         entry.registered = false;
