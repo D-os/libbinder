@@ -24,6 +24,7 @@
 #include <string_view>
 
 #include <binder/Parcel.h>
+#include <binder/RpcServer.h>
 #include <binder/Stability.h>
 #include <utils/String8.h>
 
@@ -142,8 +143,10 @@ void RpcSession::startThread(unique_fd client) {
         holdThis->join(unique_fd(fd));
         {
             std::lock_guard<std::mutex> _l(holdThis->mMutex);
-            size_t erased = mThreads.erase(std::this_thread::get_id());
-            LOG_ALWAYS_FATAL_IF(erased != 0, "Could not erase thread.");
+            auto it = mThreads.find(std::this_thread::get_id());
+            LOG_ALWAYS_FATAL_IF(it == mThreads.end());
+            it->second.detach();
+            mThreads.erase(it);
         }
     });
     mThreads[thread.get_id()] = std::move(thread);
@@ -166,6 +169,22 @@ void RpcSession::join(unique_fd client) {
 
     LOG_ALWAYS_FATAL_IF(!removeServerConnection(connection),
                         "bad state: connection object guaranteed to be in list");
+}
+
+void RpcSession::terminateLocked() {
+    // TODO(b/185167543):
+    // - kindly notify other side of the connection of termination (can't be
+    // locked)
+    // - prevent new client/servers from being added
+    // - stop all threads which are currently reading/writing
+    // - terminate RpcState?
+
+    if (mTerminated) return;
+
+    sp<RpcServer> server = mForServer.promote();
+    if (server) {
+        server->onSessionTerminating(sp<RpcSession>::fromExisting(this));
+    }
 }
 
 wp<RpcServer> RpcSession::server() {
@@ -264,6 +283,9 @@ bool RpcSession::removeServerConnection(const sp<RpcConnection>& connection) {
     std::lock_guard<std::mutex> _l(mMutex);
     if (auto it = std::find(mServers.begin(), mServers.end(), connection); it != mServers.end()) {
         mServers.erase(it);
+        if (mServers.size() == 0) {
+            terminateLocked();
+        }
         return true;
     }
     return false;
