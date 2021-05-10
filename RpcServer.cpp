@@ -121,8 +121,6 @@ sp<IBinder> RpcServer::getRootObject() {
 
 void RpcServer::join() {
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
-
-    std::vector<std::thread> pool;
     {
         std::lock_guard<std::mutex> _l(mLock);
         LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
