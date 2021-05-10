@@ -118,6 +118,7 @@ private:
 
     void startThread(base::unique_fd client);
     void join(base::unique_fd client);
+    void terminateLocked();
 
     struct RpcConnection : public RefBase {
         base::unique_fd fd;
@@ -196,6 +197,7 @@ private:
     // TODO(b/185167543): allow sharing between different sessions in a
     // process? (or combine with mServers)
     std::map<std::thread::id, std::thread> mThreads;
+    bool mTerminated = false;
 };
 
 } // namespace android

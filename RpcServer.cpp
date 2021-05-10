@@ -216,4 +216,16 @@ bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
     return true;
 }
 
+void RpcServer::onSessionTerminating(const sp<RpcSession>& session) {
+    auto id = session->mId;
+    LOG_ALWAYS_FATAL_IF(id == std::nullopt, "Server sessions must be initialized with ID");
+    LOG_RPC_DETAIL("Dropping session %d", *id);
+
+    std::lock_guard<std::mutex> _l(mLock);
+    auto it = mSessions.find(*id);
+    LOG_ALWAYS_FATAL_IF(it == mSessions.end(), "Bad state, unknown session id %d", *id);
+    LOG_ALWAYS_FATAL_IF(it->second != session, "Bad state, session has id mismatch %d", *id);
+    (void)mSessions.erase(it);
+}
+
 } // namespace android
