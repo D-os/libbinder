@@ -24,9 +24,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#ifdef __BIONIC__
-#include <linux/vm_sockets.h>
-#endif
+#include "vm_sockets.h"
 
 namespace android {
 
@@ -59,8 +57,6 @@ private:
     sockaddr_un mAddr;
 };
 
-#ifdef __BIONIC__
-
 class VsockSocketAddress : public RpcSocketAddress {
 public:
     VsockSocketAddress(unsigned int cid, unsigned int port)
@@ -79,8 +75,6 @@ public:
 private:
     sockaddr_vm mAddr;
 };
-
-#endif // __BIONIC__
 
 class InetSocketAddress : public RpcSocketAddress {
 public:

@@ -57,12 +57,10 @@ public:
      */
     [[nodiscard]] bool setupUnixDomainServer(const char* path);
 
-#ifdef __BIONIC__
     /**
      * Creates an RPC server at the current port.
      */
     [[nodiscard]] bool setupVsockServer(unsigned int port);
-#endif // __BIONIC__
 
     /**
      * Creates an RPC server at the current port using IPv4.
