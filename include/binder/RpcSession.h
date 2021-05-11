@@ -163,13 +163,13 @@ private:
         bool mReentrant = false;
     };
 
-    // On the other side of a session, for each of mClients here, there should
-    // be one of mServers on the other side (and vice versa).
+    // On the other side of a session, for each of mClientConnections here, there should
+    // be one of mServerConnections on the other side (and vice versa).
     //
     // For the simplest session, a single server with one client, you would
     // have:
-    //  - the server has a single 'mServers' and a thread listening on this
-    //  - the client has a single 'mClients' and makes calls to this
+    //  - the server has a single 'mServerConnections' and a thread listening on this
+    //  - the client has a single 'mClientConnections' and makes calls to this
     //  - here, when the client makes a call, the server can call back into it
     //    (nested calls), but outside of this, the client will only ever read
     //    calls from the server when it makes a call itself.
@@ -188,14 +188,15 @@ private:
 
     std::condition_variable mAvailableConnectionCv; // for mWaitingThreads
     size_t mWaitingThreads = 0;
-    size_t mClientsOffset = 0; // hint index into clients, ++ when sending an async transaction
-    std::vector<sp<RpcConnection>> mClients;
-    std::vector<sp<RpcConnection>> mServers;
+    // hint index into clients, ++ when sending an async transaction
+    size_t mClientConnectionsOffset = 0;
+    std::vector<sp<RpcConnection>> mClientConnections;
+    std::vector<sp<RpcConnection>> mServerConnections;
 
     // TODO(b/185167543): use for reverse sessions (allow client to also
     // serve calls on a session).
     // TODO(b/185167543): allow sharing between different sessions in a
-    // process? (or combine with mServers)
+    // process? (or combine with mServerConnections)
     std::map<std::thread::id, std::thread> mThreads;
     bool mTerminated = false;
 };
