@@ -20,6 +20,18 @@ namespace android {
 #pragma clang diagnostic push
 #pragma clang diagnostic error "-Wpadded"
 
+constexpr int32_t RPC_SESSION_ID_NEW = -1;
+
+enum : uint8_t {
+    RPC_CONNECTION_OPTION_REVERSE = 0x1,
+};
+
+struct RpcConnectionHeader {
+    int32_t sessionId;
+    uint8_t options;
+    uint8_t reserved[3];
+};
+
 enum : uint32_t {
     /**
      * follows is RpcWireTransaction, if flags != oneway, reply w/ RPC_COMMAND_REPLY expected
@@ -50,8 +62,6 @@ enum : uint32_t {
     RPC_SPECIAL_TRANSACT_GET_MAX_THREADS = 1,
     RPC_SPECIAL_TRANSACT_GET_SESSION_ID = 2,
 };
-
-constexpr int32_t RPC_SESSION_ID_NEW = -1;
 
 // serialization is like:
 // |RpcWireHeader|struct desginated by 'command'| (over and over again)
