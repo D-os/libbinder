@@ -34,14 +34,11 @@
 #include <iostream>
 #include <thread>
 
-#ifdef __BIONIC__
-#include <linux/vm_sockets.h>
-#endif //__BIONIC__
-
 #include <sys/prctl.h>
 #include <unistd.h>
 
-#include "../RpcState.h" // for debugging
+#include "../RpcState.h"   // for debugging
+#include "../vm_sockets.h" // for VMADDR_*
 
 namespace android {
 
@@ -291,19 +288,15 @@ struct BinderRpcTestProcessSession {
 
 enum class SocketType {
     UNIX,
-#ifdef __BIONIC__
     VSOCK,
-#endif // __BIONIC__
     INET,
 };
 static inline std::string PrintSocketType(const testing::TestParamInfo<SocketType>& info) {
     switch (info.param) {
         case SocketType::UNIX:
             return "unix_domain_socket";
-#ifdef __BIONIC__
         case SocketType::VSOCK:
             return "vm_socket";
-#endif // __BIONIC__
         case SocketType::INET:
             return "inet_socket";
         default:
@@ -334,26 +327,25 @@ public:
                     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
                     server->setMaxThreads(numThreads);
 
+                    unsigned int outPort = 0;
+
                     switch (socketType) {
                         case SocketType::UNIX:
                             CHECK(server->setupUnixDomainServer(addr.c_str())) << addr;
                             break;
-#ifdef __BIONIC__
                         case SocketType::VSOCK:
                             CHECK(server->setupVsockServer(vsockPort));
                             break;
-#endif // __BIONIC__
                         case SocketType::INET: {
-                            unsigned int outPort = 0;
                             CHECK(server->setupInetServer(0, &outPort));
                             CHECK_NE(0, outPort);
-                            CHECK(android::base::WriteFully(pipe->writeEnd(), &outPort,
-                                                            sizeof(outPort)));
                             break;
                         }
                         default:
                             LOG_ALWAYS_FATAL("Unknown socket type");
                     }
+
+                    CHECK(android::base::WriteFully(pipe->writeEnd(), &outPort, sizeof(outPort)));
 
                     configure(server);
 
@@ -361,32 +353,27 @@ public:
                 }),
         };
 
-        unsigned int inetPort = 0;
+        // always read socket, so that we have waited for the server to start
+        unsigned int outPort = 0;
+        CHECK(android::base::ReadFully(ret.host.getPipe()->readEnd(), &outPort, sizeof(outPort)));
         if (socketType == SocketType::INET) {
-            CHECK(android::base::ReadFully(ret.host.getPipe()->readEnd(), &inetPort,
-                                           sizeof(inetPort)));
-            CHECK_NE(0, inetPort);
+            CHECK_NE(0, outPort);
         }
 
         for (size_t i = 0; i < numSessions; i++) {
             sp<RpcSession> session = RpcSession::make();
-            for (size_t tries = 0; tries < 10; tries++) {
-                usleep(10000);
-                switch (socketType) {
-                    case SocketType::UNIX:
-                        if (session->setupUnixDomainClient(addr.c_str())) goto success;
-                        break;
-#ifdef __BIONIC__
-                    case SocketType::VSOCK:
-                        if (session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort)) goto success;
-                        break;
-#endif // __BIONIC__
-                    case SocketType::INET:
-                        if (session->setupInetClient("127.0.0.1", inetPort)) goto success;
-                        break;
-                    default:
-                        LOG_ALWAYS_FATAL("Unknown socket type");
-                }
+            switch (socketType) {
+                case SocketType::UNIX:
+                    if (session->setupUnixDomainClient(addr.c_str())) goto success;
+                    break;
+                case SocketType::VSOCK:
+                    if (session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort)) goto success;
+                    break;
+                case SocketType::INET:
+                    if (session->setupInetClient("127.0.0.1", outPort)) goto success;
+                    break;
+                default:
+                    LOG_ALWAYS_FATAL("Unknown socket type");
             }
             LOG_ALWAYS_FATAL("Could not connect");
         success:
@@ -934,9 +921,10 @@ TEST_P(BinderRpc, Fds) {
 INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc,
                         ::testing::ValuesIn({
                                 SocketType::UNIX,
+// TODO(b/185269356): working on host
 #ifdef __BIONIC__
                                 SocketType::VSOCK,
-#endif // __BIONIC__
+#endif
                                 SocketType::INET,
                         }),
                         PrintSocketType);
