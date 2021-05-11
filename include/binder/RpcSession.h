@@ -52,12 +52,10 @@ public:
      */
     [[nodiscard]] bool setupUnixDomainClient(const char* path);
 
-#ifdef __BIONIC__
     /**
      * Connects to an RPC server at the CVD & port.
      */
     [[nodiscard]] bool setupVsockClient(unsigned int cvd, unsigned int port);
-#endif // __BIONIC__
 
     /**
      * Connects to an RPC server at the given address and port.
