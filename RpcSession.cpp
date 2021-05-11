@@ -49,7 +49,7 @@ RpcSession::~RpcSession() {
     LOG_RPC_DETAIL("RpcSession destroyed %p", this);
 
     std::lock_guard<std::mutex> _l(mMutex);
-    LOG_ALWAYS_FATAL_IF(mServers.size() != 0,
+    LOG_ALWAYS_FATAL_IF(mServerConnections.size() != 0,
                         "Should not be able to destroy a session with servers in use.");
 }
 
@@ -194,9 +194,9 @@ wp<RpcServer> RpcSession::server() {
 bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     {
         std::lock_guard<std::mutex> _l(mMutex);
-        LOG_ALWAYS_FATAL_IF(mClients.size() != 0,
+        LOG_ALWAYS_FATAL_IF(mClientConnections.size() != 0,
                             "Must only setup session once, but already has %zu clients",
-                            mClients.size());
+                            mClientConnections.size());
     }
 
     if (!setupOneSocketClient(addr, RPC_SESSION_ID_NEW)) return false;
@@ -261,7 +261,7 @@ void RpcSession::addClient(unique_fd fd) {
     std::lock_guard<std::mutex> _l(mMutex);
     sp<RpcConnection> session = sp<RpcConnection>::make();
     session->fd = std::move(fd);
-    mClients.push_back(session);
+    mClientConnections.push_back(session);
 }
 
 void RpcSession::setForServer(const wp<RpcServer>& server, int32_t sessionId) {
@@ -274,16 +274,17 @@ sp<RpcSession::RpcConnection> RpcSession::assignServerToThisThread(unique_fd fd)
     sp<RpcConnection> session = sp<RpcConnection>::make();
     session->fd = std::move(fd);
     session->exclusiveTid = gettid();
-    mServers.push_back(session);
+    mServerConnections.push_back(session);
 
     return session;
 }
 
 bool RpcSession::removeServerConnection(const sp<RpcConnection>& connection) {
     std::lock_guard<std::mutex> _l(mMutex);
-    if (auto it = std::find(mServers.begin(), mServers.end(), connection); it != mServers.end()) {
-        mServers.erase(it);
-        if (mServers.size() == 0) {
+    if (auto it = std::find(mServerConnections.begin(), mServerConnections.end(), connection);
+        it != mServerConnections.end()) {
+        mServerConnections.erase(it);
+        if (mServerConnections.size() == 0) {
             terminateLocked();
         }
         return true;
@@ -305,10 +306,11 @@ RpcSession::ExclusiveConnection::ExclusiveConnection(const sp<RpcSession>& sessi
         // CHECK FOR DEDICATED CLIENT SOCKET
         //
         // A server/looper should always use a dedicated session if available
-        findConnection(tid, &exclusive, &available, mSession->mClients, mSession->mClientsOffset);
+        findConnection(tid, &exclusive, &available, mSession->mClientConnections,
+                       mSession->mClientConnectionsOffset);
 
         // WARNING: this assumes a server cannot request its client to send
-        // a transaction, as mServers is excluded below.
+        // a transaction, as mServerConnections is excluded below.
         //
         // Imagine we have more than one thread in play, and a single thread
         // sends a synchronous, then an asynchronous command. Imagine the
@@ -318,7 +320,8 @@ RpcSession::ExclusiveConnection::ExclusiveConnection(const sp<RpcSession>& sessi
         // command. So, we move to considering the second available thread
         // for subsequent calls.
         if (use == ConnectionUse::CLIENT_ASYNC && (exclusive != nullptr || available != nullptr)) {
-            mSession->mClientsOffset = (mSession->mClientsOffset + 1) % mSession->mClients.size();
+            mSession->mClientConnectionsOffset =
+                    (mSession->mClientConnectionsOffset + 1) % mSession->mClientConnections.size();
         }
 
         // USE SERVING SOCKET (for nested transaction)
@@ -326,7 +329,7 @@ RpcSession::ExclusiveConnection::ExclusiveConnection(const sp<RpcSession>& sessi
         // asynchronous calls cannot be nested
         if (use != ConnectionUse::CLIENT_ASYNC) {
             // server connections are always assigned to a thread
-            findConnection(tid, &exclusive, nullptr /*available*/, mSession->mServers,
+            findConnection(tid, &exclusive, nullptr /*available*/, mSession->mServerConnections,
                            0 /* index hint */);
         }
 
@@ -342,13 +345,13 @@ RpcSession::ExclusiveConnection::ExclusiveConnection(const sp<RpcSession>& sessi
         }
 
         // in regular binder, this would usually be a deadlock :)
-        LOG_ALWAYS_FATAL_IF(mSession->mClients.size() == 0,
+        LOG_ALWAYS_FATAL_IF(mSession->mClientConnections.size() == 0,
                             "Not a client of any session. You must create a session to an "
                             "RPC server to make any non-nested (e.g. oneway or on another thread) "
                             "calls.");
 
         LOG_RPC_DETAIL("No available session (have %zu clients and %zu servers). Waiting...",
-                       mSession->mClients.size(), mSession->mServers.size());
+                       mSession->mClientConnections.size(), mSession->mServerConnections.size());
         mSession->mAvailableConnectionCv.wait(_l);
     }
     mSession->mWaitingThreads--;
