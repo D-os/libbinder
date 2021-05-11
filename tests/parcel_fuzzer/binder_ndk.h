@@ -23,7 +23,7 @@
 
 // libbinder_ndk doesn't export this header which breaks down its API for NDK
 // and APEX users, but we need access to it to fuzz.
-#include "../ndk/parcel_internal.h"
+#include "../../ndk/parcel_internal.h"
 
 class NdkParcelAdapter {
 public:
