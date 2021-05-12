@@ -84,7 +84,7 @@ bool RpcSession::addNullDebuggingClient() {
         return false;
     }
 
-    addClient(std::move(serverFd));
+    addClientConnection(std::move(serverFd));
     return true;
 }
 
@@ -255,7 +255,7 @@ bool RpcSession::setupOneSocketClient(const RpcSocketAddress& addr, int32_t id) 
 
         LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
 
-        addClient(std::move(serverFd));
+        addClientConnection(std::move(serverFd));
         return true;
     }
 
@@ -263,7 +263,7 @@ bool RpcSession::setupOneSocketClient(const RpcSocketAddress& addr, int32_t id) 
     return false;
 }
 
-void RpcSession::addClient(unique_fd fd) {
+void RpcSession::addClientConnection(unique_fd fd) {
     std::lock_guard<std::mutex> _l(mMutex);
     sp<RpcConnection> session = sp<RpcConnection>::make();
     session->fd = std::move(fd);
