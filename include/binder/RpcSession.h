@@ -81,7 +81,7 @@ public:
      * Query the other side of the session for the maximum number of threads
      * it supports (maximum number of concurrent non-nested synchronous transactions)
      */
-    status_t getMaxThreads(size_t* maxThreads);
+    status_t getRemoteMaxThreads(size_t* maxThreads);
 
     [[nodiscard]] status_t transact(const RpcAddress& address, uint32_t code, const Parcel& data,
                                     Parcel* reply, uint32_t flags);
