@@ -131,24 +131,14 @@ status_t RpcSession::readId() {
     return OK;
 }
 
-void RpcSession::startThread(unique_fd client) {
-    std::lock_guard<std::mutex> _l(mMutex);
-    sp<RpcSession> holdThis = sp<RpcSession>::fromExisting(this);
-    int fd = client.release();
-    auto thread = std::thread([=] {
-        holdThis->join(unique_fd(fd));
-        {
-            std::lock_guard<std::mutex> _l(holdThis->mMutex);
-            auto it = mThreads.find(std::this_thread::get_id());
-            LOG_ALWAYS_FATAL_IF(it == mThreads.end());
-            it->second.detach();
-            mThreads.erase(it);
-        }
-    });
-    mThreads[thread.get_id()] = std::move(thread);
-}
+void RpcSession::join(std::thread thread, unique_fd client) {
+    LOG_ALWAYS_FATAL_IF(thread.get_id() != std::this_thread::get_id(), "Must own this thread");
 
-void RpcSession::join(unique_fd client) {
+    {
+        std::lock_guard<std::mutex> _l(mMutex);
+        mThreads[thread.get_id()] = std::move(thread);
+    }
+
     // must be registered to allow arbitrary client code executing commands to
     // be able to do nested calls (we can't only read from it)
     sp<RpcConnection> connection = assignServerToThisThread(std::move(client));
@@ -165,6 +155,14 @@ void RpcSession::join(unique_fd client) {
 
     LOG_ALWAYS_FATAL_IF(!removeServerConnection(connection),
                         "bad state: connection object guaranteed to be in list");
+
+    {
+        std::lock_guard<std::mutex> _l(mMutex);
+        auto it = mThreads.find(std::this_thread::get_id());
+        LOG_ALWAYS_FATAL_IF(it == mThreads.end());
+        it->second.detach();
+        mThreads.erase(it);
+    }
 }
 
 void RpcSession::terminateLocked() {
