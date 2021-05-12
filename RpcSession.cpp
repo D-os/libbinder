@@ -93,7 +93,7 @@ sp<IBinder> RpcSession::getRootObject() {
     return state()->getRootObject(connection.fd(), sp<RpcSession>::fromExisting(this));
 }
 
-status_t RpcSession::getMaxThreads(size_t* maxThreads) {
+status_t RpcSession::getRemoteMaxThreads(size_t* maxThreads) {
     ExclusiveConnection connection(sp<RpcSession>::fromExisting(this), ConnectionUse::CLIENT);
     return state()->getMaxThreads(connection.fd(), sp<RpcSession>::fromExisting(this), maxThreads);
 }
@@ -201,7 +201,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     // instead of all at once.
     // TODO(b/186470974): first risk of blocking
     size_t numThreadsAvailable;
-    if (status_t status = getMaxThreads(&numThreadsAvailable); status != OK) {
+    if (status_t status = getRemoteMaxThreads(&numThreadsAvailable); status != OK) {
         ALOGE("Could not get max threads after initial session to %s: %s", addr.toString().c_str(),
               statusToString(status).c_str());
         return false;
