@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 
+#include <android-base/scopeguard.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
 #include <log/log.h>
@@ -32,6 +33,7 @@
 
 namespace android {
 
+using base::ScopeGuard;
 using base::unique_fd;
 
 RpcServer::RpcServer() {}
@@ -157,10 +159,11 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
 
     // TODO(b/183988761): cannot trust this simple ID
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    bool idValid = true;
     int32_t id;
     if (sizeof(id) != read(clientFd.get(), &id, sizeof(id))) {
         ALOGE("Could not read ID from fd %d", clientFd.get());
-        return;
+        idValid = false;
     }
 
     std::thread thisThread;
@@ -172,7 +175,12 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         LOG_ALWAYS_FATAL_IF(threadId == mConnectingThreads.end(),
                             "Must establish connection on owned thread");
         thisThread = std::move(threadId->second);
+        ScopeGuard detachGuard = [&]() { thisThread.detach(); };
         mConnectingThreads.erase(threadId);
+
+        if (!idValid) {
+            return;
+        }
 
         if (id == RPC_SESSION_ID_NEW) {
             LOG_ALWAYS_FATAL_IF(mSessionIdCounter >= INT32_MAX, "Out of session IDs");
@@ -190,6 +198,9 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
             }
             session = it->second;
         }
+
+        detachGuard.Disable();
+        session->preJoin(std::move(thisThread));
     }
 
     // avoid strong cycle
@@ -199,7 +210,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     // DO NOT ACCESS MEMBER VARIABLES BELOW
     //
 
-    session->join(std::move(thisThread), std::move(clientFd));
+    session->join(std::move(clientFd));
 }
 
 bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
