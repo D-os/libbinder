@@ -22,6 +22,7 @@
 #include <utils/RefBase.h>
 
 #include <mutex>
+#include <thread>
 
 // WARNING: This is a feature which is still in development, and it is subject
 // to radical change. Any production use of this may subject your code to any
@@ -115,6 +116,7 @@ private:
     friend sp<RpcServer>;
     RpcServer();
 
+    void establishConnection(sp<RpcServer>&& session, base::unique_fd clientFd);
     bool setupSocketServer(const RpcSocketAddress& address);
 
     bool mAgreedExperimental = false;
@@ -123,6 +125,7 @@ private:
     base::unique_fd mServer; // socket we are accepting sessions on
 
     std::mutex mLock; // for below
+    std::map<std::thread::id, std::thread> mConnectingThreads;
     sp<IBinder> mRootObject;
     std::map<int32_t, sp<RpcSession>> mSessions;
     int32_t mSessionIdCounter = 0;

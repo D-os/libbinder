@@ -114,8 +114,7 @@ private:
 
     status_t readId();
 
-    void startThread(base::unique_fd client);
-    void join(base::unique_fd client);
+    void join(std::thread thread, base::unique_fd client);
     void terminateLocked();
 
     struct RpcConnection : public RefBase {
