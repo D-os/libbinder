@@ -35,7 +35,7 @@ __BEGIN_DECLS
  * \return EX_NONE on success.
  */
 __attribute__((warn_unused_result)) binder_exception_t AServiceManager_addService(
-        AIBinder* binder, const char* instance);
+        AIBinder* binder, const char* instance) __INTRODUCED_IN(29);
 
 /**
  * Gets a binder object with this specific instance name. Will return nullptr immediately if the
@@ -47,7 +47,8 @@ __attribute__((warn_unused_result)) binder_exception_t AServiceManager_addServic
  *
  * \param instance identifier of the service used to lookup the service.
  */
-__attribute__((warn_unused_result)) AIBinder* AServiceManager_checkService(const char* instance);
+__attribute__((warn_unused_result)) AIBinder* AServiceManager_checkService(const char* instance)
+        __INTRODUCED_IN(29);
 
 /**
  * Gets a binder object with this specific instance name. Blocks for a couple of seconds waiting on
@@ -59,7 +60,8 @@ __attribute__((warn_unused_result)) AIBinder* AServiceManager_checkService(const
  *
  * \param instance identifier of the service used to lookup the service.
  */
-__attribute__((warn_unused_result)) AIBinder* AServiceManager_getService(const char* instance);
+__attribute__((warn_unused_result)) AIBinder* AServiceManager_getService(const char* instance)
+        __INTRODUCED_IN(29);
 
 /**
  * Registers a lazy service with the default service manager under the 'instance' name.
