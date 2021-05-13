@@ -108,9 +108,16 @@ public:
     void join();
 
     /**
+     * Accept one connection on this server. You must have at least one client
+     * session before calling this.
+     */
+    [[nodiscard]] bool acceptOne();
+
+    /**
      * For debugging!
      */
     std::vector<sp<RpcSession>> listSessions();
+    size_t numUninitializedSessions();
 
     ~RpcServer();
 
