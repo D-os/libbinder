@@ -131,14 +131,16 @@ status_t RpcSession::readId() {
     return OK;
 }
 
-void RpcSession::join(std::thread thread, unique_fd client) {
+void RpcSession::preJoin(std::thread thread) {
     LOG_ALWAYS_FATAL_IF(thread.get_id() != std::this_thread::get_id(), "Must own this thread");
 
     {
         std::lock_guard<std::mutex> _l(mMutex);
         mThreads[thread.get_id()] = std::move(thread);
     }
+}
 
+void RpcSession::join(unique_fd client) {
     // must be registered to allow arbitrary client code executing commands to
     // be able to do nested calls (we can't only read from it)
     sp<RpcConnection> connection = assignServerToThisThread(std::move(client));

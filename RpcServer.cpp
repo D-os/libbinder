@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 
+#include <android-base/scopeguard.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
 #include <log/log.h>
@@ -32,6 +33,7 @@
 
 namespace android {
 
+using base::ScopeGuard;
 using base::unique_fd;
 
 RpcServer::RpcServer() {}
@@ -125,30 +127,33 @@ sp<IBinder> RpcServer::getRootObject() {
 }
 
 void RpcServer::join() {
+    while (true) {
+        (void)acceptOne();
+    }
+}
+
+bool RpcServer::acceptOne() {
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
+
+    unique_fd clientFd(
+            TEMP_FAILURE_RETRY(accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
+
+    if (clientFd < 0) {
+        ALOGE("Could not accept4 socket: %s", strerror(errno));
+        return false;
+    }
+    LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
+
     {
         std::lock_guard<std::mutex> _l(mLock);
-        LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
+        std::thread thread =
+                std::thread(&RpcServer::establishConnection, this,
+                            std::move(sp<RpcServer>::fromExisting(this)), std::move(clientFd));
+        mConnectingThreads[thread.get_id()] = std::move(thread);
     }
 
-    while (true) {
-        unique_fd clientFd(TEMP_FAILURE_RETRY(
-                accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
-
-        if (clientFd < 0) {
-            ALOGE("Could not accept4 socket: %s", strerror(errno));
-            continue;
-        }
-        LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
-
-        {
-            std::lock_guard<std::mutex> _l(mLock);
-            std::thread thread =
-                    std::thread(&RpcServer::establishConnection, this,
-                                std::move(sp<RpcServer>::fromExisting(this)), std::move(clientFd));
-            mConnectingThreads[thread.get_id()] = std::move(thread);
-        }
-    }
+    return true;
 }
 
 std::vector<sp<RpcSession>> RpcServer::listSessions() {
@@ -161,15 +166,21 @@ std::vector<sp<RpcSession>> RpcServer::listSessions() {
     return sessions;
 }
 
+size_t RpcServer::numUninitializedSessions() {
+    std::lock_guard<std::mutex> _l(mLock);
+    return mConnectingThreads.size();
+}
+
 void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd) {
     LOG_ALWAYS_FATAL_IF(this != server.get(), "Must pass same ownership object");
 
     // TODO(b/183988761): cannot trust this simple ID
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    bool idValid = true;
     int32_t id;
     if (sizeof(id) != read(clientFd.get(), &id, sizeof(id))) {
         ALOGE("Could not read ID from fd %d", clientFd.get());
-        return;
+        idValid = false;
     }
 
     std::thread thisThread;
@@ -181,7 +192,12 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         LOG_ALWAYS_FATAL_IF(threadId == mConnectingThreads.end(),
                             "Must establish connection on owned thread");
         thisThread = std::move(threadId->second);
+        ScopeGuard detachGuard = [&]() { thisThread.detach(); };
         mConnectingThreads.erase(threadId);
+
+        if (!idValid) {
+            return;
+        }
 
         if (id == RPC_SESSION_ID_NEW) {
             LOG_ALWAYS_FATAL_IF(mSessionIdCounter >= INT32_MAX, "Out of session IDs");
@@ -199,6 +215,9 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
             }
             session = it->second;
         }
+
+        detachGuard.Disable();
+        session->preJoin(std::move(thisThread));
     }
 
     // avoid strong cycle
@@ -208,7 +227,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     // DO NOT ACCESS MEMBER VARIABLES BELOW
     //
 
-    session->join(std::move(thisThread), std::move(clientFd));
+    session->join(std::move(clientFd));
 }
 
 bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {

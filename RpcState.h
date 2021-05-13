@@ -101,10 +101,10 @@ private:
      */
     void terminate();
 
-    // alternative to std::vector<uint8_t> that doesn't abort on too big of allocations
-    struct ByteVec {
-        explicit ByteVec(size_t size)
-              : mData(size > 0 ? new (std::nothrow) uint8_t[size] : nullptr), mSize(size) {}
+    // Alternative to std::vector<uint8_t> that doesn't abort on allocation failure and caps
+    // large allocations to avoid being requested from allocating too much data.
+    struct CommandData {
+        explicit CommandData(size_t size);
         bool valid() { return mSize == 0 || mData != nullptr; }
         size_t size() { return mSize; }
         uint8_t* data() { return mData.get(); }
@@ -128,7 +128,7 @@ private:
                                            const RpcWireHeader& command);
     [[nodiscard]] status_t processTransactInternal(const base::unique_fd& fd,
                                                    const sp<RpcSession>& session,
-                                                   ByteVec transactionData);
+                                                   CommandData transactionData);
     [[nodiscard]] status_t processDecStrong(const base::unique_fd& fd,
                                             const RpcWireHeader& command);
 
@@ -163,7 +163,7 @@ private:
 
         // async transaction queue, _only_ for local binder
         struct AsyncTodo {
-            ByteVec data;
+            CommandData data;
             uint64_t asyncNumber = 0;
 
             bool operator<(const AsyncTodo& o) const {
