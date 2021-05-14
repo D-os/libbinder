@@ -50,8 +50,12 @@ class LazyServiceRegistrar {
                               int dumpFlags = IServiceManager::DUMP_FLAG_PRIORITY_DEFAULT);
      /**
       * Force the service to persist, even when it has 0 clients.
-      * If setting this flag from the server side, make sure to do so before calling registerService,
-      * or there may be a race with the default dynamic shutdown.
+      * If setting this flag from the server side, make sure to do so before calling
+      * registerService, or there may be a race with the default dynamic shutdown.
+      *
+      * This should only be used if it is every eventually set to false. If a
+      * service needs to persist but doesn't need to dynamically shut down,
+      * prefer to control it with another mechanism such as ctl.start.
       */
      void forcePersist(bool persist);
 
