@@ -62,7 +62,7 @@ public:
              * call. If not in a binder call, this will return getpid. If the
              * call is oneway, this will return 0.
              */
-            pid_t               getCallingPid() const;
+            [[nodiscard]] pid_t getCallingPid() const;
 
             /**
              * Returns the SELinux security identifier of the process which has
@@ -73,13 +73,13 @@ public:
              * This can't be restored once it's cleared, and it does not return the
              * context of the current process when not in a binder call.
              */
-            const char*         getCallingSid() const;
+            [[nodiscard]] const char* getCallingSid() const;
 
             /**
              * Returns the UID of the process which has made the current binder
              * call. If not in a binder call, this will return 0.
              */
-            uid_t               getCallingUid() const;
+            [[nodiscard]] uid_t getCallingUid() const;
 
             /**
              * Make it an abort to rely on getCalling* for a section of
