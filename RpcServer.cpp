@@ -134,7 +134,7 @@ void RpcServer::join() {
 
 bool RpcServer::acceptOne() {
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
-    LOG_ALWAYS_FATAL_IF(mServer.get() == -1, "RpcServer must be setup to join.");
+    LOG_ALWAYS_FATAL_IF(!hasServer(), "RpcServer must be setup to join.");
 
     unique_fd clientFd(
             TEMP_FAILURE_RETRY(accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
@@ -232,11 +232,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
 
 bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
     LOG_RPC_DETAIL("Setting up socket server %s", addr.toString().c_str());
-
-    {
-        std::lock_guard<std::mutex> _l(mLock);
-        LOG_ALWAYS_FATAL_IF(mServer.get() != -1, "Each RpcServer can only have one server.");
-    }
+    LOG_ALWAYS_FATAL_IF(hasServer(), "Each RpcServer can only have one server.");
 
     unique_fd serverFd(
             TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
@@ -273,6 +269,11 @@ void RpcServer::onSessionTerminating(const sp<RpcSession>& session) {
     LOG_ALWAYS_FATAL_IF(it == mSessions.end(), "Bad state, unknown session id %d", *id);
     LOG_ALWAYS_FATAL_IF(it->second != session, "Bad state, session has id mismatch %d", *id);
     (void)mSessions.erase(it);
+}
+
+bool RpcServer::hasServer() {
+    std::lock_guard<std::mutex> _l(mLock);
+    return mServer.ok();
 }
 
 } // namespace android
