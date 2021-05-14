@@ -272,8 +272,26 @@ void RpcServer::onSessionTerminating(const sp<RpcSession>& session) {
 }
 
 bool RpcServer::hasServer() {
+    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
     std::lock_guard<std::mutex> _l(mLock);
     return mServer.ok();
+}
+
+unique_fd RpcServer::releaseServer() {
+    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    std::lock_guard<std::mutex> _l(mLock);
+    return std::move(mServer);
+}
+
+bool RpcServer::setupExternalServer(base::unique_fd serverFd) {
+    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    std::lock_guard<std::mutex> _l(mLock);
+    if (mServer.ok()) {
+        ALOGE("Each RpcServer can only have one server.");
+        return false;
+    }
+    mServer = std::move(serverFd);
+    return true;
 }
 
 } // namespace android

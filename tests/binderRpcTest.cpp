@@ -50,6 +50,19 @@ TEST(BinderRpcParcel, EntireParcelFormatted) {
     EXPECT_DEATH(p.markForBinder(sp<BBinder>::make()), "");
 }
 
+TEST(BinderRpc, SetExternalServer) {
+    base::unique_fd sink(TEMP_FAILURE_RETRY(open("/dev/null", O_RDWR)));
+    int sinkFd = sink.get();
+    auto server = RpcServer::make();
+    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+    ASSERT_FALSE(server->hasServer());
+    ASSERT_TRUE(server->setupExternalServer(std::move(sink)));
+    ASSERT_TRUE(server->hasServer());
+    base::unique_fd retrieved = server->releaseServer();
+    ASSERT_FALSE(server->hasServer());
+    ASSERT_EQ(sinkFd, retrieved.get());
+}
+
 using android::binder::Status;
 
 #define EXPECT_OK(status)                 \
