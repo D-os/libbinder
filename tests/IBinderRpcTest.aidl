@@ -55,4 +55,6 @@ interface IBinderRpcTest {
     oneway void sleepMsAsync(int ms);
 
     void die(boolean cleanup);
+
+    void useKernelBinderCallingId();
 }
