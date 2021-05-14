@@ -74,6 +74,11 @@ public:
      */
     [[nodiscard]] bool setupInetServer(unsigned int port, unsigned int* assignedPort);
 
+    /**
+     * If setup*Server has been successful, return true. Otherwise return false.
+     */
+    [[nodiscard]] bool hasServer();
+
     void iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
 
     /**
