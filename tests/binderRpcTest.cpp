@@ -23,7 +23,6 @@
 #include <android/binder_libbinder.h>
 #include <binder/Binder.h>
 #include <binder/BpBinder.h>
-#include <binder/IPCThreadState.h>
 #include <binder/IServiceManager.h>
 #include <binder/ProcessState.h>
 #include <binder/RpcServer.h>
@@ -178,13 +177,6 @@ public:
         } else {
             _exit(1);
         }
-    }
-    Status useKernelBinderCallingId() override {
-        // this is WRONG! It does not make sense when using RPC binder, and
-        // because it is SO wrong, and so much code calls this, it should abort!
-
-        (void)IPCThreadState::self()->getCallingPid();
-        return Status::ok();
     }
 };
 sp<IBinder> MyBinderRpcTest::mHeldBinder;
@@ -880,19 +872,6 @@ TEST_P(BinderRpc, Die) {
 
         proc.expectInvalid = true;
     }
-}
-
-TEST_P(BinderRpc, UseKernelBinderCallingId) {
-    auto proc = createRpcTestSocketServerProcess(1);
-
-    // we can't allocate IPCThreadState so actually the first time should
-    // succeed :(
-    EXPECT_OK(proc.rootIface->useKernelBinderCallingId());
-
-    // second time! we catch the error :)
-    EXPECT_EQ(DEAD_OBJECT, proc.rootIface->useKernelBinderCallingId().transactionError());
-
-    proc.expectInvalid = true;
 }
 
 TEST_P(BinderRpc, WorksWithLibbinderNdkPing) {
