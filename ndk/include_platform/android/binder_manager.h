@@ -135,6 +135,10 @@ bool AServiceManager_isUpdatableViaApex(const char* instance) __INTRODUCED_IN(31
 /**
  * Prevent lazy services without client from shutting down their process
  *
+ * This should only be used if it is every eventually set to false. If a
+ * service needs to persist but doesn't need to dynamically shut down,
+ * prefer to control it with another mechanism.
+ *
  * \param persist 'true' if the process should not exit.
  */
 void AServiceManager_forceLazyServicesPersist(bool persist) __INTRODUCED_IN(31);
