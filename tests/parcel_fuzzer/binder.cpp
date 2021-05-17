@@ -66,6 +66,10 @@ struct ExampleLightFlattenable : public android::LightFlattenablePod<ExampleLigh
     int32_t mValue = 0;
 };
 
+struct BigStruct {
+    uint8_t data[1337];
+};
+
 #define PARCEL_READ_WITH_STATUS(T, FUN) \
     [] (const ::android::Parcel& p, uint8_t /*data*/) {\
         FUZZ_LOG() << "about to read " #T " using " #FUN " with status";\
@@ -231,8 +235,12 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         FUZZ_LOG() << "read lite flattenable: " << status;
     },
 
-    // TODO(b/131868573): can force read of arbitrarily sized vector
-    // TODO: resizeOutVector
+    PARCEL_READ_WITH_STATUS(std::vector<uint8_t>, resizeOutVector),
+    PARCEL_READ_WITH_STATUS(std::optional<std::vector<uint8_t>>, resizeOutVector),
+    PARCEL_READ_WITH_STATUS(std::unique_ptr<std::vector<uint8_t>>, resizeOutVector),
+    PARCEL_READ_WITH_STATUS(std::vector<BigStruct>, resizeOutVector),
+    PARCEL_READ_WITH_STATUS(std::optional<std::vector<BigStruct>>, resizeOutVector),
+    PARCEL_READ_WITH_STATUS(std::unique_ptr<std::vector<BigStruct>>, resizeOutVector),
 
     PARCEL_READ_NO_STATUS(int32_t, readExceptionCode),
     [] (const android::Parcel& p, uint8_t /*len*/) {
