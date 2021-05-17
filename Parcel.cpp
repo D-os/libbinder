@@ -1466,6 +1466,29 @@ const void* Parcel::readInplace(size_t len) const
     return nullptr;
 }
 
+status_t Parcel::readOutVectorSizeWithCheck(size_t elmSize, int32_t* size) const {
+    if (status_t status = readInt32(size); status != OK) return status;
+    if (*size < 0) return OK; // may be null, client to handle
+
+    LOG_ALWAYS_FATAL_IF(elmSize > INT32_MAX, "Cannot have element as big as %zu", elmSize);
+
+    // approximation, can't know max element size (e.g. if it makes heap
+    // allocations)
+    static_assert(sizeof(int) == sizeof(int32_t), "Android is LP64");
+    int32_t allocationSize;
+    if (__builtin_smul_overflow(elmSize, *size, &allocationSize)) return NO_MEMORY;
+
+    // High limit of 1MB since something this big could never be returned. Could
+    // probably scope this down, but might impact very specific usecases.
+    constexpr int32_t kMaxAllocationSize = 1 * 1000 * 1000;
+
+    if (allocationSize >= kMaxAllocationSize) {
+        return NO_MEMORY;
+    }
+
+    return OK;
+}
+
 template<class T>
 status_t Parcel::readAligned(T *pArg) const {
     static_assert(PAD_SIZE_UNSAFE(sizeof(T)) == sizeof(T));
