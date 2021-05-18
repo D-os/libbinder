@@ -366,43 +366,17 @@ status_t IPCThreadState::clearLastError()
 
 pid_t IPCThreadState::getCallingPid() const
 {
-    checkContextIsBinderForUse(__func__);
     return mCallingPid;
 }
 
 const char* IPCThreadState::getCallingSid() const
 {
-    checkContextIsBinderForUse(__func__);
     return mCallingSid;
 }
 
 uid_t IPCThreadState::getCallingUid() const
 {
-    checkContextIsBinderForUse(__func__);
     return mCallingUid;
-}
-
-IPCThreadState::SpGuard* IPCThreadState::pushGetCallingSpGuard(SpGuard* guard) {
-    SpGuard* orig = mServingStackPointerGuard;
-    mServingStackPointerGuard = guard;
-    return orig;
-}
-
-void IPCThreadState::restoreGetCallingSpGuard(SpGuard* guard) {
-    mServingStackPointerGuard = guard;
-}
-
-void IPCThreadState::checkContextIsBinderForUse(const char* use) const {
-    if (mServingStackPointerGuard == nullptr) return;
-
-    if (!mServingStackPointer || mServingStackPointerGuard < mServingStackPointer) {
-        LOG_ALWAYS_FATAL("In context %s, %s does not make sense.",
-                         mServingStackPointerGuard->context, use);
-    }
-
-    // in the case mServingStackPointer is deeper in the stack than the guard,
-    // we must be serving a binder transaction (maybe nested). This is a binder
-    // context, so we don't abort
 }
 
 int64_t IPCThreadState::clearCallingIdentity()
@@ -873,15 +847,15 @@ status_t IPCThreadState::clearDeathNotification(int32_t handle, BpBinder* proxy)
 }
 
 IPCThreadState::IPCThreadState()
-      : mProcess(ProcessState::self()),
-        mServingStackPointer(nullptr),
-        mServingStackPointerGuard(nullptr),
-        mWorkSource(kUnsetWorkSource),
-        mPropagateWorkSource(false),
-        mIsLooper(false),
-        mStrictModePolicy(0),
-        mLastTransactionBinderFlags(0),
-        mCallRestriction(mProcess->mCallRestriction) {
+    : mProcess(ProcessState::self()),
+      mServingStackPointer(nullptr),
+      mWorkSource(kUnsetWorkSource),
+      mPropagateWorkSource(false),
+      mIsLooper(false),
+      mStrictModePolicy(0),
+      mLastTransactionBinderFlags(0),
+      mCallRestriction(mProcess->mCallRestriction)
+{
     pthread_setspecific(gTLS, this);
     clearCaller();
     mIn.setDataCapacity(256);
