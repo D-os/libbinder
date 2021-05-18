@@ -81,6 +81,36 @@ public:
              */
             uid_t               getCallingUid() const;
 
+            /**
+             * Make it an abort to rely on getCalling* for a section of
+             * execution.
+             *
+             * Usage:
+             *     IPCThreadState::SpGuard guard {
+             *        .address = __builtin_frame_address(0),
+             *        .context = "...",
+             *     };
+             *     const auto* orig = pushGetCallingSpGuard(&guard);
+             *     {
+             *         // will abort if you call getCalling*, unless you are
+             *         // serving a nested binder transaction
+             *     }
+             *     restoreCallingSpGuard(orig);
+             */
+            struct SpGuard {
+                const void* address;
+                const char* context;
+            };
+            const SpGuard* pushGetCallingSpGuard(const SpGuard* guard);
+            void restoreGetCallingSpGuard(const SpGuard* guard);
+            /**
+             * Used internally by getCalling*. Can also be used to assert that
+             * you are in a binder context (getCalling* is valid). This is
+             * intentionally not exposed as a boolean API since code should be
+             * written to know its environment.
+             */
+            void checkContextIsBinderForUse(const char* use) const;
+
             void                setStrictModePolicy(int32_t policy);
             int32_t             getStrictModePolicy() const;
 
@@ -203,6 +233,7 @@ private:
             Parcel              mOut;
             status_t            mLastError;
             const void*         mServingStackPointer;
+            const SpGuard* mServingStackPointerGuard;
             pid_t               mCallingPid;
             const char*         mCallingSid;
             uid_t               mCallingUid;

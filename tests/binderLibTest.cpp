@@ -73,6 +73,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_REGISTER_SERVER,
     BINDER_LIB_TEST_ADD_SERVER,
     BINDER_LIB_TEST_ADD_POLL_SERVER,
+    BINDER_LIB_TEST_USE_CALLING_GUARD_TRANSACTION,
     BINDER_LIB_TEST_CALL_BACK,
     BINDER_LIB_TEST_CALL_BACK_VERIFY_BUF,
     BINDER_LIB_TEST_DELAYED_CALL_BACK,
@@ -602,6 +603,13 @@ TEST_F(BinderLibTest, CallBack)
                 StatusEq(NO_ERROR));
     EXPECT_THAT(callBack->waitEvent(5), StatusEq(NO_ERROR));
     EXPECT_THAT(callBack->getResult(), StatusEq(NO_ERROR));
+}
+
+TEST_F(BinderLibTest, BinderCallContextGuard) {
+    sp<IBinder> binder = addServer();
+    Parcel data, reply;
+    EXPECT_THAT(binder->transact(BINDER_LIB_TEST_USE_CALLING_GUARD_TRANSACTION, data, &reply),
+                StatusEq(DEAD_OBJECT));
 }
 
 TEST_F(BinderLibTest, AddServer)
@@ -1262,6 +1270,21 @@ class BinderLibTestService : public BBinder
                 pthread_mutex_unlock(&m_serverWaitMutex);
                 return ret;
             }
+            case BINDER_LIB_TEST_USE_CALLING_GUARD_TRANSACTION: {
+                IPCThreadState::SpGuard spGuard{
+                        .address = __builtin_frame_address(0),
+                        .context = "GuardInBinderTransaction",
+                };
+                const IPCThreadState::SpGuard *origGuard =
+                        IPCThreadState::self()->pushGetCallingSpGuard(&spGuard);
+
+                // if the guard works, this should abort
+                (void)IPCThreadState::self()->getCallingPid();
+
+                IPCThreadState::self()->restoreGetCallingSpGuard(origGuard);
+                return NO_ERROR;
+            }
+
             case BINDER_LIB_TEST_GETPID:
                 reply->writeInt32(getpid());
                 return NO_ERROR;
@@ -1488,6 +1511,14 @@ class BinderLibTestService : public BBinder
 int run_server(int index, int readypipefd, bool usePoll)
 {
     binderLibTestServiceName += String16(binderserversuffix);
+
+    // Testing to make sure that calls that we are serving can use getCallin*
+    // even though we don't here.
+    IPCThreadState::SpGuard spGuard{
+            .address = __builtin_frame_address(0),
+            .context = "main server thread",
+    };
+    (void)IPCThreadState::self()->pushGetCallingSpGuard(&spGuard);
 
     status_t ret;
     sp<IServiceManager> sm = defaultServiceManager();
