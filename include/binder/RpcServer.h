@@ -117,6 +117,11 @@ public:
     sp<IBinder> getRootObject();
 
     /**
+     * Runs join() in a background thread. Immediately returns.
+     */
+    void start();
+
+    /**
      * You must have at least one client session before calling this.
      *
      * If a client needs to actively terminate join, call shutdown() in a separate thread.
@@ -159,12 +164,13 @@ private:
     base::unique_fd mServer; // socket we are accepting sessions on
 
     std::mutex mLock; // for below
+    std::unique_ptr<std::thread> mJoinThread;
+    bool mJoinThreadRunning = false;
     std::map<std::thread::id, std::thread> mConnectingThreads;
     sp<IBinder> mRootObject;
     wp<IBinder> mRootObjectWeak;
     std::map<int32_t, sp<RpcSession>> mSessions;
     int32_t mSessionIdCounter = 0;
-    bool mJoinThreadRunning = false;
     std::unique_ptr<RpcSession::FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;
 };
