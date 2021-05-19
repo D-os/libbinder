@@ -31,37 +31,27 @@ static bool marked = false;
 static const std::vector<
         std::function<void(FuzzedDataProvider*, android::sp<android::IBinder> const&)>>
         gStabilityOperations = {
-                // markCompilationUnit(IBinder* binder)
                 [](FuzzedDataProvider*, android::sp<android::IBinder> const& bbinder) -> void {
                     if (!marked) {
                         android::internal::Stability::markCompilationUnit(bbinder.get());
                         marked = true;
                     }
                 },
-
-                // markVintf(IBinder* binder)
                 [](FuzzedDataProvider*, android::sp<android::IBinder> const& bbinder) -> void {
                     if (!marked) {
                         android::internal::Stability::markVintf(bbinder.get());
                         marked = true;
                     }
                 },
-
-                // debugLogStability(const std::string& tag, const sp<IBinder>& binder)
-                [](FuzzedDataProvider* fdp, android::sp<android::IBinder> const& bbinder) -> void {
-                    std::string tag = fdp->ConsumeRandomLengthString(STABILITY_MAX_TAG_LENGTH);
-                    android::internal::Stability::debugLogStability(tag, bbinder);
+                [](FuzzedDataProvider*, android::sp<android::IBinder> const& bbinder) -> void {
+                    (void)android::internal::Stability::debugToString(bbinder);
                 },
-
-                // markVndk(IBinder* binder)
                 [](FuzzedDataProvider*, android::sp<android::IBinder> const& bbinder) -> void {
                     if (!marked) {
                         android::internal::Stability::markVndk(bbinder.get());
                         marked = true;
                     }
                 },
-
-                // requiresVintfDeclaration(const sp<IBinder>& binder)
                 [](FuzzedDataProvider*, android::sp<android::IBinder> const& bbinder) -> void {
                     android::internal::Stability::requiresVintfDeclaration(bbinder);
                 }};
