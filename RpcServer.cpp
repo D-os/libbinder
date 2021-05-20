@@ -128,6 +128,17 @@ sp<IBinder> RpcServer::getRootObject() {
     return ret;
 }
 
+static void joinRpcServer(sp<RpcServer>&& thiz) {
+    thiz->join();
+}
+
+void RpcServer::start() {
+    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    std::lock_guard<std::mutex> _l(mLock);
+    LOG_ALWAYS_FATAL_IF(mJoinThread.get(), "Already started!");
+    mJoinThread = std::make_unique<std::thread>(&joinRpcServer, sp<RpcServer>::fromExisting(this));
+}
+
 void RpcServer::join() {
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
 
@@ -177,6 +188,17 @@ bool RpcServer::shutdown() {
 
     mShutdownTrigger->trigger();
     while (mJoinThreadRunning) mShutdownCv.wait(_l);
+
+    // At this point, we know join() is about to exit, but the thread that calls
+    // join() may not have exited yet.
+    // If RpcServer owns the join thread (aka start() is called), make sure the thread exits;
+    // otherwise ~thread() may call std::terminate(), which may crash the process.
+    // If RpcServer does not own the join thread (aka join() is called directly),
+    // then the owner of RpcServer is responsible for cleaning up that thread.
+    if (mJoinThread.get()) {
+        mJoinThread->join();
+        mJoinThread.reset();
+    }
 
     mShutdownTrigger = nullptr;
     return true;
