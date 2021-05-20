@@ -39,7 +39,9 @@ using base::ScopeGuard;
 using base::unique_fd;
 
 RpcServer::RpcServer() {}
-RpcServer::~RpcServer() {}
+RpcServer::~RpcServer() {
+    (void)shutdown();
+}
 
 sp<RpcServer> RpcServer::make() {
     return sp<RpcServer>::make();
@@ -204,7 +206,6 @@ bool RpcServer::acceptOneNoCheck() {
 }
 
 bool RpcServer::shutdown() {
-    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
     std::unique_lock<std::mutex> _l(mLock);
     if (mShutdownTrigger == nullptr) return false;
 
