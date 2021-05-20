@@ -16,14 +16,12 @@
 
 #define LOG_TAG "RpcServer"
 
-#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
 #include <thread>
 #include <vector>
 
-#include <android-base/macros.h>
 #include <android-base/scopeguard.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
@@ -140,22 +138,7 @@ void RpcServer::join() {
         LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr, "Cannot create join signaler");
     }
 
-    while (true) {
-        pollfd pfd[]{{.fd = mServer.get(), .events = POLLIN, .revents = 0},
-                     {.fd = mShutdownTrigger->readFd().get(), .events = POLLHUP, .revents = 0}};
-        int ret = TEMP_FAILURE_RETRY(poll(pfd, arraysize(pfd), -1));
-        if (ret < 0) {
-            ALOGE("Could not poll socket: %s", strerror(errno));
-            continue;
-        }
-        if (ret == 0) {
-            continue;
-        }
-        if (pfd[1].revents & POLLHUP) {
-            LOG_RPC_DETAIL("join() exiting because shutdown requested.");
-            break;
-        }
-
+    while (mShutdownTrigger->triggerablePollRead(mServer)) {
         (void)acceptOneNoCheck();
     }
 
