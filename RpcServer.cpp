@@ -128,16 +128,6 @@ sp<IBinder> RpcServer::getRootObject() {
     return ret;
 }
 
-std::unique_ptr<RpcServer::FdTrigger> RpcServer::FdTrigger::make() {
-    auto ret = std::make_unique<RpcServer::FdTrigger>();
-    if (!android::base::Pipe(&ret->mRead, &ret->mWrite)) return nullptr;
-    return ret;
-}
-
-void RpcServer::FdTrigger::trigger() {
-    mWrite.reset();
-}
-
 void RpcServer::join() {
     LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
 
@@ -146,7 +136,7 @@ void RpcServer::join() {
         LOG_ALWAYS_FATAL_IF(!mServer.ok(), "RpcServer must be setup to join.");
         LOG_ALWAYS_FATAL_IF(mShutdownTrigger != nullptr, "Already joined");
         mJoinThreadRunning = true;
-        mShutdownTrigger = FdTrigger::make();
+        mShutdownTrigger = RpcSession::FdTrigger::make();
         LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr, "Cannot create join signaler");
     }
 

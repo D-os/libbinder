@@ -153,23 +153,6 @@ public:
     void onSessionTerminating(const sp<RpcSession>& session);
 
 private:
-    /** This is not a pipe. */
-    struct FdTrigger {
-        static std::unique_ptr<FdTrigger> make();
-        /**
-         * poll() on this fd for POLLHUP to get notification when trigger is called
-         */
-        base::borrowed_fd readFd() const { return mRead; }
-        /**
-         * Close the write end of the pipe so that the read end receives POLLHUP.
-         */
-        void trigger();
-
-    private:
-        base::unique_fd mWrite;
-        base::unique_fd mRead;
-    };
-
     friend sp<RpcServer>;
     RpcServer();
 
@@ -188,7 +171,7 @@ private:
     std::map<int32_t, sp<RpcSession>> mSessions;
     int32_t mSessionIdCounter = 0;
     bool mJoinThreadRunning = false;
-    std::unique_ptr<FdTrigger> mShutdownTrigger;
+    std::unique_ptr<RpcSession::FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;
 };
 

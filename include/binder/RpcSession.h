@@ -112,6 +112,23 @@ private:
     friend RpcServer;
     RpcSession();
 
+    /** This is not a pipe. */
+    struct FdTrigger {
+        static std::unique_ptr<FdTrigger> make();
+        /**
+         * poll() on this fd for POLLHUP to get notification when trigger is called
+         */
+        base::borrowed_fd readFd() const { return mRead; }
+        /**
+         * Close the write end of the pipe so that the read end receives POLLHUP.
+         */
+        void trigger();
+
+    private:
+        base::unique_fd mWrite;
+        base::unique_fd mRead;
+    };
+
     status_t readId();
 
     // transfer ownership of thread

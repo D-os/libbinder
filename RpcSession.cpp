@@ -113,6 +113,16 @@ status_t RpcSession::sendDecStrong(const RpcAddress& address) {
     return state()->sendDecStrong(connection.fd(), address);
 }
 
+std::unique_ptr<RpcSession::FdTrigger> RpcSession::FdTrigger::make() {
+    auto ret = std::make_unique<RpcSession::FdTrigger>();
+    if (!android::base::Pipe(&ret->mRead, &ret->mWrite)) return nullptr;
+    return ret;
+}
+
+void RpcSession::FdTrigger::trigger() {
+    mWrite.reset();
+}
+
 status_t RpcSession::readId() {
     {
         std::lock_guard<std::mutex> _l(mMutex);
