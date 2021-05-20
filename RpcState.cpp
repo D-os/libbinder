@@ -18,9 +18,7 @@
 
 #include "RpcState.h"
 
-#include <android-base/scopeguard.h>
 #include <binder/BpBinder.h>
-#include <binder/IPCThreadState.h>
 #include <binder/RpcServer.h>
 
 #include "Debug.h"
@@ -29,8 +27,6 @@
 #include <inttypes.h>
 
 namespace android {
-
-using base::ScopeGuard;
 
 RpcState::RpcState() {}
 RpcState::~RpcState() {}
@@ -474,18 +470,6 @@ status_t RpcState::getAndExecuteCommand(const base::unique_fd& fd, const sp<RpcS
 
 status_t RpcState::processServerCommand(const base::unique_fd& fd, const sp<RpcSession>& session,
                                         const RpcWireHeader& command) {
-    IPCThreadState* kernelBinderState = IPCThreadState::selfOrNull();
-    IPCThreadState::SpGuard spGuard{"processing binder RPC command"};
-    IPCThreadState::SpGuard* origGuard;
-    if (kernelBinderState != nullptr) {
-        origGuard = kernelBinderState->pushGetCallingSpGuard(&spGuard);
-    }
-    ScopeGuard guardUnguard = [&]() {
-        if (kernelBinderState != nullptr) {
-            kernelBinderState->restoreGetCallingSpGuard(origGuard);
-        }
-    };
-
     switch (command.command) {
         case RPC_COMMAND_TRANSACT:
             return processTransact(fd, session, command);
