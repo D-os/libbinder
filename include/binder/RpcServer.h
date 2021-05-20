@@ -135,12 +135,6 @@ public:
     [[nodiscard]] bool shutdown();
 
     /**
-     * Accept one connection on this server. You must have at least one client
-     * session before calling this.
-     */
-    [[nodiscard]] bool acceptOne();
-
-    /**
      * For debugging!
      */
     std::vector<sp<RpcSession>> listSessions();
@@ -158,7 +152,7 @@ private:
 
     void establishConnection(sp<RpcServer>&& session, base::unique_fd clientFd);
     bool setupSocketServer(const RpcSocketAddress& address);
-    [[nodiscard]] bool acceptOneNoCheck();
+    [[nodiscard]] bool acceptOne();
 
     bool mAgreedExperimental = false;
     size_t mMaxThreads = 1;
