@@ -23,7 +23,8 @@
 #include <iostream>
 
 #include <android-base/logging.h>
-#include <binder/RpcSession.h>
+#include <android/binder_auto_utils.h>
+#include <android/binder_libbinder.h>
 #include <fuzzbinder/random_parcel.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -33,7 +34,6 @@
 #include <sys/time.h>
 
 using android::fillRandomParcel;
-using android::RpcSession;
 using android::sp;
 
 void fillRandomParcel(::android::hardware::Parcel* p, FuzzedDataProvider&& provider) {
@@ -46,9 +46,22 @@ static void fillRandomParcel(NdkParcelAdapter* p, FuzzedDataProvider&& provider)
     fillRandomParcel(p->parcel(), std::move(provider));
 }
 
+template <typename P, typename B>
+void doTransactFuzz(const char* backend, const sp<B>& binder, FuzzedDataProvider&& provider) {
+    uint32_t code = provider.ConsumeIntegral<uint32_t>();
+    uint32_t flag = provider.ConsumeIntegral<uint32_t>();
+
+    FUZZ_LOG() << "backend: " << backend;
+
+    P reply;
+    P data;
+    fillRandomParcel(&data, std::move(provider));
+    (void)binder->transact(code, data, &reply, flag);
+}
+
 template <typename P>
-void doFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
-            FuzzedDataProvider&& provider) {
+void doReadFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
+                FuzzedDataProvider&& provider) {
     // Allow some majority of the bytes to be dedicated to telling us what to
     // do. The fixed value added here represents that we want to test doing a
     // lot of 'instructions' even on really short parcels.
@@ -59,18 +72,7 @@ void doFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
             provider.ConsumeIntegralInRange<size_t>(0, maxInstructions));
 
     P p;
-    if constexpr (std::is_same_v<P, android::Parcel>) {
-        if (provider.ConsumeBool()) {
-            auto session = sp<RpcSession>::make();
-            CHECK(session->addNullDebuggingClient());
-            p.markForRpc(session);
-            fillRandomParcelData(&p, std::move(provider));
-        } else {
-            fillRandomParcel(&p, std::move(provider));
-        }
-    } else {
-        fillRandomParcel(&p, std::move(provider));
-    }
+    fillRandomParcel(&p, std::move(provider));
 
     // since we are only using a byte to index
     CHECK(reads.size() <= 255) << reads.size();
@@ -95,6 +97,17 @@ void doFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
     }
 }
 
+void* NothingClass_onCreate(void* args) {
+    return args;
+}
+void NothingClass_onDestroy(void* /*userData*/) {}
+binder_status_t NothingClass_onTransact(AIBinder*, transaction_code_t, const AParcel*, AParcel*) {
+    return STATUS_UNKNOWN_ERROR;
+}
+static AIBinder_Class* kNothingClass =
+        AIBinder_Class_define("nothing", NothingClass_onCreate, NothingClass_onDestroy,
+                              NothingClass_onTransact);
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if (size <= 1) return 0;  // no use
 
@@ -103,18 +116,35 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     FuzzedDataProvider provider = FuzzedDataProvider(data, size);
 
-    const std::function<void(FuzzedDataProvider &&)> fuzzBackend[3] = {
+    const std::function<void(FuzzedDataProvider &&)> fuzzBackend[] = {
             [](FuzzedDataProvider&& provider) {
-                doFuzz<::android::hardware::Parcel>("hwbinder", HWBINDER_PARCEL_READ_FUNCTIONS,
-                                                    std::move(provider));
+                doTransactFuzz<
+                        ::android::hardware::Parcel>("hwbinder",
+                                                     sp<::android::hardware::BHwBinder>::make(),
+                                                     std::move(provider));
             },
             [](FuzzedDataProvider&& provider) {
-                doFuzz<::android::Parcel>("binder", BINDER_PARCEL_READ_FUNCTIONS,
-                                          std::move(provider));
+                doTransactFuzz<::android::Parcel>("binder", sp<::android::BBinder>::make(),
+                                                  std::move(provider));
             },
             [](FuzzedDataProvider&& provider) {
-                doFuzz<NdkParcelAdapter>("binder_ndk", BINDER_NDK_PARCEL_READ_FUNCTIONS,
-                                         std::move(provider));
+                // fuzz from the libbinder layer since it's a superset of the
+                // interface you get at the libbinder_ndk layer
+                auto ndkBinder = ndk::SpAIBinder(AIBinder_new(kNothingClass, nullptr));
+                auto binder = AIBinder_toPlatformBinder(ndkBinder.get());
+                doTransactFuzz<::android::Parcel>("binder_ndk", binder, std::move(provider));
+            },
+            [](FuzzedDataProvider&& provider) {
+                doReadFuzz<::android::hardware::Parcel>("hwbinder", HWBINDER_PARCEL_READ_FUNCTIONS,
+                                                        std::move(provider));
+            },
+            [](FuzzedDataProvider&& provider) {
+                doReadFuzz<::android::Parcel>("binder", BINDER_PARCEL_READ_FUNCTIONS,
+                                              std::move(provider));
+            },
+            [](FuzzedDataProvider&& provider) {
+                doReadFuzz<NdkParcelAdapter>("binder_ndk", BINDER_NDK_PARCEL_READ_FUNCTIONS,
+                                             std::move(provider));
             },
     };
 
