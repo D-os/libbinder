@@ -61,7 +61,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     CHECK(server->setupUnixDomainServer(kSock.c_str()));
 
-    std::thread serverThread([=] { (void)server->acceptOne(); });
+    std::thread serverThread([=] { (void)server->join(); });
 
     sockaddr_un addr{
             .sun_family = AF_UNIX,
@@ -76,8 +76,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                      connect(clientFd.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr))))
             << strerror(errno);
 
-    serverThread.join();
-
     // TODO(b/182938024): fuzz multiple sessions, instead of just one
 
 #if 0
@@ -89,6 +87,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     CHECK(base::WriteFully(clientFd, data, size));
 
     clientFd.reset();
+
+    // TODO(185167543): currently this is okay because we only shutdown the one
+    // thread, but once we can shutdown other sessions, we'll need to change
+    // this behavior in order to make sure all of the input is actually read.
+    while (!server->shutdown()) usleep(100);
+    serverThread.join();
 
     // TODO(b/185167543): better way to force a server to shutdown
     while (!server->listSessions().empty() && server->numUninitializedSessions()) {
