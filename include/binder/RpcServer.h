@@ -150,7 +150,7 @@ private:
     friend sp<RpcServer>;
     RpcServer();
 
-    void establishConnection(sp<RpcServer>&& session, base::unique_fd clientFd);
+    static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
     bool setupSocketServer(const RpcSocketAddress& address);
     [[nodiscard]] bool acceptOne();
 

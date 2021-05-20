@@ -163,9 +163,8 @@ bool RpcServer::acceptOne() {
 
     {
         std::lock_guard<std::mutex> _l(mLock);
-        std::thread thread =
-                std::thread(&RpcServer::establishConnection, this,
-                            std::move(sp<RpcServer>::fromExisting(this)), std::move(clientFd));
+        std::thread thread = std::thread(&RpcServer::establishConnection,
+                                         sp<RpcServer>::fromExisting(this), std::move(clientFd));
         mConnectingThreads[thread.get_id()] = std::move(thread);
     }
 
@@ -199,10 +198,8 @@ size_t RpcServer::numUninitializedSessions() {
 }
 
 void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd) {
-    LOG_ALWAYS_FATAL_IF(this != server.get(), "Must pass same ownership object");
-
     // TODO(b/183988761): cannot trust this simple ID
-    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
+    LOG_ALWAYS_FATAL_IF(!server->mAgreedExperimental, "no!");
     bool idValid = true;
     int32_t id;
     if (sizeof(id) != read(clientFd.get(), &id, sizeof(id))) {
@@ -213,30 +210,30 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     std::thread thisThread;
     sp<RpcSession> session;
     {
-        std::lock_guard<std::mutex> _l(mLock);
+        std::lock_guard<std::mutex> _l(server->mLock);
 
-        auto threadId = mConnectingThreads.find(std::this_thread::get_id());
-        LOG_ALWAYS_FATAL_IF(threadId == mConnectingThreads.end(),
+        auto threadId = server->mConnectingThreads.find(std::this_thread::get_id());
+        LOG_ALWAYS_FATAL_IF(threadId == server->mConnectingThreads.end(),
                             "Must establish connection on owned thread");
         thisThread = std::move(threadId->second);
         ScopeGuard detachGuard = [&]() { thisThread.detach(); };
-        mConnectingThreads.erase(threadId);
+        server->mConnectingThreads.erase(threadId);
 
         if (!idValid) {
             return;
         }
 
         if (id == RPC_SESSION_ID_NEW) {
-            LOG_ALWAYS_FATAL_IF(mSessionIdCounter >= INT32_MAX, "Out of session IDs");
-            mSessionIdCounter++;
+            LOG_ALWAYS_FATAL_IF(server->mSessionIdCounter >= INT32_MAX, "Out of session IDs");
+            server->mSessionIdCounter++;
 
             session = RpcSession::make();
-            session->setForServer(wp<RpcServer>::fromExisting(this), mSessionIdCounter);
+            session->setForServer(wp<RpcServer>(server), server->mSessionIdCounter);
 
-            mSessions[mSessionIdCounter] = session;
+            server->mSessions[server->mSessionIdCounter] = session;
         } else {
-            auto it = mSessions.find(id);
-            if (it == mSessions.end()) {
+            auto it = server->mSessions.find(id);
+            if (it == server->mSessions.end()) {
                 ALOGE("Cannot add thread, no record of session with ID %d", id);
                 return;
             }
@@ -249,10 +246,6 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
 
     // avoid strong cycle
     server = nullptr;
-    //
-    //
-    // DO NOT ACCESS MEMBER VARIABLES BELOW
-    //
 
     session->join(std::move(clientFd));
 }
