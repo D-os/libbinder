@@ -19,10 +19,12 @@
 #include <binder/RpcSession.h>
 
 #include <inttypes.h>
+#include <poll.h>
 #include <unistd.h>
 
 #include <string_view>
 
+#include <android-base/macros.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
 #include <binder/Stability.h>
@@ -111,6 +113,35 @@ status_t RpcSession::sendDecStrong(const RpcAddress& address) {
     ExclusiveConnection connection(sp<RpcSession>::fromExisting(this),
                                    ConnectionUse::CLIENT_REFCOUNT);
     return state()->sendDecStrong(connection.fd(), address);
+}
+
+std::unique_ptr<RpcSession::FdTrigger> RpcSession::FdTrigger::make() {
+    auto ret = std::make_unique<RpcSession::FdTrigger>();
+    if (!android::base::Pipe(&ret->mRead, &ret->mWrite)) return nullptr;
+    return ret;
+}
+
+void RpcSession::FdTrigger::trigger() {
+    mWrite.reset();
+}
+
+bool RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
+    while (true) {
+        pollfd pfd[]{{.fd = fd.get(), .events = POLLIN, .revents = 0},
+                     {.fd = mRead.get(), .events = POLLHUP, .revents = 0}};
+        int ret = TEMP_FAILURE_RETRY(poll(pfd, arraysize(pfd), -1));
+        if (ret < 0) {
+            ALOGE("Could not poll: %s", strerror(errno));
+            continue;
+        }
+        if (ret == 0) {
+            continue;
+        }
+        if (pfd[1].revents & POLLHUP) {
+            return false;
+        }
+        return true;
+    }
 }
 
 status_t RpcSession::readId() {
