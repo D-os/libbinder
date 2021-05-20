@@ -64,6 +64,9 @@ libbinder_device_interface_sources = [
     "PermissionCache.cpp",
     "PermissionController.cpp",
 ]
+libbinder_no_vendor_interface_sources = [
+    ":packagemanager_aidl",
+]
 
 cc_library {
     name: "libbinder",
@@ -120,9 +123,8 @@ cc_library {
         "Status.cpp",
         "TextOutput.cpp",
         "Utils.cpp",
-        ":packagemanager_aidl",
         ":libbinder_aidl",
-    ],
+    ] + libbinder_no_vendor_interface_sources,
 
     target: {
         android: {
@@ -134,7 +136,7 @@ cc_library {
             },
         },
         vendor: {
-            exclude_srcs: libbinder_device_interface_sources,
+            exclude_srcs: libbinder_device_interface_sources + libbinder_no_vendor_interface_sources,
         },
         darwin: {
             enabled: false,
