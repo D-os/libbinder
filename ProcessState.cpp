@@ -359,6 +359,14 @@ status_t ProcessState::setThreadPoolMaxThreadCount(size_t maxThreads) {
     return result;
 }
 
+size_t ProcessState::getThreadPoolMaxThreadCount() const {
+    // may actually be one more than this, if join is called
+    if (mThreadPoolStarted) return mMaxThreads;
+    // must not be initialized or maybe has poll thread setup, we
+    // currently don't track this in libbinder
+    return 0;
+}
+
 status_t ProcessState::enableOnewaySpamDetection(bool enable) {
     uint32_t enableDetection = enable ? 1 : 0;
     if (ioctl(mDriverFD, BINDER_ENABLE_ONEWAY_SPAM_DETECTION, &enableDetection) == -1) {
