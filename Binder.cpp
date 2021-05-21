@@ -17,15 +17,23 @@
 #include <binder/Binder.h>
 
 #include <atomic>
-#include <utils/misc.h>
+
+#include <android-base/unique_fd.h>
 #include <binder/BpBinder.h>
 #include <binder/IInterface.h>
+#include <binder/IPCThreadState.h>
 #include <binder/IResultReceiver.h>
 #include <binder/IShellCallback.h>
 #include <binder/Parcel.h>
+#include <binder/RpcServer.h>
+#include <private/android_filesystem_config.h>
+#include <utils/misc.h>
 
+#include <inttypes.h>
 #include <linux/sched.h>
 #include <stdio.h>
+
+#include "RpcState.h"
 
 namespace android {
 
@@ -37,6 +45,12 @@ static_assert(sizeof(BBinder) == 40);
 #else
 static_assert(sizeof(IBinder) == 12);
 static_assert(sizeof(BBinder) == 20);
+#endif
+
+#ifdef BINDER_RPC_DEV_SERVERS
+constexpr const bool kEnableRpcDevServers = true;
+#else
+constexpr const bool kEnableRpcDevServers = false;
 #endif
 
 // ---------------------------------------------------------------------------
@@ -136,6 +150,33 @@ status_t IBinder::getDebugPid(pid_t* out) {
     return OK;
 }
 
+status_t IBinder::setRpcClientDebug(android::base::unique_fd socketFd, uint32_t maxRpcThreads) {
+    if constexpr (!kEnableRpcDevServers) {
+        ALOGW("setRpcClientDebug disallowed because RPC is not enabled");
+        return INVALID_OPERATION;
+    }
+
+    BBinder* local = this->localBinder();
+    if (local != nullptr) {
+        return local->BBinder::setRpcClientDebug(std::move(socketFd), maxRpcThreads);
+    }
+
+    BpBinder* proxy = this->remoteBinder();
+    LOG_ALWAYS_FATAL_IF(proxy == nullptr, "binder object must be either local or remote");
+
+    Parcel data;
+    Parcel reply;
+    status_t status;
+    if (status = data.writeBool(socketFd.ok()); status != OK) return status;
+    if (socketFd.ok()) {
+        // writeUniqueFileDescriptor currently makes an unnecessary dup().
+        status = data.writeFileDescriptor(socketFd.release(), true /* own */);
+        if (status != OK) return status;
+    }
+    if (status = data.writeUint32(maxRpcThreads); status != OK) return status;
+    return transact(SET_RPC_CLIENT_TRANSACTION, data, &reply);
+}
+
 // ---------------------------------------------------------------------------
 
 class BBinder::Extras
@@ -150,6 +191,7 @@ public:
 
     // for below objects
     Mutex mLock;
+    sp<RpcServer> mRpcServer;
     BpBinder::ObjectManager mObjects;
 };
 
@@ -199,6 +241,10 @@ status_t BBinder::transact(
         case DEBUG_PID_TRANSACTION:
             err = reply->writeInt32(getDebugPid());
             break;
+        case SET_RPC_CLIENT_TRANSACTION: {
+            err = setRpcClientDebug(data);
+            break;
+        }
         default:
             err = onTransact(code, data, reply, flags);
             break;
@@ -366,6 +412,75 @@ pid_t BBinder::getDebugPid() {
 void BBinder::setExtension(const sp<IBinder>& extension) {
     Extras* e = getOrCreateExtras();
     e->mExtension = extension;
+}
+
+status_t BBinder::setRpcClientDebug(const Parcel& data) {
+    if constexpr (!kEnableRpcDevServers) {
+        ALOGW("%s: disallowed because RPC is not enabled", __PRETTY_FUNCTION__);
+        return INVALID_OPERATION;
+    }
+    uid_t uid = IPCThreadState::self()->getCallingUid();
+    if (uid != AID_ROOT) {
+        ALOGE("%s: not allowed because client %" PRIu32 " is not root", __PRETTY_FUNCTION__, uid);
+        return PERMISSION_DENIED;
+    }
+    status_t status;
+    bool hasSocketFd;
+    android::base::unique_fd clientFd;
+    uint32_t maxRpcThreads;
+
+    if (status = data.readBool(&hasSocketFd); status != OK) return status;
+    if (hasSocketFd) {
+        if (status = data.readUniqueFileDescriptor(&clientFd); status != OK) return status;
+    }
+    if (status = data.readUint32(&maxRpcThreads); status != OK) return status;
+
+    return setRpcClientDebug(std::move(clientFd), maxRpcThreads);
+}
+
+status_t BBinder::setRpcClientDebug(android::base::unique_fd socketFd, uint32_t maxRpcThreads) {
+    if constexpr (!kEnableRpcDevServers) {
+        ALOGW("%s: disallowed because RPC is not enabled", __PRETTY_FUNCTION__);
+        return INVALID_OPERATION;
+    }
+
+    const int socketFdForPrint = socketFd.get();
+    LOG_RPC_DETAIL("%s(%d, %" PRIu32 ")", __PRETTY_FUNCTION__, socketFdForPrint, maxRpcThreads);
+
+    if (!socketFd.ok()) {
+        ALOGE("%s: No socket FD provided.", __PRETTY_FUNCTION__);
+        return BAD_VALUE;
+    }
+    if (maxRpcThreads <= 0) {
+        ALOGE("%s: RPC is useless with %" PRIu32 " threads.", __PRETTY_FUNCTION__, maxRpcThreads);
+        return BAD_VALUE;
+    }
+
+    // TODO(b/182914638): RPC and binder should share the same thread pool count.
+    size_t binderThreadPoolMaxCount = ProcessState::self()->getThreadPoolMaxThreadCount();
+    if (binderThreadPoolMaxCount <= 1) {
+        ALOGE("%s: ProcessState thread pool max count is %zu. RPC is disabled for this service "
+              "because RPC requires the service to support multithreading.",
+              __PRETTY_FUNCTION__, binderThreadPoolMaxCount);
+        return INVALID_OPERATION;
+    }
+
+    Extras* e = getOrCreateExtras();
+    AutoMutex _l(e->mLock);
+    if (e->mRpcServer != nullptr) {
+        ALOGE("%s: Already have RPC client", __PRETTY_FUNCTION__);
+        return ALREADY_EXISTS;
+    }
+    e->mRpcServer = RpcServer::make();
+    LOG_ALWAYS_FATAL_IF(e->mRpcServer == nullptr, "RpcServer::make returns null");
+    e->mRpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+    // Weak ref to avoid circular dependency: BBinder -> RpcServer -X-> BBinder
+    e->mRpcServer->setRootObjectWeak(wp<BBinder>::fromExisting(this));
+    e->mRpcServer->setupExternalServer(std::move(socketFd));
+    e->mRpcServer->start();
+    LOG_RPC_DETAIL("%s(%d, %" PRIu32 ") successful", __PRETTY_FUNCTION__, socketFdForPrint,
+                   maxRpcThreads);
+    return OK;
 }
 
 BBinder::~BBinder()
