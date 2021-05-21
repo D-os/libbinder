@@ -144,6 +144,22 @@ bool RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
     }
 }
 
+bool RpcSession::FdTrigger::interruptableRecv(base::borrowed_fd fd, void* data, size_t size) {
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(data);
+    uint8_t* end = buffer + size;
+
+    while (triggerablePollRead(fd)) {
+        ssize_t readSize = TEMP_FAILURE_RETRY(recv(fd.get(), buffer, end - buffer, MSG_NOSIGNAL));
+        if (readSize < 0) {
+            ALOGE("Failed to read %s", strerror(errno));
+            return false;
+        }
+        buffer += readSize;
+        if (buffer == end) return true;
+    }
+    return false;
+}
+
 status_t RpcSession::readId() {
     {
         std::lock_guard<std::mutex> _l(mMutex);

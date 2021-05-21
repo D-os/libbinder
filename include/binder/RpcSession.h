@@ -134,6 +134,15 @@ private:
          */
         bool triggerablePollRead(base::borrowed_fd fd);
 
+        /**
+         * Read, but allow the read to be interrupted by this trigger.
+         *
+         * Return:
+         *   true - read succeeded at 'size'
+         *   false - interrupted (failure or trigger)
+         */
+        bool interruptableRecv(base::borrowed_fd fd, void* data, size_t size);
+
     private:
         base::unique_fd mWrite;
         base::unique_fd mRead;
