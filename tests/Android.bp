@@ -133,6 +133,9 @@ cc_test {
         darwin: {
             enabled: false,
         },
+        android: {
+            test_suites: ["vts"],
+        },
     },
     defaults: [
         "binder_test_defaults",
