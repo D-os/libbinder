@@ -167,6 +167,10 @@ cc_library {
         binder32bit: {
             cflags: ["-DBINDER_IPC_32BIT=1"],
         },
+
+        debuggable: {
+            cflags: ["-DBINDER_RPC_DEV_SERVERS"],
+        },
     },
 
     shared_libs: [
