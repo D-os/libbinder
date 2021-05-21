@@ -489,14 +489,16 @@ void IPCThreadState::flushCommands()
 
 bool IPCThreadState::flushIfNeeded()
 {
-    if (mIsLooper || mServingStackPointer != nullptr) {
+    if (mIsLooper || mServingStackPointer != nullptr || mIsFlushing) {
         return false;
     }
+    mIsFlushing = true;
     // In case this thread is not a looper and is not currently serving a binder transaction,
     // there's no guarantee that this thread will call back into the kernel driver any time
     // soon. Therefore, flush pending commands such as BC_FREE_BUFFER, to prevent them from getting
     // stuck in this thread's out buffer.
     flushCommands();
+    mIsFlushing = false;
     return true;
 }
 
@@ -847,15 +849,15 @@ status_t IPCThreadState::clearDeathNotification(int32_t handle, BpBinder* proxy)
 }
 
 IPCThreadState::IPCThreadState()
-    : mProcess(ProcessState::self()),
-      mServingStackPointer(nullptr),
-      mWorkSource(kUnsetWorkSource),
-      mPropagateWorkSource(false),
-      mIsLooper(false),
-      mStrictModePolicy(0),
-      mLastTransactionBinderFlags(0),
-      mCallRestriction(mProcess->mCallRestriction)
-{
+      : mProcess(ProcessState::self()),
+        mServingStackPointer(nullptr),
+        mWorkSource(kUnsetWorkSource),
+        mPropagateWorkSource(false),
+        mIsLooper(false),
+        mIsFlushing(false),
+        mStrictModePolicy(0),
+        mLastTransactionBinderFlags(0),
+        mCallRestriction(mProcess->mCallRestriction) {
     pthread_setspecific(gTLS, this);
     clearCaller();
     mIn.setDataCapacity(256);
