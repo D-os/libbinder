@@ -84,6 +84,13 @@ public:
     // before any threads are spawned.
     void setCallRestriction(CallRestriction restriction);
 
+    /**
+     * Get the max number of threads that the kernel can start.
+     *
+     * Note: this is the lower bound. Additional threads may be started.
+     */
+    size_t getThreadPoolMaxThreadCount() const;
+
 private:
     static sp<ProcessState> init(const char* defaultDriver, bool requireDefault);
 
