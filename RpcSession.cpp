@@ -127,7 +127,7 @@ void RpcSession::FdTrigger::trigger() {
 
 bool RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
     while (true) {
-        pollfd pfd[]{{.fd = fd.get(), .events = POLLIN, .revents = 0},
+        pollfd pfd[]{{.fd = fd.get(), .events = POLLIN | POLLHUP, .revents = 0},
                      {.fd = mRead.get(), .events = POLLHUP, .revents = 0}};
         int ret = TEMP_FAILURE_RETRY(poll(pfd, arraysize(pfd), -1));
         if (ret < 0) {
@@ -140,7 +140,7 @@ bool RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
         if (pfd[1].revents & POLLHUP) {
             return false;
         }
-        return true;
+        return pfd[0].revents & POLLIN;
     }
 }
 
@@ -150,6 +150,8 @@ bool RpcSession::FdTrigger::interruptableRecv(base::borrowed_fd fd, void* data, 
 
     while (triggerablePollRead(fd)) {
         ssize_t readSize = TEMP_FAILURE_RETRY(recv(fd.get(), buffer, end - buffer, MSG_NOSIGNAL));
+        if (readSize == 0) return false; // EOF
+
         if (readSize < 0) {
             ALOGE("Failed to read %s", strerror(errno));
             return false;
