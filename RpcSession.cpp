@@ -132,7 +132,7 @@ bool RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
         int ret = TEMP_FAILURE_RETRY(poll(pfd, arraysize(pfd), -1));
         if (ret < 0) {
             ALOGE("Could not poll: %s", strerror(errno));
-            continue;
+            return false;
         }
         if (ret == 0) {
             continue;
