@@ -144,7 +144,7 @@ bool RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
     }
 }
 
-bool RpcSession::FdTrigger::interruptableRecv(base::borrowed_fd fd, void* data, size_t size) {
+bool RpcSession::FdTrigger::interruptableReadFully(base::borrowed_fd fd, void* data, size_t size) {
     uint8_t* buffer = reinterpret_cast<uint8_t*>(data);
     uint8_t* end = buffer + size;
 

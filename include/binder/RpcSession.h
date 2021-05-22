@@ -141,7 +141,7 @@ private:
          *   true - read succeeded at 'size'
          *   false - interrupted (failure or trigger)
          */
-        bool interruptableRecv(base::borrowed_fd fd, void* data, size_t size);
+        bool interruptableReadFully(base::borrowed_fd fd, void* data, size_t size);
 
     private:
         base::unique_fd mWrite;
