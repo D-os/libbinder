@@ -151,9 +151,11 @@ void RpcServer::join() {
         LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr, "Cannot create join signaler");
     }
 
-    while (mShutdownTrigger->triggerablePollRead(mServer)) {
+    status_t status;
+    while ((status = mShutdownTrigger->triggerablePollRead(mServer)) == OK) {
         (void)acceptOne();
     }
+    LOG_RPC_DETAIL("RpcServer::join exiting with %s", statusToString(status).c_str());
 
     {
         std::lock_guard<std::mutex> _l(mLock);
@@ -236,10 +238,13 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     LOG_ALWAYS_FATAL_IF(server->mShutdownTrigger == nullptr);
 
     int32_t id;
-    bool idValid =
+    status_t status =
             server->mShutdownTrigger->interruptableReadFully(clientFd.get(), &id, sizeof(id));
+    bool idValid = status == OK;
     if (!idValid) {
-        ALOGE("Failed to read ID for client connecting to RPC server.");
+        ALOGE("Failed to read ID for client connecting to RPC server: %s",
+              statusToString(status).c_str());
+        // still need to cleanup before we can return
     }
 
     std::thread thisThread;
