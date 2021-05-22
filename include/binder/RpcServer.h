@@ -150,6 +150,7 @@ public:
     // internal use only
 
     void onSessionTerminating(const sp<RpcSession>& session);
+    void onSessionThreadEnding(const sp<RpcSession>& session);
 
 private:
     friend sp<RpcServer>;
@@ -171,7 +172,7 @@ private:
     wp<IBinder> mRootObjectWeak;
     std::map<int32_t, sp<RpcSession>> mSessions;
     int32_t mSessionIdCounter = 0;
-    std::unique_ptr<RpcSession::FdTrigger> mShutdownTrigger;
+    std::shared_ptr<RpcSession::FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;
 };
 
