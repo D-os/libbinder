@@ -199,7 +199,8 @@ void RpcSession::join(unique_fd client) {
                 state()->getAndExecuteCommand(connection->fd, sp<RpcSession>::fromExisting(this));
 
         if (error != OK) {
-            ALOGI("Binder connection thread closing w/ status %s", statusToString(error).c_str());
+            LOG_RPC_DETAIL("Binder connection thread closing w/ status %s",
+                           statusToString(error).c_str());
             break;
         }
     }

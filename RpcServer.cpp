@@ -193,10 +193,12 @@ bool RpcServer::shutdown() {
 
     mShutdownTrigger->trigger();
     while (mJoinThreadRunning || !mConnectingThreads.empty() || !mSessions.empty()) {
-        ALOGI("Waiting for RpcServer to shut down. Join thread running: %d, Connecting threads: "
-              "%zu, Sessions: %zu",
-              mJoinThreadRunning, mConnectingThreads.size(), mSessions.size());
-        mShutdownCv.wait(_l);
+        if (std::cv_status::timeout == mShutdownCv.wait_for(_l, std::chrono::seconds(1))) {
+            ALOGE("Waiting for RpcServer to shut down (1s w/o progress). Join thread running: %d, "
+                  "Connecting threads: "
+                  "%zu, Sessions: %zu. Is your server deadlocked?",
+                  mJoinThreadRunning, mConnectingThreads.size(), mSessions.size());
+        }
     }
 
     // At this point, we know join() is about to exit, but the thread that calls

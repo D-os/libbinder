@@ -239,8 +239,11 @@ bool RpcState::rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session, 
 
     if (status_t status = session->mShutdownTrigger->interruptableReadFully(fd.get(), data, size);
         status != OK) {
-        ALOGE("Failed to read %s (%zu bytes) on fd %d, error: %s", what, size, fd.get(),
-              statusToString(status).c_str());
+        if (status != -ECANCELED) {
+            ALOGE("Failed to read %s (%zu bytes) on fd %d, error: %s", what, size, fd.get(),
+                  statusToString(status).c_str());
+        }
+
         return false;
     }
 
