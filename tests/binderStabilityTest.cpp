@@ -102,7 +102,7 @@ public:
         return Status::ok();
     }
     Status sendAndCallBinder(const sp<IBinder>& binder) override {
-        Stability::debugLogStability("sendAndCallBinder got binder", binder);
+        ALOGI("Debug log stability: %s", Stability::debugToString(binder).c_str());
         return Status::fromExceptionCode(BadStableBinder::doUserTransaction(binder));
     }
     Status returnNoStabilityBinder(sp<IBinder>* _aidl_return) override {
