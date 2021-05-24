@@ -132,7 +132,7 @@ private:
          *   true - time to read!
          *   false - trigger happened
          */
-        bool triggerablePollRead(base::borrowed_fd fd);
+        status_t triggerablePollRead(base::borrowed_fd fd);
 
         /**
          * Read, but allow the read to be interrupted by this trigger.
@@ -141,7 +141,7 @@ private:
          *   true - read succeeded at 'size'
          *   false - interrupted (failure or trigger)
          */
-        bool interruptableRecv(base::borrowed_fd fd, void* data, size_t size);
+        status_t interruptableReadFully(base::borrowed_fd fd, void* data, size_t size);
 
     private:
         base::unique_fd mWrite;
