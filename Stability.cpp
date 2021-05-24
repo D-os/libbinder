@@ -79,9 +79,9 @@ void Stability::markVintf(IBinder* binder) {
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
-void Stability::debugLogStability(const std::string& tag, const sp<IBinder>& binder) {
+std::string Stability::debugToString(const sp<IBinder>& binder) {
     auto stability = getCategory(binder.get());
-    ALOGE("%s: stability is %s", tag.c_str(), stability.debugString().c_str());
+    return stability.debugString();
 }
 
 void Stability::markVndk(IBinder* binder) {

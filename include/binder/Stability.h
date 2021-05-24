@@ -100,7 +100,7 @@ public:
     static void markVintf(IBinder* binder);
 
     // WARNING: for debugging only
-    static void debugLogStability(const std::string& tag, const sp<IBinder>& binder);
+    static std::string debugToString(const sp<IBinder>& binder);
 
     // WARNING: This is only ever expected to be called by auto-generated code or tests.
     // You likely want to change or modify the stability of the interface you are using.
