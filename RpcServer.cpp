@@ -258,18 +258,12 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         LOG_ALWAYS_FATAL_IF(threadId == server->mConnectingThreads.end(),
                             "Must establish connection on owned thread");
         thisThread = std::move(threadId->second);
-        ScopeGuard detachGuard = [&]() { thisThread.detach(); };
-        server->mConnectingThreads.erase(threadId);
-
-        // TODO(b/185167543): we currently can't disable this because we don't
-        // shutdown sessions as well, only the server itself. So, we need to
-        // keep this separate from the detachGuard, since we temporarily want to
-        // give a notification even when we pass ownership of the thread to
-        // a session.
-        ScopeGuard threadLifetimeGuard = [&]() {
+        ScopeGuard detachGuard = [&]() {
+            thisThread.detach();
             _l.unlock();
             server->mShutdownCv.notify_all();
         };
+        server->mConnectingThreads.erase(threadId);
 
         if (!idValid) {
             return;
