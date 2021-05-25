@@ -86,8 +86,7 @@ bool RpcSession::addNullDebuggingClient() {
         return false;
     }
 
-    addClientConnection(std::move(serverFd));
-    return true;
+    return addClientConnection(std::move(serverFd));
 }
 
 sp<IBinder> RpcSession::getRootObject() {
@@ -312,24 +311,25 @@ bool RpcSession::setupOneSocketClient(const RpcSocketAddress& addr, int32_t id) 
 
         LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
 
-        addClientConnection(std::move(serverFd));
-        return true;
+        return addClientConnection(std::move(serverFd));
     }
 
     ALOGE("Ran out of retries to connect to %s", addr.toString().c_str());
     return false;
 }
 
-void RpcSession::addClientConnection(unique_fd fd) {
+bool RpcSession::addClientConnection(unique_fd fd) {
     std::lock_guard<std::mutex> _l(mMutex);
 
     if (mShutdownTrigger == nullptr) {
         mShutdownTrigger = FdTrigger::make();
+        if (mShutdownTrigger == nullptr) return false;
     }
 
     sp<RpcConnection> session = sp<RpcConnection>::make();
     session->fd = std::move(fd);
     mClientConnections.push_back(session);
+    return true;
 }
 
 void RpcSession::setForServer(const wp<RpcServer>& server, int32_t sessionId,
