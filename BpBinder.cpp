@@ -273,7 +273,8 @@ status_t BpBinder::transact(
 
         status_t status;
         if (CC_UNLIKELY(isRpcBinder())) {
-            status = rpcSession()->transact(rpcAddress(), code, data, reply, flags);
+            status = rpcSession()->transact(sp<IBinder>::fromExisting(this), code, data, reply,
+                                            flags);
         } else {
             status = IPCThreadState::self()->transact(binderHandle(), code, data, reply, flags);
         }
