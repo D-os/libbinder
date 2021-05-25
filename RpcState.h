@@ -117,7 +117,8 @@ private:
 
     [[nodiscard]] bool rpcSend(const base::unique_fd& fd, const char* what, const void* data,
                                size_t size);
-    [[nodiscard]] bool rpcRec(const base::unique_fd& fd, const char* what, void* data, size_t size);
+    [[nodiscard]] bool rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session,
+                              const char* what, void* data, size_t size);
 
     [[nodiscard]] status_t waitForReply(const base::unique_fd& fd, const sp<RpcSession>& session,
                                         Parcel* reply);
@@ -130,6 +131,7 @@ private:
                                                    const sp<RpcSession>& session,
                                                    CommandData transactionData);
     [[nodiscard]] status_t processDecStrong(const base::unique_fd& fd,
+                                            const sp<RpcSession>& session,
                                             const RpcWireHeader& command);
 
     struct BinderNode {
