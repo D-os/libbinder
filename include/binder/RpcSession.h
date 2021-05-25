@@ -94,27 +94,16 @@ public:
     // internal only
     const std::unique_ptr<RpcState>& state() { return mState; }
 
-    class PrivateAccessorForId {
-    private:
-        friend class RpcSession;
-        friend class RpcState;
-        explicit PrivateAccessorForId(const RpcSession* session) : mSession(session) {}
-
-        const std::optional<int32_t> get() { return mSession->mId; }
-
-        const RpcSession* mSession;
-    };
-    PrivateAccessorForId getPrivateAccessorForId() const { return PrivateAccessorForId(this); }
-
 private:
-    friend PrivateAccessorForId;
     friend sp<RpcSession>;
     friend RpcServer;
+    friend RpcState;
     RpcSession();
 
     /** This is not a pipe. */
     struct FdTrigger {
         static std::unique_ptr<FdTrigger> make();
+
         /**
          * poll() on this fd for POLLHUP to get notification when trigger is called
          */
@@ -167,7 +156,8 @@ private:
     bool setupSocketClient(const RpcSocketAddress& address);
     bool setupOneSocketClient(const RpcSocketAddress& address, int32_t sessionId);
     void addClientConnection(base::unique_fd fd);
-    void setForServer(const wp<RpcServer>& server, int32_t sessionId);
+    void setForServer(const wp<RpcServer>& server, int32_t sessionId,
+                      const std::shared_ptr<FdTrigger>& shutdownTrigger);
     sp<RpcConnection> assignServerToThisThread(base::unique_fd fd);
     bool removeServerConnection(const sp<RpcConnection>& connection);
 
@@ -217,6 +207,8 @@ private:
 
     // TODO(b/183988761): this shouldn't be guessable
     std::optional<int32_t> mId;
+
+    std::shared_ptr<FdTrigger> mShutdownTrigger;
 
     std::unique_ptr<RpcState> mState;
 
