@@ -83,7 +83,7 @@ public:
      */
     status_t getRemoteMaxThreads(size_t* maxThreads);
 
-    [[nodiscard]] status_t transact(const RpcAddress& address, uint32_t code, const Parcel& data,
+    [[nodiscard]] status_t transact(const sp<IBinder>& binder, uint32_t code, const Parcel& data,
                                     Parcel* reply, uint32_t flags);
     [[nodiscard]] status_t sendDecStrong(const RpcAddress& address);
 

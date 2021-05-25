@@ -253,8 +253,8 @@ sp<IBinder> RpcState::getRootObject(const base::unique_fd& fd, const sp<RpcSessi
     data.markForRpc(session);
     Parcel reply;
 
-    status_t status = transact(fd, RpcAddress::zero(), RPC_SPECIAL_TRANSACT_GET_ROOT, data, session,
-                               &reply, 0);
+    status_t status = transactAddress(fd, RpcAddress::zero(), RPC_SPECIAL_TRANSACT_GET_ROOT, data,
+                                      session, &reply, 0);
     if (status != OK) {
         ALOGE("Error getting root object: %s", statusToString(status).c_str());
         return nullptr;
@@ -269,8 +269,8 @@ status_t RpcState::getMaxThreads(const base::unique_fd& fd, const sp<RpcSession>
     data.markForRpc(session);
     Parcel reply;
 
-    status_t status = transact(fd, RpcAddress::zero(), RPC_SPECIAL_TRANSACT_GET_MAX_THREADS, data,
-                               session, &reply, 0);
+    status_t status = transactAddress(fd, RpcAddress::zero(), RPC_SPECIAL_TRANSACT_GET_MAX_THREADS,
+                                      data, session, &reply, 0);
     if (status != OK) {
         ALOGE("Error getting max threads: %s", statusToString(status).c_str());
         return status;
@@ -294,8 +294,8 @@ status_t RpcState::getSessionId(const base::unique_fd& fd, const sp<RpcSession>&
     data.markForRpc(session);
     Parcel reply;
 
-    status_t status = transact(fd, RpcAddress::zero(), RPC_SPECIAL_TRANSACT_GET_SESSION_ID, data,
-                               session, &reply, 0);
+    status_t status = transactAddress(fd, RpcAddress::zero(), RPC_SPECIAL_TRANSACT_GET_SESSION_ID,
+                                      data, session, &reply, 0);
     if (status != OK) {
         ALOGE("Error getting session ID: %s", statusToString(status).c_str());
         return status;
@@ -309,9 +309,31 @@ status_t RpcState::getSessionId(const base::unique_fd& fd, const sp<RpcSession>&
     return OK;
 }
 
-status_t RpcState::transact(const base::unique_fd& fd, const RpcAddress& address, uint32_t code,
+status_t RpcState::transact(const base::unique_fd& fd, const sp<IBinder>& binder, uint32_t code,
                             const Parcel& data, const sp<RpcSession>& session, Parcel* reply,
                             uint32_t flags) {
+    if (!data.isForRpc()) {
+        ALOGE("Refusing to send RPC with parcel not crafted for RPC");
+        return BAD_TYPE;
+    }
+
+    if (data.objectsCount() != 0) {
+        ALOGE("Parcel at %p has attached objects but is being used in an RPC call", &data);
+        return BAD_TYPE;
+    }
+
+    RpcAddress address = RpcAddress::zero();
+    if (status_t status = onBinderLeaving(session, binder, &address); status != OK) return status;
+
+    return transactAddress(fd, address, code, data, session, reply, flags);
+}
+
+status_t RpcState::transactAddress(const base::unique_fd& fd, const RpcAddress& address,
+                                   uint32_t code, const Parcel& data, const sp<RpcSession>& session,
+                                   Parcel* reply, uint32_t flags) {
+    LOG_ALWAYS_FATAL_IF(!data.isForRpc());
+    LOG_ALWAYS_FATAL_IF(data.objectsCount() != 0);
+
     uint64_t asyncNumber = 0;
 
     if (!address.isZero()) {
@@ -324,16 +346,6 @@ status_t RpcState::transact(const base::unique_fd& fd, const RpcAddress& address
         if (flags & IBinder::FLAG_ONEWAY) {
             asyncNumber = it->second.asyncNumber++;
         }
-    }
-
-    if (!data.isForRpc()) {
-        ALOGE("Refusing to send RPC with parcel not crafted for RPC");
-        return BAD_TYPE;
-    }
-
-    if (data.objectsCount() != 0) {
-        ALOGE("Parcel at %p has attached objects but is being used in an RPC call", &data);
-        return BAD_TYPE;
     }
 
     RpcWireTransaction transaction{
@@ -509,7 +521,7 @@ status_t RpcState::processTransact(const base::unique_fd& fd, const sp<RpcSessio
         return DEAD_OBJECT;
     }
 
-    return processTransactInternal(fd, session, std::move(transactionData));
+    return processTransactInternal(fd, session, std::move(transactionData), nullptr /*targetRef*/);
 }
 
 static void do_nothing_to_transact_data(Parcel* p, const uint8_t* data, size_t dataSize,
@@ -522,7 +534,7 @@ static void do_nothing_to_transact_data(Parcel* p, const uint8_t* data, size_t d
 }
 
 status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<RpcSession>& session,
-                                           CommandData transactionData) {
+                                           CommandData transactionData, sp<IBinder>&& targetRef) {
     if (transactionData.size() < sizeof(RpcWireTransaction)) {
         ALOGE("Expecting %zu but got %zu bytes for RpcWireTransaction. Terminating!",
               sizeof(RpcWireTransaction), transactionData.size());
@@ -538,45 +550,49 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
     status_t replyStatus = OK;
     sp<IBinder> target;
     if (!addr.isZero()) {
-        std::lock_guard<std::mutex> _l(mNodeMutex);
-
-        auto it = mNodeForAddress.find(addr);
-        if (it == mNodeForAddress.end()) {
-            ALOGE("Unknown binder address %s.", addr.toString().c_str());
-            replyStatus = BAD_VALUE;
+        if (!targetRef) {
+            target = onBinderEntering(session, addr);
         } else {
-            target = it->second.binder.promote();
-            if (target == nullptr) {
-                // This can happen if the binder is remote in this process, and
-                // another thread has called the last decStrong on this binder.
-                // However, for local binders, it indicates a misbehaving client
-                // (any binder which is being transacted on should be holding a
-                // strong ref count), so in either case, terminating the
-                // session.
-                ALOGE("While transacting, binder has been deleted at address %s. Terminating!",
+            target = targetRef;
+        }
+
+        if (target == nullptr) {
+            // This can happen if the binder is remote in this process, and
+            // another thread has called the last decStrong on this binder.
+            // However, for local binders, it indicates a misbehaving client
+            // (any binder which is being transacted on should be holding a
+            // strong ref count), so in either case, terminating the
+            // session.
+            ALOGE("While transacting, binder has been deleted at address %s. Terminating!",
+                  addr.toString().c_str());
+            terminate();
+            replyStatus = BAD_VALUE;
+        } else if (target->localBinder() == nullptr) {
+            ALOGE("Unknown binder address or non-local binder, not address %s. Terminating!",
+                  addr.toString().c_str());
+            terminate();
+            replyStatus = BAD_VALUE;
+        } else if (transaction->flags & IBinder::FLAG_ONEWAY) {
+            std::lock_guard<std::mutex> _l(mNodeMutex);
+            auto it = mNodeForAddress.find(addr);
+            if (it->second.binder.promote() != target) {
+                ALOGE("Binder became invalid during transaction. Bad client? %s",
                       addr.toString().c_str());
-                terminate();
                 replyStatus = BAD_VALUE;
-            } else if (target->localBinder() == nullptr) {
-                ALOGE("Transactions can only go to local binders, not address %s. Terminating!",
-                      addr.toString().c_str());
-                terminate();
-                replyStatus = BAD_VALUE;
-            } else if (transaction->flags & IBinder::FLAG_ONEWAY) {
-                if (transaction->asyncNumber != it->second.asyncNumber) {
-                    // we need to process some other asynchronous transaction
-                    // first
-                    // TODO(b/183140903): limit enqueues/detect overfill for bad client
-                    // TODO(b/183140903): detect when an object is deleted when it still has
-                    //        pending async transactions
-                    it->second.asyncTodo.push(BinderNode::AsyncTodo{
-                            .data = std::move(transactionData),
-                            .asyncNumber = transaction->asyncNumber,
-                    });
-                    LOG_RPC_DETAIL("Enqueuing %" PRId64 " on %s", transaction->asyncNumber,
-                                   addr.toString().c_str());
-                    return OK;
-                }
+            } else if (transaction->asyncNumber != it->second.asyncNumber) {
+                // we need to process some other asynchronous transaction
+                // first
+                // TODO(b/183140903): limit enqueues/detect overfill for bad client
+                // TODO(b/183140903): detect when an object is deleted when it still has
+                //        pending async transactions
+                it->second.asyncTodo.push(BinderNode::AsyncTodo{
+                        .ref = target,
+                        .data = std::move(transactionData),
+                        .asyncNumber = transaction->asyncNumber,
+                });
+                LOG_RPC_DETAIL("Enqueuing %" PRId64 " on %s", transaction->asyncNumber,
+                               addr.toString().c_str());
+                return OK;
             }
         }
     }
@@ -670,13 +686,17 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
                                it->second.asyncNumber, addr.toString().c_str());
 
                 // justification for const_cast (consider avoiding priority_queue):
-                // - AsyncTodo operator< doesn't depend on 'data' object
+                // - AsyncTodo operator< doesn't depend on 'data' or 'ref' objects
                 // - gotta go fast
-                CommandData data = std::move(
-                        const_cast<BinderNode::AsyncTodo&>(it->second.asyncTodo.top()).data);
+                auto& todo = const_cast<BinderNode::AsyncTodo&>(it->second.asyncTodo.top());
+
+                CommandData nextData = std::move(todo.data);
+                sp<IBinder> nextRef = std::move(todo.ref);
+
                 it->second.asyncTodo.pop();
                 _l.unlock();
-                return processTransactInternal(fd, session, std::move(data));
+                return processTransactInternal(fd, session, std::move(nextData),
+                                               std::move(nextRef));
             }
         }
         return OK;

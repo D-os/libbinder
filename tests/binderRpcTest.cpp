@@ -843,8 +843,7 @@ TEST_P(BinderRpc, OnewayCallDoesNotWait) {
     constexpr size_t kReallyLongTimeMs = 100;
     constexpr size_t kSleepMs = kReallyLongTimeMs * 5;
 
-    // more than one thread, just so this doesn't deadlock
-    auto proc = createRpcTestSocketServerProcess(2);
+    auto proc = createRpcTestSocketServerProcess(1);
 
     size_t epochMsBefore = epochMillis();
 
@@ -876,6 +875,14 @@ TEST_P(BinderRpc, OnewayCallQueueing) {
     size_t epochMsAfter = epochMillis();
 
     EXPECT_GT(epochMsAfter, epochMsBefore + kSleepMs * kNumSleeps);
+
+    // pending oneway transactions hold ref, make sure we read data on all
+    // sockets
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < 1 + kNumExtraServerThreads; i++) {
+        threads.push_back(std::thread([&] { EXPECT_OK(proc.rootIface->sleepMs(250)); }));
+    }
+    for (auto& t : threads) t.join();
 }
 
 TEST_P(BinderRpc, Die) {

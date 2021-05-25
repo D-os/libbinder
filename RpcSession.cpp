@@ -100,12 +100,12 @@ status_t RpcSession::getRemoteMaxThreads(size_t* maxThreads) {
     return state()->getMaxThreads(connection.fd(), sp<RpcSession>::fromExisting(this), maxThreads);
 }
 
-status_t RpcSession::transact(const RpcAddress& address, uint32_t code, const Parcel& data,
+status_t RpcSession::transact(const sp<IBinder>& binder, uint32_t code, const Parcel& data,
                               Parcel* reply, uint32_t flags) {
     ExclusiveConnection connection(sp<RpcSession>::fromExisting(this),
                                    (flags & IBinder::FLAG_ONEWAY) ? ConnectionUse::CLIENT_ASYNC
                                                                   : ConnectionUse::CLIENT);
-    return state()->transact(connection.fd(), address, code, data,
+    return state()->transact(connection.fd(), binder, code, data,
                              sp<RpcSession>::fromExisting(this), reply, flags);
 }
 
