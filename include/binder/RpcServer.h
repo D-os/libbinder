@@ -127,6 +127,10 @@ public:
      * If a client needs to actively terminate join, call shutdown() in a separate thread.
      *
      * At any given point, there can only be one thread calling join().
+     *
+     * Warning: if shutdown is called, this will return while the shutdown is
+     * still occurring. To ensure that the service is fully shutdown, you might
+     * want to call shutdown after 'join' returns.
      */
     void join();
 
@@ -135,7 +139,7 @@ public:
      * (e.g. no join() is running). Will wait for the server to be fully
      * shutdown.
      *
-     * TODO(b/185167543): wait for sessions to shutdown as well
+     * Warning: this will hang if it is called from its own thread.
      */
     [[nodiscard]] bool shutdown();
 
