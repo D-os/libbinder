@@ -192,10 +192,10 @@ bool RpcServer::shutdown() {
     }
 
     mShutdownTrigger->trigger();
-    while (mJoinThreadRunning || !mConnectingThreads.empty()) {
+    while (mJoinThreadRunning || !mConnectingThreads.empty() || !mSessions.empty()) {
         ALOGI("Waiting for RpcServer to shut down. Join thread running: %d, Connecting threads: "
-              "%zu",
-              mJoinThreadRunning, mConnectingThreads.size());
+              "%zu, Sessions: %zu",
+              mJoinThreadRunning, mConnectingThreads.size(), mSessions.size());
         mShutdownCv.wait(_l);
     }
 
@@ -278,7 +278,8 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
             server->mSessionIdCounter++;
 
             session = RpcSession::make();
-            session->setForServer(wp<RpcServer>(server), server->mSessionIdCounter);
+            session->setForServer(wp<RpcServer>(server), server->mSessionIdCounter,
+                                  server->mShutdownTrigger);
 
             server->mSessions[server->mSessionIdCounter] = session;
         } else {
@@ -342,6 +343,11 @@ void RpcServer::onSessionTerminating(const sp<RpcSession>& session) {
     LOG_ALWAYS_FATAL_IF(it == mSessions.end(), "Bad state, unknown session id %d", *id);
     LOG_ALWAYS_FATAL_IF(it->second != session, "Bad state, session has id mismatch %d", *id);
     (void)mSessions.erase(it);
+}
+
+void RpcServer::onSessionThreadEnding(const sp<RpcSession>& session) {
+    (void)session;
+    mShutdownCv.notify_all();
 }
 
 bool RpcServer::hasServer() {

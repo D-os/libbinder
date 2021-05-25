@@ -229,30 +229,22 @@ bool RpcState::rpcSend(const base::unique_fd& fd, const char* what, const void* 
     return true;
 }
 
-bool RpcState::rpcRec(const base::unique_fd& fd, const char* what, void* data, size_t size) {
+bool RpcState::rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session, const char* what,
+                      void* data, size_t size) {
     if (size > std::numeric_limits<ssize_t>::max()) {
         ALOGE("Cannot rec %s at size %zu (too big)", what, size);
         terminate();
         return false;
     }
 
-    ssize_t recd = TEMP_FAILURE_RETRY(recv(fd.get(), data, size, MSG_WAITALL | MSG_NOSIGNAL));
-
-    if (recd < 0 || recd != static_cast<ssize_t>(size)) {
-        terminate();
-
-        if (recd == 0 && errno == 0) {
-            LOG_RPC_DETAIL("No more data when trying to read %s on fd %d", what, fd.get());
-            return false;
-        }
-
-        ALOGE("Failed to read %s (received %zd of %zu bytes) on fd %d, error: %s", what, recd, size,
-              fd.get(), strerror(errno));
+    if (status_t status = session->mShutdownTrigger->interruptableReadFully(fd.get(), data, size);
+        status != OK) {
+        ALOGE("Failed to read %s (%zu bytes) on fd %d, error: %s", what, size, fd.get(),
+              statusToString(status).c_str());
         return false;
-    } else {
-        LOG_RPC_DETAIL("Received %s on fd %d: %s", what, fd.get(), hexString(data, size).c_str());
     }
 
+    LOG_RPC_DETAIL("Received %s on fd %d: %s", what, fd.get(), hexString(data, size).c_str());
     return true;
 }
 
@@ -398,7 +390,7 @@ status_t RpcState::waitForReply(const base::unique_fd& fd, const sp<RpcSession>&
                                 Parcel* reply) {
     RpcWireHeader command;
     while (true) {
-        if (!rpcRec(fd, "command header", &command, sizeof(command))) {
+        if (!rpcRec(fd, session, "command header", &command, sizeof(command))) {
             return DEAD_OBJECT;
         }
 
@@ -413,7 +405,7 @@ status_t RpcState::waitForReply(const base::unique_fd& fd, const sp<RpcSession>&
         return NO_MEMORY;
     }
 
-    if (!rpcRec(fd, "reply body", data.data(), command.bodySize)) {
+    if (!rpcRec(fd, session, "reply body", data.data(), command.bodySize)) {
         return DEAD_OBJECT;
     }
 
@@ -465,7 +457,7 @@ status_t RpcState::getAndExecuteCommand(const base::unique_fd& fd, const sp<RpcS
     LOG_RPC_DETAIL("getAndExecuteCommand on fd %d", fd.get());
 
     RpcWireHeader command;
-    if (!rpcRec(fd, "command header", &command, sizeof(command))) {
+    if (!rpcRec(fd, session, "command header", &command, sizeof(command))) {
         return DEAD_OBJECT;
     }
 
@@ -493,7 +485,7 @@ status_t RpcState::processServerCommand(const base::unique_fd& fd, const sp<RpcS
         case RPC_COMMAND_TRANSACT:
             return processTransact(fd, session, command);
         case RPC_COMMAND_DEC_STRONG:
-            return processDecStrong(fd, command);
+            return processDecStrong(fd, session, command);
     }
 
     // We should always know the version of the opposing side, and since the
@@ -513,7 +505,7 @@ status_t RpcState::processTransact(const base::unique_fd& fd, const sp<RpcSessio
     if (!transactionData.valid()) {
         return NO_MEMORY;
     }
-    if (!rpcRec(fd, "transaction body", transactionData.data(), transactionData.size())) {
+    if (!rpcRec(fd, session, "transaction body", transactionData.data(), transactionData.size())) {
         return DEAD_OBJECT;
     }
 
@@ -626,7 +618,7 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
                         //
                         // sessions associated with servers must have an ID
                         // (hence abort)
-                        int32_t id = session->getPrivateAccessorForId().get().value();
+                        int32_t id = session->mId.value();
                         replyStatus = reply.writeInt32(id);
                         break;
                     }
@@ -721,14 +713,15 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
     return OK;
 }
 
-status_t RpcState::processDecStrong(const base::unique_fd& fd, const RpcWireHeader& command) {
+status_t RpcState::processDecStrong(const base::unique_fd& fd, const sp<RpcSession>& session,
+                                    const RpcWireHeader& command) {
     LOG_ALWAYS_FATAL_IF(command.command != RPC_COMMAND_DEC_STRONG, "command: %d", command.command);
 
     CommandData commandData(command.bodySize);
     if (!commandData.valid()) {
         return NO_MEMORY;
     }
-    if (!rpcRec(fd, "dec ref body", commandData.data(), commandData.size())) {
+    if (!rpcRec(fd, session, "dec ref body", commandData.data(), commandData.size())) {
         return DEAD_OBJECT;
     }
 
