@@ -194,6 +194,18 @@ public:
             _exit(1);
         }
     }
+
+    Status scheduleShutdown() override {
+        sp<RpcServer> strongServer = server.promote();
+        if (strongServer == nullptr) {
+            return Status::fromExceptionCode(Status::EX_NULL_POINTER);
+        }
+        std::thread([=] {
+            LOG_ALWAYS_FATAL_IF(!strongServer->shutdown(), "Could not shutdown");
+        }).detach();
+        return Status::ok();
+    }
+
     Status useKernelBinderCallingId() override {
         // this is WRONG! It does not make sense when using RPC binder, and
         // because it is SO wrong, and so much code calls this, it should abort!
@@ -225,11 +237,13 @@ public:
             prctl(PR_SET_PDEATHSIG, SIGHUP);
 
             f(&mPipe);
+
+            exit(0);
         }
     }
     ~Process() {
         if (mPid != 0) {
-            kill(mPid, SIGKILL);
+            waitpid(mPid, nullptr, 0);
         }
     }
     Pipe* getPipe() { return &mPipe; }
@@ -290,11 +304,11 @@ struct BinderRpcTestProcessSession {
     sp<IBinderRpcTest> rootIface;
 
     // whether session should be invalidated by end of run
-    bool expectInvalid = false;
+    bool expectAlreadyShutdown = false;
 
     BinderRpcTestProcessSession(BinderRpcTestProcessSession&&) = default;
     ~BinderRpcTestProcessSession() {
-        if (!expectInvalid) {
+        if (!expectAlreadyShutdown) {
             std::vector<int32_t> remoteCounts;
             // calling over any sessions counts across all sessions
             EXPECT_OK(rootIface->countBinders(&remoteCounts));
@@ -302,6 +316,8 @@ struct BinderRpcTestProcessSession {
             for (auto remoteCount : remoteCounts) {
                 EXPECT_EQ(remoteCount, 1);
             }
+
+            EXPECT_OK(rootIface->scheduleShutdown());
         }
 
         rootIface = nullptr;
@@ -373,6 +389,9 @@ public:
                     configure(server);
 
                     server->join();
+
+                    // Another thread calls shutdown. Wait for it to complete.
+                    (void)server->shutdown();
                 }),
         };
 
@@ -423,15 +442,6 @@ public:
         return ret;
     }
 };
-
-TEST_P(BinderRpc, RootObjectIsNull) {
-    auto proc = createRpcTestSocketServerProcess(1, 1, [](const sp<RpcServer>& server) {
-        // this is the default, but to be explicit
-        server->setRootObject(nullptr);
-    });
-
-    EXPECT_EQ(nullptr, proc.sessions.at(0).root);
-}
 
 TEST_P(BinderRpc, Ping) {
     auto proc = createRpcTestSocketServerProcess(1);
@@ -843,8 +853,7 @@ TEST_P(BinderRpc, OnewayCallDoesNotWait) {
     constexpr size_t kReallyLongTimeMs = 100;
     constexpr size_t kSleepMs = kReallyLongTimeMs * 5;
 
-    // more than one thread, just so this doesn't deadlock
-    auto proc = createRpcTestSocketServerProcess(2);
+    auto proc = createRpcTestSocketServerProcess(1);
 
     size_t epochMsBefore = epochMillis();
 
@@ -876,6 +885,14 @@ TEST_P(BinderRpc, OnewayCallQueueing) {
     size_t epochMsAfter = epochMillis();
 
     EXPECT_GT(epochMsAfter, epochMsBefore + kSleepMs * kNumSleeps);
+
+    // pending oneway transactions hold ref, make sure we read data on all
+    // sockets
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < 1 + kNumExtraServerThreads; i++) {
+        threads.push_back(std::thread([&] { EXPECT_OK(proc.rootIface->sleepMs(250)); }));
+    }
+    for (auto& t : threads) t.join();
 }
 
 TEST_P(BinderRpc, Die) {
@@ -893,7 +910,7 @@ TEST_P(BinderRpc, Die) {
         EXPECT_EQ(DEAD_OBJECT, proc.rootIface->die(doDeathCleanup).transactionError())
                 << "Do death cleanup: " << doDeathCleanup;
 
-        proc.expectInvalid = true;
+        proc.expectAlreadyShutdown = true;
     }
 }
 
@@ -907,7 +924,7 @@ TEST_P(BinderRpc, UseKernelBinderCallingId) {
     // second time! we catch the error :)
     EXPECT_EQ(DEAD_OBJECT, proc.rootIface->useKernelBinderCallingId().transactionError());
 
-    proc.expectInvalid = true;
+    proc.expectAlreadyShutdown = true;
 }
 
 TEST_P(BinderRpc, WorksWithLibbinderNdkPing) {
