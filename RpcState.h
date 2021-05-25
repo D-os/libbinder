@@ -119,10 +119,10 @@ private:
         size_t mSize;
     };
 
-    [[nodiscard]] bool rpcSend(const base::unique_fd& fd, const char* what, const void* data,
-                               size_t size);
-    [[nodiscard]] bool rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session,
-                              const char* what, void* data, size_t size);
+    [[nodiscard]] status_t rpcSend(const base::unique_fd& fd, const char* what, const void* data,
+                                   size_t size);
+    [[nodiscard]] status_t rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session,
+                                  const char* what, void* data, size_t size);
 
     [[nodiscard]] status_t waitForReply(const base::unique_fd& fd, const sp<RpcSession>& session,
                                         Parcel* reply);

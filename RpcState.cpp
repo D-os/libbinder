@@ -207,34 +207,36 @@ RpcState::CommandData::CommandData(size_t size) : mSize(size) {
     mData.reset(new (std::nothrow) uint8_t[size]);
 }
 
-bool RpcState::rpcSend(const base::unique_fd& fd, const char* what, const void* data, size_t size) {
+status_t RpcState::rpcSend(const base::unique_fd& fd, const char* what, const void* data,
+                           size_t size) {
     LOG_RPC_DETAIL("Sending %s on fd %d: %s", what, fd.get(), hexString(data, size).c_str());
 
     if (size > std::numeric_limits<ssize_t>::max()) {
         ALOGE("Cannot send %s at size %zu (too big)", what, size);
         terminate();
-        return false;
+        return BAD_VALUE;
     }
 
     ssize_t sent = TEMP_FAILURE_RETRY(send(fd.get(), data, size, MSG_NOSIGNAL));
 
     if (sent < 0 || sent != static_cast<ssize_t>(size)) {
+        int savedErrno = errno;
         ALOGE("Failed to send %s (sent %zd of %zu bytes) on fd %d, error: %s", what, sent, size,
-              fd.get(), strerror(errno));
+              fd.get(), strerror(savedErrno));
 
         terminate();
-        return false;
+        return -savedErrno;
     }
 
-    return true;
+    return OK;
 }
 
-bool RpcState::rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session, const char* what,
-                      void* data, size_t size) {
+status_t RpcState::rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session,
+                          const char* what, void* data, size_t size) {
     if (size > std::numeric_limits<ssize_t>::max()) {
         ALOGE("Cannot rec %s at size %zu (too big)", what, size);
         terminate();
-        return false;
+        return BAD_VALUE;
     }
 
     if (status_t status = session->mShutdownTrigger->interruptableReadFully(fd.get(), data, size);
@@ -243,12 +245,11 @@ bool RpcState::rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session, 
             ALOGE("Failed to read %s (%zu bytes) on fd %d, error: %s", what, size, fd.get(),
                   statusToString(status).c_str());
         }
-
-        return false;
+        return status;
     }
 
     LOG_RPC_DETAIL("Received %s on fd %d: %s", what, fd.get(), hexString(data, size).c_str());
-    return true;
+    return OK;
 }
 
 sp<IBinder> RpcState::getRootObject(const base::unique_fd& fd, const sp<RpcSession>& session) {
@@ -376,12 +377,12 @@ status_t RpcState::transactAddress(const base::unique_fd& fd, const RpcAddress& 
             .bodySize = static_cast<uint32_t>(transactionData.size()),
     };
 
-    if (!rpcSend(fd, "transact header", &command, sizeof(command))) {
-        return DEAD_OBJECT;
-    }
-    if (!rpcSend(fd, "command body", transactionData.data(), transactionData.size())) {
-        return DEAD_OBJECT;
-    }
+    if (status_t status = rpcSend(fd, "transact header", &command, sizeof(command)); status != OK)
+        return status;
+    if (status_t status =
+                rpcSend(fd, "command body", transactionData.data(), transactionData.size());
+        status != OK)
+        return status;
 
     if (flags & IBinder::FLAG_ONEWAY) {
         return OK; // do not wait for result
@@ -405,24 +406,22 @@ status_t RpcState::waitForReply(const base::unique_fd& fd, const sp<RpcSession>&
                                 Parcel* reply) {
     RpcWireHeader command;
     while (true) {
-        if (!rpcRec(fd, session, "command header", &command, sizeof(command))) {
-            return DEAD_OBJECT;
-        }
+        if (status_t status = rpcRec(fd, session, "command header", &command, sizeof(command));
+            status != OK)
+            return status;
 
         if (command.command == RPC_COMMAND_REPLY) break;
 
-        status_t status = processServerCommand(fd, session, command);
-        if (status != OK) return status;
+        if (status_t status = processServerCommand(fd, session, command); status != OK)
+            return status;
     }
 
     CommandData data(command.bodySize);
-    if (!data.valid()) {
-        return NO_MEMORY;
-    }
+    if (!data.valid()) return NO_MEMORY;
 
-    if (!rpcRec(fd, session, "reply body", data.data(), command.bodySize)) {
-        return DEAD_OBJECT;
-    }
+    if (status_t status = rpcRec(fd, session, "reply body", data.data(), command.bodySize);
+        status != OK)
+        return status;
 
     if (command.bodySize < sizeof(RpcWireReply)) {
         ALOGE("Expecting %zu but got %" PRId32 " bytes for RpcWireReply. Terminating!",
@@ -462,9 +461,12 @@ status_t RpcState::sendDecStrong(const base::unique_fd& fd, const RpcAddress& ad
             .command = RPC_COMMAND_DEC_STRONG,
             .bodySize = sizeof(RpcWireAddress),
     };
-    if (!rpcSend(fd, "dec ref header", &cmd, sizeof(cmd))) return DEAD_OBJECT;
-    if (!rpcSend(fd, "dec ref body", &addr.viewRawEmbedded(), sizeof(RpcWireAddress)))
-        return DEAD_OBJECT;
+    if (status_t status = rpcSend(fd, "dec ref header", &cmd, sizeof(cmd)); status != OK)
+        return status;
+    if (status_t status =
+                rpcSend(fd, "dec ref body", &addr.viewRawEmbedded(), sizeof(RpcWireAddress));
+        status != OK)
+        return status;
     return OK;
 }
 
@@ -472,9 +474,9 @@ status_t RpcState::getAndExecuteCommand(const base::unique_fd& fd, const sp<RpcS
     LOG_RPC_DETAIL("getAndExecuteCommand on fd %d", fd.get());
 
     RpcWireHeader command;
-    if (!rpcRec(fd, session, "command header", &command, sizeof(command))) {
-        return DEAD_OBJECT;
-    }
+    if (status_t status = rpcRec(fd, session, "command header", &command, sizeof(command));
+        status != OK)
+        return status;
 
     return processServerCommand(fd, session, command);
 }
@@ -520,9 +522,10 @@ status_t RpcState::processTransact(const base::unique_fd& fd, const sp<RpcSessio
     if (!transactionData.valid()) {
         return NO_MEMORY;
     }
-    if (!rpcRec(fd, session, "transaction body", transactionData.data(), transactionData.size())) {
-        return DEAD_OBJECT;
-    }
+    if (status_t status = rpcRec(fd, session, "transaction body", transactionData.data(),
+                                 transactionData.size());
+        status != OK)
+        return status;
 
     return processTransactInternal(fd, session, std::move(transactionData), nullptr /*targetRef*/);
 }
@@ -727,12 +730,12 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
             .bodySize = static_cast<uint32_t>(replyData.size()),
     };
 
-    if (!rpcSend(fd, "reply header", &cmdReply, sizeof(RpcWireHeader))) {
-        return DEAD_OBJECT;
-    }
-    if (!rpcSend(fd, "reply body", replyData.data(), replyData.size())) {
-        return DEAD_OBJECT;
-    }
+    if (status_t status = rpcSend(fd, "reply header", &cmdReply, sizeof(RpcWireHeader));
+        status != OK)
+        return status;
+    if (status_t status = rpcSend(fd, "reply body", replyData.data(), replyData.size());
+        status != OK)
+        return status;
     return OK;
 }
 
@@ -744,9 +747,10 @@ status_t RpcState::processDecStrong(const base::unique_fd& fd, const sp<RpcSessi
     if (!commandData.valid()) {
         return NO_MEMORY;
     }
-    if (!rpcRec(fd, session, "dec ref body", commandData.data(), commandData.size())) {
-        return DEAD_OBJECT;
-    }
+    if (status_t status =
+                rpcRec(fd, session, "dec ref body", commandData.data(), commandData.size());
+        status != OK)
+        return status;
 
     if (command.bodySize < sizeof(RpcWireAddress)) {
         ALOGE("Expecting %zu but got %" PRId32 " bytes for RpcWireAddress. Terminating!",
