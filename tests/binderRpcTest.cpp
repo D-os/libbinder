@@ -820,7 +820,7 @@ TEST_P(BinderRpc, ThreadingStressTest) {
 TEST_P(BinderRpc, OnewayStressTest) {
     constexpr size_t kNumClientThreads = 10;
     constexpr size_t kNumServerThreads = 10;
-    constexpr size_t kNumCalls = 100;
+    constexpr size_t kNumCalls = 50;
 
     auto proc = createRpcTestSocketServerProcess(kNumServerThreads);
 
