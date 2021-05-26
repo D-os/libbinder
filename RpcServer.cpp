@@ -329,7 +329,7 @@ bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
     return true;
 }
 
-void RpcServer::onSessionTerminating(const sp<RpcSession>& session) {
+void RpcServer::onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) {
     auto id = session->mId;
     LOG_ALWAYS_FATAL_IF(id == std::nullopt, "Server sessions must be initialized with ID");
     LOG_RPC_DETAIL("Dropping session %d", *id);
@@ -341,7 +341,7 @@ void RpcServer::onSessionTerminating(const sp<RpcSession>& session) {
     (void)mSessions.erase(it);
 }
 
-void RpcServer::onSessionThreadEnding(const sp<RpcSession>& session) {
+void RpcServer::onSessionServerThreadEnded(const sp<RpcSession>& session) {
     (void)session;
     mShutdownCv.notify_all();
 }
