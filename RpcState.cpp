@@ -221,8 +221,8 @@ status_t RpcState::rpcSend(const base::unique_fd& fd, const char* what, const vo
 
     if (sent < 0 || sent != static_cast<ssize_t>(size)) {
         int savedErrno = errno;
-        ALOGE("Failed to send %s (sent %zd of %zu bytes) on fd %d, error: %s", what, sent, size,
-              fd.get(), strerror(savedErrno));
+        LOG_RPC_DETAIL("Failed to send %s (sent %zd of %zu bytes) on fd %d, error: %s", what, sent,
+                       size, fd.get(), strerror(savedErrno));
 
         terminate();
         return -savedErrno;
@@ -241,10 +241,8 @@ status_t RpcState::rpcRec(const base::unique_fd& fd, const sp<RpcSession>& sessi
 
     if (status_t status = session->mShutdownTrigger->interruptableReadFully(fd.get(), data, size);
         status != OK) {
-        if (status != -ECANCELED) {
-            ALOGE("Failed to read %s (%zu bytes) on fd %d, error: %s", what, size, fd.get(),
-                  statusToString(status).c_str());
-        }
+        LOG_RPC_DETAIL("Failed to read %s (%zu bytes) on fd %d, error: %s", what, size, fd.get(),
+                       statusToString(status).c_str());
         return status;
     }
 

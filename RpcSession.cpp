@@ -379,7 +379,7 @@ RpcSession::ExclusiveConnection::ExclusiveConnection(const sp<RpcSession>& sessi
 
         // CHECK FOR DEDICATED CLIENT SOCKET
         //
-        // A server/looper should always use a dedicated session if available
+        // A server/looper should always use a dedicated connection if available
         findConnection(tid, &exclusive, &available, mSession->mClientConnections,
                        mSession->mClientConnectionsOffset);
 
@@ -407,7 +407,7 @@ RpcSession::ExclusiveConnection::ExclusiveConnection(const sp<RpcSession>& sessi
                            0 /* index hint */);
         }
 
-        // if our thread is already using a session, prioritize using that
+        // if our thread is already using a connection, prioritize using that
         if (exclusive != nullptr) {
             mConnection = exclusive;
             mReentrant = true;
@@ -420,11 +420,10 @@ RpcSession::ExclusiveConnection::ExclusiveConnection(const sp<RpcSession>& sessi
 
         // in regular binder, this would usually be a deadlock :)
         LOG_ALWAYS_FATAL_IF(mSession->mClientConnections.size() == 0,
-                            "Not a client of any session. You must create a session to an "
-                            "RPC server to make any non-nested (e.g. oneway or on another thread) "
-                            "calls.");
+                            "Session has no client connections. This is required for an RPC server "
+                            "to make any non-nested (e.g. oneway or on another thread) calls.");
 
-        LOG_RPC_DETAIL("No available session (have %zu clients and %zu servers). Waiting...",
+        LOG_RPC_DETAIL("No available connections (have %zu clients and %zu servers). Waiting...",
                        mSession->mClientConnections.size(), mSession->mServerConnections.size());
         mSession->mAvailableConnectionCv.wait(_l);
     }
@@ -443,13 +442,13 @@ void RpcSession::ExclusiveConnection::findConnection(pid_t tid, sp<RpcConnection
     for (size_t i = 0; i < sockets.size(); i++) {
         sp<RpcConnection>& socket = sockets[(i + socketsIndexHint) % sockets.size()];
 
-        // take first available session (intuition = caching)
+        // take first available connection (intuition = caching)
         if (available && *available == nullptr && socket->exclusiveTid == std::nullopt) {
             *available = socket;
             continue;
         }
 
-        // though, prefer to take session which is already inuse by this thread
+        // though, prefer to take connection which is already inuse by this thread
         // (nested transactions)
         if (exclusive && socket->exclusiveTid == tid) {
             *exclusive = socket;
@@ -459,7 +458,7 @@ void RpcSession::ExclusiveConnection::findConnection(pid_t tid, sp<RpcConnection
 }
 
 RpcSession::ExclusiveConnection::~ExclusiveConnection() {
-    // reentrant use of a session means something less deep in the call stack
+    // reentrant use of a connection means something less deep in the call stack
     // is using this fd, and it retains the right to it. So, we don't give up
     // exclusive ownership, and no thread is freed.
     if (!mReentrant) {

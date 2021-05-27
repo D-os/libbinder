@@ -71,42 +71,43 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     CHECK_LT(kSock.size(), sizeof(addr.sun_path));
     memcpy(&addr.sun_path, kSock.c_str(), kSock.size());
 
-    base::unique_fd clientFd(TEMP_FAILURE_RETRY(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)));
-    CHECK_NE(clientFd.get(), -1);
-    CHECK_EQ(0,
-             TEMP_FAILURE_RETRY(
-                     connect(clientFd.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr))))
-            << strerror(errno);
-
-    // TODO(b/182938024): fuzz multiple sessions, instead of just one
-
-#if 0
-    // make fuzzer more productive locally by forcing it to create a new session
-    int32_t id = -1;
-    CHECK(base::WriteFully(clientFd, &id, sizeof(id)));
-#endif
+    std::vector<base::unique_fd> connections;
 
     bool hangupBeforeShutdown = provider.ConsumeBool();
 
-    std::vector<uint8_t> writeData = provider.ConsumeRemainingBytes<uint8_t>();
-    CHECK(base::WriteFully(clientFd, writeData.data(), writeData.size()));
+    while (provider.remaining_bytes() > 0) {
+        if (connections.empty() || provider.ConsumeBool()) {
+            base::unique_fd fd(TEMP_FAILURE_RETRY(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)));
+            CHECK_NE(fd.get(), -1);
+            CHECK_EQ(0,
+                     TEMP_FAILURE_RETRY(
+                             connect(fd.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr))))
+                    << strerror(errno);
+            connections.push_back(std::move(fd));
+        } else {
+            size_t idx = provider.ConsumeIntegralInRange<size_t>(0, connections.size() - 1);
+
+            if (provider.ConsumeBool()) {
+                std::vector<uint8_t> writeData = provider.ConsumeBytes<uint8_t>(
+                        provider.ConsumeIntegralInRange<size_t>(0, provider.remaining_bytes()));
+                CHECK(base::WriteFully(connections.at(idx).get(), writeData.data(),
+                                       writeData.size()));
+            } else {
+                connections.erase(connections.begin() + idx); // hang up
+            }
+        }
+    }
 
     if (hangupBeforeShutdown) {
-        clientFd.reset();
+        connections.clear();
+        while (!server->listSessions().empty() && server->numUninitializedSessions()) {
+            // wait for all threads to finish processing existing information
+            usleep(1);
+        }
     }
 
-    // TODO(185167543): currently this is okay because we only shutdown the one
-    // thread, but once we can shutdown other sessions, we'll need to change
-    // this behavior in order to make sure all of the input is actually read.
-    while (!server->shutdown()) usleep(100);
-
-    clientFd.reset();
+    while (!server->shutdown()) usleep(1);
     serverThread.join();
-
-    // TODO(b/185167543): better way to force a server to shutdown
-    while (!server->listSessions().empty() && server->numUninitializedSessions()) {
-        usleep(1);
-    }
 
     return 0;
 }
