@@ -144,7 +144,6 @@ private:
     void preJoin(std::thread thread);
     // join on thread passed to preJoin
     void join(base::unique_fd client);
-    void terminateLocked();
 
     struct RpcConnection : public RefBase {
         base::unique_fd fd;
@@ -227,7 +226,6 @@ private:
     // TODO(b/185167543): allow sharing between different sessions in a
     // process? (or combine with mServerConnections)
     std::map<std::thread::id, std::thread> mThreads;
-    bool mTerminated = false;
 };
 
 } // namespace android
