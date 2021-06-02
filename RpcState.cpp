@@ -383,6 +383,7 @@ status_t RpcState::transactAddress(const base::unique_fd& fd, const RpcAddress& 
         return status;
 
     if (flags & IBinder::FLAG_ONEWAY) {
+        LOG_RPC_DETAIL("Oneway command, so no longer waiting on %d", fd.get());
         return OK; // do not wait for result
     }
 
