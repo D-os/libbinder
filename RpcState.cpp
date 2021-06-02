@@ -61,6 +61,7 @@ status_t RpcState::onBinderLeaving(const sp<RpcSession>& session, const sp<IBind
     }
 
     std::lock_guard<std::mutex> _l(mNodeMutex);
+    if (mTerminated) return DEAD_OBJECT;
 
     // TODO(b/182939933): maybe move address out of BpBinder, and keep binder->address map
     // in RpcState
@@ -95,11 +96,13 @@ status_t RpcState::onBinderLeaving(const sp<RpcSession>& session, const sp<IBind
     return OK;
 }
 
-sp<IBinder> RpcState::onBinderEntering(const sp<RpcSession>& session, const RpcAddress& address) {
+status_t RpcState::onBinderEntering(const sp<RpcSession>& session, const RpcAddress& address,
+                                    sp<IBinder>* out) {
     std::unique_lock<std::mutex> _l(mNodeMutex);
+    if (mTerminated) return DEAD_OBJECT;
 
     if (auto it = mNodeForAddress.find(address); it != mNodeForAddress.end()) {
-        sp<IBinder> binder = it->second.binder.promote();
+        *out = it->second.binder.promote();
 
         // implicitly have strong RPC refcount, since we received this binder
         it->second.timesRecd++;
@@ -111,7 +114,7 @@ sp<IBinder> RpcState::onBinderEntering(const sp<RpcSession>& session, const RpcA
         // immediately, we wait to send the last one in BpBinder::onLastDecStrong.
         (void)session->sendDecStrong(address);
 
-        return binder;
+        return OK;
     }
 
     auto&& [it, inserted] = mNodeForAddress.insert({address, BinderNode{}});
@@ -119,10 +122,9 @@ sp<IBinder> RpcState::onBinderEntering(const sp<RpcSession>& session, const RpcA
 
     // Currently, all binders are assumed to be part of the same session (no
     // device global binders in the RPC world).
-    sp<IBinder> binder = BpBinder::create(session, it->first);
-    it->second.binder = binder;
+    it->second.binder = *out = BpBinder::create(session, it->first);
     it->second.timesRecd = 1;
-    return binder;
+    return OK;
 }
 
 size_t RpcState::countBinders() {
@@ -556,12 +558,14 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
     sp<IBinder> target;
     if (!addr.isZero()) {
         if (!targetRef) {
-            target = onBinderEntering(session, addr);
+            replyStatus = onBinderEntering(session, addr, &target);
         } else {
             target = targetRef;
         }
 
-        if (target == nullptr) {
+        if (replyStatus != OK) {
+            // do nothing
+        } else if (target == nullptr) {
             // This can happen if the binder is remote in this process, and
             // another thread has called the last decStrong on this binder.
             // However, for local binders, it indicates a misbehaving client
