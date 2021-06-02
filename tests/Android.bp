@@ -118,6 +118,7 @@ aidl_interface {
     host_supported: true,
     unstable: true,
     srcs: [
+        "IBinderRpcCallback.aidl",
         "IBinderRpcSession.aidl",
         "IBinderRpcTest.aidl",
     ],
