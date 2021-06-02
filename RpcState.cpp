@@ -352,35 +352,35 @@ status_t RpcState::transactAddress(const base::unique_fd& fd, const RpcAddress& 
         }
     }
 
+    LOG_ALWAYS_FATAL_IF(std::numeric_limits<int32_t>::max() - sizeof(RpcWireHeader) -
+                                        sizeof(RpcWireTransaction) <
+                                data.dataSize(),
+                        "Too much data %zu", data.dataSize());
+
+    RpcWireHeader command{
+            .command = RPC_COMMAND_TRANSACT,
+            .bodySize = static_cast<uint32_t>(sizeof(RpcWireTransaction) + data.dataSize()),
+    };
     RpcWireTransaction transaction{
             .address = address.viewRawEmbedded(),
             .code = code,
             .flags = flags,
             .asyncNumber = asyncNumber,
     };
-
-    CommandData transactionData(sizeof(RpcWireTransaction) + data.dataSize());
+    CommandData transactionData(sizeof(RpcWireHeader) + sizeof(RpcWireTransaction) +
+                                data.dataSize());
     if (!transactionData.valid()) {
         return NO_MEMORY;
     }
 
-    memcpy(transactionData.data() + 0, &transaction, sizeof(RpcWireTransaction));
-    memcpy(transactionData.data() + sizeof(RpcWireTransaction), data.data(), data.dataSize());
+    memcpy(transactionData.data() + 0, &command, sizeof(RpcWireHeader));
+    memcpy(transactionData.data() + sizeof(RpcWireHeader), &transaction,
+           sizeof(RpcWireTransaction));
+    memcpy(transactionData.data() + sizeof(RpcWireHeader) + sizeof(RpcWireTransaction), data.data(),
+           data.dataSize());
 
-    if (transactionData.size() > std::numeric_limits<uint32_t>::max()) {
-        ALOGE("Transaction size too big %zu", transactionData.size());
-        return BAD_VALUE;
-    }
-
-    RpcWireHeader command{
-            .command = RPC_COMMAND_TRANSACT,
-            .bodySize = static_cast<uint32_t>(transactionData.size()),
-    };
-
-    if (status_t status = rpcSend(fd, "transact header", &command, sizeof(command)); status != OK)
-        return status;
     if (status_t status =
-                rpcSend(fd, "command body", transactionData.data(), transactionData.size());
+                rpcSend(fd, "transaction", transactionData.data(), transactionData.size());
         status != OK)
         return status;
 
@@ -711,35 +711,29 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
         return OK;
     }
 
+    LOG_ALWAYS_FATAL_IF(std::numeric_limits<int32_t>::max() - sizeof(RpcWireHeader) -
+                                        sizeof(RpcWireReply) <
+                                reply.dataSize(),
+                        "Too much data for reply %zu", reply.dataSize());
+
+    RpcWireHeader cmdReply{
+            .command = RPC_COMMAND_REPLY,
+            .bodySize = static_cast<uint32_t>(sizeof(RpcWireReply) + reply.dataSize()),
+    };
     RpcWireReply rpcReply{
             .status = replyStatus,
     };
 
-    CommandData replyData(sizeof(RpcWireReply) + reply.dataSize());
+    CommandData replyData(sizeof(RpcWireHeader) + sizeof(RpcWireReply) + reply.dataSize());
     if (!replyData.valid()) {
         return NO_MEMORY;
     }
-    memcpy(replyData.data() + 0, &rpcReply, sizeof(RpcWireReply));
-    memcpy(replyData.data() + sizeof(RpcWireReply), reply.data(), reply.dataSize());
+    memcpy(replyData.data() + 0, &cmdReply, sizeof(RpcWireHeader));
+    memcpy(replyData.data() + sizeof(RpcWireHeader), &rpcReply, sizeof(RpcWireReply));
+    memcpy(replyData.data() + sizeof(RpcWireHeader) + sizeof(RpcWireReply), reply.data(),
+           reply.dataSize());
 
-    if (replyData.size() > std::numeric_limits<uint32_t>::max()) {
-        ALOGE("Reply size too big %zu", transactionData.size());
-        terminate();
-        return BAD_VALUE;
-    }
-
-    RpcWireHeader cmdReply{
-            .command = RPC_COMMAND_REPLY,
-            .bodySize = static_cast<uint32_t>(replyData.size()),
-    };
-
-    if (status_t status = rpcSend(fd, "reply header", &cmdReply, sizeof(RpcWireHeader));
-        status != OK)
-        return status;
-    if (status_t status = rpcSend(fd, "reply body", replyData.data(), replyData.size());
-        status != OK)
-        return status;
-    return OK;
+    return rpcSend(fd, "reply", replyData.data(), replyData.size());
 }
 
 status_t RpcState::processDecStrong(const base::unique_fd& fd, const sp<RpcSession>& session,
