@@ -47,6 +47,18 @@ public:
     static sp<RpcSession> make();
 
     /**
+     * Set the maximum number of reverse connections allowed to be made (for
+     * things like callbacks). By default, this is 0. This must be called before
+     * setting up this connection as a client.
+     *
+     * If this is called, 'shutdown' on this session must also be called.
+     * Otherwise, a threadpool will leak.
+     *
+     * TODO(b/185167543): start these dynamically
+     */
+    void setMaxReverseConnections(size_t connections);
+
+    /**
      * This should be called once per thread, matching 'join' in the remote
      * process.
      */
@@ -82,6 +94,16 @@ public:
      * it supports (maximum number of concurrent non-nested synchronous transactions)
      */
     status_t getRemoteMaxThreads(size_t* maxThreads);
+
+    /**
+     * Shuts down the service. Only works for client sessions (server-side
+     * sessions currently only support shutting down the entire server).
+     *
+     * Warning: this is currently not active/nice (the server isn't told we're
+     * shutting down). Being nicer to the server could potentially make it
+     * reclaim resources faster.
+     */
+    [[nodiscard]] bool shutdown();
 
     [[nodiscard]] status_t transact(const sp<IBinder>& binder, uint32_t code, const Parcel& data,
                                     Parcel* reply, uint32_t flags);
@@ -138,12 +160,29 @@ private:
         base::unique_fd mRead;
     };
 
+    class EventListener : public virtual RefBase {
+    public:
+        virtual void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) = 0;
+        virtual void onSessionServerThreadEnded() = 0;
+    };
+
+    class WaitForShutdownListener : public EventListener {
+    public:
+        void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) override;
+        void onSessionServerThreadEnded() override;
+        void waitForShutdown(std::unique_lock<std::mutex>& lock);
+
+    private:
+        std::condition_variable mCv;
+        bool mShutdown = false;
+    };
+
     status_t readId();
 
     // transfer ownership of thread
     void preJoin(std::thread thread);
     // join on thread passed to preJoin
-    void join(base::unique_fd client);
+    static void join(sp<RpcSession>&& session, base::unique_fd client);
 
     struct RpcConnection : public RefBase {
         base::unique_fd fd;
@@ -153,13 +192,15 @@ private:
         std::optional<pid_t> exclusiveTid;
     };
 
-    bool setupSocketClient(const RpcSocketAddress& address);
-    bool setupOneSocketClient(const RpcSocketAddress& address, int32_t sessionId);
-    bool addClientConnection(base::unique_fd fd);
-    void setForServer(const wp<RpcServer>& server, int32_t sessionId,
+    [[nodiscard]] bool setupSocketClient(const RpcSocketAddress& address);
+    [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address, int32_t sessionId,
+                                                bool server);
+    [[nodiscard]] bool addClientConnection(base::unique_fd fd);
+    void setForServer(const wp<RpcServer>& server,
+                      const wp<RpcSession::EventListener>& eventListener, int32_t sessionId,
                       const std::shared_ptr<FdTrigger>& shutdownTrigger);
     sp<RpcConnection> assignServerToThisThread(base::unique_fd fd);
-    bool removeServerConnection(const sp<RpcConnection>& connection);
+    [[nodiscard]] bool removeServerConnection(const sp<RpcConnection>& connection);
 
     enum class ConnectionUse {
         CLIENT,
@@ -204,6 +245,8 @@ private:
     // serve calls to the server at all times (e.g. if it hosts a callback)
 
     wp<RpcServer> mForServer; // maybe null, for client sessions
+    sp<WaitForShutdownListener> mShutdownListener; // used for client sessions
+    wp<EventListener> mEventListener; // mForServer if server, mShutdownListener if client
 
     // TODO(b/183988761): this shouldn't be guessable
     std::optional<int32_t> mId;
@@ -214,6 +257,8 @@ private:
 
     std::mutex mMutex; // for all below
 
+    size_t mMaxReverseConnections = 0;
+
     std::condition_variable mAvailableConnectionCv; // for mWaitingThreads
     size_t mWaitingThreads = 0;
     // hint index into clients, ++ when sending an async transaction
@@ -221,8 +266,6 @@ private:
     std::vector<sp<RpcConnection>> mClientConnections;
     std::vector<sp<RpcConnection>> mServerConnections;
 
-    // TODO(b/185167543): use for reverse sessions (allow client to also
-    // serve calls on a session).
     // TODO(b/185167543): allow sharing between different sessions in a
     // process? (or combine with mServerConnections)
     std::map<std::thread::id, std::thread> mThreads;

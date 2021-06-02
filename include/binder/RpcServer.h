@@ -44,7 +44,7 @@ class RpcSocketAddress;
  *     }
  *     server->join();
  */
-class RpcServer final : public virtual RefBase {
+class RpcServer final : public virtual RefBase, private RpcSession::EventListener {
 public:
     static sp<RpcServer> make();
 
@@ -151,14 +151,12 @@ public:
 
     ~RpcServer();
 
-    // internal use only
-
-    void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session);
-    void onSessionServerThreadEnded(const sp<RpcSession>& session);
-
 private:
     friend sp<RpcServer>;
     RpcServer();
+
+    void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) override;
+    void onSessionServerThreadEnded() override;
 
     static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
     bool setupSocketServer(const RpcSocketAddress& address);
