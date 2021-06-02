@@ -625,34 +625,34 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
         } else {
             LOG_RPC_DETAIL("Got special transaction %u", transaction->code);
 
-            sp<RpcServer> server = session->server().promote();
-            if (server) {
-                // special case for 'zero' address (special server commands)
-                switch (transaction->code) {
-                    case RPC_SPECIAL_TRANSACT_GET_ROOT: {
-                        replyStatus = reply.writeStrongBinder(server->getRootObject());
-                        break;
-                    }
-                    case RPC_SPECIAL_TRANSACT_GET_MAX_THREADS: {
-                        replyStatus = reply.writeInt32(server->getMaxThreads());
-                        break;
-                    }
-                    case RPC_SPECIAL_TRANSACT_GET_SESSION_ID: {
-                        // only sessions w/ services can be the source of a
-                        // session ID (so still guarded by non-null server)
-                        //
-                        // sessions associated with servers must have an ID
-                        // (hence abort)
-                        int32_t id = session->mId.value();
-                        replyStatus = reply.writeInt32(id);
-                        break;
-                    }
-                    default: {
-                        replyStatus = UNKNOWN_TRANSACTION;
+            switch (transaction->code) {
+                case RPC_SPECIAL_TRANSACT_GET_MAX_THREADS: {
+                    replyStatus = reply.writeInt32(session->getMaxThreads());
+                    break;
+                }
+                case RPC_SPECIAL_TRANSACT_GET_SESSION_ID: {
+                    // for client connections, this should always report the value
+                    // originally returned from the server
+                    int32_t id = session->mId.value();
+                    replyStatus = reply.writeInt32(id);
+                    break;
+                }
+                default: {
+                    sp<RpcServer> server = session->server().promote();
+                    if (server) {
+                        switch (transaction->code) {
+                            case RPC_SPECIAL_TRANSACT_GET_ROOT: {
+                                replyStatus = reply.writeStrongBinder(server->getRootObject());
+                                break;
+                            }
+                            default: {
+                                replyStatus = UNKNOWN_TRANSACTION;
+                            }
+                        }
+                    } else {
+                        ALOGE("Special command sent, but no server object attached.");
                     }
                 }
-            } else {
-                ALOGE("Special command sent, but no server object attached.");
             }
         }
     }
