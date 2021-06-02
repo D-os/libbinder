@@ -219,23 +219,7 @@ void RpcSession::join(unique_fd client) {
     }
 
     if (server != nullptr) {
-        server->onSessionThreadEnding(sp<RpcSession>::fromExisting(this));
-    }
-}
-
-void RpcSession::terminateLocked() {
-    // TODO(b/185167543):
-    // - kindly notify other side of the connection of termination (can't be
-    // locked)
-    // - prevent new client/servers from being added
-    // - stop all threads which are currently reading/writing
-    // - terminate RpcState?
-
-    if (mTerminated) return;
-
-    sp<RpcServer> server = mForServer.promote();
-    if (server) {
-        server->onSessionTerminating(sp<RpcSession>::fromExisting(this));
+        server->onSessionServerThreadEnded(sp<RpcSession>::fromExisting(this));
     }
 }
 
@@ -359,7 +343,10 @@ bool RpcSession::removeServerConnection(const sp<RpcConnection>& connection) {
         it != mServerConnections.end()) {
         mServerConnections.erase(it);
         if (mServerConnections.size() == 0) {
-            terminateLocked();
+            sp<RpcServer> server = mForServer.promote();
+            if (server) {
+                server->onSessionLockedAllServerThreadsEnded(sp<RpcSession>::fromExisting(this));
+            }
         }
         return true;
     }
