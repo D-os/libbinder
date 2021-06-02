@@ -59,15 +59,18 @@ sp<RpcSession> RpcSession::make() {
     return sp<RpcSession>::make();
 }
 
-void RpcSession::setMaxReverseConnections(size_t connections) {
-    {
-        std::lock_guard<std::mutex> _l(mMutex);
-        LOG_ALWAYS_FATAL_IF(mClientConnections.size() != 0,
-                            "Must setup reverse connections before setting up client connections, "
-                            "but already has %zu clients",
-                            mClientConnections.size());
-    }
-    mMaxReverseConnections = connections;
+void RpcSession::setMaxThreads(size_t threads) {
+    std::lock_guard<std::mutex> _l(mMutex);
+    LOG_ALWAYS_FATAL_IF(!mClientConnections.empty() || !mServerConnections.empty(),
+                        "Must set max threads before setting up connections, but has %zu client(s) "
+                        "and %zu server(s)",
+                        mClientConnections.size(), mServerConnections.size());
+    mMaxThreads = threads;
+}
+
+size_t RpcSession::getMaxThreads() {
+    std::lock_guard<std::mutex> _l(mMutex);
+    return mMaxThreads;
 }
 
 bool RpcSession::setupUnixDomainClient(const char* path) {
@@ -309,7 +312,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     // requested to be set) in order to allow the other side to reliably make
     // any requests at all.
 
-    for (size_t i = 0; i < mMaxReverseConnections; i++) {
+    for (size_t i = 0; i < mMaxThreads; i++) {
         if (!setupOneSocketConnection(addr, mId.value(), true /*reverse*/)) return false;
     }
 
