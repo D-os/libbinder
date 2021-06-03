@@ -95,7 +95,7 @@ cc_test {
         "libbinder_ndk",
         "libutils",
     ],
-    test_suites: ["general-tests", "vts"],
+    test_suites: ["general-tests"],
     require_root: true,
 }
 
