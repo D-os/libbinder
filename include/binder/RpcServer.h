@@ -160,7 +160,6 @@ private:
 
     static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
     bool setupSocketServer(const RpcSocketAddress& address);
-    [[nodiscard]] bool acceptOne();
 
     bool mAgreedExperimental = false;
     size_t mMaxThreads = 1;
