@@ -153,7 +153,22 @@ void RpcServer::join() {
 
     status_t status;
     while ((status = mShutdownTrigger->triggerablePollRead(mServer)) == OK) {
-        (void)acceptOne();
+        unique_fd clientFd(TEMP_FAILURE_RETRY(
+                accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
+
+        if (clientFd < 0) {
+            ALOGE("Could not accept4 socket: %s", strerror(errno));
+            continue;
+        }
+        LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
+
+        {
+            std::lock_guard<std::mutex> _l(mLock);
+            std::thread thread =
+                    std::thread(&RpcServer::establishConnection, sp<RpcServer>::fromExisting(this),
+                                std::move(clientFd));
+            mConnectingThreads[thread.get_id()] = std::move(thread);
+        }
     }
     LOG_RPC_DETAIL("RpcServer::join exiting with %s", statusToString(status).c_str());
 
@@ -162,26 +177,6 @@ void RpcServer::join() {
         mJoinThreadRunning = false;
     }
     mShutdownCv.notify_all();
-}
-
-bool RpcServer::acceptOne() {
-    unique_fd clientFd(
-            TEMP_FAILURE_RETRY(accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
-
-    if (clientFd < 0) {
-        ALOGE("Could not accept4 socket: %s", strerror(errno));
-        return false;
-    }
-    LOG_RPC_DETAIL("accept4 on fd %d yields fd %d", mServer.get(), clientFd.get());
-
-    {
-        std::lock_guard<std::mutex> _l(mLock);
-        std::thread thread = std::thread(&RpcServer::establishConnection,
-                                         sp<RpcServer>::fromExisting(this), std::move(clientFd));
-        mConnectingThreads[thread.get_id()] = std::move(thread);
-    }
-
-    return true;
 }
 
 bool RpcServer::shutdown() {
