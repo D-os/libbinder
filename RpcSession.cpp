@@ -240,7 +240,8 @@ void RpcSession::join(sp<RpcSession>&& session, unique_fd client) {
     sp<RpcConnection> connection = session->assignServerToThisThread(std::move(client));
 
     while (true) {
-        status_t error = session->state()->getAndExecuteCommand(connection->fd, session);
+        status_t error = session->state()->getAndExecuteCommand(connection->fd, session,
+                                                                RpcState::CommandType::ANY);
 
         if (error != OK) {
             LOG_RPC_DETAIL("Binder connection thread closing w/ status %s",
