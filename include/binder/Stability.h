@@ -136,14 +136,15 @@ private:
         VINTF = 0b111111,
     };
 
-    // This is the format of stability passed on the wire.
+    // This is the format of stability passed on the wire. It is only 2 bytes
+    // long, but 2 bytes in addition to this are reserved here. The difference
+    // in size is in order to free up space in BBinder, which is fixed by
+    // prebuilts inheriting from it.
     struct Category {
-        static inline Category fromRepr(int32_t representation) {
+        static inline Category fromRepr(int16_t representation) {
             return *reinterpret_cast<Category*>(&representation);
         }
-        int32_t repr() const {
-            return *reinterpret_cast<const int32_t*>(this);
-        }
+        int16_t repr() const { return *reinterpret_cast<const int16_t*>(this); }
         static inline Category currentFromLevel(Level level);
 
         bool operator== (const Category& o) const {
@@ -161,12 +162,10 @@ private:
         // class must write parcels according to the version documented here.
         uint8_t version;
 
-        uint8_t reserved[2];
-
         // bitmask of Stability::Level
         Level level;
     };
-    static_assert(sizeof(Category) == sizeof(int32_t));
+    static_assert(sizeof(Category) == sizeof(int16_t));
 
     // returns the stability according to how this was built
     static Level getLocalLevel();

@@ -119,10 +119,12 @@ private:
     std::atomic<Extras*> mExtras;
 
     friend ::android::internal::Stability;
-    union {
-        int32_t mStability;
-        void* mReserved0;
-    };
+    int16_t mStability;
+    int16_t mReserved0;
+
+#ifdef __LP64__
+    int32_t mReserved1;
+#endif
 };
 
 // ---------------------------------------------------------------------------

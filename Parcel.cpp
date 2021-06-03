@@ -173,8 +173,8 @@ static void release_object(const sp<ProcessState>& proc,
 status_t Parcel::finishFlattenBinder(const sp<IBinder>& binder)
 {
     internal::Stability::tryMarkCompilationUnit(binder.get());
-    auto category = internal::Stability::getCategory(binder.get());
-    return writeInt32(category.repr());
+    int16_t rep = internal::Stability::getCategory(binder.get()).repr();
+    return writeInt32(rep);
 }
 
 status_t Parcel::finishUnflattenBinder(
@@ -184,7 +184,8 @@ status_t Parcel::finishUnflattenBinder(
     status_t status = readInt32(&stability);
     if (status != OK) return status;
 
-    status = internal::Stability::setRepr(binder.get(), stability, true /*log*/);
+    status = internal::Stability::setRepr(binder.get(), static_cast<int16_t>(stability),
+                                          true /*log*/);
     if (status != OK) return status;
 
     *out = binder;
