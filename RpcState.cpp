@@ -134,6 +134,15 @@ size_t RpcState::countBinders() {
 
 void RpcState::dump() {
     std::lock_guard<std::mutex> _l(mNodeMutex);
+    dumpLocked();
+}
+
+void RpcState::terminate() {
+    std::unique_lock<std::mutex> _l(mNodeMutex);
+    terminate(_l);
+}
+
+void RpcState::dumpLocked() {
     ALOGE("DUMP OF RpcState %p", this);
     ALOGE("DUMP OF RpcState (%zu nodes)", mNodeForAddress.size());
     for (const auto& [address, node] : mNodeForAddress) {
@@ -161,10 +170,10 @@ void RpcState::dump() {
     ALOGE("END DUMP OF RpcState");
 }
 
-void RpcState::terminate() {
+void RpcState::terminate(std::unique_lock<std::mutex>& lock) {
     if (SHOULD_LOG_RPC_DETAIL) {
         ALOGE("RpcState::terminate()");
-        dump();
+        dumpLocked();
     }
 
     // if the destructor of a binder object makes another RPC call, then calling
@@ -172,20 +181,20 @@ void RpcState::terminate() {
     // mNodeMutex is no longer taken.
     std::vector<sp<IBinder>> tempHoldBinder;
 
-    {
-        std::lock_guard<std::mutex> _l(mNodeMutex);
-        mTerminated = true;
-        for (auto& [address, node] : mNodeForAddress) {
-            sp<IBinder> binder = node.binder.promote();
-            LOG_ALWAYS_FATAL_IF(binder == nullptr, "Binder %p expected to be owned.", binder.get());
+    mTerminated = true;
+    for (auto& [address, node] : mNodeForAddress) {
+        sp<IBinder> binder = node.binder.promote();
+        LOG_ALWAYS_FATAL_IF(binder == nullptr, "Binder %p expected to be owned.", binder.get());
 
-            if (node.sentRef != nullptr) {
-                tempHoldBinder.push_back(node.sentRef);
-            }
+        if (node.sentRef != nullptr) {
+            tempHoldBinder.push_back(node.sentRef);
         }
-
-        mNodeForAddress.clear();
     }
+
+    mNodeForAddress.clear();
+
+    lock.unlock();
+    tempHoldBinder.clear(); // explicit
 }
 
 RpcState::CommandData::CommandData(size_t size) : mSize(size) {
@@ -341,14 +350,15 @@ status_t RpcState::transactAddress(const base::unique_fd& fd, const RpcAddress& 
     uint64_t asyncNumber = 0;
 
     if (!address.isZero()) {
-        std::lock_guard<std::mutex> _l(mNodeMutex);
+        std::unique_lock<std::mutex> _l(mNodeMutex);
         if (mTerminated) return DEAD_OBJECT; // avoid fatal only, otherwise races
         auto it = mNodeForAddress.find(address);
         LOG_ALWAYS_FATAL_IF(it == mNodeForAddress.end(), "Sending transact on unknown address %s",
                             address.toString().c_str());
 
         if (flags & IBinder::FLAG_ONEWAY) {
-            asyncNumber = it->second.asyncNumber++;
+            asyncNumber = it->second.asyncNumber;
+            if (!nodeProgressAsyncNumber(&it->second, _l)) return DEAD_OBJECT;
         }
     }
 
@@ -458,9 +468,8 @@ status_t RpcState::sendDecStrong(const base::unique_fd& fd, const RpcAddress& ad
                             addr.toString().c_str());
 
         it->second.timesRecd--;
-        if (it->second.timesRecd == 0 && it->second.timesSent == 0) {
-            mNodeForAddress.erase(it);
-        }
+        LOG_ALWAYS_FATAL_IF(nullptr != tryEraseNode(it),
+                            "Bad state. RpcState shouldn't own received binder");
     }
 
     RpcWireHeader cmd = {
@@ -698,13 +707,7 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
             // last refcount dropped after this transaction happened
             if (it == mNodeForAddress.end()) return OK;
 
-            // note - only updated now, instead of later, so that other threads
-            // will queue any later transactions
-
-            // TODO(b/183140903): support > 2**64 async transactions
-            //     (we can do this by allowing asyncNumber to wrap, since we
-            //     don't expect more than 2**64 simultaneous transactions)
-            it->second.asyncNumber++;
+            if (!nodeProgressAsyncNumber(&it->second, _l)) return DEAD_OBJECT;
 
             if (it->second.asyncTodo.size() == 0) return OK;
             if (it->second.asyncTodo.top().asyncNumber == it->second.asyncNumber) {
@@ -799,22 +802,40 @@ status_t RpcState::processDecStrong(const base::unique_fd& fd, const sp<RpcSessi
     LOG_ALWAYS_FATAL_IF(it->second.sentRef == nullptr, "Inconsistent state, lost ref for %s",
                         addr.toString().c_str());
 
-    sp<IBinder> tempHold;
-
     it->second.timesSent--;
-    if (it->second.timesSent == 0) {
-        tempHold = it->second.sentRef;
-        it->second.sentRef = nullptr;
-
-        if (it->second.timesRecd == 0) {
-            mNodeForAddress.erase(it);
-        }
-    }
-
+    sp<IBinder> tempHold = tryEraseNode(it);
     _l.unlock();
     tempHold = nullptr; // destructor may make binder calls on this session
 
     return OK;
+}
+
+sp<IBinder> RpcState::tryEraseNode(std::map<RpcAddress, BinderNode>::iterator& it) {
+    sp<IBinder> ref;
+
+    if (it->second.timesSent == 0) {
+        ref = std::move(it->second.sentRef);
+
+        if (it->second.timesRecd == 0) {
+            LOG_ALWAYS_FATAL_IF(!it->second.asyncTodo.empty(),
+                                "Can't delete binder w/ pending async transactions");
+            mNodeForAddress.erase(it);
+        }
+    }
+
+    return ref;
+}
+
+bool RpcState::nodeProgressAsyncNumber(BinderNode* node, std::unique_lock<std::mutex>& lock) {
+    // 2**64 =~ 10**19 =~ 1000 transactions per second for 585 million years to
+    // a single binder
+    if (node->asyncNumber >= std::numeric_limits<decltype(node->asyncNumber)>::max()) {
+        ALOGE("Out of async transaction IDs. Terminating");
+        terminate(lock);
+        return false;
+    }
+    node->asyncNumber++;
+    return true;
 }
 
 } // namespace android
