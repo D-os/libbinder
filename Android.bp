@@ -307,3 +307,17 @@ cc_library {
         export_aidl_headers: true,
     },
 }
+
+cc_binary {
+    name: "servicedispatcher",
+    host_supported: false,
+    srcs: [
+        "servicedispatcher.cpp",
+    ],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "liblog",
+        "libutils",
+    ],
+}
