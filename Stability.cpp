@@ -33,7 +33,6 @@ constexpr uint8_t kBinderWireFormatVersion = 1;
 Stability::Category Stability::Category::currentFromLevel(Level level) {
     return {
         .version = kBinderWireFormatVersion,
-        .reserved = {0},
         .level = level,
     };
 }
