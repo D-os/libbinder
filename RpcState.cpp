@@ -617,7 +617,7 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
             (void)session->shutdownAndWait(false);
             replyStatus = BAD_VALUE;
         } else if (transaction->flags & IBinder::FLAG_ONEWAY) {
-            std::lock_guard<std::mutex> _l(mNodeMutex);
+            std::unique_lock<std::mutex> _l(mNodeMutex);
             auto it = mNodeForAddress.find(addr);
             if (it->second.binder.promote() != target) {
                 ALOGE("Binder became invalid during transaction. Bad client? %s",
@@ -626,16 +626,33 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
             } else if (transaction->asyncNumber != it->second.asyncNumber) {
                 // we need to process some other asynchronous transaction
                 // first
-                // TODO(b/183140903): limit enqueues/detect overfill for bad client
-                // TODO(b/183140903): detect when an object is deleted when it still has
-                //        pending async transactions
                 it->second.asyncTodo.push(BinderNode::AsyncTodo{
                         .ref = target,
                         .data = std::move(transactionData),
                         .asyncNumber = transaction->asyncNumber,
                 });
-                LOG_RPC_DETAIL("Enqueuing %" PRId64 " on %s", transaction->asyncNumber,
-                               addr.toString().c_str());
+
+                size_t numPending = it->second.asyncTodo.size();
+                LOG_RPC_DETAIL("Enqueuing %" PRId64 " on %s (%zu pending)",
+                               transaction->asyncNumber, addr.toString().c_str(), numPending);
+
+                constexpr size_t kArbitraryOnewayCallTerminateLevel = 10000;
+                constexpr size_t kArbitraryOnewayCallWarnLevel = 1000;
+                constexpr size_t kArbitraryOnewayCallWarnPer = 1000;
+
+                if (numPending >= kArbitraryOnewayCallWarnLevel) {
+                    if (numPending >= kArbitraryOnewayCallTerminateLevel) {
+                        ALOGE("WARNING: %zu pending oneway transactions. Terminating!", numPending);
+                        _l.unlock();
+                        (void)session->shutdownAndWait(false);
+                        return FAILED_TRANSACTION;
+                    }
+
+                    if (numPending % kArbitraryOnewayCallWarnPer == 0) {
+                        ALOGW("Warning: many oneway transactions built up on %p (%zu)",
+                              target.get(), numPending);
+                    }
+                }
                 return OK;
             }
         }
