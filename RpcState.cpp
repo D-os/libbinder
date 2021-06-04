@@ -813,6 +813,8 @@ sp<IBinder> RpcState::tryEraseNode(std::map<RpcAddress, BinderNode>::iterator& i
         ref = std::move(it->second.sentRef);
 
         if (it->second.timesRecd == 0) {
+            LOG_ALWAYS_FATAL_IF(!it->second.asyncTodo.empty(),
+                                "Can't delete binder w/ pending async transactions");
             mNodeForAddress.erase(it);
         }
     }
