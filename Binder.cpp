@@ -197,9 +197,7 @@ public:
 
 // ---------------------------------------------------------------------------
 
-BBinder::BBinder() : mExtras(nullptr), mStability(0)
-{
-}
+BBinder::BBinder() : mExtras(nullptr), mStability(0), mParceled(false) {}
 
 bool BBinder::isBinderAlive() const
 {
@@ -322,6 +320,10 @@ bool BBinder::isRequestingSid()
 
 void BBinder::setRequestingSid(bool requestingSid)
 {
+    ALOGW_IF(mParceled,
+             "setRequestingSid() should not be called after a binder object "
+             "is parceled/sent to another process");
+
     Extras* e = mExtras.load(std::memory_order_acquire);
 
     if (!e) {
@@ -344,6 +346,10 @@ sp<IBinder> BBinder::getExtension() {
 }
 
 void BBinder::setMinSchedulerPolicy(int policy, int priority) {
+    ALOGW_IF(mParceled,
+             "setMinSchedulerPolicy() should not be called after a binder object "
+             "is parceled/sent to another process");
+
     switch (policy) {
     case SCHED_NORMAL:
       LOG_ALWAYS_FATAL_IF(priority < -20 || priority > 19, "Invalid priority for SCHED_NORMAL: %d", priority);
@@ -391,6 +397,10 @@ bool BBinder::isInheritRt() {
 }
 
 void BBinder::setInheritRt(bool inheritRt) {
+    ALOGW_IF(mParceled,
+             "setInheritRt() should not be called after a binder object "
+             "is parceled/sent to another process");
+
     Extras* e = mExtras.load(std::memory_order_acquire);
 
     if (!e) {
@@ -410,8 +420,20 @@ pid_t BBinder::getDebugPid() {
 }
 
 void BBinder::setExtension(const sp<IBinder>& extension) {
+    ALOGW_IF(mParceled,
+             "setExtension() should not be called after a binder object "
+             "is parceled/sent to another process");
+
     Extras* e = getOrCreateExtras();
     e->mExtension = extension;
+}
+
+bool BBinder::wasParceled() {
+    return mParceled;
+}
+
+void BBinder::setParceled() {
+    mParceled = true;
 }
 
 status_t BBinder::setRpcClientDebug(const Parcel& data) {
