@@ -113,17 +113,21 @@ status_t RpcSession::getRemoteMaxThreads(size_t* maxThreads) {
     return state()->getMaxThreads(connection.fd(), sp<RpcSession>::fromExisting(this), maxThreads);
 }
 
-bool RpcSession::shutdown() {
+bool RpcSession::shutdownAndWait(bool wait) {
     std::unique_lock<std::mutex> _l(mMutex);
-    LOG_ALWAYS_FATAL_IF(mForServer.promote() != nullptr, "Can only shut down client session");
     LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr, "Shutdown trigger not installed");
-    LOG_ALWAYS_FATAL_IF(mShutdownListener == nullptr, "Shutdown listener not installed");
 
     mShutdownTrigger->trigger();
-    mShutdownListener->waitForShutdown(_l);
-    mState->terminate();
 
-    LOG_ALWAYS_FATAL_IF(!mThreads.empty(), "Shutdown failed");
+    if (wait) {
+        LOG_ALWAYS_FATAL_IF(mShutdownListener == nullptr, "Shutdown listener not installed");
+        mShutdownListener->waitForShutdown(_l);
+        LOG_ALWAYS_FATAL_IF(!mThreads.empty(), "Shutdown failed");
+    }
+
+    _l.unlock();
+    mState->clear();
+
     return true;
 }
 
@@ -139,7 +143,7 @@ status_t RpcSession::transact(const sp<IBinder>& binder, uint32_t code, const Pa
 status_t RpcSession::sendDecStrong(const RpcAddress& address) {
     ExclusiveConnection connection(sp<RpcSession>::fromExisting(this),
                                    ConnectionUse::CLIENT_REFCOUNT);
-    return state()->sendDecStrong(connection.fd(), address);
+    return state()->sendDecStrong(connection.fd(), sp<RpcSession>::fromExisting(this), address);
 }
 
 std::unique_ptr<RpcSession::FdTrigger> RpcSession::FdTrigger::make() {

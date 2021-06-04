@@ -966,7 +966,7 @@ TEST_P(BinderRpc, Callbacks) {
 
             // since this session has a reverse connection w/ a threadpool, we
             // need to manually shut it down
-            EXPECT_TRUE(proc.proc.sessions.at(0).session->shutdown());
+            EXPECT_TRUE(proc.proc.sessions.at(0).session->shutdownAndWait(true));
 
             proc.expectAlreadyShutdown = true;
         }

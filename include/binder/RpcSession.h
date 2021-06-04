@@ -97,14 +97,20 @@ public:
     status_t getRemoteMaxThreads(size_t* maxThreads);
 
     /**
-     * Shuts down the service. Only works for client sessions (server-side
-     * sessions currently only support shutting down the entire server).
+     * Shuts down the service.
+     *
+     * For client sessions, wait can be true or false. For server sessions,
+     * waiting is not currently supported (will abort).
      *
      * Warning: this is currently not active/nice (the server isn't told we're
      * shutting down). Being nicer to the server could potentially make it
      * reclaim resources faster.
+     *
+     * If this is called w/ 'wait' true, then this will wait for shutdown to
+     * complete before returning. This will hang if it is called from the
+     * session threadpool (when processing received calls).
      */
-    [[nodiscard]] bool shutdown();
+    [[nodiscard]] bool shutdownAndWait(bool wait);
 
     [[nodiscard]] status_t transact(const sp<IBinder>& binder, uint32_t code, const Parcel& data,
                                     Parcel* reply, uint32_t flags);
