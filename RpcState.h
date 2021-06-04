@@ -195,6 +195,12 @@ private:
         // (no additional data specific to remote binders)
     };
 
+    // checks if there is any reference left to a node and erases it. If erase
+    // happens, and there is a strong reference to the binder kept by
+    // binderNode, this returns that strong reference, so that it can be
+    // dropped after any locks are removed.
+    sp<IBinder> tryEraseNode(std::map<RpcAddress, BinderNode>::iterator& it);
+
     std::mutex mNodeMutex;
     bool mTerminated = false;
     // binders known by both sides of a session

@@ -458,9 +458,8 @@ status_t RpcState::sendDecStrong(const base::unique_fd& fd, const RpcAddress& ad
                             addr.toString().c_str());
 
         it->second.timesRecd--;
-        if (it->second.timesRecd == 0 && it->second.timesSent == 0) {
-            mNodeForAddress.erase(it);
-        }
+        LOG_ALWAYS_FATAL_IF(nullptr != tryEraseNode(it),
+                            "Bad state. RpcState shouldn't own received binder");
     }
 
     RpcWireHeader cmd = {
@@ -799,22 +798,26 @@ status_t RpcState::processDecStrong(const base::unique_fd& fd, const sp<RpcSessi
     LOG_ALWAYS_FATAL_IF(it->second.sentRef == nullptr, "Inconsistent state, lost ref for %s",
                         addr.toString().c_str());
 
-    sp<IBinder> tempHold;
-
     it->second.timesSent--;
+    sp<IBinder> tempHold = tryEraseNode(it);
+    _l.unlock();
+    tempHold = nullptr; // destructor may make binder calls on this session
+
+    return OK;
+}
+
+sp<IBinder> RpcState::tryEraseNode(std::map<RpcAddress, BinderNode>::iterator& it) {
+    sp<IBinder> ref;
+
     if (it->second.timesSent == 0) {
-        tempHold = it->second.sentRef;
-        it->second.sentRef = nullptr;
+        ref = std::move(it->second.sentRef);
 
         if (it->second.timesRecd == 0) {
             mNodeForAddress.erase(it);
         }
     }
 
-    _l.unlock();
-    tempHold = nullptr; // destructor may make binder calls on this session
-
-    return OK;
+    return ref;
 }
 
 } // namespace android
