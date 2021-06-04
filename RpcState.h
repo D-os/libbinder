@@ -113,6 +113,9 @@ public:
     void terminate();
 
 private:
+    void dumpLocked();
+    void terminate(std::unique_lock<std::mutex>& lock);
+
     // Alternative to std::vector<uint8_t> that doesn't abort on allocation failure and caps
     // large allocations to avoid being requested from allocating too much data.
     struct CommandData {
@@ -200,6 +203,10 @@ private:
     // binderNode, this returns that strong reference, so that it can be
     // dropped after any locks are removed.
     sp<IBinder> tryEraseNode(std::map<RpcAddress, BinderNode>::iterator& it);
+    // true - success
+    // false - state terminated, lock gone, halt
+    [[nodiscard]] bool nodeProgressAsyncNumber(BinderNode* node,
+                                               std::unique_lock<std::mutex>& lock);
 
     std::mutex mNodeMutex;
     bool mTerminated = false;
