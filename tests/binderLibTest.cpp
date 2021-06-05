@@ -29,6 +29,7 @@
 #include <gtest/gtest.h>
 
 #include <android-base/properties.h>
+#include <android-base/result-gmock.h>
 #include <android-base/result.h>
 #include <android-base/unique_fd.h>
 #include <binder/Binder.h>
@@ -52,6 +53,7 @@
 using namespace android;
 using namespace std::string_literals;
 using namespace std::chrono_literals;
+using android::base::testing::HasValue;
 using testing::ExplainMatchResult;
 using testing::Not;
 using testing::WithParamInterface;
@@ -60,15 +62,6 @@ using testing::WithParamInterface;
 MATCHER_P(StatusEq, expected, (negation ? "not " : "") + statusToString(expected)) {
     *result_listener << statusToString(arg);
     return expected == arg;
-}
-
-// e.g. Result<int32_t> v = 0; EXPECT_THAT(result, ResultHasValue(0));
-MATCHER_P(ResultHasValue, resultMatcher, "") {
-    if (!arg.ok()) {
-        *result_listener << "contains error " << arg.error();
-        return false;
-    }
-    return ExplainMatchResult(resultMatcher, arg.value(), result_listener);
 }
 
 static ::testing::AssertionResult IsPageAligned(void *buf) {
@@ -514,7 +507,7 @@ TEST_F(BinderLibTest, SetError) {
 }
 
 TEST_F(BinderLibTest, GetId) {
-    EXPECT_THAT(GetId(m_server), ResultHasValue(0));
+    EXPECT_THAT(GetId(m_server), HasValue(0));
 }
 
 TEST_F(BinderLibTest, PtrSize) {
@@ -1279,7 +1272,7 @@ TEST_P(BinderLibRpcClientTest, Test) {
     sp<IBinder> server = isRemote ? sp<IBinder>(CreateRemoteService(id))
                                   : sp<IBinder>(sp<BinderLibTestService>::make(id, false));
     ASSERT_EQ(isRemote, !!server->remoteBinder());
-    ASSERT_THAT(GetId(server), ResultHasValue(id));
+    ASSERT_THAT(GetId(server), HasValue(id));
 
     unsigned int port = 0;
     // Fake servicedispatcher.
@@ -1309,7 +1302,7 @@ TEST_P(BinderLibRpcClientTest, Test) {
         EXPECT_EQ(OK, rpcServerBinder->pingBinder());
 
         // Check that |rpcServerBinder| and |server| points to the same service.
-        EXPECT_THAT(GetId(rpcServerBinder), ResultHasValue(id));
+        EXPECT_THAT(GetId(rpcServerBinder), HasValue(id));
 
         // Occupy the server thread. The server should still have enough threads to handle
         // other connections.
