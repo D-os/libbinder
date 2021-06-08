@@ -97,7 +97,7 @@ public:
      *
      * If this is not specified, this will be a single-threaded server.
      *
-     * TODO(b/185167543): these are currently created per client, but these
+     * TODO(b/167966510): these are currently created per client, but these
      * should be shared.
      */
     void setMaxThreads(size_t threads);
