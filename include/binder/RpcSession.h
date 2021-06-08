@@ -130,8 +130,14 @@ private:
 
         /**
          * Close the write end of the pipe so that the read end receives POLLHUP.
+         * Not threadsafe.
          */
         void trigger();
+
+        /**
+         * Whether this has been triggered.
+         */
+        bool isTriggered();
 
         /**
          * Poll for a read event.
@@ -192,9 +198,9 @@ private:
     [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address, int32_t sessionId,
                                                 bool server);
     [[nodiscard]] bool addClientConnection(base::unique_fd fd);
-    void setForServer(const wp<RpcServer>& server,
-                      const wp<RpcSession::EventListener>& eventListener, int32_t sessionId,
-                      const std::shared_ptr<FdTrigger>& shutdownTrigger);
+    [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
+                                    const wp<RpcSession::EventListener>& eventListener,
+                                    int32_t sessionId);
     sp<RpcConnection> assignServerToThisThread(base::unique_fd fd);
     [[nodiscard]] bool removeServerConnection(const sp<RpcConnection>& connection);
 
@@ -247,7 +253,7 @@ private:
     // TODO(b/183988761): this shouldn't be guessable
     std::optional<int32_t> mId;
 
-    std::shared_ptr<FdTrigger> mShutdownTrigger;
+    std::unique_ptr<FdTrigger> mShutdownTrigger;
 
     std::unique_ptr<RpcState> mState;
 
