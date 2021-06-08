@@ -230,10 +230,12 @@ private:
         CLIENT_REFCOUNT,
     };
 
-    // RAII object for session connection
+    // Object representing exclusive access to a connection.
     class ExclusiveConnection {
     public:
-        explicit ExclusiveConnection(const sp<RpcSession>& session, ConnectionUse use);
+        static status_t find(const sp<RpcSession>& session, ConnectionUse use,
+                             ExclusiveConnection* connection);
+
         ~ExclusiveConnection();
         const base::unique_fd& fd() { return mConnection->fd; }
 
