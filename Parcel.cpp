@@ -206,6 +206,7 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder) {
             status_t status = writeInt32(1); // non-null
             if (status != OK) return status;
             RpcAddress address = RpcAddress::zero();
+            // TODO(b/167966510): need to undo this if the Parcel is not sent
             status = mSession->state()->onBinderLeaving(mSession, binder, &address);
             if (status != OK) return status;
             status = address.writeToParcel(this);
