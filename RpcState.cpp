@@ -400,6 +400,8 @@ status_t RpcState::transactAddress(const base::unique_fd& fd, const RpcAddress& 
     if (status_t status =
                 rpcSend(fd, session, "transaction", transactionData.data(), transactionData.size());
         status != OK)
+        // TODO(b/167966510): need to undo onBinderLeaving - we know the
+        // refcount isn't successfully transferred.
         return status;
 
     if (flags & IBinder::FLAG_ONEWAY) {
