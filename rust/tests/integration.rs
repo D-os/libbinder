@@ -274,12 +274,35 @@ mod tests {
     }
 
     #[test]
+    fn check_wait_for_service() {
+        let mut sm =
+            binder::wait_for_service("manager").expect("Did not get manager binder service");
+        assert!(sm.is_binder_alive());
+        assert!(sm.ping_binder().is_ok());
+
+        // The service manager service isn't an ITest, so this must fail.
+        assert_eq!(
+            binder::wait_for_interface::<dyn ITest>("manager").err(),
+            Some(StatusCode::BAD_TYPE)
+        );
+    }
+
+    #[test]
     fn trivial_client() {
         let service_name = "trivial_client_test";
         let _process = ScopedServiceProcess::new(service_name);
         let test_client: Strong<dyn ITest> =
             binder::get_interface(service_name).expect("Did not get manager binder service");
         assert_eq!(test_client.test().unwrap(), "trivial_client_test");
+    }
+
+    #[test]
+    fn wait_for_trivial_client() {
+        let service_name = "wait_for_trivial_client_test";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn ITest> =
+            binder::wait_for_interface(service_name).expect("Did not get manager binder service");
+        assert_eq!(test_client.test().unwrap(), "wait_for_trivial_client_test");
     }
 
     #[test]
