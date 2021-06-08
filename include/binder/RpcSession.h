@@ -54,7 +54,7 @@ public:
      * If this is called, 'shutdown' on this session must also be called.
      * Otherwise, a threadpool will leak.
      *
-     * TODO(b/185167543): start these dynamically
+     * TODO(b/189955605): start these dynamically
      */
     void setMaxThreads(size_t threads);
     size_t getMaxThreads();
@@ -273,9 +273,6 @@ private:
     size_t mClientConnectionsOffset = 0;
     std::vector<sp<RpcConnection>> mClientConnections;
     std::vector<sp<RpcConnection>> mServerConnections;
-
-    // TODO(b/185167543): allow sharing between different sessions in a
-    // process? (or combine with mServerConnections)
     std::map<std::thread::id, std::thread> mThreads;
 };
 
