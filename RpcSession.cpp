@@ -113,17 +113,21 @@ status_t RpcSession::getRemoteMaxThreads(size_t* maxThreads) {
     return state()->getMaxThreads(connection.fd(), sp<RpcSession>::fromExisting(this), maxThreads);
 }
 
-bool RpcSession::shutdown() {
+bool RpcSession::shutdownAndWait(bool wait) {
     std::unique_lock<std::mutex> _l(mMutex);
-    LOG_ALWAYS_FATAL_IF(mForServer.promote() != nullptr, "Can only shut down client session");
     LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr, "Shutdown trigger not installed");
-    LOG_ALWAYS_FATAL_IF(mShutdownListener == nullptr, "Shutdown listener not installed");
 
     mShutdownTrigger->trigger();
-    mShutdownListener->waitForShutdown(_l);
-    mState->terminate();
 
-    LOG_ALWAYS_FATAL_IF(!mThreads.empty(), "Shutdown failed");
+    if (wait) {
+        LOG_ALWAYS_FATAL_IF(mShutdownListener == nullptr, "Shutdown listener not installed");
+        mShutdownListener->waitForShutdown(_l);
+        LOG_ALWAYS_FATAL_IF(!mThreads.empty(), "Shutdown failed");
+    }
+
+    _l.unlock();
+    mState->clear();
+
     return true;
 }
 
@@ -139,17 +143,24 @@ status_t RpcSession::transact(const sp<IBinder>& binder, uint32_t code, const Pa
 status_t RpcSession::sendDecStrong(const RpcAddress& address) {
     ExclusiveConnection connection(sp<RpcSession>::fromExisting(this),
                                    ConnectionUse::CLIENT_REFCOUNT);
-    return state()->sendDecStrong(connection.fd(), address);
+    return state()->sendDecStrong(connection.fd(), sp<RpcSession>::fromExisting(this), address);
 }
 
 std::unique_ptr<RpcSession::FdTrigger> RpcSession::FdTrigger::make() {
     auto ret = std::make_unique<RpcSession::FdTrigger>();
-    if (!android::base::Pipe(&ret->mRead, &ret->mWrite)) return nullptr;
+    if (!android::base::Pipe(&ret->mRead, &ret->mWrite)) {
+        ALOGE("Could not create pipe %s", strerror(errno));
+        return nullptr;
+    }
     return ret;
 }
 
 void RpcSession::FdTrigger::trigger() {
     mWrite.reset();
+}
+
+bool RpcSession::FdTrigger::isTriggered() {
+    return mWrite == -1;
 }
 
 status_t RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
@@ -408,20 +419,21 @@ bool RpcSession::addClientConnection(unique_fd fd) {
     return true;
 }
 
-void RpcSession::setForServer(const wp<RpcServer>& server, const wp<EventListener>& eventListener,
-                              int32_t sessionId,
-                              const std::shared_ptr<FdTrigger>& shutdownTrigger) {
+bool RpcSession::setForServer(const wp<RpcServer>& server, const wp<EventListener>& eventListener,
+                              int32_t sessionId) {
     LOG_ALWAYS_FATAL_IF(mForServer != nullptr);
     LOG_ALWAYS_FATAL_IF(server == nullptr);
     LOG_ALWAYS_FATAL_IF(mEventListener != nullptr);
     LOG_ALWAYS_FATAL_IF(eventListener == nullptr);
     LOG_ALWAYS_FATAL_IF(mShutdownTrigger != nullptr);
-    LOG_ALWAYS_FATAL_IF(shutdownTrigger == nullptr);
+
+    mShutdownTrigger = FdTrigger::make();
+    if (mShutdownTrigger == nullptr) return false;
 
     mId = sessionId;
     mForServer = server;
     mEventListener = eventListener;
-    mShutdownTrigger = shutdownTrigger;
+    return true;
 }
 
 sp<RpcSession::RpcConnection> RpcSession::assignServerToThisThread(unique_fd fd) {

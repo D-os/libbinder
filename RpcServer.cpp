@@ -187,6 +187,11 @@ bool RpcServer::shutdown() {
     }
 
     mShutdownTrigger->trigger();
+    for (auto& [id, session] : mSessions) {
+        (void)id;
+        session->mShutdownTrigger->trigger();
+    }
+
     while (mJoinThreadRunning || !mConnectingThreads.empty() || !mSessions.empty()) {
         if (std::cv_status::timeout == mShutdownCv.wait_for(_l, std::chrono::seconds(1))) {
             ALOGE("Waiting for RpcServer to shut down (1s w/o progress). Join thread running: %d, "
@@ -261,7 +266,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         };
         server->mConnectingThreads.erase(threadId);
 
-        if (!idValid) {
+        if (!idValid || server->mShutdownTrigger->isTriggered()) {
             return;
         }
 
@@ -276,10 +281,14 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
 
             session = RpcSession::make();
             session->setMaxThreads(server->mMaxThreads);
-            session->setForServer(server,
-                                  sp<RpcServer::EventListener>::fromExisting(
-                                          static_cast<RpcServer::EventListener*>(server.get())),
-                                  server->mSessionIdCounter, server->mShutdownTrigger);
+            if (!session->setForServer(server,
+                                       sp<RpcServer::EventListener>::fromExisting(
+                                               static_cast<RpcServer::EventListener*>(
+                                                       server.get())),
+                                       server->mSessionIdCounter)) {
+                ALOGE("Failed to attach server to session");
+                return;
+            }
 
             server->mSessions[server->mSessionIdCounter] = session;
         } else {
