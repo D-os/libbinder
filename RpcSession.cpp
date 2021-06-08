@@ -296,7 +296,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
 
     if (!setupOneSocketConnection(addr, RPC_SESSION_ID_NEW, false /*reverse*/)) return false;
 
-    // TODO(b/185167543): we should add additional sessions dynamically
+    // TODO(b/189955605): we should add additional sessions dynamically
     // instead of all at once.
     // TODO(b/186470974): first risk of blocking
     size_t numThreadsAvailable;
@@ -314,11 +314,11 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
 
     // we've already setup one client
     for (size_t i = 0; i + 1 < numThreadsAvailable; i++) {
-        // TODO(b/185167543): shutdown existing connections?
+        // TODO(b/189955605): shutdown existing connections?
         if (!setupOneSocketConnection(addr, mId.value(), false /*reverse*/)) return false;
     }
 
-    // TODO(b/185167543): we should add additional sessions dynamically
+    // TODO(b/189955605): we should add additional sessions dynamically
     // instead of all at once - the other side should be responsible for setting
     // up additional connections. We need to create at least one (unless 0 are
     // requested to be set) in order to allow the other side to reliably make
