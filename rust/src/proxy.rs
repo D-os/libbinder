@@ -653,10 +653,32 @@ pub fn get_service(name: &str) -> Option<SpIBinder> {
     }
 }
 
+/// Retrieve an existing service, or start it if it is configured as a dynamic
+/// service and isn't yet started.
+pub fn wait_for_service(name: &str) -> Option<SpIBinder> {
+    let name = CString::new(name).ok()?;
+    unsafe {
+        // Safety: `AServiceManager_waitforService` returns either a null
+        // pointer or a valid pointer to an owned `AIBinder`. Either of these
+        // values is safe to pass to `SpIBinder::from_raw`.
+        SpIBinder::from_raw(sys::AServiceManager_waitForService(name.as_ptr()))
+    }
+}
+
 /// Retrieve an existing service for a particular interface, blocking for a few
 /// seconds if it doesn't yet exist.
 pub fn get_interface<T: FromIBinder + ?Sized>(name: &str) -> Result<Strong<T>> {
     let service = get_service(name);
+    match service {
+        Some(service) => FromIBinder::try_from(service),
+        None => Err(StatusCode::NAME_NOT_FOUND),
+    }
+}
+
+/// Retrieve an existing service for a particular interface, or start it if it
+/// is configured as a dynamic service and isn't yet started.
+pub fn wait_for_interface<T: FromIBinder + ?Sized>(name: &str) -> Result<Strong<T>> {
+    let service = wait_for_service(name);
     match service {
         Some(service) => FromIBinder::try_from(service),
         None => Err(StatusCode::NAME_NOT_FOUND),
