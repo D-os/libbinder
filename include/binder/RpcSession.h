@@ -97,14 +97,20 @@ public:
     status_t getRemoteMaxThreads(size_t* maxThreads);
 
     /**
-     * Shuts down the service. Only works for client sessions (server-side
-     * sessions currently only support shutting down the entire server).
+     * Shuts down the service.
+     *
+     * For client sessions, wait can be true or false. For server sessions,
+     * waiting is not currently supported (will abort).
      *
      * Warning: this is currently not active/nice (the server isn't told we're
      * shutting down). Being nicer to the server could potentially make it
      * reclaim resources faster.
+     *
+     * If this is called w/ 'wait' true, then this will wait for shutdown to
+     * complete before returning. This will hang if it is called from the
+     * session threadpool (when processing received calls).
      */
-    [[nodiscard]] bool shutdown();
+    [[nodiscard]] bool shutdownAndWait(bool wait);
 
     [[nodiscard]] status_t transact(const sp<IBinder>& binder, uint32_t code, const Parcel& data,
                                     Parcel* reply, uint32_t flags);
@@ -129,14 +135,15 @@ private:
         static std::unique_ptr<FdTrigger> make();
 
         /**
-         * poll() on this fd for POLLHUP to get notification when trigger is called
-         */
-        base::borrowed_fd readFd() const { return mRead; }
-
-        /**
          * Close the write end of the pipe so that the read end receives POLLHUP.
+         * Not threadsafe.
          */
         void trigger();
+
+        /**
+         * Whether this has been triggered.
+         */
+        bool isTriggered();
 
         /**
          * Poll for a read event.
@@ -197,9 +204,9 @@ private:
     [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address, int32_t sessionId,
                                                 bool server);
     [[nodiscard]] bool addClientConnection(base::unique_fd fd);
-    void setForServer(const wp<RpcServer>& server,
-                      const wp<RpcSession::EventListener>& eventListener, int32_t sessionId,
-                      const std::shared_ptr<FdTrigger>& shutdownTrigger);
+    [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
+                                    const wp<RpcSession::EventListener>& eventListener,
+                                    int32_t sessionId);
     sp<RpcConnection> assignServerToThisThread(base::unique_fd fd);
     [[nodiscard]] bool removeServerConnection(const sp<RpcConnection>& connection);
 
@@ -252,7 +259,7 @@ private:
     // TODO(b/183988761): this shouldn't be guessable
     std::optional<int32_t> mId;
 
-    std::shared_ptr<FdTrigger> mShutdownTrigger;
+    std::unique_ptr<FdTrigger> mShutdownTrigger;
 
     std::unique_ptr<RpcState> mState;
 
