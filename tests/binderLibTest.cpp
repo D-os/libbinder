@@ -33,6 +33,7 @@
 #include <android-base/result.h>
 #include <android-base/unique_fd.h>
 #include <binder/Binder.h>
+#include <binder/BpBinder.h>
 #include <binder/IBinder.h>
 #include <binder/IPCThreadState.h>
 #include <binder/IServiceManager.h>
@@ -112,7 +113,6 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_ECHO_VECTOR,
     BINDER_LIB_TEST_REJECT_BUF,
     BINDER_LIB_TEST_CAN_GET_SID,
-    BINDER_LIB_TEST_USLEEP,
     BINDER_LIB_TEST_CREATE_TEST_SERVICE,
 };
 
@@ -1210,39 +1210,31 @@ public:
     }
 };
 
-TEST_P(BinderLibRpcTest, SetRpcMaxThreads) {
+TEST_P(BinderLibRpcTest, SetRpcClientDebug) {
     auto binder = GetService();
     ASSERT_TRUE(binder != nullptr);
     auto [socket, port] = CreateSocket();
     ASSERT_TRUE(socket.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket), 1), StatusEq(OK));
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket)), StatusEq(OK));
 }
 
-TEST_P(BinderLibRpcTest, SetRpcClientNoFd) {
+TEST_P(BinderLibRpcTest, SetRpcClientDebugNoFd) {
     auto binder = GetService();
     ASSERT_TRUE(binder != nullptr);
-    EXPECT_THAT(binder->setRpcClientDebug(android::base::unique_fd(), 1), StatusEq(BAD_VALUE));
+    EXPECT_THAT(binder->setRpcClientDebug(android::base::unique_fd()), StatusEq(BAD_VALUE));
 }
 
-TEST_P(BinderLibRpcTest, SetRpcMaxThreadsZero) {
-    auto binder = GetService();
-    ASSERT_TRUE(binder != nullptr);
-    auto [socket, port] = CreateSocket();
-    ASSERT_TRUE(socket.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket), 0), StatusEq(BAD_VALUE));
-}
-
-TEST_P(BinderLibRpcTest, SetRpcMaxThreadsTwice) {
+TEST_P(BinderLibRpcTest, SetRpcClientDebugTwice) {
     auto binder = GetService();
     ASSERT_TRUE(binder != nullptr);
 
     auto [socket1, port1] = CreateSocket();
     ASSERT_TRUE(socket1.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket1), 1), StatusEq(OK));
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket1)), StatusEq(OK));
 
     auto [socket2, port2] = CreateSocket();
     ASSERT_TRUE(socket2.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket2), 1), StatusEq(ALREADY_EXISTS));
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket2)), StatusEq(ALREADY_EXISTS));
 }
 
 INSTANTIATE_TEST_CASE_P(BinderLibTest, BinderLibRpcTest, testing::Bool(),
@@ -1288,42 +1280,47 @@ TEST_P(BinderLibRpcClientTest, Test) {
         auto [socket, socketPort] = CreateSocket();
         ASSERT_TRUE(socket.ok());
         port = socketPort;
-        ASSERT_THAT(server->setRpcClientDebug(std::move(socket), numThreads), StatusEq(OK));
+        ASSERT_THAT(server->setRpcClientDebug(std::move(socket)), StatusEq(OK));
     }
 
-    auto callUsleep = [](sp<IBinder> server, uint64_t us) {
-        Parcel data, reply;
-        data.markForBinder(server);
-        const char *name = data.isForRpc() ? "RPC" : "binder";
-        EXPECT_THAT(data.writeUint64(us), StatusEq(OK));
-        EXPECT_THAT(server->transact(BINDER_LIB_TEST_USLEEP, data, &reply), StatusEq(OK))
-                << "for " << name << " server";
-    };
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool start = false;
 
     auto threadFn = [&](size_t threadNum) {
-        usleep(threadNum * 50 * 1000); // threadNum * 50ms. Need this to avoid SYN flooding.
+        usleep(threadNum * 10 * 1000); // threadNum * 10ms. Need this to avoid SYN flooding.
         auto rpcSession = RpcSession::make();
         ASSERT_TRUE(rpcSession->setupInetClient("127.0.0.1", port));
         auto rpcServerBinder = rpcSession->getRootObject();
         ASSERT_NE(nullptr, rpcServerBinder);
-
-        EXPECT_EQ(OK, rpcServerBinder->pingBinder());
-
         // Check that |rpcServerBinder| and |server| points to the same service.
-        EXPECT_THAT(GetId(rpcServerBinder), HasValue(id));
+        EXPECT_THAT(GetId(rpcServerBinder), HasValue(id)) << "For thread #" << threadNum;
 
-        // Occupy the server thread. The server should still have enough threads to handle
-        // other connections.
-        // (numThreads - threadNum) * 100ms
-        callUsleep(rpcServerBinder, (numThreads - threadNum) * 100 * 1000);
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            ASSERT_TRUE(cv.wait_for(lock, 1s, [&] { return start; }));
+        }
+        // Let all threads almost simultaneously ping the service.
+        for (size_t i = 0; i < 100; ++i) {
+            EXPECT_THAT(rpcServerBinder->pingBinder(), StatusEq(OK))
+                    << "For thread #" << threadNum << ", iteration " << i;
+        }
     };
+
     std::vector<std::thread> threads;
     for (size_t i = 0; i < numThreads; ++i) threads.emplace_back(std::bind(threadFn, i));
+
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        start = true;
+    }
+    cv.notify_all();
+
     for (auto &t : threads) t.join();
 }
 
 INSTANTIATE_TEST_CASE_P(BinderLibTest, BinderLibRpcClientTest,
-                        testing::Combine(testing::Bool(), testing::Range(1u, 10u)),
+                        testing::Combine(testing::Bool(), testing::Values(1u, 10u)),
                         BinderLibRpcClientTest::ParamToString);
 
 class BinderLibTestService : public BBinder {
@@ -1639,12 +1636,6 @@ public:
             }
             case BINDER_LIB_TEST_CAN_GET_SID: {
                 return IPCThreadState::self()->getCallingSid() == nullptr ? BAD_VALUE : NO_ERROR;
-            }
-            case BINDER_LIB_TEST_USLEEP: {
-                uint64_t us;
-                if (status_t status = data.readUint64(&us); status != NO_ERROR) return status;
-                usleep(us);
-                return NO_ERROR;
             }
             case BINDER_LIB_TEST_CREATE_TEST_SERVICE: {
                 int32_t id;
