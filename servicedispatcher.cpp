@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -22,7 +21,6 @@
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
-#include <android-base/parseint.h>
 #include <android-base/properties.h>
 #include <android-base/stringprintf.h>
 #include <binder/IServiceManager.h>
@@ -39,7 +37,6 @@ using android::base::InitLogging;
 using android::base::LogdLogger;
 using android::base::LogId;
 using android::base::LogSeverity;
-using android::base::ParseUint;
 using android::base::StdioLogger;
 using android::base::StringPrintf;
 
@@ -47,15 +44,14 @@ namespace {
 int Usage(const char* program) {
     auto format = R"(dispatch calls to RPC service.
 Usage:
-  %s [-n <num_threads>] <service_name>
-    -n <num_threads>: number of RPC threads added to the service (default 1).
+  %s <service_name>
     <service_name>: the service to connect to.
 )";
     LOG(ERROR) << StringPrintf(format, Basename(program).c_str());
     return EX_USAGE;
 }
 
-int Dispatch(const char* name, uint32_t numThreads) {
+int Dispatch(const char* name) {
     auto sm = defaultServiceManager();
     if (nullptr == sm) {
         LOG(ERROR) << "No servicemanager";
@@ -78,13 +74,12 @@ int Dispatch(const char* name, uint32_t numThreads) {
         return EX_SOFTWARE;
     }
     auto socket = rpcServer->releaseServer();
-    auto status = binder->setRpcClientDebug(std::move(socket), numThreads);
+    auto status = binder->setRpcClientDebug(std::move(socket));
     if (status != OK) {
         LOG(ERROR) << "setRpcClientDebug failed with " << statusToString(status);
         return EX_SOFTWARE;
     }
-    LOG(INFO) << "Finish setting up RPC on service " << name << " with " << numThreads
-              << " threads on port" << port;
+    LOG(INFO) << "Finish setting up RPC on service " << name << " on port" << port;
 
     std::cout << port << std::endl;
     return EX_OK;
@@ -117,15 +112,9 @@ int main(int argc, char* argv[]) {
     }
     LOG(WARNING) << "WARNING: servicedispatcher is debug only. Use with caution.";
 
-    uint32_t numThreads = 1;
     int opt;
-    while (-1 != (opt = getopt(argc, argv, "n:"))) {
+    while (-1 != (opt = getopt(argc, argv, ""))) {
         switch (opt) {
-            case 'n': {
-                if (!ParseUint(optarg, &numThreads)) {
-                    return Usage(argv[0]);
-                }
-            } break;
             default: {
                 return Usage(argv[0]);
             }
@@ -134,5 +123,5 @@ int main(int argc, char* argv[]) {
     if (optind + 1 != argc) return Usage(argv[0]);
     auto name = argv[optind];
 
-    return Dispatch(name, numThreads);
+    return Dispatch(name);
 }

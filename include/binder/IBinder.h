@@ -157,12 +157,10 @@ public:
      * Set the RPC client fd to this binder service, for debugging. This is only available on
      * debuggable builds.
      *
-     * |maxRpcThreads| must be positive because RPC is useless without threads.
-     *
      * When this is called on a binder service, the service:
      * 1. sets up RPC server
      * 2. spawns 1 new thread that calls RpcServer::join()
-     *    - join() spawns at most |maxRpcThreads| threads that accept() connections; see RpcServer
+     *    - join() spawns some number of threads that accept() connections; see RpcServer
      *
      * setRpcClientDebug() may only be called once.
      * TODO(b/182914638): If allow to shut down the client, addRpcClient can be called repeatedly.
@@ -171,8 +169,7 @@ public:
      * interface freely. See RpcServer::join(). To avoid such race conditions, implement the service
      * functions with multithreading support.
      */
-    [[nodiscard]] status_t setRpcClientDebug(android::base::unique_fd socketFd,
-                                             uint32_t maxRpcThreads);
+    [[nodiscard]] status_t setRpcClientDebug(android::base::unique_fd socketFd);
 
     // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t        transact(   uint32_t code,
