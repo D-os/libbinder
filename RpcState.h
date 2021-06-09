@@ -144,8 +144,7 @@ private:
                                            const RpcWireHeader& command);
     [[nodiscard]] status_t processTransactInternal(const base::unique_fd& fd,
                                                    const sp<RpcSession>& session,
-                                                   CommandData transactionData,
-                                                   sp<IBinder>&& targetRef);
+                                                   CommandData transactionData);
     [[nodiscard]] status_t processDecStrong(const base::unique_fd& fd,
                                             const sp<RpcSession>& session,
                                             const RpcWireHeader& command);

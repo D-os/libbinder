@@ -565,7 +565,7 @@ status_t RpcState::processTransact(const base::unique_fd& fd, const sp<RpcSessio
         status != OK)
         return status;
 
-    return processTransactInternal(fd, session, std::move(transactionData), nullptr /*targetRef*/);
+    return processTransactInternal(fd, session, std::move(transactionData));
 }
 
 static void do_nothing_to_transact_data(Parcel* p, const uint8_t* data, size_t dataSize,
@@ -578,7 +578,13 @@ static void do_nothing_to_transact_data(Parcel* p, const uint8_t* data, size_t d
 }
 
 status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<RpcSession>& session,
-                                           CommandData transactionData, sp<IBinder>&& targetRef) {
+                                           CommandData transactionData) {
+    // for 'recursive' calls to this, we have already read and processed the
+    // binder from the transaction data and taken reference counts into account,
+    // so it is cached here.
+    sp<IBinder> targetRef;
+processTransactInternalTailCall:
+
     if (transactionData.size() < sizeof(RpcWireTransaction)) {
         ALOGE("Expecting %zu but got %zu bytes for RpcWireTransaction. Terminating!",
               sizeof(RpcWireTransaction), transactionData.size());
@@ -751,13 +757,12 @@ status_t RpcState::processTransactInternal(const base::unique_fd& fd, const sp<R
                 // - gotta go fast
                 auto& todo = const_cast<BinderNode::AsyncTodo&>(it->second.asyncTodo.top());
 
-                CommandData nextData = std::move(todo.data);
-                sp<IBinder> nextRef = std::move(todo.ref);
+                // reset up arguments
+                transactionData = std::move(todo.data);
+                targetRef = std::move(todo.ref);
 
                 it->second.asyncTodo.pop();
-                _l.unlock();
-                return processTransactInternal(fd, session, std::move(nextData),
-                                               std::move(nextRef));
+                goto processTransactInternalTailCall;
             }
         }
         return OK;
