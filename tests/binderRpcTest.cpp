@@ -1007,6 +1007,14 @@ TEST_P(BinderRpc, Callbacks) {
     }
 }
 
+TEST_P(BinderRpc, OnewayCallbackWithNoThread) {
+    auto proc = createRpcTestSocketServerProcess(1);
+    auto cb = sp<MyBinderRpcCallback>::make();
+
+    Status status = proc.rootIface->doCallback(cb, true /*oneway*/, false /*delayed*/, "anything");
+    EXPECT_EQ(WOULD_BLOCK, status.transactionError());
+}
+
 TEST_P(BinderRpc, Die) {
     for (bool doDeathCleanup : {true, false}) {
         auto proc = createRpcTestSocketServerProcess(1);
