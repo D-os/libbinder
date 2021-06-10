@@ -1288,7 +1288,7 @@ TEST_P(BinderLibRpcClientTest, Test) {
     bool start = false;
 
     auto threadFn = [&](size_t threadNum) {
-        usleep(threadNum * 10 * 1000); // threadNum * 10ms. Need this to avoid SYN flooding.
+        usleep(threadNum * 50 * 1000); // threadNum * 50ms. Need this to avoid SYN flooding.
         auto rpcSession = RpcSession::make();
         ASSERT_TRUE(rpcSession->setupInetClient("127.0.0.1", port));
         auto rpcServerBinder = rpcSession->getRootObject();
