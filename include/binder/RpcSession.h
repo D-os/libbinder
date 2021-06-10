@@ -237,7 +237,7 @@ private:
                              ExclusiveConnection* connection);
 
         ~ExclusiveConnection();
-        const base::unique_fd& fd() { return mConnection->fd; }
+        const sp<RpcConnection>& get() { return mConnection; }
 
     private:
         static void findConnection(pid_t tid, sp<RpcConnection>* exclusive,

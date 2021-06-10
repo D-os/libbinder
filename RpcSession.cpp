@@ -108,7 +108,7 @@ sp<IBinder> RpcSession::getRootObject() {
     status_t status = ExclusiveConnection::find(sp<RpcSession>::fromExisting(this),
                                                 ConnectionUse::CLIENT, &connection);
     if (status != OK) return nullptr;
-    return state()->getRootObject(connection.fd(), sp<RpcSession>::fromExisting(this));
+    return state()->getRootObject(connection.get(), sp<RpcSession>::fromExisting(this));
 }
 
 status_t RpcSession::getRemoteMaxThreads(size_t* maxThreads) {
@@ -116,7 +116,7 @@ status_t RpcSession::getRemoteMaxThreads(size_t* maxThreads) {
     status_t status = ExclusiveConnection::find(sp<RpcSession>::fromExisting(this),
                                                 ConnectionUse::CLIENT, &connection);
     if (status != OK) return status;
-    return state()->getMaxThreads(connection.fd(), sp<RpcSession>::fromExisting(this), maxThreads);
+    return state()->getMaxThreads(connection.get(), sp<RpcSession>::fromExisting(this), maxThreads);
 }
 
 bool RpcSession::shutdownAndWait(bool wait) {
@@ -146,7 +146,7 @@ status_t RpcSession::transact(const sp<IBinder>& binder, uint32_t code, const Pa
                                                                      : ConnectionUse::CLIENT,
                                       &connection);
     if (status != OK) return status;
-    return state()->transact(connection.fd(), binder, code, data,
+    return state()->transact(connection.get(), binder, code, data,
                              sp<RpcSession>::fromExisting(this), reply, flags);
 }
 
@@ -155,7 +155,7 @@ status_t RpcSession::sendDecStrong(const RpcAddress& address) {
     status_t status = ExclusiveConnection::find(sp<RpcSession>::fromExisting(this),
                                                 ConnectionUse::CLIENT_REFCOUNT, &connection);
     if (status != OK) return status;
-    return state()->sendDecStrong(connection.fd(), sp<RpcSession>::fromExisting(this), address);
+    return state()->sendDecStrong(connection.get(), sp<RpcSession>::fromExisting(this), address);
 }
 
 std::unique_ptr<RpcSession::FdTrigger> RpcSession::FdTrigger::make() {
@@ -225,7 +225,7 @@ status_t RpcSession::readId() {
                                                 ConnectionUse::CLIENT, &connection);
     if (status != OK) return status;
 
-    status = state()->getSessionId(connection.fd(), sp<RpcSession>::fromExisting(this), &id);
+    status = state()->getSessionId(connection.get(), sp<RpcSession>::fromExisting(this), &id);
     if (status != OK) return status;
 
     LOG_RPC_DETAIL("RpcSession %p has id %d", this, id);
@@ -265,8 +265,7 @@ RpcSession::PreJoinSetupResult RpcSession::preJoinSetup(base::unique_fd fd) {
     // be able to do nested calls (we can't only read from it)
     sp<RpcConnection> connection = assignServerToThisThread(std::move(fd));
 
-    status_t status =
-            mState->readConnectionInit(connection->fd, sp<RpcSession>::fromExisting(this));
+    status_t status = mState->readConnectionInit(connection, sp<RpcSession>::fromExisting(this));
 
     return PreJoinSetupResult{
             .connection = std::move(connection),
@@ -279,7 +278,7 @@ void RpcSession::join(sp<RpcSession>&& session, PreJoinSetupResult&& setupResult
 
     if (setupResult.status == OK) {
         while (true) {
-            status_t status = session->state()->getAndExecuteCommand(connection->fd, session,
+            status_t status = session->state()->getAndExecuteCommand(connection, session,
                                                                      RpcState::CommandType::ANY);
             if (status != OK) {
                 LOG_RPC_DETAIL("Binder connection thread closing w/ status %s",
@@ -454,8 +453,7 @@ bool RpcSession::addClientConnection(unique_fd fd) {
         mClientConnections.push_back(connection);
     }
 
-    status_t status =
-            mState->sendConnectionInit(connection->fd, sp<RpcSession>::fromExisting(this));
+    status_t status = mState->sendConnectionInit(connection, sp<RpcSession>::fromExisting(this));
 
     {
         std::lock_guard<std::mutex> _l(mMutex);

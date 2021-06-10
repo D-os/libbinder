@@ -51,34 +51,37 @@ public:
     RpcState();
     ~RpcState();
 
-    status_t sendConnectionInit(const base::unique_fd& fd, const sp<RpcSession>& session);
-    status_t readConnectionInit(const base::unique_fd& fd, const sp<RpcSession>& session);
+    status_t sendConnectionInit(const sp<RpcSession::RpcConnection>& connection,
+                                const sp<RpcSession>& session);
+    status_t readConnectionInit(const sp<RpcSession::RpcConnection>& connection,
+                                const sp<RpcSession>& session);
 
     // TODO(b/182940634): combine some special transactions into one "getServerInfo" call?
-    sp<IBinder> getRootObject(const base::unique_fd& fd, const sp<RpcSession>& session);
-    status_t getMaxThreads(const base::unique_fd& fd, const sp<RpcSession>& session,
-                           size_t* maxThreadsOut);
-    status_t getSessionId(const base::unique_fd& fd, const sp<RpcSession>& session,
-                          int32_t* sessionIdOut);
+    sp<IBinder> getRootObject(const sp<RpcSession::RpcConnection>& connection,
+                              const sp<RpcSession>& session);
+    status_t getMaxThreads(const sp<RpcSession::RpcConnection>& connection,
+                           const sp<RpcSession>& session, size_t* maxThreadsOut);
+    status_t getSessionId(const sp<RpcSession::RpcConnection>& connection,
+                          const sp<RpcSession>& session, int32_t* sessionIdOut);
 
-    [[nodiscard]] status_t transact(const base::unique_fd& fd, const sp<IBinder>& address,
-                                    uint32_t code, const Parcel& data,
+    [[nodiscard]] status_t transact(const sp<RpcSession::RpcConnection>& connection,
+                                    const sp<IBinder>& address, uint32_t code, const Parcel& data,
                                     const sp<RpcSession>& session, Parcel* reply, uint32_t flags);
-    [[nodiscard]] status_t transactAddress(const base::unique_fd& fd, const RpcAddress& address,
-                                           uint32_t code, const Parcel& data,
-                                           const sp<RpcSession>& session, Parcel* reply,
-                                           uint32_t flags);
-    [[nodiscard]] status_t sendDecStrong(const base::unique_fd& fd, const sp<RpcSession>& session,
-                                         const RpcAddress& address);
+    [[nodiscard]] status_t transactAddress(const sp<RpcSession::RpcConnection>& connection,
+                                           const RpcAddress& address, uint32_t code,
+                                           const Parcel& data, const sp<RpcSession>& session,
+                                           Parcel* reply, uint32_t flags);
+    [[nodiscard]] status_t sendDecStrong(const sp<RpcSession::RpcConnection>& connection,
+                                         const sp<RpcSession>& session, const RpcAddress& address);
 
     enum class CommandType {
         ANY,
         CONTROL_ONLY,
     };
-    [[nodiscard]] status_t getAndExecuteCommand(const base::unique_fd& fd,
+    [[nodiscard]] status_t getAndExecuteCommand(const sp<RpcSession::RpcConnection>& connection,
                                                 const sp<RpcSession>& session, CommandType type);
-    [[nodiscard]] status_t drainCommands(const base::unique_fd& fd, const sp<RpcSession>& session,
-                                         CommandType type);
+    [[nodiscard]] status_t drainCommands(const sp<RpcSession::RpcConnection>& connection,
+                                         const sp<RpcSession>& session, CommandType type);
 
     /**
      * Called by Parcel for outgoing binders. This implies one refcount of
@@ -133,22 +136,25 @@ private:
         size_t mSize;
     };
 
-    [[nodiscard]] status_t rpcSend(const base::unique_fd& fd, const sp<RpcSession>& session,
-                                   const char* what, const void* data, size_t size);
-    [[nodiscard]] status_t rpcRec(const base::unique_fd& fd, const sp<RpcSession>& session,
-                                  const char* what, void* data, size_t size);
+    [[nodiscard]] status_t rpcSend(const sp<RpcSession::RpcConnection>& connection,
+                                   const sp<RpcSession>& session, const char* what,
+                                   const void* data, size_t size);
+    [[nodiscard]] status_t rpcRec(const sp<RpcSession::RpcConnection>& connection,
+                                  const sp<RpcSession>& session, const char* what, void* data,
+                                  size_t size);
 
-    [[nodiscard]] status_t waitForReply(const base::unique_fd& fd, const sp<RpcSession>& session,
-                                        Parcel* reply);
-    [[nodiscard]] status_t processServerCommand(const base::unique_fd& fd,
+    [[nodiscard]] status_t waitForReply(const sp<RpcSession::RpcConnection>& connection,
+                                        const sp<RpcSession>& session, Parcel* reply);
+    [[nodiscard]] status_t processServerCommand(const sp<RpcSession::RpcConnection>& connection,
                                                 const sp<RpcSession>& session,
                                                 const RpcWireHeader& command, CommandType type);
-    [[nodiscard]] status_t processTransact(const base::unique_fd& fd, const sp<RpcSession>& session,
+    [[nodiscard]] status_t processTransact(const sp<RpcSession::RpcConnection>& connection,
+                                           const sp<RpcSession>& session,
                                            const RpcWireHeader& command);
-    [[nodiscard]] status_t processTransactInternal(const base::unique_fd& fd,
+    [[nodiscard]] status_t processTransactInternal(const sp<RpcSession::RpcConnection>& connection,
                                                    const sp<RpcSession>& session,
                                                    CommandData transactionData);
-    [[nodiscard]] status_t processDecStrong(const base::unique_fd& fd,
+    [[nodiscard]] status_t processDecStrong(const sp<RpcSession::RpcConnection>& connection,
                                             const sp<RpcSession>& session,
                                             const RpcWireHeader& command);
 
