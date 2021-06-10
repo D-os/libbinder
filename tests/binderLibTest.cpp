@@ -1215,13 +1215,22 @@ TEST_P(BinderLibRpcTest, SetRpcClientDebug) {
     ASSERT_TRUE(binder != nullptr);
     auto [socket, port] = CreateSocket();
     ASSERT_TRUE(socket.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket)), StatusEq(OK));
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket), sp<BBinder>::make()), StatusEq(OK));
 }
 
 TEST_P(BinderLibRpcTest, SetRpcClientDebugNoFd) {
     auto binder = GetService();
     ASSERT_TRUE(binder != nullptr);
-    EXPECT_THAT(binder->setRpcClientDebug(android::base::unique_fd()), StatusEq(BAD_VALUE));
+    EXPECT_THAT(binder->setRpcClientDebug(android::base::unique_fd(), sp<BBinder>::make()),
+                StatusEq(BAD_VALUE));
+}
+
+TEST_P(BinderLibRpcTest, SetRpcClientDebugNoKeepAliveBinder) {
+    auto binder = GetService();
+    ASSERT_TRUE(binder != nullptr);
+    auto [socket, port] = CreateSocket();
+    ASSERT_TRUE(socket.ok());
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket), nullptr), StatusEq(UNEXPECTED_NULL));
 }
 
 TEST_P(BinderLibRpcTest, SetRpcClientDebugTwice) {
@@ -1230,11 +1239,14 @@ TEST_P(BinderLibRpcTest, SetRpcClientDebugTwice) {
 
     auto [socket1, port1] = CreateSocket();
     ASSERT_TRUE(socket1.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket1)), StatusEq(OK));
+    auto keepAliveBinder1 = sp<BBinder>::make();
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket1), keepAliveBinder1), StatusEq(OK));
 
     auto [socket2, port2] = CreateSocket();
     ASSERT_TRUE(socket2.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket2)), StatusEq(ALREADY_EXISTS));
+    auto keepAliveBinder2 = sp<BBinder>::make();
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket2), keepAliveBinder2),
+                StatusEq(ALREADY_EXISTS));
 }
 
 INSTANTIATE_TEST_CASE_P(BinderLibTest, BinderLibRpcTest, testing::Bool(),

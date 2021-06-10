@@ -101,7 +101,8 @@ public:
     // to another process.
     void setParceled();
 
-    [[nodiscard]] status_t setRpcClientDebug(android::base::unique_fd clientFd);
+    [[nodiscard]] status_t setRpcClientDebug(android::base::unique_fd clientFd,
+                                             const sp<IBinder>& keepAliveBinder);
 
 protected:
     virtual             ~BBinder();

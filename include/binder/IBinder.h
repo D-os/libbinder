@@ -168,8 +168,11 @@ public:
      * Note: A thread is spawned for each accept()'ed fd, which may call into functions of the
      * interface freely. See RpcServer::join(). To avoid such race conditions, implement the service
      * functions with multithreading support.
+     *
+     * On death of @a keepAliveBinder, the RpcServer shuts down.
      */
-    [[nodiscard]] status_t setRpcClientDebug(android::base::unique_fd socketFd);
+    [[nodiscard]] status_t setRpcClientDebug(android::base::unique_fd socketFd,
+                                             const sp<IBinder>& keepAliveBinder);
 
     // NOLINTNEXTLINE(google-default-arguments)
     virtual status_t        transact(   uint32_t code,

@@ -150,7 +150,8 @@ status_t IBinder::getDebugPid(pid_t* out) {
     return OK;
 }
 
-status_t IBinder::setRpcClientDebug(android::base::unique_fd socketFd) {
+status_t IBinder::setRpcClientDebug(android::base::unique_fd socketFd,
+                                    const sp<IBinder>& keepAliveBinder) {
     if constexpr (!kEnableRpcDevServers) {
         ALOGW("setRpcClientDebug disallowed because RPC is not enabled");
         return INVALID_OPERATION;
@@ -158,7 +159,7 @@ status_t IBinder::setRpcClientDebug(android::base::unique_fd socketFd) {
 
     BBinder* local = this->localBinder();
     if (local != nullptr) {
-        return local->BBinder::setRpcClientDebug(std::move(socketFd));
+        return local->BBinder::setRpcClientDebug(std::move(socketFd), keepAliveBinder);
     }
 
     BpBinder* proxy = this->remoteBinder();
@@ -173,6 +174,7 @@ status_t IBinder::setRpcClientDebug(android::base::unique_fd socketFd) {
         status = data.writeFileDescriptor(socketFd.release(), true /* own */);
         if (status != OK) return status;
     }
+    if (status = data.writeStrongBinder(keepAliveBinder); status != OK) return status;
     return transact(SET_RPC_CLIENT_TRANSACTION, data, &reply);
 }
 
@@ -453,11 +455,14 @@ status_t BBinder::setRpcClientDebug(const Parcel& data) {
     if (hasSocketFd) {
         if (status = data.readUniqueFileDescriptor(&clientFd); status != OK) return status;
     }
+    sp<IBinder> keepAliveBinder;
+    if (status = data.readNullableStrongBinder(&keepAliveBinder); status != OK) return status;
 
-    return setRpcClientDebug(std::move(clientFd));
+    return setRpcClientDebug(std::move(clientFd), keepAliveBinder);
 }
 
-status_t BBinder::setRpcClientDebug(android::base::unique_fd socketFd) {
+status_t BBinder::setRpcClientDebug(android::base::unique_fd socketFd,
+                                    const sp<IBinder>& keepAliveBinder) {
     if constexpr (!kEnableRpcDevServers) {
         ALOGW("%s: disallowed because RPC is not enabled", __PRETTY_FUNCTION__);
         return INVALID_OPERATION;
@@ -469,6 +474,11 @@ status_t BBinder::setRpcClientDebug(android::base::unique_fd socketFd) {
     if (!socketFd.ok()) {
         ALOGE("%s: No socket FD provided.", __PRETTY_FUNCTION__);
         return BAD_VALUE;
+    }
+
+    if (keepAliveBinder == nullptr) {
+        ALOGE("%s: No keepAliveBinder provided.", __PRETTY_FUNCTION__);
+        return UNEXPECTED_NULL;
     }
 
     size_t binderThreadPoolMaxCount = ProcessState::self()->getThreadPoolMaxThreadCount();
