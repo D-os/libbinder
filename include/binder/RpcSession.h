@@ -191,6 +191,8 @@ private:
         // whether this or another thread is currently using this fd to make
         // or receive transactions.
         std::optional<pid_t> exclusiveTid;
+
+        bool allowNested = false;
     };
 
     status_t readId();

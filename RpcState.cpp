@@ -633,6 +633,7 @@ processTransactInternalTailCall:
     // TODO(b/182939933): heap allocation just for lookup in mNodeForAddress,
     // maybe add an RpcAddress 'view' if the type remains 'heavy'
     auto addr = RpcAddress::fromRawEmbedded(&transaction->address);
+    bool oneway = transaction->flags & IBinder::FLAG_ONEWAY;
 
     status_t replyStatus = OK;
     sp<IBinder> target;
@@ -661,7 +662,7 @@ processTransactInternalTailCall:
                   addr.toString().c_str());
             (void)session->shutdownAndWait(false);
             replyStatus = BAD_VALUE;
-        } else if (transaction->flags & IBinder::FLAG_ONEWAY) {
+        } else if (oneway) {
             std::unique_lock<std::mutex> _l(mNodeMutex);
             auto it = mNodeForAddress.find(addr);
             if (it->second.binder.promote() != target) {
@@ -718,7 +719,12 @@ processTransactInternalTailCall:
         data.markForRpc(session);
 
         if (target) {
+            bool origAllowNested = connection->allowNested;
+            connection->allowNested = !oneway;
+
             replyStatus = target->transact(transaction->code, data, &reply, transaction->flags);
+
+            connection->allowNested = origAllowNested;
         } else {
             LOG_RPC_DETAIL("Got special transaction %u", transaction->code);
 
@@ -754,7 +760,7 @@ processTransactInternalTailCall:
         }
     }
 
-    if (transaction->flags & IBinder::FLAG_ONEWAY) {
+    if (oneway) {
         if (replyStatus != OK) {
             ALOGW("Oneway call failed with error: %d", replyStatus);
         }

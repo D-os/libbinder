@@ -541,13 +541,27 @@ status_t RpcSession::ExclusiveConnection::find(const sp<RpcSession>& session, Co
                     (session->mClientConnectionsOffset + 1) % session->mClientConnections.size();
         }
 
-        // USE SERVING SOCKET (for nested transaction)
-        //
-        // asynchronous calls cannot be nested
+        // USE SERVING SOCKET (e.g. nested transaction)
         if (use != ConnectionUse::CLIENT_ASYNC) {
+            sp<RpcConnection> exclusiveServer;
             // server connections are always assigned to a thread
-            findConnection(tid, &exclusive, nullptr /*available*/, session->mServerConnections,
-                           0 /* index hint */);
+            findConnection(tid, &exclusiveServer, nullptr /*available*/,
+                           session->mServerConnections, 0 /* index hint */);
+
+            // asynchronous calls cannot be nested, we currently allow ref count
+            // calls to be nested (so that you can use this without having extra
+            // threads). Note 'drainCommands' is used so that these ref counts can't
+            // build up.
+            if (exclusiveServer != nullptr) {
+                if (exclusiveServer->allowNested) {
+                    // guaranteed to be processed as nested command
+                    exclusive = exclusiveServer;
+                } else if (use == ConnectionUse::CLIENT_REFCOUNT && available == nullptr) {
+                    // prefer available socket, but if we don't have one, don't
+                    // wait for one
+                    exclusive = exclusiveServer;
+                }
+            }
         }
 
         // if our thread is already using a connection, prioritize using that
