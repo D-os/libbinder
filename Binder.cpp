@@ -491,6 +491,7 @@ status_t BBinder::setRpcClientDebug(android::base::unique_fd socketFd) {
     // Weak ref to avoid circular dependency: BBinder -> RpcServer -X-> BBinder
     e->mRpcServer->setRootObjectWeak(wp<BBinder>::fromExisting(this));
     e->mRpcServer->setupExternalServer(std::move(socketFd));
+    e->mRpcServer->setMaxThreads(binderThreadPoolMaxCount);
     e->mRpcServer->start();
     LOG_RPC_DETAIL("%s(fd=%d) successful", __PRETTY_FUNCTION__, socketFdForPrint);
     return OK;
