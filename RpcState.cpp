@@ -272,7 +272,7 @@ status_t RpcState::rpcRec(const sp<RpcSession::RpcConnection>& connection,
 
 status_t RpcState::sendConnectionInit(const sp<RpcSession::RpcConnection>& connection,
                                       const sp<RpcSession>& session) {
-    RpcClientConnectionInit init{
+    RpcOutgoingConnectionInit init{
             .msg = RPC_CONNECTION_INIT_OKAY,
     };
     return rpcSend(connection, session, "connection init", &init, sizeof(init));
@@ -280,7 +280,7 @@ status_t RpcState::sendConnectionInit(const sp<RpcSession::RpcConnection>& conne
 
 status_t RpcState::readConnectionInit(const sp<RpcSession::RpcConnection>& connection,
                                       const sp<RpcSession>& session) {
-    RpcClientConnectionInit init;
+    RpcOutgoingConnectionInit init;
     if (status_t status = rpcRec(connection, session, "connection init", &init, sizeof(init));
         status != OK)
         return status;
@@ -470,7 +470,7 @@ status_t RpcState::waitForReply(const sp<RpcSession::RpcConnection>& connection,
 
         if (command.command == RPC_COMMAND_REPLY) break;
 
-        if (status_t status = processServerCommand(connection, session, command, CommandType::ANY);
+        if (status_t status = processCommand(connection, session, command, CommandType::ANY);
             status != OK)
             return status;
     }
@@ -539,7 +539,7 @@ status_t RpcState::getAndExecuteCommand(const sp<RpcSession::RpcConnection>& con
         status != OK)
         return status;
 
-    return processServerCommand(connection, session, command, type);
+    return processCommand(connection, session, command, type);
 }
 
 status_t RpcState::drainCommands(const sp<RpcSession::RpcConnection>& connection,
@@ -553,9 +553,9 @@ status_t RpcState::drainCommands(const sp<RpcSession::RpcConnection>& connection
     return OK;
 }
 
-status_t RpcState::processServerCommand(const sp<RpcSession::RpcConnection>& connection,
-                                        const sp<RpcSession>& session, const RpcWireHeader& command,
-                                        CommandType type) {
+status_t RpcState::processCommand(const sp<RpcSession::RpcConnection>& connection,
+                                  const sp<RpcSession>& session, const RpcWireHeader& command,
+                                  CommandType type) {
     IPCThreadState* kernelBinderState = IPCThreadState::selfOrNull();
     IPCThreadState::SpGuard spGuard{
             .address = __builtin_frame_address(0),

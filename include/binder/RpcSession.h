@@ -170,14 +170,14 @@ private:
 
     class EventListener : public virtual RefBase {
     public:
-        virtual void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) = 0;
-        virtual void onSessionServerThreadEnded() = 0;
+        virtual void onSessionLockedAllIncomingThreadsEnded(const sp<RpcSession>& session) = 0;
+        virtual void onSessionIncomingThreadEnded() = 0;
     };
 
     class WaitForShutdownListener : public EventListener {
     public:
-        void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) override;
-        void onSessionServerThreadEnded() override;
+        void onSessionLockedAllIncomingThreadsEnded(const sp<RpcSession>& session) override;
+        void onSessionIncomingThreadEnded() override;
         void waitForShutdown(std::unique_lock<std::mutex>& lock);
 
     private:
@@ -219,12 +219,12 @@ private:
     [[nodiscard]] bool setupSocketClient(const RpcSocketAddress& address);
     [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address, int32_t sessionId,
                                                 bool server);
-    [[nodiscard]] bool addClientConnection(base::unique_fd fd);
+    [[nodiscard]] bool addOutgoingConnection(base::unique_fd fd);
     [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
                                     const wp<RpcSession::EventListener>& eventListener,
                                     int32_t sessionId);
-    sp<RpcConnection> assignServerToThisThread(base::unique_fd fd);
-    [[nodiscard]] bool removeServerConnection(const sp<RpcConnection>& connection);
+    sp<RpcConnection> assignIncomingConnectionToThisThread(base::unique_fd fd);
+    [[nodiscard]] bool removeIncomingConnection(const sp<RpcConnection>& connection);
 
     enum class ConnectionUse {
         CLIENT,
@@ -256,13 +256,13 @@ private:
         bool mReentrant = false;
     };
 
-    // On the other side of a session, for each of mClientConnections here, there should
-    // be one of mServerConnections on the other side (and vice versa).
+    // On the other side of a session, for each of mOutgoingConnections here, there should
+    // be one of mIncomingConnections on the other side (and vice versa).
     //
     // For the simplest session, a single server with one client, you would
     // have:
-    //  - the server has a single 'mServerConnections' and a thread listening on this
-    //  - the client has a single 'mClientConnections' and makes calls to this
+    //  - the server has a single 'mIncomingConnections' and a thread listening on this
+    //  - the client has a single 'mOutgoingConnections' and makes calls to this
     //  - here, when the client makes a call, the server can call back into it
     //    (nested calls), but outside of this, the client will only ever read
     //    calls from the server when it makes a call itself.
@@ -288,9 +288,9 @@ private:
     std::condition_variable mAvailableConnectionCv; // for mWaitingThreads
     size_t mWaitingThreads = 0;
     // hint index into clients, ++ when sending an async transaction
-    size_t mClientConnectionsOffset = 0;
-    std::vector<sp<RpcConnection>> mClientConnections;
-    std::vector<sp<RpcConnection>> mServerConnections;
+    size_t mOutgoingConnectionsOffset = 0;
+    std::vector<sp<RpcConnection>> mOutgoingConnections;
+    std::vector<sp<RpcConnection>> mIncomingConnections;
     std::map<std::thread::id, std::thread> mThreads;
 };
 

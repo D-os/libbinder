@@ -155,8 +155,8 @@ private:
     friend sp<RpcServer>;
     RpcServer();
 
-    void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) override;
-    void onSessionServerThreadEnded() override;
+    void onSessionLockedAllIncomingThreadsEnded(const sp<RpcSession>& session) override;
+    void onSessionIncomingThreadEnded() override;
 
     static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
     bool setupSocketServer(const RpcSocketAddress& address);

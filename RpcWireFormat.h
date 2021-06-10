@@ -43,7 +43,7 @@ struct RpcConnectionHeader {
  * transaction. The main use of this is in order to control the timing for when
  * a reverse connection is setup.
  */
-struct RpcClientConnectionInit {
+struct RpcOutgoingConnectionInit {
     char msg[4];
     uint8_t reserved[4];
 };

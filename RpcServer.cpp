@@ -301,7 +301,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         }
 
         if (reverse) {
-            LOG_ALWAYS_FATAL_IF(!session->addClientConnection(std::move(clientFd)),
+            LOG_ALWAYS_FATAL_IF(!session->addOutgoingConnection(std::move(clientFd)),
                                 "server state must already be initialized");
             return;
         }
@@ -350,7 +350,7 @@ bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
     return true;
 }
 
-void RpcServer::onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) {
+void RpcServer::onSessionLockedAllIncomingThreadsEnded(const sp<RpcSession>& session) {
     auto id = session->mId;
     LOG_ALWAYS_FATAL_IF(id == std::nullopt, "Server sessions must be initialized with ID");
     LOG_RPC_DETAIL("Dropping session %d", *id);
@@ -362,7 +362,7 @@ void RpcServer::onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& sessi
     (void)mSessions.erase(it);
 }
 
-void RpcServer::onSessionServerThreadEnded() {
+void RpcServer::onSessionIncomingThreadEnded() {
     mShutdownCv.notify_all();
 }
 

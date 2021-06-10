@@ -145,9 +145,9 @@ private:
 
     [[nodiscard]] status_t waitForReply(const sp<RpcSession::RpcConnection>& connection,
                                         const sp<RpcSession>& session, Parcel* reply);
-    [[nodiscard]] status_t processServerCommand(const sp<RpcSession::RpcConnection>& connection,
-                                                const sp<RpcSession>& session,
-                                                const RpcWireHeader& command, CommandType type);
+    [[nodiscard]] status_t processCommand(const sp<RpcSession::RpcConnection>& connection,
+                                          const sp<RpcSession>& session,
+                                          const RpcWireHeader& command, CommandType type);
     [[nodiscard]] status_t processTransact(const sp<RpcSession::RpcConnection>& connection,
                                            const sp<RpcSession>& session,
                                            const RpcWireHeader& command);
