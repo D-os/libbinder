@@ -117,11 +117,13 @@ private:
                         BBinder(const BBinder& o);
             BBinder&    operator=(const BBinder& o);
 
+    class RpcServerLink;
     class Extras;
 
     Extras*             getOrCreateExtras();
 
     [[nodiscard]] status_t setRpcClientDebug(const Parcel& data);
+    void removeRpcServerLink(const sp<RpcServerLink>& link);
 
     std::atomic<Extras*> mExtras;
 

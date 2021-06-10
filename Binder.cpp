@@ -17,6 +17,7 @@
 #include <binder/Binder.h>
 
 #include <atomic>
+#include <set>
 
 #include <android-base/unique_fd.h>
 #include <binder/BpBinder.h>
@@ -180,6 +181,38 @@ status_t IBinder::setRpcClientDebug(android::base::unique_fd socketFd,
 
 // ---------------------------------------------------------------------------
 
+class BBinder::RpcServerLink : public IBinder::DeathRecipient {
+public:
+    // On binder died, calls RpcServer::shutdown on @a rpcServer, and removes itself from @a binder.
+    RpcServerLink(const sp<RpcServer>& rpcServer, const sp<IBinder>& keepAliveBinder,
+                  const wp<BBinder>& binder)
+          : mRpcServer(rpcServer), mKeepAliveBinder(keepAliveBinder), mBinder(binder) {}
+    void binderDied(const wp<IBinder>&) override {
+        LOG_RPC_DETAIL("RpcServerLink: binder died, shutting down RpcServer");
+        if (mRpcServer == nullptr) {
+            ALOGW("RpcServerLink: Unable to shut down RpcServer because it does not exist.");
+        } else {
+            ALOGW_IF(!mRpcServer->shutdown(),
+                     "RpcServerLink: RpcServer did not shut down properly. Not started?");
+        }
+        mRpcServer.clear();
+
+        auto promoted = mBinder.promote();
+        if (promoted == nullptr) {
+            ALOGW("RpcServerLink: Unable to remove link from parent binder object because parent "
+                  "binder object is gone.");
+        } else {
+            promoted->removeRpcServerLink(sp<RpcServerLink>::fromExisting(this));
+        }
+        mBinder.clear();
+    }
+
+private:
+    sp<RpcServer> mRpcServer;
+    sp<IBinder> mKeepAliveBinder; // hold to avoid automatically unlinking
+    wp<BBinder> mBinder;
+};
+
 class BBinder::Extras
 {
 public:
@@ -192,7 +225,7 @@ public:
 
     // for below objects
     Mutex mLock;
-    sp<RpcServer> mRpcServer;
+    std::set<sp<RpcServerLink>> mRpcServerLinks;
     BpBinder::ObjectManager mObjects;
 };
 
@@ -489,22 +522,36 @@ status_t BBinder::setRpcClientDebug(android::base::unique_fd socketFd,
         return INVALID_OPERATION;
     }
 
+    // Weak ref to avoid circular dependency:
+    // BBinder -> RpcServerLink ----> RpcServer -X-> BBinder
+    //                          `-X-> BBinder
+    auto weakThis = wp<BBinder>::fromExisting(this);
+
     Extras* e = getOrCreateExtras();
     AutoMutex _l(e->mLock);
-    if (e->mRpcServer != nullptr) {
-        ALOGE("%s: Already have RPC client", __PRETTY_FUNCTION__);
-        return ALREADY_EXISTS;
+    auto rpcServer = RpcServer::make();
+    LOG_ALWAYS_FATAL_IF(rpcServer == nullptr, "RpcServer::make returns null");
+    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+    auto link = sp<RpcServerLink>::make(rpcServer, keepAliveBinder, weakThis);
+    if (auto status = keepAliveBinder->linkToDeath(link, nullptr, 0); status != OK) {
+        ALOGE("%s: keepAliveBinder->linkToDeath returns %s", __PRETTY_FUNCTION__,
+              statusToString(status).c_str());
+        return status;
     }
-    e->mRpcServer = RpcServer::make();
-    LOG_ALWAYS_FATAL_IF(e->mRpcServer == nullptr, "RpcServer::make returns null");
-    e->mRpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
-    // Weak ref to avoid circular dependency: BBinder -> RpcServer -X-> BBinder
-    e->mRpcServer->setRootObjectWeak(wp<BBinder>::fromExisting(this));
-    e->mRpcServer->setupExternalServer(std::move(socketFd));
-    e->mRpcServer->setMaxThreads(binderThreadPoolMaxCount);
-    e->mRpcServer->start();
+    rpcServer->setRootObjectWeak(weakThis);
+    rpcServer->setupExternalServer(std::move(socketFd));
+    rpcServer->setMaxThreads(binderThreadPoolMaxCount);
+    rpcServer->start();
+    e->mRpcServerLinks.emplace(link);
     LOG_RPC_DETAIL("%s(fd=%d) successful", __PRETTY_FUNCTION__, socketFdForPrint);
     return OK;
+}
+
+void BBinder::removeRpcServerLink(const sp<RpcServerLink>& link) {
+    Extras* e = mExtras.load(std::memory_order_acquire);
+    if (!e) return;
+    AutoMutex _l(e->mLock);
+    (void)e->mRpcServerLinks.erase(link);
 }
 
 BBinder::~BBinder()

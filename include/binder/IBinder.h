@@ -162,8 +162,8 @@ public:
      * 2. spawns 1 new thread that calls RpcServer::join()
      *    - join() spawns some number of threads that accept() connections; see RpcServer
      *
-     * setRpcClientDebug() may only be called once.
-     * TODO(b/182914638): If allow to shut down the client, addRpcClient can be called repeatedly.
+     * setRpcClientDebug() may be called multiple times. Each call will add a new RpcServer
+     * and opens up a TCP port.
      *
      * Note: A thread is spawned for each accept()'ed fd, which may call into functions of the
      * interface freely. See RpcServer::join(). To avoid such race conditions, implement the service
