@@ -265,6 +265,27 @@ status_t RpcState::rpcRec(const base::unique_fd& fd, const sp<RpcSession>& sessi
     return OK;
 }
 
+status_t RpcState::sendConnectionInit(const base::unique_fd& fd, const sp<RpcSession>& session) {
+    RpcClientConnectionInit init{
+            .msg = RPC_CONNECTION_INIT_OKAY,
+    };
+    return rpcSend(fd, session, "connection init", &init, sizeof(init));
+}
+
+status_t RpcState::readConnectionInit(const base::unique_fd& fd, const sp<RpcSession>& session) {
+    RpcClientConnectionInit init;
+    if (status_t status = rpcRec(fd, session, "connection init", &init, sizeof(init)); status != OK)
+        return status;
+
+    static_assert(sizeof(init.msg) == sizeof(RPC_CONNECTION_INIT_OKAY));
+    if (0 != strncmp(init.msg, RPC_CONNECTION_INIT_OKAY, sizeof(init.msg))) {
+        ALOGE("Connection init message unrecognized %.*s", static_cast<int>(sizeof(init.msg)),
+              init.msg);
+        return BAD_VALUE;
+    }
+    return OK;
+}
+
 sp<IBinder> RpcState::getRootObject(const base::unique_fd& fd, const sp<RpcSession>& session) {
     Parcel data;
     data.markForRpc(session);

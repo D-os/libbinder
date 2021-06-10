@@ -26,10 +26,26 @@ enum : uint8_t {
     RPC_CONNECTION_OPTION_REVERSE = 0x1,
 };
 
+/**
+ * This is sent to an RpcServer in order to request a new connection is created,
+ * either as part of a new session or an existing session
+ */
 struct RpcConnectionHeader {
     int32_t sessionId;
     uint8_t options;
     uint8_t reserved[3];
+};
+
+#define RPC_CONNECTION_INIT_OKAY "cci"
+
+/**
+ * Whenever a client connection is setup, this is sent as the initial
+ * transaction. The main use of this is in order to control the timing for when
+ * a reverse connection is setup.
+ */
+struct RpcClientConnectionInit {
+    char msg[4];
+    uint8_t reserved[4];
 };
 
 enum : uint32_t {

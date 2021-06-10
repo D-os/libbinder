@@ -51,6 +51,9 @@ public:
     RpcState();
     ~RpcState();
 
+    status_t sendConnectionInit(const base::unique_fd& fd, const sp<RpcSession>& session);
+    status_t readConnectionInit(const base::unique_fd& fd, const sp<RpcSession>& session);
+
     // TODO(b/182940634): combine some special transactions into one "getServerInfo" call?
     sp<IBinder> getRootObject(const base::unique_fd& fd, const sp<RpcSession>& session);
     status_t getMaxThreads(const base::unique_fd& fd, const sp<RpcSession>& session,
