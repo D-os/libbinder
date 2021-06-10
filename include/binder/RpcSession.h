@@ -118,7 +118,11 @@ public:
 
     ~RpcSession();
 
-    wp<RpcServer> server();
+    /**
+     * Server if this session is created as part of a server (symmetrical to
+     * client servers). Otherwise, nullptr.
+     */
+    sp<RpcServer> server();
 
     // internal only
     const std::unique_ptr<RpcState>& state() { return mState; }

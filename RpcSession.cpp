@@ -312,8 +312,13 @@ void RpcSession::join(sp<RpcSession>&& session, PreJoinSetupResult&& setupResult
     }
 }
 
-wp<RpcServer> RpcSession::server() {
-    return mForServer;
+sp<RpcServer> RpcSession::server() {
+    RpcServer* unsafeServer = mForServer.unsafe_get();
+    sp<RpcServer> server = mForServer.promote();
+
+    LOG_ALWAYS_FATAL_IF((unsafeServer == nullptr) != (server == nullptr),
+                        "wp<> is to avoid strong cycle only");
+    return server;
 }
 
 bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {

@@ -741,7 +741,7 @@ processTransactInternalTailCall:
                     break;
                 }
                 default: {
-                    sp<RpcServer> server = session->server().promote();
+                    sp<RpcServer> server = session->server();
                     if (server) {
                         switch (transaction->code) {
                             case RPC_SPECIAL_TRANSACT_GET_ROOT: {
