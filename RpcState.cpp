@@ -83,21 +83,45 @@ status_t RpcState::onBinderLeaving(const sp<RpcSession>& session, const sp<IBind
     }
     LOG_ALWAYS_FATAL_IF(isRpc, "RPC binder must have known address at this point");
 
-    auto&& [it, inserted] = mNodeForAddress.insert({RpcAddress::unique(),
-                                                    BinderNode{
-                                                            .binder = binder,
-                                                            .timesSent = 1,
-                                                            .sentRef = binder,
-                                                    }});
-    // TODO(b/182939933): better organization could avoid needing this log
-    LOG_ALWAYS_FATAL_IF(!inserted);
+    bool forServer = session->server() != nullptr;
 
-    *outAddress = it->first;
-    return OK;
+    for (size_t tries = 0; tries < 5; tries++) {
+        auto&& [it, inserted] = mNodeForAddress.insert({RpcAddress::random(forServer),
+                                                        BinderNode{
+                                                                .binder = binder,
+                                                                .timesSent = 1,
+                                                                .sentRef = binder,
+                                                        }});
+        if (inserted) {
+            *outAddress = it->first;
+            return OK;
+        }
+
+        // well, we don't have visibility into the header here, but still
+        static_assert(sizeof(RpcWireAddress) == 40, "this log needs updating");
+        ALOGW("2**256 is 1e77. If you see this log, you probably have some entropy issue, or maybe "
+              "you witness something incredible!");
+    }
+
+    ALOGE("Unable to create an address in order to send out %p", binder.get());
+    return WOULD_BLOCK;
 }
 
 status_t RpcState::onBinderEntering(const sp<RpcSession>& session, const RpcAddress& address,
                                     sp<IBinder>* out) {
+    // ensure that: if we want to use addresses for something else in the future (for
+    //   instance, allowing transitive binder sends), that we don't accidentally
+    //   send those addresses to old server. Accidentally ignoring this in that
+    //   case and considering the binder to be recognized could cause this
+    //   process to accidentally proxy transactions for that binder. Of course,
+    //   if we communicate with a binder, it could always be proxying
+    //   information. However, we want to make sure that isn't done on accident
+    //   by a client.
+    if (!address.isRecognizedType()) {
+        ALOGE("Address is of an unknown type, rejecting: %s", address.toString().c_str());
+        return BAD_VALUE;
+    }
+
     std::unique_lock<std::mutex> _l(mNodeMutex);
     if (mTerminated) return DEAD_OBJECT;
 
@@ -115,6 +139,14 @@ status_t RpcState::onBinderEntering(const sp<RpcSession>& session, const RpcAddr
         (void)session->sendDecStrong(address);
 
         return OK;
+    }
+
+    // we don't know about this binder, so the other side of the connection
+    // should have created it.
+    if (address.isForServer() == !!session->server()) {
+        ALOGE("Server received unrecognized address which we should own the creation of %s.",
+              address.toString().c_str());
+        return BAD_VALUE;
     }
 
     auto&& [it, inserted] = mNodeForAddress.insert({address, BinderNode{}});

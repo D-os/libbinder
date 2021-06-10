@@ -46,9 +46,20 @@ public:
     bool isZero() const;
 
     /**
-     * Create a new address which is unique
+     * Create a new random address.
      */
-    static RpcAddress unique();
+    static RpcAddress random(bool forServer);
+
+    /**
+     * Whether this address was created with 'bool forServer' true
+     */
+    bool isForServer() const;
+
+    /**
+     * Whether this address is one that could be created with this version of
+     * libbinder.
+     */
+    bool isRecognizedType() const;
 
     /**
      * Creates a new address as a copy of an embedded object.

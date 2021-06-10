@@ -89,7 +89,11 @@ struct RpcWireHeader {
     uint32_t reserved[2];
 };
 
+constexpr uint64_t RPC_WIRE_ADDRESS_OPTION_CREATED = 1 << 0; // distinguish from '0' address
+constexpr uint64_t RPC_WIRE_ADDRESS_OPTION_FOR_SERVER = 1 << 1;
+
 struct RpcWireAddress {
+    uint64_t options;
     uint8_t address[32];
 };
 
