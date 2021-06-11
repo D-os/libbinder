@@ -62,7 +62,7 @@ public:
     status_t getMaxThreads(const sp<RpcSession::RpcConnection>& connection,
                            const sp<RpcSession>& session, size_t* maxThreadsOut);
     status_t getSessionId(const sp<RpcSession::RpcConnection>& connection,
-                          const sp<RpcSession>& session, int32_t* sessionIdOut);
+                          const sp<RpcSession>& session, RpcAddress* sessionIdOut);
 
     [[nodiscard]] status_t transact(const sp<RpcSession::RpcConnection>& connection,
                                     const sp<IBinder>& address, uint32_t code, const Parcel& data,

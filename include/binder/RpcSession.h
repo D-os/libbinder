@@ -221,12 +221,12 @@ private:
     static void join(sp<RpcSession>&& session, PreJoinSetupResult&& result);
 
     [[nodiscard]] bool setupSocketClient(const RpcSocketAddress& address);
-    [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address, int32_t sessionId,
-                                                bool server);
+    [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address,
+                                                const RpcAddress& sessionId, bool server);
     [[nodiscard]] bool addOutgoingConnection(base::unique_fd fd);
     [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
                                     const wp<RpcSession::EventListener>& eventListener,
-                                    int32_t sessionId);
+                                    const RpcAddress& sessionId);
     sp<RpcConnection> assignIncomingConnectionToThisThread(base::unique_fd fd);
     [[nodiscard]] bool removeIncomingConnection(const sp<RpcConnection>& connection);
 
@@ -278,8 +278,7 @@ private:
     sp<WaitForShutdownListener> mShutdownListener; // used for client sessions
     wp<EventListener> mEventListener; // mForServer if server, mShutdownListener if client
 
-    // TODO(b/183988761): this shouldn't be guessable
-    std::optional<int32_t> mId;
+    std::optional<RpcAddress> mId;
 
     std::unique_ptr<FdTrigger> mShutdownTrigger;
 

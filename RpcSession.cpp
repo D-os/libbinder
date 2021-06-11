@@ -218,18 +218,17 @@ status_t RpcSession::readId() {
         LOG_ALWAYS_FATAL_IF(mForServer != nullptr, "Can only update ID for client.");
     }
 
-    int32_t id;
-
     ExclusiveConnection connection;
     status_t status = ExclusiveConnection::find(sp<RpcSession>::fromExisting(this),
                                                 ConnectionUse::CLIENT, &connection);
     if (status != OK) return status;
 
-    status = state()->getSessionId(connection.get(), sp<RpcSession>::fromExisting(this), &id);
+    mId = RpcAddress::zero();
+    status = state()->getSessionId(connection.get(), sp<RpcSession>::fromExisting(this),
+                                   &mId.value());
     if (status != OK) return status;
 
-    LOG_RPC_DETAIL("RpcSession %p has id %d", this, id);
-    mId = id;
+    LOG_RPC_DETAIL("RpcSession %p has id %s", this, mId->toString().c_str());
     return OK;
 }
 
@@ -329,7 +328,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
                             mOutgoingConnections.size());
     }
 
-    if (!setupOneSocketConnection(addr, RPC_SESSION_ID_NEW, false /*reverse*/)) return false;
+    if (!setupOneSocketConnection(addr, RpcAddress::zero(), false /*reverse*/)) return false;
 
     // TODO(b/189955605): we should add additional sessions dynamically
     // instead of all at once.
@@ -366,7 +365,8 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     return true;
 }
 
-bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, int32_t id, bool reverse) {
+bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const RpcAddress& id,
+                                          bool reverse) {
     for (size_t tries = 0; tries < 5; tries++) {
         if (tries > 0) usleep(10000);
 
@@ -390,9 +390,9 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, int32_t 
             return false;
         }
 
-        RpcConnectionHeader header{
-                .sessionId = id,
-        };
+        RpcConnectionHeader header{.options = 0};
+        memcpy(&header.sessionId, &id.viewRawEmbedded(), sizeof(RpcWireAddress));
+
         if (reverse) header.options |= RPC_CONNECTION_OPTION_REVERSE;
 
         if (sizeof(header) != TEMP_FAILURE_RETRY(write(serverFd.get(), &header, sizeof(header)))) {
@@ -469,7 +469,7 @@ bool RpcSession::addOutgoingConnection(unique_fd fd) {
 }
 
 bool RpcSession::setForServer(const wp<RpcServer>& server, const wp<EventListener>& eventListener,
-                              int32_t sessionId) {
+                              const RpcAddress& sessionId) {
     LOG_ALWAYS_FATAL_IF(mForServer != nullptr);
     LOG_ALWAYS_FATAL_IF(server == nullptr);
     LOG_ALWAYS_FATAL_IF(mEventListener != nullptr);
