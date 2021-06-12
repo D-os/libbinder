@@ -223,7 +223,7 @@ private:
     [[nodiscard]] bool setupSocketClient(const RpcSocketAddress& address);
     [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address,
                                                 const RpcAddress& sessionId, bool server);
-    [[nodiscard]] bool addOutgoingConnection(base::unique_fd fd);
+    [[nodiscard]] bool addOutgoingConnection(base::unique_fd fd, bool init);
     [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
                                     const wp<RpcSession::EventListener>& eventListener,
                                     const RpcAddress& sessionId);

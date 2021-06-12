@@ -100,7 +100,7 @@ bool RpcSession::addNullDebuggingClient() {
         return false;
     }
 
-    return addOutgoingConnection(std::move(serverFd));
+    return addOutgoingConnection(std::move(serverFd), false);
 }
 
 sp<IBinder> RpcSession::getRootObject() {
@@ -432,7 +432,7 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
             LOG_ALWAYS_FATAL_IF(!ownershipTransferred);
             return true;
         } else {
-            return addOutgoingConnection(std::move(serverFd));
+            return addOutgoingConnection(std::move(serverFd), true);
         }
     }
 
@@ -440,7 +440,7 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
     return false;
 }
 
-bool RpcSession::addOutgoingConnection(unique_fd fd) {
+bool RpcSession::addOutgoingConnection(unique_fd fd, bool init) {
     sp<RpcConnection> connection = sp<RpcConnection>::make();
     {
         std::lock_guard<std::mutex> _l(mMutex);
@@ -458,7 +458,10 @@ bool RpcSession::addOutgoingConnection(unique_fd fd) {
         mOutgoingConnections.push_back(connection);
     }
 
-    status_t status = mState->sendConnectionInit(connection, sp<RpcSession>::fromExisting(this));
+    status_t status = OK;
+    if (init) {
+        mState->sendConnectionInit(connection, sp<RpcSession>::fromExisting(this));
+    }
 
     {
         std::lock_guard<std::mutex> _l(mMutex);

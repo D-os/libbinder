@@ -313,7 +313,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         }
 
         if (reverse) {
-            LOG_ALWAYS_FATAL_IF(!session->addOutgoingConnection(std::move(clientFd)),
+            LOG_ALWAYS_FATAL_IF(!session->addOutgoingConnection(std::move(clientFd), true),
                                 "server state must already be initialized");
             return;
         }
