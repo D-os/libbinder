@@ -298,6 +298,11 @@ static std::string allocateSocketAddress() {
     return temp + "/binderRpcTest_" + std::to_string(id++);
 };
 
+static unsigned int allocateVsockPort() {
+    static unsigned int vsockPort = 3456;
+    return vsockPort++;
+}
+
 struct ProcessSession {
     // reference to process hosting a socket server
     Process host;
@@ -385,6 +390,7 @@ static inline std::string PrintSocketType(const testing::TestParamInfo<SocketTyp
             return "";
     }
 }
+
 class BinderRpc : public ::testing::TestWithParam<SocketType> {
 public:
     // This creates a new process serving an interface on a certain number of
@@ -396,10 +402,9 @@ public:
 
         SocketType socketType = GetParam();
 
+        unsigned int vsockPort = allocateVsockPort();
         std::string addr = allocateSocketAddress();
         unlink(addr.c_str());
-        static unsigned int vsockPort = 3456;
-        vsockPort++;
 
         auto ret = ProcessSession{
                 .host = Process([&](Pipe* pipe) {
@@ -1091,15 +1096,33 @@ TEST_P(BinderRpc, Fds) {
     ASSERT_EQ(beforeFds, countFds()) << (system("ls -l /proc/self/fd/"), "fd leak?");
 }
 
-INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc,
-                        ::testing::ValuesIn({
-                                SocketType::UNIX,
-// TODO(b/185269356): working on host
-#ifdef __BIONIC__
-                                SocketType::VSOCK,
-#endif
-                                SocketType::INET,
-                        }),
+static bool testSupportVsockLoopback() {
+    unsigned int vsockPort = allocateVsockPort();
+    sp<RpcServer> server = RpcServer::make();
+    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+    CHECK(server->setupVsockServer(vsockPort));
+    server->start();
+
+    sp<RpcSession> session = RpcSession::make();
+    bool okay = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
+    CHECK(server->shutdown());
+    ALOGE("Detected vsock loopback supported: %d", okay);
+    return okay;
+}
+
+static std::vector<SocketType> testSocketTypes() {
+    std::vector<SocketType> ret = {SocketType::UNIX, SocketType::INET};
+
+    static bool hasVsockLoopback = testSupportVsockLoopback();
+
+    if (hasVsockLoopback) {
+        ret.push_back(SocketType::VSOCK);
+    }
+
+    return ret;
+}
+
+INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc, ::testing::ValuesIn(testSocketTypes()),
                         PrintSocketType);
 
 class BinderRpcServerRootObject : public ::testing::TestWithParam<std::tuple<bool, bool>> {};
