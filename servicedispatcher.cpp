@@ -23,6 +23,7 @@
 #include <android-base/logging.h>
 #include <android-base/properties.h>
 #include <android-base/stringprintf.h>
+#include <android/os/IServiceManager.h>
 #include <binder/IServiceManager.h>
 #include <binder/RpcServer.h>
 
@@ -39,15 +40,23 @@ using android::base::LogId;
 using android::base::LogSeverity;
 using android::base::StdioLogger;
 using android::base::StringPrintf;
+using std::string_view_literals::operator""sv;
 
 namespace {
 int Usage(const char* program) {
+    auto basename = Basename(program);
     auto format = R"(dispatch calls to RPC service.
 Usage:
   %s <service_name>
     <service_name>: the service to connect to.
+  %s manager
+    Runs an RPC-friendly service that redirects calls to servicemanager.
+
+  If successful, writes port number and a new line character to stdout, and
+  blocks until killed.
+  Otherwise, writes error message to stderr and exits with non-zero code.
 )";
-    LOG(ERROR) << StringPrintf(format, Basename(program).c_str());
+    LOG(ERROR) << StringPrintf(format, basename.c_str(), basename.c_str());
     return EX_USAGE;
 }
 
@@ -79,10 +88,41 @@ int Dispatch(const char* name) {
         LOG(ERROR) << "setRpcClientDebug failed with " << statusToString(status);
         return EX_SOFTWARE;
     }
-    LOG(INFO) << "Finish setting up RPC on service " << name << " on port" << port;
+    LOG(INFO) << "Finish setting up RPC on service " << name << " on port " << port;
 
     std::cout << port << std::endl;
     return EX_OK;
+}
+
+// Workaround for b/191059588.
+// TODO(b/191059588): Once we can run RpcServer on single-threaded services,
+//   `servicedispatcher manager` should call Dispatch("manager") directly.
+int wrapServiceManager() {
+    auto sm = defaultServiceManager();
+    if (nullptr == sm) {
+        LOG(ERROR) << "No servicemanager";
+        return EX_SOFTWARE;
+    }
+    auto service = sm->checkService(String16("manager"));
+    if (nullptr == service) {
+        LOG(ERROR) << "No service called `manager`";
+        return EX_SOFTWARE;
+    }
+
+    auto rpcServer = RpcServer::make();
+    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+    rpcServer->setRootObject(service);
+    unsigned int port;
+    if (!rpcServer->setupInetServer(0, &port)) {
+        LOG(ERROR) << "Unable to set up inet server";
+        return EX_SOFTWARE;
+    }
+    LOG(INFO) << "Finish wrapping servicemanager with RPC on port " << port;
+    std::cout << port << std::endl;
+    rpcServer->join();
+
+    LOG(FATAL) << "Wrapped servicemanager exits; this should not happen!";
+    __builtin_unreachable();
 }
 
 // Log to logd. For warning and more severe messages, also log to stderr.
@@ -120,8 +160,12 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+
     if (optind + 1 != argc) return Usage(argv[0]);
     auto name = argv[optind];
 
+    if (name == "manager"sv) {
+        return wrapServiceManager();
+    }
     return Dispatch(name);
 }
