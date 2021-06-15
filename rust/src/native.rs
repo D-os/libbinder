@@ -24,7 +24,6 @@ use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
 use std::mem::ManuallyDrop;
 use std::ops::Deref;
-use std::ptr;
 
 /// Rust wrapper around Binder remotable objects.
 ///
@@ -273,7 +272,7 @@ impl<T: Remotable> InterfaceClassMethods for Binder<T> {
     /// Must be called with a valid pointer to a `T` object. After this call,
     /// the pointer will be invalid and should not be dereferenced.
     unsafe extern "C" fn on_destroy(object: *mut c_void) {
-        ptr::drop_in_place(object as *mut T)
+        Box::from_raw(object as *mut T);
     }
 
     /// Called whenever a new, local `AIBinder` object is needed of a specific
