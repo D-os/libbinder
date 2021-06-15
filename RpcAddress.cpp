@@ -29,7 +29,7 @@ RpcAddress RpcAddress::zero() {
 }
 
 bool RpcAddress::isZero() const {
-    RpcWireAddress ZERO{0};
+    RpcWireAddress ZERO{.options = 0};
     return memcmp(mRawAddr.get(), &ZERO, sizeof(RpcWireAddress)) == 0;
 }
 
@@ -51,11 +51,32 @@ static void ReadRandomBytes(uint8_t* buf, size_t len) {
     close(fd);
 }
 
-RpcAddress RpcAddress::unique() {
+RpcAddress RpcAddress::random(bool forServer) {
+    // The remainder of this header acts as reserved space for different kinds
+    // of binder objects.
+    uint64_t options = RPC_WIRE_ADDRESS_OPTION_CREATED;
+
+    // servers and clients allocate addresses independently, so this bit can
+    // tell you where an address originates
+    if (forServer) options |= RPC_WIRE_ADDRESS_OPTION_FOR_SERVER;
+
     RpcAddress ret;
-    ReadRandomBytes((uint8_t*)ret.mRawAddr.get(), sizeof(RpcWireAddress));
+    RpcWireAddress* raw = ret.mRawAddr.get();
+
+    raw->options = options;
+    ReadRandomBytes(raw->address, sizeof(raw->address));
+
     LOG_RPC_DETAIL("Creating new address: %s", ret.toString().c_str());
     return ret;
+}
+
+bool RpcAddress::isForServer() const {
+    return mRawAddr.get()->options & RPC_WIRE_ADDRESS_OPTION_FOR_SERVER;
+}
+
+bool RpcAddress::isRecognizedType() const {
+    uint64_t allKnownOptions = RPC_WIRE_ADDRESS_OPTION_CREATED | RPC_WIRE_ADDRESS_OPTION_FOR_SERVER;
+    return (mRawAddr.get()->options & ~allKnownOptions) == 0;
 }
 
 RpcAddress RpcAddress::fromRawEmbedded(const RpcWireAddress* raw) {
