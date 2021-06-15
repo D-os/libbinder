@@ -23,6 +23,7 @@
 #include <android-base/logging.h>
 #include <android-base/properties.h>
 #include <android-base/stringprintf.h>
+#include <android/os/BnServiceManager.h>
 #include <android/os/IServiceManager.h>
 #include <binder/IServiceManager.h>
 #include <binder/RpcServer.h>
@@ -94,6 +95,70 @@ int Dispatch(const char* name) {
     return EX_OK;
 }
 
+// Wrapper that wraps a BpServiceManager as a BnServiceManager.
+class ServiceManagerProxyToNative : public android::os::BnServiceManager {
+public:
+    ServiceManagerProxyToNative(const sp<android::os::IServiceManager>& impl) : mImpl(impl) {}
+    android::binder::Status getService(const std::string&,
+                                       android::sp<android::IBinder>*) override {
+        // We can't send BpBinder for regular binder over RPC.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status checkService(const std::string&,
+                                         android::sp<android::IBinder>*) override {
+        // We can't send BpBinder for regular binder over RPC.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status addService(const std::string&, const android::sp<android::IBinder>&,
+                                       bool, int32_t) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status listServices(int32_t dumpPriority,
+                                         std::vector<std::string>* _aidl_return) override {
+        return mImpl->listServices(dumpPriority, _aidl_return);
+    }
+    android::binder::Status registerForNotifications(
+            const std::string&, const android::sp<android::os::IServiceCallback>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status unregisterForNotifications(
+            const std::string&, const android::sp<android::os::IServiceCallback>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status isDeclared(const std::string& name, bool* _aidl_return) override {
+        return mImpl->isDeclared(name, _aidl_return);
+    }
+    android::binder::Status getDeclaredInstances(const std::string& iface,
+                                                 std::vector<std::string>* _aidl_return) override {
+        return mImpl->getDeclaredInstances(iface, _aidl_return);
+    }
+    android::binder::Status updatableViaApex(const std::string& name,
+                                             std::optional<std::string>* _aidl_return) override {
+        return mImpl->updatableViaApex(name, _aidl_return);
+    }
+    android::binder::Status registerClientCallback(
+            const std::string&, const android::sp<android::IBinder>&,
+            const android::sp<android::os::IClientCallback>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status tryUnregisterService(const std::string&,
+                                                 const android::sp<android::IBinder>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status getServiceDebugInfo(
+            std::vector<android::os::ServiceDebugInfo>* _aidl_return) override {
+        return mImpl->getServiceDebugInfo(_aidl_return);
+    }
+
+private:
+    sp<android::os::IServiceManager> mImpl;
+};
+
 // Workaround for b/191059588.
 // TODO(b/191059588): Once we can run RpcServer on single-threaded services,
 //   `servicedispatcher manager` should call Dispatch("manager") directly.
@@ -108,6 +173,15 @@ int wrapServiceManager() {
         LOG(ERROR) << "No service called `manager`";
         return EX_SOFTWARE;
     }
+    auto interface = android::os::IServiceManager::asInterface(service);
+    if (nullptr == interface) {
+        LOG(ERROR) << "Cannot cast service called `manager` to IServiceManager";
+        return EX_SOFTWARE;
+    }
+
+    // Work around restriction that doesn't allow us to send proxy over RPC.
+    interface = sp<ServiceManagerProxyToNative>::make(interface);
+    service = ServiceManagerProxyToNative::asBinder(interface);
 
     auto rpcServer = RpcServer::make();
     rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
