@@ -148,28 +148,6 @@ std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTI
         // should be null since we don't create any IPC objects
         CHECK(data == nullptr) << data;
     },
-    [] (const ::android::hardware::Parcel& p, uint8_t size) {
-        FUZZ_LOG() << "about to readEmbeddedNativeHandle";
-        size_t parent_buffer_handle = size & 0xf;
-        size_t parent_offset = size >> 4;
-        const native_handle_t* handle = nullptr;
-        status_t status = p.readEmbeddedNativeHandle(parent_buffer_handle, parent_offset, &handle);
-        FUZZ_LOG() << "readEmbeddedNativeHandle status: " << status << " handle: " << handle << " handle: " << handle;
-
-        // should be null since we don't create any IPC objects
-        CHECK(handle == nullptr) << handle;
-    },
-    [] (const ::android::hardware::Parcel& p, uint8_t size) {
-        FUZZ_LOG() << "about to readNullableEmbeddedNativeHandle";
-        size_t parent_buffer_handle = size & 0xf;
-        size_t parent_offset = size >> 4;
-        const native_handle_t* handle = nullptr;
-        status_t status = p.readNullableEmbeddedNativeHandle(parent_buffer_handle, parent_offset, &handle);
-        FUZZ_LOG() << "readNullableEmbeddedNativeHandle status: " << status << " handle: " << handle << " handle: " << handle;
-
-        // should be null since we don't create any IPC objects
-        CHECK(handle == nullptr) << handle;
-    },
     [] (const ::android::hardware::Parcel& p, uint8_t /*data*/) {
         FUZZ_LOG() << "about to readNativeHandleNoDup";
         const native_handle_t* handle = nullptr;
@@ -179,15 +157,6 @@ std::vector<ParcelRead<::android::hardware::Parcel>> HWBINDER_PARCEL_READ_FUNCTI
         // should be null since we don't create any IPC objects
         CHECK(handle == nullptr) << handle;
         CHECK(status != ::android::OK);
-    },
-    [] (const ::android::hardware::Parcel& p, uint8_t /*data*/) {
-        FUZZ_LOG() << "about to readNullableNativeHandleNoDup";
-        const native_handle_t* handle = nullptr;
-        status_t status = p.readNullableNativeHandleNoDup(&handle);
-        FUZZ_LOG() << "readNullableNativeHandleNoDup status: " << status << " handle: " << handle;
-
-        // should be null since we don't create any IPC objects
-        CHECK(handle == nullptr) << handle;
     },
 };
 // clang-format on
