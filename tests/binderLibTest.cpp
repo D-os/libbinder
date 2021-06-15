@@ -113,7 +113,6 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_ECHO_VECTOR,
     BINDER_LIB_TEST_REJECT_BUF,
     BINDER_LIB_TEST_CAN_GET_SID,
-    BINDER_LIB_TEST_CREATE_TEST_SERVICE,
 };
 
 pid_t start_server_process(int arg2, bool usePoll = false)
@@ -1240,89 +1239,6 @@ TEST_P(BinderLibRpcTest, SetRpcClientDebugTwice) {
 INSTANTIATE_TEST_CASE_P(BinderLibTest, BinderLibRpcTest, testing::Bool(),
                         BinderLibRpcTest::ParamToString);
 
-class BinderLibTestService;
-class BinderLibRpcClientTest : public BinderLibRpcTestBase,
-                               public WithParamInterface<std::tuple<bool, uint32_t>> {
-public:
-    static std::string ParamToString(const testing::TestParamInfo<ParamType> &info) {
-        auto [isRemote, numThreads] = info.param;
-        return (isRemote ? "remote" : "local") + "_server_with_"s + std::to_string(numThreads) +
-                "_threads";
-    }
-    sp<IBinder> CreateRemoteService(int32_t id) {
-        Parcel data, reply;
-        status_t status = data.writeInt32(id);
-        EXPECT_THAT(status, StatusEq(OK));
-        if (status != OK) return nullptr;
-        status = m_server->transact(BINDER_LIB_TEST_CREATE_TEST_SERVICE, data, &reply);
-        EXPECT_THAT(status, StatusEq(OK));
-        if (status != OK) return nullptr;
-        sp<IBinder> ret;
-        status = reply.readStrongBinder(&ret);
-        EXPECT_THAT(status, StatusEq(OK));
-        if (status != OK) return nullptr;
-        return ret;
-    }
-};
-
-TEST_P(BinderLibRpcClientTest, Test) {
-    auto [isRemote, numThreadsParam] = GetParam();
-    uint32_t numThreads = numThreadsParam; // ... to be captured in lambda
-    int32_t id = 0xC0FFEE00 + numThreads;
-    sp<IBinder> server = isRemote ? sp<IBinder>(CreateRemoteService(id))
-                                  : sp<IBinder>(sp<BinderLibTestService>::make(id, false));
-    ASSERT_EQ(isRemote, !!server->remoteBinder());
-    ASSERT_THAT(GetId(server), HasValue(id));
-
-    unsigned int port = 0;
-    // Fake servicedispatcher.
-    {
-        auto [socket, socketPort] = CreateSocket();
-        ASSERT_TRUE(socket.ok());
-        port = socketPort;
-        ASSERT_THAT(server->setRpcClientDebug(std::move(socket)), StatusEq(OK));
-    }
-
-    std::mutex mutex;
-    std::condition_variable cv;
-    bool start = false;
-
-    auto threadFn = [&](size_t threadNum) {
-        usleep(threadNum * 50 * 1000); // threadNum * 50ms. Need this to avoid SYN flooding.
-        auto rpcSession = RpcSession::make();
-        ASSERT_TRUE(rpcSession->setupInetClient("127.0.0.1", port));
-        auto rpcServerBinder = rpcSession->getRootObject();
-        ASSERT_NE(nullptr, rpcServerBinder);
-        // Check that |rpcServerBinder| and |server| points to the same service.
-        EXPECT_THAT(GetId(rpcServerBinder), HasValue(id)) << "For thread #" << threadNum;
-
-        {
-            std::unique_lock<std::mutex> lock(mutex);
-            ASSERT_TRUE(cv.wait_for(lock, 1s, [&] { return start; }));
-        }
-        // Let all threads almost simultaneously ping the service.
-        for (size_t i = 0; i < 100; ++i) {
-            EXPECT_THAT(rpcServerBinder->pingBinder(), StatusEq(OK))
-                    << "For thread #" << threadNum << ", iteration " << i;
-        }
-    };
-
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < numThreads; ++i) threads.emplace_back(std::bind(threadFn, i));
-
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        start = true;
-    }
-    cv.notify_all();
-
-    for (auto &t : threads) t.join();
-}
-
-INSTANTIATE_TEST_CASE_P(BinderLibTest, BinderLibRpcClientTest,
-                        testing::Combine(testing::Bool(), testing::Values(1u, 10u)),
-                        BinderLibRpcClientTest::ParamToString);
-
 class BinderLibTestService : public BBinder {
 public:
     explicit BinderLibTestService(int32_t id, bool exitOnDestroy = true)
@@ -1636,12 +1552,6 @@ public:
             }
             case BINDER_LIB_TEST_CAN_GET_SID: {
                 return IPCThreadState::self()->getCallingSid() == nullptr ? BAD_VALUE : NO_ERROR;
-            }
-            case BINDER_LIB_TEST_CREATE_TEST_SERVICE: {
-                int32_t id;
-                if (status_t status = data.readInt32(&id); status != NO_ERROR) return status;
-                reply->writeStrongBinder(sp<BinderLibTestService>::make(id, false));
-                return NO_ERROR;
             }
             default:
                 return UNKNOWN_TRANSACTION;
