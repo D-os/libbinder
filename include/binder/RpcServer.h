@@ -17,6 +17,7 @@
 
 #include <android-base/unique_fd.h>
 #include <binder/IBinder.h>
+#include <binder/RpcAddress.h>
 #include <binder/RpcSession.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
@@ -155,8 +156,8 @@ private:
     friend sp<RpcServer>;
     RpcServer();
 
-    void onSessionLockedAllServerThreadsEnded(const sp<RpcSession>& session) override;
-    void onSessionServerThreadEnded() override;
+    void onSessionLockedAllIncomingThreadsEnded(const sp<RpcSession>& session) override;
+    void onSessionIncomingThreadEnded() override;
 
     static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
     bool setupSocketServer(const RpcSocketAddress& address);
@@ -171,8 +172,7 @@ private:
     std::map<std::thread::id, std::thread> mConnectingThreads;
     sp<IBinder> mRootObject;
     wp<IBinder> mRootObjectWeak;
-    std::map<int32_t, sp<RpcSession>> mSessions;
-    int32_t mSessionIdCounter = 0;
+    std::map<RpcAddress, sp<RpcSession>> mSessions;
     std::unique_ptr<RpcSession::FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;
 };
