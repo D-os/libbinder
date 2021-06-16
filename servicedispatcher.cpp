@@ -85,7 +85,11 @@ int Dispatch(const char* name) {
     LOG(INFO) << "Finish setting up RPC on service " << name << " on port" << port;
 
     std::cout << port << std::endl;
-    return EX_OK;
+
+    TEMP_FAILURE_RETRY(pause());
+
+    PLOG(FATAL) << "TEMP_FAILURE_RETRY(pause()) exits; this should not happen!";
+    __builtin_unreachable();
 }
 
 // Log to logd. For warning and more severe messages, also log to stderr.
