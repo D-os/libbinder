@@ -62,6 +62,7 @@ cc_test {
     shared_libs: [
         "libbase",
         "libbinder",
+        "liblog",
         "libutils",
     ],
     static_libs: [
@@ -104,6 +105,7 @@ cc_test {
     shared_libs: [
         "libbase",
         "libbinder",
+        "liblog",
         "libutils",
     ],
     static_libs: [
