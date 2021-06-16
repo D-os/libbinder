@@ -15,14 +15,13 @@
  */
 
 #include <errno.h>
-#include <fcntl.h>
-#include <fstream>
 #include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <chrono>
+#include <fstream>
 #include <thread>
 
 #include <gmock/gmock.h>
@@ -31,6 +30,7 @@
 #include <android-base/properties.h>
 #include <android-base/result-gmock.h>
 #include <android-base/result.h>
+#include <android-base/strings.h>
 #include <android-base/unique_fd.h>
 #include <binder/Binder.h>
 #include <binder/BpBinder.h>
@@ -55,6 +55,7 @@ using namespace android;
 using namespace std::string_literals;
 using namespace std::chrono_literals;
 using android::base::testing::HasValue;
+using android::base::testing::Ok;
 using testing::ExplainMatchResult;
 using testing::Not;
 using testing::WithParamInterface;
@@ -1199,7 +1200,35 @@ public:
     }
 };
 
-class BinderLibRpcTest : public BinderLibRpcTestBase, public WithParamInterface<bool> {
+class BinderLibRpcTest : public BinderLibRpcTestBase {};
+
+TEST_F(BinderLibRpcTest, SetRpcClientDebug) {
+    auto binder = addServer();
+    ASSERT_TRUE(binder != nullptr);
+    auto [socket, port] = CreateSocket();
+    ASSERT_TRUE(socket.ok());
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket), sp<BBinder>::make()), StatusEq(OK));
+}
+
+// Tests for multiple RpcServer's on the same binder object.
+TEST_F(BinderLibRpcTest, SetRpcClientDebugTwice) {
+    auto binder = addServer();
+    ASSERT_TRUE(binder != nullptr);
+
+    auto [socket1, port1] = CreateSocket();
+    ASSERT_TRUE(socket1.ok());
+    auto keepAliveBinder1 = sp<BBinder>::make();
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket1), keepAliveBinder1), StatusEq(OK));
+
+    auto [socket2, port2] = CreateSocket();
+    ASSERT_TRUE(socket2.ok());
+    auto keepAliveBinder2 = sp<BBinder>::make();
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket2), keepAliveBinder2), StatusEq(OK));
+}
+
+// Negative tests for RPC APIs on IBinder. Call should fail in the same way on both remote and
+// local binders.
+class BinderLibRpcTestP : public BinderLibRpcTestBase, public WithParamInterface<bool> {
 public:
     sp<IBinder> GetService() {
         return GetParam() ? sp<IBinder>(addServer()) : sp<IBinder>(sp<BBinder>::make());
@@ -1209,35 +1238,22 @@ public:
     }
 };
 
-TEST_P(BinderLibRpcTest, SetRpcClientDebug) {
+TEST_P(BinderLibRpcTestP, SetRpcClientDebugNoFd) {
+    auto binder = GetService();
+    ASSERT_TRUE(binder != nullptr);
+    EXPECT_THAT(binder->setRpcClientDebug(android::base::unique_fd(), sp<BBinder>::make()),
+                StatusEq(BAD_VALUE));
+}
+
+TEST_P(BinderLibRpcTestP, SetRpcClientDebugNoKeepAliveBinder) {
     auto binder = GetService();
     ASSERT_TRUE(binder != nullptr);
     auto [socket, port] = CreateSocket();
     ASSERT_TRUE(socket.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket)), StatusEq(OK));
+    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket), nullptr), StatusEq(UNEXPECTED_NULL));
 }
-
-TEST_P(BinderLibRpcTest, SetRpcClientDebugNoFd) {
-    auto binder = GetService();
-    ASSERT_TRUE(binder != nullptr);
-    EXPECT_THAT(binder->setRpcClientDebug(android::base::unique_fd()), StatusEq(BAD_VALUE));
-}
-
-TEST_P(BinderLibRpcTest, SetRpcClientDebugTwice) {
-    auto binder = GetService();
-    ASSERT_TRUE(binder != nullptr);
-
-    auto [socket1, port1] = CreateSocket();
-    ASSERT_TRUE(socket1.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket1)), StatusEq(OK));
-
-    auto [socket2, port2] = CreateSocket();
-    ASSERT_TRUE(socket2.ok());
-    EXPECT_THAT(binder->setRpcClientDebug(std::move(socket2)), StatusEq(ALREADY_EXISTS));
-}
-
-INSTANTIATE_TEST_CASE_P(BinderLibTest, BinderLibRpcTest, testing::Bool(),
-                        BinderLibRpcTest::ParamToString);
+INSTANTIATE_TEST_CASE_P(BinderLibTest, BinderLibRpcTestP, testing::Bool(),
+                        BinderLibRpcTestP::ParamToString);
 
 class BinderLibTestService : public BBinder {
 public:
