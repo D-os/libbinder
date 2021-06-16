@@ -184,10 +184,16 @@ impl Parcel {
         }
     }
 
+    /// Returns the total size of the parcel.
+    pub fn get_data_size(&self) -> i32 {
+        unsafe {
+            // Safety: `Parcel` always contains a valid pointer to an `AParcel`,
+            // and this call is otherwise safe.
+            sys::AParcel_getDataSize(self.as_native())
+        }
+    }
+
     /// Move the current read/write position in the parcel.
-    ///
-    /// The new position must be a position previously returned by
-    /// `self.get_data_position()`.
     ///
     /// # Safety
     ///
@@ -224,6 +230,65 @@ impl Parcel {
     /// value partially or completely, depending on how much data is available.
     pub fn read_onto<D: Deserialize>(&self, x: &mut D) -> Result<()> {
         x.deserialize_from(self)
+    }
+
+    /// Safely read a sized parcelable.
+    ///
+    /// Read the size of a parcelable, compute the end position
+    /// of that parcelable, then build a sized readable sub-parcel
+    /// and call a closure with the sub-parcel as its parameter.
+    /// The closure can keep reading data from the sub-parcel
+    /// until it runs out of input data. The closure is responsible
+    /// for calling [`ReadableSubParcel::has_more_data`] to check for
+    /// more data before every read, at least until Rust generators
+    /// are stabilized.
+    /// After the closure returns, skip to the end of the current
+    /// parcelable regardless of how much the closure has read.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let mut parcelable = Default::default();
+    /// parcel.sized_read(|subparcel| {
+    ///     if subparcel.has_more_data() {
+    ///         parcelable.a = subparcel.read()?;
+    ///     }
+    ///     if subparcel.has_more_data() {
+    ///         parcelable.b = subparcel.read()?;
+    ///     }
+    ///     Ok(())
+    /// });
+    /// ```
+    ///
+    pub fn sized_read<F>(&self, mut f: F) -> Result<()>
+    where
+        for<'a> F: FnMut(ReadableSubParcel<'a>) -> Result<()>
+    {
+        let start = self.get_data_position();
+        let parcelable_size: i32 = self.read()?;
+        if parcelable_size < 0 {
+            return Err(StatusCode::BAD_VALUE);
+        }
+
+        let end = start.checked_add(parcelable_size)
+            .ok_or(StatusCode::BAD_VALUE)?;
+        if end > self.get_data_size() {
+            return Err(StatusCode::NOT_ENOUGH_DATA);
+        }
+
+        let subparcel = ReadableSubParcel {
+            parcel: self,
+            end_position: end,
+        };
+        f(subparcel)?;
+
+        // Advance the data position to the actual end,
+        // in case the closure read less data than was available
+        unsafe {
+            self.set_data_position(end)?;
+        }
+
+        Ok(())
     }
 
     /// Read a vector size from the `Parcel` and resize the given output vector
@@ -268,6 +333,27 @@ impl Parcel {
         }
 
         Ok(())
+    }
+}
+
+/// A segment of a readable parcel, used for [`Parcel::sized_read`].
+pub struct ReadableSubParcel<'a> {
+    parcel: &'a Parcel,
+    end_position: i32,
+}
+
+impl<'a> ReadableSubParcel<'a> {
+    /// Read a type that implements [`Deserialize`] from the sub-parcel.
+    pub fn read<D: Deserialize>(&self) -> Result<D> {
+        // The caller should have checked this,
+        // but it can't hurt to double-check
+        assert!(self.has_more_data());
+        D::deserialize(self.parcel)
+    }
+
+    /// Check if the sub-parcel has more data to read
+    pub fn has_more_data(&self) -> bool {
+        self.parcel.get_data_position() < self.end_position
     }
 }
 
