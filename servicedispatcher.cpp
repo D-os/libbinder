@@ -44,14 +44,19 @@ using android::base::StringPrintf;
 using std::string_view_literals::operator""sv;
 
 namespace {
+
+using ServiceRetriever = decltype(&android::IServiceManager::checkService);
+
 int Usage(const char* program) {
     auto basename = Basename(program);
     auto format = R"(dispatch calls to RPC service.
 Usage:
-  %s <service_name>
+  %s [-g] <service_name>
     <service_name>: the service to connect to.
-  %s manager
+  %s [-g] manager
     Runs an RPC-friendly service that redirects calls to servicemanager.
+
+  -g: use getService() instead of checkService().
 
   If successful, writes port number and a new line character to stdout, and
   blocks until killed.
@@ -61,13 +66,13 @@ Usage:
     return EX_USAGE;
 }
 
-int Dispatch(const char* name) {
+int Dispatch(const char* name, const ServiceRetriever& serviceRetriever) {
     auto sm = defaultServiceManager();
     if (nullptr == sm) {
         LOG(ERROR) << "No servicemanager";
         return EX_SOFTWARE;
     }
-    auto binder = sm->checkService(String16(name));
+    auto binder = std::invoke(serviceRetriever, defaultServiceManager(), String16(name));
     if (nullptr == binder) {
         LOG(ERROR) << "No service \"" << name << "\"";
         return EX_SOFTWARE;
@@ -162,13 +167,13 @@ private:
 // Workaround for b/191059588.
 // TODO(b/191059588): Once we can run RpcServer on single-threaded services,
 //   `servicedispatcher manager` should call Dispatch("manager") directly.
-int wrapServiceManager() {
+int wrapServiceManager(const ServiceRetriever& serviceRetriever) {
     auto sm = defaultServiceManager();
     if (nullptr == sm) {
         LOG(ERROR) << "No servicemanager";
         return EX_SOFTWARE;
     }
-    auto service = sm->checkService(String16("manager"));
+    auto service = std::invoke(serviceRetriever, defaultServiceManager(), String16("manager"));
     if (nullptr == service) {
         LOG(ERROR) << "No service called `manager`";
         return EX_SOFTWARE;
@@ -227,8 +232,12 @@ int main(int argc, char* argv[]) {
     LOG(WARNING) << "WARNING: servicedispatcher is debug only. Use with caution.";
 
     int opt;
-    while (-1 != (opt = getopt(argc, argv, ""))) {
+    ServiceRetriever serviceRetriever = &android::IServiceManager::checkService;
+    while (-1 != (opt = getopt(argc, argv, "g"))) {
         switch (opt) {
+            case 'g': {
+                serviceRetriever = &android::IServiceManager::getService;
+            } break;
             default: {
                 return Usage(argv[0]);
             }
@@ -239,7 +248,7 @@ int main(int argc, char* argv[]) {
     auto name = argv[optind];
 
     if (name == "manager"sv) {
-        return wrapServiceManager();
+        return wrapServiceManager(serviceRetriever);
     }
-    return Dispatch(name);
+    return Dispatch(name, serviceRetriever);
 }
