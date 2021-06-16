@@ -117,7 +117,7 @@ LIBBINDER_NDK31 { # introduced=31
     ABinderProcess_setupPolling; # apex
     AIBinder_getCallingSid; # apex
     AIBinder_setRequestingSid; # apex
-    AParcel_markSensitive; # llndk
+    AParcel_markSensitive; # systemapi llndk
     AServiceManager_forEachDeclaredInstance; # apex llndk
     AServiceManager_forceLazyServicesPersist; # llndk
     AServiceManager_isDeclared; # apex llndk
