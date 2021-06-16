@@ -73,7 +73,10 @@ cc_test {
         "IBinderNdkUnitTest-cpp",
         "IBinderNdkUnitTest-ndk_platform",
     ],
-    test_suites: ["general-tests", "vts"],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
     require_root: true,
 }
 
@@ -115,4 +118,12 @@ aidl_interface {
         "IBinderNdkUnitTest.aidl",
         "IEmpty.aidl",
     ],
+    backend: {
+        java: {
+            enabled: false,
+        },
+        ndk: {
+            apps_enabled: false,
+        },
+    },
 }
