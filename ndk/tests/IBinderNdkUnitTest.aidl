@@ -21,6 +21,7 @@
 
 import IEmpty;
 
+@SensitiveData
 interface IBinderNdkUnitTest {
     int repeatInt(int a);
 
