@@ -261,27 +261,17 @@ public:
 };
 sp<IBinder> MyBinderRpcTest::mHeldBinder;
 
-class Pipe {
-public:
-    Pipe() { CHECK(android::base::Pipe(&mRead, &mWrite)); }
-    Pipe(Pipe&&) = default;
-    android::base::borrowed_fd readEnd() { return mRead; }
-    android::base::borrowed_fd writeEnd() { return mWrite; }
-
-private:
-    android::base::unique_fd mRead;
-    android::base::unique_fd mWrite;
-};
-
 class Process {
 public:
     Process(Process&&) = default;
-    Process(const std::function<void(Pipe*)>& f) {
+    Process(const std::function<void(android::base::borrowed_fd /* writeEnd */)>& f) {
+        android::base::unique_fd writeEnd;
+        CHECK(android::base::Pipe(&mReadEnd, &writeEnd)) << strerror(errno);
         if (0 == (mPid = fork())) {
             // racey: assume parent doesn't crash before this is set
             prctl(PR_SET_PDEATHSIG, SIGHUP);
 
-            f(&mPipe);
+            f(writeEnd);
 
             exit(0);
         }
@@ -291,11 +281,11 @@ public:
             waitpid(mPid, nullptr, 0);
         }
     }
-    Pipe* getPipe() { return &mPipe; }
+    android::base::borrowed_fd readEnd() { return mReadEnd; }
 
 private:
     pid_t mPid = 0;
-    Pipe mPipe;
+    android::base::unique_fd mReadEnd;
 };
 
 static std::string allocateSocketAddress() {
@@ -413,7 +403,7 @@ public:
         unlink(addr.c_str());
 
         auto ret = ProcessSession{
-                .host = Process([&](Pipe* pipe) {
+                .host = Process([&](android::base::borrowed_fd writeEnd) {
                     sp<RpcServer> server = RpcServer::make();
 
                     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
@@ -437,7 +427,7 @@ public:
                             LOG_ALWAYS_FATAL("Unknown socket type");
                     }
 
-                    CHECK(android::base::WriteFully(pipe->writeEnd(), &outPort, sizeof(outPort)));
+                    CHECK(android::base::WriteFully(writeEnd, &outPort, sizeof(outPort)));
 
                     configure(server);
 
@@ -450,7 +440,7 @@ public:
 
         // always read socket, so that we have waited for the server to start
         unsigned int outPort = 0;
-        CHECK(android::base::ReadFully(ret.host.getPipe()->readEnd(), &outPort, sizeof(outPort)));
+        CHECK(android::base::ReadFully(ret.host.readEnd(), &outPort, sizeof(outPort)));
         if (socketType == SocketType::INET) {
             CHECK_NE(0, outPort);
         }
