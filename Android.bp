@@ -254,6 +254,32 @@ aidl_interface {
     },
 }
 
+// TODO(b/184872979): remove once the Rust API is created.
+cc_library {
+    name: "libbinder_rpc_unstable",
+    srcs: ["libbinder_rpc_unstable.cpp"],
+    defaults: ["libbinder_ndk_host_user"],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "libbinder_ndk",
+        "libutils",
+    ],
+
+    // enumerate stable entry points, for apex use
+    stubs: {
+        symbol_file: "libbinder_rpc_unstable.map.txt",
+    },
+
+    // This library is intentionally limited to these targets, and it will be removed later.
+    // Do not expand the visibility.
+    visibility: [
+        "//packages/modules/Virtualization/authfs:__subpackages__",
+        "//packages/modules/Virtualization/compos",
+        "//packages/modules/Virtualization/microdroid",
+    ],
+}
+
 // libbinder historically contained additional interfaces that provided specific
 // functionality in the platform but have nothing to do with binder itself. These
 // are moved out of libbinder in order to avoid the overhead of their vtables.
