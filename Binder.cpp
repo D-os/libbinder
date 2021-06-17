@@ -354,9 +354,9 @@ bool BBinder::isRequestingSid()
 
 void BBinder::setRequestingSid(bool requestingSid)
 {
-    ALOGW_IF(mParceled,
-             "setRequestingSid() should not be called after a binder object "
-             "is parceled/sent to another process");
+    LOG_ALWAYS_FATAL_IF(mParceled,
+                        "setRequestingSid() should not be called after a binder object "
+                        "is parceled/sent to another process");
 
     Extras* e = mExtras.load(std::memory_order_acquire);
 
@@ -380,9 +380,9 @@ sp<IBinder> BBinder::getExtension() {
 }
 
 void BBinder::setMinSchedulerPolicy(int policy, int priority) {
-    ALOGW_IF(mParceled,
-             "setMinSchedulerPolicy() should not be called after a binder object "
-             "is parceled/sent to another process");
+    LOG_ALWAYS_FATAL_IF(mParceled,
+                        "setMinSchedulerPolicy() should not be called after a binder object "
+                        "is parceled/sent to another process");
 
     switch (policy) {
     case SCHED_NORMAL:
@@ -431,9 +431,9 @@ bool BBinder::isInheritRt() {
 }
 
 void BBinder::setInheritRt(bool inheritRt) {
-    ALOGW_IF(mParceled,
-             "setInheritRt() should not be called after a binder object "
-             "is parceled/sent to another process");
+    LOG_ALWAYS_FATAL_IF(mParceled,
+                        "setInheritRt() should not be called after a binder object "
+                        "is parceled/sent to another process");
 
     Extras* e = mExtras.load(std::memory_order_acquire);
 
@@ -454,9 +454,9 @@ pid_t BBinder::getDebugPid() {
 }
 
 void BBinder::setExtension(const sp<IBinder>& extension) {
-    ALOGW_IF(mParceled,
-             "setExtension() should not be called after a binder object "
-             "is parceled/sent to another process");
+    LOG_ALWAYS_FATAL_IF(mParceled,
+                        "setExtension() should not be called after a binder object "
+                        "is parceled/sent to another process");
 
     Extras* e = getOrCreateExtras();
     e->mExtension = extension;
