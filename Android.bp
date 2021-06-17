@@ -135,6 +135,20 @@ cc_library {
                 enabled: false,
             },
         },
+        android_arm64: {
+            // b/189438896 Sampling PGO restricted to arm64, arm32 in sc-dev
+            pgo: {
+                sampling: true,
+                profile_file: "libbinder/libbinder.profdata",
+            },
+        },
+        android_arm: {
+            // b/189438896 Sampling PGO restricted to arm64, arm32 in sc-dev
+            pgo: {
+                sampling: true,
+                profile_file: "libbinder/libbinder.profdata",
+            },
+        },
         vendor: {
             exclude_srcs: libbinder_device_interface_sources,
         },
@@ -206,11 +220,6 @@ cc_library {
         "performance*",
         "portability*",
     ],
-
-    pgo: {
-        sampling: true,
-        profile_file: "libbinder/libbinder.profdata",
-    },
 }
 
 // AIDL interface between libbinder and framework.jar
