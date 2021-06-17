@@ -125,6 +125,21 @@ impl SpIBinder {
     }
 }
 
+pub mod unstable_api {
+    use super::{sys, SpIBinder};
+
+    /// A temporary API to allow the client to create a `SpIBinder` from a `sys::AIBinder`. This is
+    /// needed to bridge RPC binder, which doesn't have Rust API yet.
+    /// TODO(b/184872979): remove once the Rust API is created.
+    ///
+    /// # Safety
+    ///
+    /// See `SpIBinder::from_raw`.
+    pub unsafe fn new_spibinder(ptr: *mut sys::AIBinder) -> Option<SpIBinder> {
+        SpIBinder::from_raw(ptr)
+    }
+}
+
 /// An object that can be associate with an [`InterfaceClass`].
 pub trait AssociateClass {
     /// Check if this object is a valid object for the given interface class

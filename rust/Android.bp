@@ -106,6 +106,21 @@ rust_bindgen {
     ],
 }
 
+// TODO(b/184872979): remove once the Rust API is created.
+rust_bindgen {
+    name: "libbinder_rpc_unstable_bindgen",
+    wrapper_src: "src/binder_rpc_unstable.hpp",
+    crate_name: "binder_rpc_unstable_bindgen",
+    source_stem: "bindings",
+    shared_libs: [
+        "libutils",
+    ],
+    apex_available: [
+        "com.android.compos",
+        "com.android.virt",
+    ],
+}
+
 rust_test {
     name: "libbinder_rs-internal_test",
     crate_name: "binder",
