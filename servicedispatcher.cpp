@@ -23,6 +23,8 @@
 #include <android-base/logging.h>
 #include <android-base/properties.h>
 #include <android-base/stringprintf.h>
+#include <android/os/BnServiceManager.h>
+#include <android/os/IServiceManager.h>
 #include <binder/IServiceManager.h>
 #include <binder/RpcServer.h>
 
@@ -41,25 +43,38 @@ using android::base::LogId;
 using android::base::LogSeverity;
 using android::base::StdioLogger;
 using android::base::StringPrintf;
+using std::string_view_literals::operator""sv;
 
 namespace {
+
+using ServiceRetriever = decltype(&android::IServiceManager::checkService);
+
 int Usage(const char* program) {
+    auto basename = Basename(program);
     auto format = R"(dispatch calls to RPC service.
 Usage:
-  %s <service_name>
+  %s [-g] <service_name>
     <service_name>: the service to connect to.
+  %s [-g] manager
+    Runs an RPC-friendly service that redirects calls to servicemanager.
+
+  -g: use getService() instead of checkService().
+
+  If successful, writes port number and a new line character to stdout, and
+  blocks until killed.
+  Otherwise, writes error message to stderr and exits with non-zero code.
 )";
-    LOG(ERROR) << StringPrintf(format, Basename(program).c_str());
+    LOG(ERROR) << StringPrintf(format, basename.c_str(), basename.c_str());
     return EX_USAGE;
 }
 
-int Dispatch(const char* name) {
+int Dispatch(const char* name, const ServiceRetriever& serviceRetriever) {
     auto sm = defaultServiceManager();
     if (nullptr == sm) {
         LOG(ERROR) << "No servicemanager";
         return EX_SOFTWARE;
     }
-    auto binder = sm->checkService(String16(name));
+    auto binder = std::invoke(serviceRetriever, defaultServiceManager(), String16(name));
     if (nullptr == binder) {
         LOG(ERROR) << "No service \"" << name << "\"";
         return EX_SOFTWARE;
@@ -82,13 +97,117 @@ int Dispatch(const char* name) {
         LOG(ERROR) << "setRpcClientDebug failed with " << statusToString(status);
         return EX_SOFTWARE;
     }
-    LOG(INFO) << "Finish setting up RPC on service " << name << " on port" << port;
+    LOG(INFO) << "Finish setting up RPC on service " << name << " on port " << port;
 
     std::cout << port << std::endl;
 
     TEMP_FAILURE_RETRY(pause());
 
     PLOG(FATAL) << "TEMP_FAILURE_RETRY(pause()) exits; this should not happen!";
+    __builtin_unreachable();
+}
+
+// Wrapper that wraps a BpServiceManager as a BnServiceManager.
+class ServiceManagerProxyToNative : public android::os::BnServiceManager {
+public:
+    ServiceManagerProxyToNative(const sp<android::os::IServiceManager>& impl) : mImpl(impl) {}
+    android::binder::Status getService(const std::string&,
+                                       android::sp<android::IBinder>*) override {
+        // We can't send BpBinder for regular binder over RPC.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status checkService(const std::string&,
+                                         android::sp<android::IBinder>*) override {
+        // We can't send BpBinder for regular binder over RPC.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status addService(const std::string&, const android::sp<android::IBinder>&,
+                                       bool, int32_t) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status listServices(int32_t dumpPriority,
+                                         std::vector<std::string>* _aidl_return) override {
+        return mImpl->listServices(dumpPriority, _aidl_return);
+    }
+    android::binder::Status registerForNotifications(
+            const std::string&, const android::sp<android::os::IServiceCallback>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status unregisterForNotifications(
+            const std::string&, const android::sp<android::os::IServiceCallback>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status isDeclared(const std::string& name, bool* _aidl_return) override {
+        return mImpl->isDeclared(name, _aidl_return);
+    }
+    android::binder::Status getDeclaredInstances(const std::string& iface,
+                                                 std::vector<std::string>* _aidl_return) override {
+        return mImpl->getDeclaredInstances(iface, _aidl_return);
+    }
+    android::binder::Status updatableViaApex(const std::string& name,
+                                             std::optional<std::string>* _aidl_return) override {
+        return mImpl->updatableViaApex(name, _aidl_return);
+    }
+    android::binder::Status registerClientCallback(
+            const std::string&, const android::sp<android::IBinder>&,
+            const android::sp<android::os::IClientCallback>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status tryUnregisterService(const std::string&,
+                                                 const android::sp<android::IBinder>&) override {
+        // We can't send BpBinder for RPC over regular binder.
+        return android::binder::Status::fromStatusT(android::INVALID_OPERATION);
+    }
+    android::binder::Status getServiceDebugInfo(
+            std::vector<android::os::ServiceDebugInfo>* _aidl_return) override {
+        return mImpl->getServiceDebugInfo(_aidl_return);
+    }
+
+private:
+    sp<android::os::IServiceManager> mImpl;
+};
+
+// Workaround for b/191059588.
+// TODO(b/191059588): Once we can run RpcServer on single-threaded services,
+//   `servicedispatcher manager` should call Dispatch("manager") directly.
+int wrapServiceManager(const ServiceRetriever& serviceRetriever) {
+    auto sm = defaultServiceManager();
+    if (nullptr == sm) {
+        LOG(ERROR) << "No servicemanager";
+        return EX_SOFTWARE;
+    }
+    auto service = std::invoke(serviceRetriever, defaultServiceManager(), String16("manager"));
+    if (nullptr == service) {
+        LOG(ERROR) << "No service called `manager`";
+        return EX_SOFTWARE;
+    }
+    auto interface = android::os::IServiceManager::asInterface(service);
+    if (nullptr == interface) {
+        LOG(ERROR) << "Cannot cast service called `manager` to IServiceManager";
+        return EX_SOFTWARE;
+    }
+
+    // Work around restriction that doesn't allow us to send proxy over RPC.
+    interface = sp<ServiceManagerProxyToNative>::make(interface);
+    service = ServiceManagerProxyToNative::asBinder(interface);
+
+    auto rpcServer = RpcServer::make();
+    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+    rpcServer->setRootObject(service);
+    unsigned int port;
+    if (!rpcServer->setupInetServer(0, &port)) {
+        LOG(ERROR) << "Unable to set up inet server";
+        return EX_SOFTWARE;
+    }
+    LOG(INFO) << "Finish wrapping servicemanager with RPC on port " << port;
+    std::cout << port << std::endl;
+    rpcServer->join();
+
+    LOG(FATAL) << "Wrapped servicemanager exits; this should not happen!";
     __builtin_unreachable();
 }
 
@@ -120,15 +239,23 @@ int main(int argc, char* argv[]) {
     LOG(WARNING) << "WARNING: servicedispatcher is debug only. Use with caution.";
 
     int opt;
-    while (-1 != (opt = getopt(argc, argv, ""))) {
+    ServiceRetriever serviceRetriever = &android::IServiceManager::checkService;
+    while (-1 != (opt = getopt(argc, argv, "g"))) {
         switch (opt) {
+            case 'g': {
+                serviceRetriever = &android::IServiceManager::getService;
+            } break;
             default: {
                 return Usage(argv[0]);
             }
         }
     }
+
     if (optind + 1 != argc) return Usage(argv[0]);
     auto name = argv[optind];
 
-    return Dispatch(name);
+    if (name == "manager"sv) {
+        return wrapServiceManager(serviceRetriever);
+    }
+    return Dispatch(name, serviceRetriever);
 }
