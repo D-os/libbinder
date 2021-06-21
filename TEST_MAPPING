@@ -31,6 +31,9 @@
       "name": "binderStabilityTest"
     },
     {
+      "name": "binderUtilsTest"
+    },
+    {
       "name": "libbinder_ndk_unit_test"
     },
     {
