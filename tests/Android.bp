@@ -342,4 +342,9 @@ cc_test_host {
         "libgmock",
     ],
     test_suites: ["general-tests"],
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
 }
