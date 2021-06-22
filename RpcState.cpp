@@ -26,11 +26,27 @@
 #include "Debug.h"
 #include "RpcWireFormat.h"
 
+#include <random>
+
 #include <inttypes.h>
 
 namespace android {
 
 using base::ScopeGuard;
+
+#ifdef RPC_FLAKE_PRONE
+void rpcMaybeWaitToFlake() {
+    static std::random_device r;
+    static std::mutex m;
+
+    unsigned num;
+    {
+        std::lock_guard<std::mutex> lock(m);
+        num = r();
+    }
+    if (num % 10 == 0) usleep(num % 1000);
+}
+#endif
 
 RpcState::RpcState() {}
 RpcState::~RpcState() {}
@@ -225,6 +241,8 @@ RpcState::CommandData::CommandData(size_t size) : mSize(size) {
 status_t RpcState::rpcSend(const base::unique_fd& fd, const sp<RpcSession>& session,
                            const char* what, const void* data, size_t size) {
     LOG_RPC_DETAIL("Sending %s on fd %d: %s", what, fd.get(), hexString(data, size).c_str());
+
+    MAYBE_WAIT_IN_FLAKE_MODE;
 
     if (size > std::numeric_limits<ssize_t>::max()) {
         ALOGE("Cannot send %s at size %zu (too big)", what, size);

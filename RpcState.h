@@ -42,6 +42,15 @@ struct RpcWireHeader;
 #define LOG_RPC_DETAIL(...) ALOGV(__VA_ARGS__) // for type checking
 #endif
 
+#define RPC_FLAKE_PRONE false
+
+#ifdef RPC_FLAKE_PRONE
+void rpcMaybeWaitToFlake();
+#define MAYBE_WAIT_IN_FLAKE_MODE rpcMaybeWaitToFlake()
+#else
+#define MAYBE_WAIT_IN_FLAKE_MODE do {} while (false)
+#endif
+
 /**
  * Abstracts away management of ref counts and the wire format from
  * RpcSession
