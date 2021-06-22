@@ -79,9 +79,10 @@ class LazyServiceRegistrar {
       */
      void setActiveServicesCallback(const std::function<bool(bool)>& activeServicesCallback);
 
-    /**
+     /**
       * Try to unregister all services previously registered with 'registerService'.
-      * Returns 'true' if successful.
+      * Returns 'true' if successful. This should only be called within the callback registered by
+      * setActiveServicesCallback.
       */
      bool tryUnregister();
 
