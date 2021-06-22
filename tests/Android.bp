@@ -329,3 +329,17 @@ cc_benchmark {
         "libutils",
     ],
 }
+
+cc_test_host {
+    name: "binderUtilsHostTest",
+    defaults: ["binder_test_defaults"],
+    srcs: ["binderUtilsHostTest.cpp"],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+    ],
+    static_libs: [
+        "libgmock",
+    ],
+    test_suites: ["general-tests"],
+}
