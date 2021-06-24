@@ -29,6 +29,8 @@
 #include <binder/ProcessState.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcSession.h>
+#include <binder/RpcTransport.h>
+#include <binder/RpcTransportRaw.h>
 #include <gtest/gtest.h>
 
 #include <chrono>
@@ -50,6 +52,21 @@ namespace android {
 static_assert(RPC_WIRE_PROTOCOL_VERSION + 1 == RPC_WIRE_PROTOCOL_VERSION_NEXT ||
               RPC_WIRE_PROTOCOL_VERSION == RPC_WIRE_PROTOCOL_VERSION_EXPERIMENTAL);
 
+enum class RpcSecurity { RAW };
+
+static inline std::vector<RpcSecurity> RpcSecurityValues() {
+    return {RpcSecurity::RAW};
+}
+
+static inline std::unique_ptr<RpcTransportCtxFactory> newFactory(RpcSecurity rpcSecurity) {
+    switch (rpcSecurity) {
+        case RpcSecurity::RAW:
+            return RpcTransportCtxFactoryRaw::make();
+        default:
+            LOG_ALWAYS_FATAL("Unknown RpcSecurity %d", rpcSecurity);
+    }
+}
+
 TEST(BinderRpcParcel, EntireParcelFormatted) {
     Parcel p;
     p.writeInt32(3);
@@ -57,10 +74,17 @@ TEST(BinderRpcParcel, EntireParcelFormatted) {
     EXPECT_DEATH(p.markForBinder(sp<BBinder>::make()), "");
 }
 
-TEST(BinderRpc, SetExternalServer) {
+class BinderRpcSimple : public ::testing::TestWithParam<RpcSecurity> {
+public:
+    static std::string PrintTestParam(const ::testing::TestParamInfo<ParamType>& info) {
+        return newFactory(info.param)->toCString();
+    }
+};
+
+TEST_P(BinderRpcSimple, SetExternalServerTest) {
     base::unique_fd sink(TEMP_FAILURE_RETRY(open("/dev/null", O_RDWR)));
     int sinkFd = sink.get();
-    auto server = RpcServer::make();
+    auto server = RpcServer::make(newFactory(GetParam()));
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     ASSERT_FALSE(server->hasServer());
     ASSERT_TRUE(server->setupExternalServer(std::move(sink)));
@@ -388,8 +412,8 @@ enum class SocketType {
     VSOCK,
     INET,
 };
-static inline std::string PrintSocketType(const testing::TestParamInfo<SocketType>& info) {
-    switch (info.param) {
+static inline std::string PrintToString(SocketType socketType) {
+    switch (socketType) {
         case SocketType::UNIX:
             return "unix_domain_socket";
         case SocketType::VSOCK:
@@ -402,7 +426,7 @@ static inline std::string PrintSocketType(const testing::TestParamInfo<SocketTyp
     }
 }
 
-class BinderRpc : public ::testing::TestWithParam<SocketType> {
+class BinderRpc : public ::testing::TestWithParam<std::tuple<SocketType, RpcSecurity>> {
 public:
     struct Options {
         size_t numThreads = 1;
@@ -410,13 +434,19 @@ public:
         size_t numIncomingConnections = 0;
     };
 
+    static inline std::string PrintParamInfo(const testing::TestParamInfo<ParamType>& info) {
+        auto [type, security] = info.param;
+        return PrintToString(type) + "_" + newFactory(security)->toCString();
+    }
+
     // This creates a new process serving an interface on a certain number of
     // threads.
     ProcessSession createRpcTestSocketServerProcess(
             const Options& options, const std::function<void(const sp<RpcServer>&)>& configure) {
         CHECK_GE(options.numSessions, 1) << "Must have at least one session to a server";
 
-        SocketType socketType = GetParam();
+        SocketType socketType = std::get<0>(GetParam());
+        RpcSecurity rpcSecurity = std::get<1>(GetParam());
 
         unsigned int vsockPort = allocateVsockPort();
         std::string addr = allocateSocketAddress();
@@ -424,7 +454,7 @@ public:
 
         auto ret = ProcessSession{
                 .host = Process([&](android::base::borrowed_fd writeEnd) {
-                    sp<RpcServer> server = RpcServer::make();
+                    sp<RpcServer> server = RpcServer::make(newFactory(rpcSecurity));
 
                     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
                     server->setMaxThreads(options.numThreads);
@@ -466,7 +496,7 @@ public:
         }
 
         for (size_t i = 0; i < options.numSessions; i++) {
-            sp<RpcSession> session = RpcSession::make();
+            sp<RpcSession> session = RpcSession::make(newFactory(rpcSecurity));
             session->setMaxThreads(options.numIncomingConnections);
 
             switch (socketType) {
@@ -1130,13 +1160,14 @@ TEST_P(BinderRpc, Fds) {
 }
 
 static bool testSupportVsockLoopback() {
+    // We don't need to enable TLS to know if vsock is supported.
     unsigned int vsockPort = allocateVsockPort();
-    sp<RpcServer> server = RpcServer::make();
+    sp<RpcServer> server = RpcServer::make(RpcTransportCtxFactoryRaw::make());
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     CHECK(server->setupVsockServer(vsockPort));
     server->start();
 
-    sp<RpcSession> session = RpcSession::make();
+    sp<RpcSession> session = RpcSession::make(RpcTransportCtxFactoryRaw::make());
     bool okay = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
     while (!server->shutdown()) usleep(10000);
     ALOGE("Detected vsock loopback supported: %d", okay);
@@ -1155,10 +1186,13 @@ static std::vector<SocketType> testSocketTypes() {
     return ret;
 }
 
-INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc, ::testing::ValuesIn(testSocketTypes()),
-                        PrintSocketType);
+INSTANTIATE_TEST_CASE_P(PerSocket, BinderRpc,
+                        ::testing::Combine(::testing::ValuesIn(testSocketTypes()),
+                                           ::testing::ValuesIn(RpcSecurityValues())),
+                        BinderRpc::PrintParamInfo);
 
-class BinderRpcServerRootObject : public ::testing::TestWithParam<std::tuple<bool, bool>> {};
+class BinderRpcServerRootObject
+      : public ::testing::TestWithParam<std::tuple<bool, bool, RpcSecurity>> {};
 
 TEST_P(BinderRpcServerRootObject, WeakRootObject) {
     using SetFn = std::function<void(RpcServer*, sp<IBinder>)>;
@@ -1166,8 +1200,8 @@ TEST_P(BinderRpcServerRootObject, WeakRootObject) {
         return isStrong ? SetFn(&RpcServer::setRootObject) : SetFn(&RpcServer::setRootObjectWeak);
     };
 
-    auto server = RpcServer::make();
-    auto [isStrong1, isStrong2] = GetParam();
+    auto [isStrong1, isStrong2, rpcSecurity] = GetParam();
+    auto server = RpcServer::make(newFactory(rpcSecurity));
     auto binder1 = sp<BBinder>::make();
     IBinder* binderRaw1 = binder1.get();
     setRootObject(isStrong1)(server.get(), binder1);
@@ -1184,7 +1218,8 @@ TEST_P(BinderRpcServerRootObject, WeakRootObject) {
 }
 
 INSTANTIATE_TEST_CASE_P(BinderRpc, BinderRpcServerRootObject,
-                        ::testing::Combine(::testing::Bool(), ::testing::Bool()));
+                        ::testing::Combine(::testing::Bool(), ::testing::Bool(),
+                                           ::testing::ValuesIn(RpcSecurityValues())));
 
 class OneOffSignal {
 public:
@@ -1207,10 +1242,10 @@ private:
     bool mValue = false;
 };
 
-TEST(BinderRpc, Shutdown) {
+TEST_P(BinderRpcSimple, Shutdown) {
     auto addr = allocateSocketAddress();
     unlink(addr.c_str());
-    auto server = RpcServer::make();
+    auto server = RpcServer::make(newFactory(GetParam()));
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     ASSERT_TRUE(server->setupUnixDomainServer(addr.c_str()));
     auto joinEnds = std::make_shared<OneOffSignal>();
@@ -1270,6 +1305,9 @@ TEST(BinderRpc, Java) {
             << "getInterfaceDescriptor should not crash system_server";
     ASSERT_EQ(OK, rpcBinder->pingBinder());
 }
+
+INSTANTIATE_TEST_CASE_P(BinderRpc, BinderRpcSimple, ::testing::ValuesIn(RpcSecurityValues()),
+                        BinderRpcSimple::PrintTestParam);
 
 } // namespace android
 
