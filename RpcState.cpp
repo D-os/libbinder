@@ -483,7 +483,7 @@ static void cleanup_reply_data(Parcel* p, const uint8_t* data, size_t dataSize,
     delete[] const_cast<uint8_t*>(data - offsetof(RpcWireReply, data));
     (void)dataSize;
     LOG_ALWAYS_FATAL_IF(objects != nullptr);
-    LOG_ALWAYS_FATAL_IF(objectsCount, 0);
+    LOG_ALWAYS_FATAL_IF(objectsCount != 0, "%zu objects remaining", objectsCount);
 }
 
 status_t RpcState::waitForReply(const sp<RpcSession::RpcConnection>& connection,
