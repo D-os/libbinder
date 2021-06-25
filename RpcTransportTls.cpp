@@ -52,8 +52,58 @@ namespace {
 
 constexpr const int kCertValidDays = 30;
 
+// Implement BIO for socket that ignores SIGPIPE.
+int socketNew(BIO* bio) {
+    BIO_set_data(bio, reinterpret_cast<void*>(-1));
+    BIO_set_init(bio, 0);
+    return 1;
+}
+int socketFree(BIO* bio) {
+    LOG_ALWAYS_FATAL_IF(bio == nullptr);
+    return 1;
+}
+int socketRead(BIO* bio, char* buf, int size) {
+    android::base::borrowed_fd fd(static_cast<int>(reinterpret_cast<intptr_t>(BIO_get_data(bio))));
+    int ret = TEMP_FAILURE_RETRY(::recv(fd.get(), buf, size, MSG_NOSIGNAL));
+    BIO_clear_retry_flags(bio);
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        BIO_set_retry_read(bio);
+    }
+    return ret;
+}
+
+int socketWrite(BIO* bio, const char* buf, int size) {
+    android::base::borrowed_fd fd(static_cast<int>(reinterpret_cast<intptr_t>(BIO_get_data(bio))));
+    int ret = TEMP_FAILURE_RETRY(::send(fd.get(), buf, size, MSG_NOSIGNAL));
+    BIO_clear_retry_flags(bio);
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        BIO_set_retry_write(bio);
+    }
+    return ret;
+}
+
+long socketCtrl(BIO* bio, int cmd, long num, void*) { // NOLINT
+    android::base::borrowed_fd fd(static_cast<int>(reinterpret_cast<intptr_t>(BIO_get_data(bio))));
+    if (cmd == BIO_CTRL_FLUSH) return 1;
+    LOG_ALWAYS_FATAL("sockCtrl(fd=%d, %d, %ld)", fd.get(), cmd, num);
+    return 0;
+}
+
 bssl::UniquePtr<BIO> newSocketBio(android::base::borrowed_fd fd) {
-    return bssl::UniquePtr<BIO>(BIO_new_socket(fd.get(), BIO_NOCLOSE));
+    static const BIO_METHOD* gMethods = ([] {
+        auto methods = BIO_meth_new(BIO_get_new_index(), "socket_no_signal");
+        LOG_ALWAYS_FATAL_IF(0 == BIO_meth_set_write(methods, socketWrite), "BIO_meth_set_write");
+        LOG_ALWAYS_FATAL_IF(0 == BIO_meth_set_read(methods, socketRead), "BIO_meth_set_read");
+        LOG_ALWAYS_FATAL_IF(0 == BIO_meth_set_ctrl(methods, socketCtrl), "BIO_meth_set_ctrl");
+        LOG_ALWAYS_FATAL_IF(0 == BIO_meth_set_create(methods, socketNew), "BIO_meth_set_create");
+        LOG_ALWAYS_FATAL_IF(0 == BIO_meth_set_destroy(methods, socketFree), "BIO_meth_set_destroy");
+        return methods;
+    })();
+    bssl::UniquePtr<BIO> ret(BIO_new(gMethods));
+    if (ret == nullptr) return nullptr;
+    BIO_set_data(ret.get(), reinterpret_cast<void*>(fd.get()));
+    BIO_set_init(ret.get(), 1);
+    return ret;
 }
 
 bssl::UniquePtr<EVP_PKEY> makeKeyPairForSelfSignedCert() {
