@@ -148,6 +148,7 @@ cc_library {
                 "libbase",
             ],
             srcs: [
+                "ServiceManagerHost.cpp",
                 "UtilsHost.cpp",
             ],
         },
