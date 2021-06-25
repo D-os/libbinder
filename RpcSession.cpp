@@ -198,6 +198,8 @@ status_t RpcSession::FdTrigger::interruptableReadFully(base::borrowed_fd fd, voi
     uint8_t* buffer = reinterpret_cast<uint8_t*>(data);
     uint8_t* end = buffer + size;
 
+    MAYBE_WAIT_IN_FLAKE_MODE;
+
     status_t status;
     while ((status = triggerablePollRead(fd)) == OK) {
         ssize_t readSize = TEMP_FAILURE_RETRY(recv(fd.get(), buffer, end - buffer, MSG_NOSIGNAL));
