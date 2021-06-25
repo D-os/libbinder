@@ -427,6 +427,11 @@ void* BpBinder::detachObject(const void* objectID) {
     return mObjects.detach(objectID);
 }
 
+void BpBinder::withLock(const std::function<void()>& doWithLock) {
+    AutoMutex _l(mLock);
+    doWithLock();
+}
+
 BpBinder* BpBinder::remoteBinder()
 {
     return this;

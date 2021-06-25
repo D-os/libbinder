@@ -179,6 +179,17 @@ status_t IBinder::setRpcClientDebug(android::base::unique_fd socketFd,
     return transact(SET_RPC_CLIENT_TRANSACTION, data, &reply);
 }
 
+void IBinder::withLock(const std::function<void()>& doWithLock) {
+    BBinder* local = localBinder();
+    if (local) {
+        local->withLock(doWithLock);
+        return;
+    }
+    BpBinder* proxy = this->remoteBinder();
+    LOG_ALWAYS_FATAL_IF(proxy == nullptr, "binder object must be either local or remote");
+    proxy->withLock(doWithLock);
+}
+
 // ---------------------------------------------------------------------------
 
 class BBinder::RpcServerLink : public IBinder::DeathRecipient {
@@ -335,6 +346,14 @@ void* BBinder::detachObject(const void* objectID) {
 
     AutoMutex _l(e->mLock);
     return e->mObjects.detach(objectID);
+}
+
+void BBinder::withLock(const std::function<void()>& doWithLock) {
+    Extras* e = getOrCreateExtras();
+    LOG_ALWAYS_FATAL_IF(!e, "no memory");
+
+    AutoMutex _l(e->mLock);
+    doWithLock();
 }
 
 BBinder* BBinder::localBinder()

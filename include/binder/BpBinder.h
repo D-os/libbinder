@@ -76,6 +76,7 @@ public:
                                object_cleanup_func func) final;
     virtual void*       findObject(const void* objectID) const final;
     virtual void* detachObject(const void* objectID) final;
+    void withLock(const std::function<void()>& doWithLock);
 
     virtual BpBinder*   remoteBinder();
 

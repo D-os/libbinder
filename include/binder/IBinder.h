@@ -22,6 +22,8 @@
 #include <utils/String16.h>
 #include <utils/Vector.h>
 
+#include <functional>
+
 // linux/binder.h defines this, but we don't want to include it here in order to
 // avoid exporting the kernel headers
 #ifndef B_PACK_CHARS
@@ -272,6 +274,14 @@ public:
      * object.
      */
     virtual void* detachObject(const void* objectID) = 0;
+
+    /**
+     * Use the lock that this binder contains internally. For instance, this can
+     * be used to modify an attached object without needing to add an additional
+     * lock (though, that attached object must be retrieved before calling this
+     * method). Calling (most) IBinder methods inside this will deadlock.
+     */
+    void withLock(const std::function<void()>& doWithLock);
 
     virtual BBinder*        localBinder();
     virtual BpBinder*       remoteBinder();
