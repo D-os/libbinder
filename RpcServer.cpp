@@ -278,7 +278,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
                 return;
             }
 
-            RpcAddress sessionId = RpcAddress::zero();
+            sessionId = RpcAddress::zero();
             size_t tries = 0;
             do {
                 // don't block if there is some entropy issue
