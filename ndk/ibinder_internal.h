@@ -105,6 +105,7 @@ struct ABpBinder : public AIBinder, public ::android::BpRefBase {
     ABpBinder* asABpBinder() override { return this; }
 
    private:
+    friend android::sp<ABpBinder>;
     explicit ABpBinder(const ::android::sp<::android::IBinder>& binder);
 };
 
