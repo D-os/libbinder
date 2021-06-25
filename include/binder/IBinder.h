@@ -255,26 +255,23 @@ public:
      * objects are invoked with their respective objectID, object, and
      * cleanupCookie. Access to these APIs can be made from multiple threads,
      * but calls from different threads are allowed to be interleaved.
+     *
+     * This returns the object which is already attached. If this returns a
+     * non-null value, it means that attachObject failed. TODO(b/192023359):
+     * remove logs and add [[nodiscard]]
      */
-    virtual void            attachObject(   const void* objectID,
-                                            void* object,
-                                            void* cleanupCookie,
-                                            object_cleanup_func func) = 0;
+    virtual void* attachObject(const void* objectID, void* object, void* cleanupCookie,
+                               object_cleanup_func func) = 0;
     /**
      * Returns object attached with attachObject.
      */
     virtual void*           findObject(const void* objectID) const = 0;
     /**
-     * WARNING: this API does not call the cleanup function for legacy reasons.
-     * It also does not return void* for legacy reasons. If you need to detach
-     * an object and destroy it, there are two options:
-     * - if you can, don't call detachObject and instead wait for the destructor
-     *   to clean it up.
-     * - manually retrieve and destruct the object (if multiple of your threads
-     *   are accessing these APIs, you must guarantee that attachObject isn't
-     *   called after findObject and before detachObject is called).
+     * Returns object attached with attachObject, and detaches it. This does not
+     * delete the object. This is equivalent to using attachObject to attach a null
+     * object.
      */
-    virtual void            detachObject(const void* objectID) = 0;
+    virtual void* detachObject(const void* objectID) = 0;
 
     virtual BBinder*        localBinder();
     virtual BpBinder*       remoteBinder();

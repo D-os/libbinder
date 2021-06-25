@@ -84,7 +84,7 @@ cc_test {
             enabled: false,
         },
     },
-    srcs: ["binderParcelUnitTest.cpp"],
+    srcs: ["binderParcelUnitTest.cpp", "binderBinderUnitTest.cpp"],
     shared_libs: [
         "libbinder",
         "libutils",
