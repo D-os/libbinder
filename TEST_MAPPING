@@ -19,7 +19,7 @@
       "name": "binderTextOutputTest"
     },
     {
-      "name": "binderParcelTest"
+      "name": "binderUnitTest"
     },
     {
       "name": "binderLibTest"
