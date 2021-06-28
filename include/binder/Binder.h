@@ -54,12 +54,11 @@ public:
                                         uint32_t flags = 0,
                                         wp<DeathRecipient>* outRecipient = nullptr);
 
-    virtual void        attachObject(   const void* objectID,
-                                        void* object,
-                                        void* cleanupCookie,
-                                        object_cleanup_func func) final;
+    virtual void* attachObject(const void* objectID, void* object, void* cleanupCookie,
+                               object_cleanup_func func) final;
     virtual void*       findObject(const void* objectID) const final;
-    virtual void        detachObject(const void* objectID) final;
+    virtual void* detachObject(const void* objectID) final;
+    void withLock(const std::function<void()>& doWithLock);
 
     virtual BBinder*    localBinder();
 
