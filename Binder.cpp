@@ -325,7 +325,7 @@ status_t BBinder::dump(int /*fd*/, const Vector<String16>& /*args*/)
 void* BBinder::attachObject(const void* objectID, void* object, void* cleanupCookie,
                             object_cleanup_func func) {
     Extras* e = getOrCreateExtras();
-    if (!e) return nullptr; // out of memory
+    LOG_ALWAYS_FATAL_IF(!e, "no memory");
 
     AutoMutex _l(e->mLock);
     return e->mObjects.attach(objectID, object, cleanupCookie, func);
