@@ -57,7 +57,6 @@ static bool has(const sp<IBinder>& binder) {
 
 namespace ABpBinderTag {
 
-static std::mutex gLock;
 static const void* kId = "ABpBinder";
 struct Value {
     wp<ABpBinder> binder;
@@ -232,19 +231,14 @@ ABpBinder::ABpBinder(const ::android::sp<::android::IBinder>& binder)
 ABpBinder::~ABpBinder() {}
 
 void ABpBinder::onLastStrongRef(const void* id) {
-    {
-        std::lock_guard<std::mutex> lock(ABpBinderTag::gLock);
-        // Since ABpBinder is OBJECT_LIFETIME_WEAK, we must remove this weak reference in order for
-        // the ABpBinder to be deleted. Since a strong reference to this ABpBinder object should no
-        // longer be able to exist at the time of this method call, there is no longer a need to
-        // recover it.
+    // Since ABpBinder is OBJECT_LIFETIME_WEAK, we must remove this weak reference in order for
+    // the ABpBinder to be deleted. Since a strong reference to this ABpBinder object should no
+    // longer be able to exist at the time of this method call, there is no longer a need to
+    // recover it.
 
-        ABpBinderTag::Value* value =
-                static_cast<ABpBinderTag::Value*>(remote()->findObject(ABpBinderTag::kId));
-        if (value != nullptr) {
-            value->binder = nullptr;
-        }
-    }
+    ABpBinderTag::Value* value =
+            static_cast<ABpBinderTag::Value*>(remote()->detachObject(ABpBinderTag::kId));
+    if (value) ABpBinderTag::clean(ABpBinderTag::kId, value, nullptr /*cookie*/);
 
     BpRefBase::onLastStrongRef(id);
 }
@@ -257,23 +251,28 @@ sp<AIBinder> ABpBinder::lookupOrCreateFromBinder(const ::android::sp<::android::
         return static_cast<ABBinder*>(binder.get());
     }
 
-    // The following code ensures that for a given binder object (remote or local), if it is not an
-    // ABBinder then at most one ABpBinder object exists in a given process representing it.
-    std::lock_guard<std::mutex> lock(ABpBinderTag::gLock);
-
-    ABpBinderTag::Value* value =
-            static_cast<ABpBinderTag::Value*>(binder->findObject(ABpBinderTag::kId));
+    auto* value = static_cast<ABpBinderTag::Value*>(binder->findObject(ABpBinderTag::kId));
     if (value == nullptr) {
         value = new ABpBinderTag::Value;
-        binder->attachObject(ABpBinderTag::kId, static_cast<void*>(value), nullptr /*cookie*/,
-                             ABpBinderTag::clean);
+        auto oldValue = static_cast<ABpBinderTag::Value*>(
+                binder->attachObject(ABpBinderTag::kId, static_cast<void*>(value),
+                                     nullptr /*cookie*/, ABpBinderTag::clean));
+
+        // allocated by another thread
+        if (oldValue) {
+            delete value;
+            value = oldValue;
+        }
     }
 
-    sp<ABpBinder> ret = value->binder.promote();
-    if (ret == nullptr) {
-        ret = new ABpBinder(binder);
-        value->binder = ret;
-    }
+    sp<ABpBinder> ret;
+    binder->withLock([&]() {
+        ret = value->binder.promote();
+        if (ret == nullptr) {
+            ret = sp<ABpBinder>::make(binder);
+            value->binder = ret;
+        }
+    });
 
     return ret;
 }
