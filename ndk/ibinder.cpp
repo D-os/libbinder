@@ -47,7 +47,8 @@ static void* kValue = static_cast<void*>(new bool{true});
 void clean(const void* /*id*/, void* /*obj*/, void* /*cookie*/){/* do nothing */};
 
 static void attach(const sp<IBinder>& binder) {
-    binder->attachObject(kId, kValue, nullptr /*cookie*/, clean);
+    // can only attach once
+    CHECK_EQ(nullptr, binder->attachObject(kId, kValue, nullptr /*cookie*/, clean));
 }
 static bool has(const sp<IBinder>& binder) {
     return binder != nullptr && binder->findObject(kId) == kValue;
