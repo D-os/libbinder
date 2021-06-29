@@ -50,7 +50,7 @@ pub type TransactionFlags = u32;
 /// interfaces) must implement this trait.
 ///
 /// This is equivalent `IInterface` in C++.
-pub trait Interface: Send {
+pub trait Interface: Send + Sync {
     /// Convert this binder object into a generic [`SpIBinder`] reference.
     fn as_binder(&self) -> SpIBinder {
         panic!("This object was not a Binder object and cannot be converted into an SpIBinder.")
