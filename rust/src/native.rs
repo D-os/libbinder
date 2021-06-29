@@ -51,6 +51,25 @@ pub struct Binder<T: Remotable> {
 /// to how `Box<T>` is `Send` if `T` is `Send`.
 unsafe impl<T: Remotable> Send for Binder<T> {}
 
+/// # Safety
+///
+/// A `Binder<T>` is a pair of unique owning pointers to two values:
+///   * a C++ ABBinder which is thread-safe, i.e. `Send + Sync`
+///   * a Rust object which implements `Remotable`; this trait requires `Send + Sync`
+///
+/// `ABBinder` contains an immutable `mUserData` pointer, which is actually a
+/// pointer to a boxed `T: Remotable`, which is `Sync`. `ABBinder` also contains
+/// a mutable pointer to its class, but mutation of this field is controlled by
+/// a mutex and it is only allowed to be set once, therefore we can concurrently
+/// access this field safely. `ABBinder` inherits from `BBinder`, which is also
+/// thread-safe. Thus `ABBinder` is thread-safe.
+///
+/// Both pointers are unique (never escape the `Binder<T>` object and are not copied)
+/// so we can essentially treat `Binder<T>` as a box-like containing the two objects;
+/// the box-like object inherits `Sync` from the two inner values, similarly
+/// to how `Box<T>` is `Sync` if `T` is `Sync`.
+unsafe impl<T: Remotable> Sync for Binder<T> {}
+
 impl<T: Remotable> Binder<T> {
     /// Create a new Binder remotable object with default stability
     ///
