@@ -39,6 +39,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
+#include <thread>
 #include "android/binder_ibinder.h"
 
 using namespace android;
@@ -248,6 +249,27 @@ TEST(NdkBinder, DoubleNumber) {
     int32_t out;
     EXPECT_EQ(STATUS_OK, foo->doubleNumber(1, &out));
     EXPECT_EQ(2, out);
+}
+
+TEST(NdkBinder, GetTestServiceStressTest) {
+    // libbinder has some complicated logic to make sure only one instance of
+    // ABpBinder is associated with each binder.
+
+    constexpr size_t kNumThreads = 10;
+    constexpr size_t kNumCalls = 1000;
+    std::vector<std::thread> threads;
+
+    for (size_t i = 0; i < kNumThreads; i++) {
+        threads.push_back(std::thread([&]() {
+            for (size_t j = 0; j < kNumCalls; j++) {
+                auto binder =
+                        ndk::SpAIBinder(AServiceManager_checkService(IFoo::kSomeInstanceName));
+                EXPECT_EQ(STATUS_OK, AIBinder_ping(binder.get()));
+            }
+        }));
+    }
+
+    for (auto& thread : threads) thread.join();
 }
 
 void defaultInstanceCounter(const char* instance, void* context) {
