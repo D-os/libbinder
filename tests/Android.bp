@@ -348,3 +348,49 @@ cc_test_host {
         },
     },
 }
+
+cc_test_host {
+    name: "binderHostDeviceTest",
+    defaults: ["binder_test_defaults"],
+    srcs: ["binderHostDeviceTest.cpp"],
+    test_config: "binderHostDeviceTest.xml",
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "liblog",
+        "libutils",
+    ],
+    static_libs: [
+        "libgmock",
+    ],
+    target_required: [
+        "binderHostDeviceTestService",
+    ],
+    test_suites: ["general-tests"],
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
+    test_options: {
+        unit_test: false,
+    },
+}
+
+cc_test {
+    name: "binderHostDeviceTestService",
+    // The binary is named differently from the module so that PushFilePreparer pushes the binary
+    // directly, not the test module directory.
+    stem: "binderHostDeviceTest-service",
+    defaults: ["binder_test_defaults"],
+    gtest: false,
+    auto_gen_config: false,
+    srcs: ["binderHostDeviceTestService.cpp"],
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "liblog",
+        "libutils",
+    ],
+    test_suites: ["general-tests"],
+}
