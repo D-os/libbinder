@@ -18,16 +18,20 @@
 
 #include <binder/RpcSession.h>
 
+#include <dlfcn.h>
 #include <inttypes.h>
 #include <poll.h>
+#include <pthread.h>
 #include <unistd.h>
 
 #include <string_view>
 
 #include <android-base/macros.h>
+#include <android_runtime/vm.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
 #include <binder/Stability.h>
+#include <jni.h>
 #include <utils/String8.h>
 
 #include "RpcSocketAddress.h"
@@ -274,10 +278,66 @@ RpcSession::PreJoinSetupResult RpcSession::preJoinSetup(base::unique_fd fd) {
     };
 }
 
+namespace {
+// RAII object for attaching / detaching current thread to JVM if Android Runtime exists. If
+// Android Runtime doesn't exist, no-op.
+class JavaThreadAttacher {
+public:
+    JavaThreadAttacher() {
+        // Use dlsym to find androidJavaAttachThread because libandroid_runtime is loaded after
+        // libbinder.
+        auto vm = getJavaVM();
+        if (vm == nullptr) return;
+
+        char threadName[16];
+        if (0 != pthread_getname_np(pthread_self(), threadName, sizeof(threadName))) {
+            constexpr const char* defaultThreadName = "UnknownRpcSessionThread";
+            memcpy(threadName, defaultThreadName,
+                   std::min<size_t>(sizeof(threadName), strlen(defaultThreadName) + 1));
+        }
+        LOG_RPC_DETAIL("Attaching current thread %s to JVM", threadName);
+        JavaVMAttachArgs args;
+        args.version = JNI_VERSION_1_2;
+        args.name = threadName;
+        args.group = nullptr;
+        JNIEnv* env;
+
+        LOG_ALWAYS_FATAL_IF(vm->AttachCurrentThread(&env, &args) != JNI_OK,
+                            "Cannot attach thread %s to JVM", threadName);
+        mAttached = true;
+    }
+    ~JavaThreadAttacher() {
+        if (!mAttached) return;
+        auto vm = getJavaVM();
+        LOG_ALWAYS_FATAL_IF(vm == nullptr,
+                            "Unable to detach thread. No JavaVM, but it was present before!");
+
+        LOG_RPC_DETAIL("Detaching current thread from JVM");
+        if (vm->DetachCurrentThread() != JNI_OK) {
+            mAttached = false;
+        } else {
+            ALOGW("Unable to detach current thread from JVM");
+        }
+    }
+
+private:
+    DISALLOW_COPY_AND_ASSIGN(JavaThreadAttacher);
+    bool mAttached = false;
+
+    static JavaVM* getJavaVM() {
+        static auto fn = reinterpret_cast<decltype(&AndroidRuntimeGetJavaVM)>(
+                dlsym(RTLD_DEFAULT, "AndroidRuntimeGetJavaVM"));
+        if (fn == nullptr) return nullptr;
+        return fn();
+    }
+};
+} // namespace
+
 void RpcSession::join(sp<RpcSession>&& session, PreJoinSetupResult&& setupResult) {
     sp<RpcConnection>& connection = setupResult.connection;
 
     if (setupResult.status == OK) {
+        JavaThreadAttacher javaThreadAttacher;
         while (true) {
             status_t status = session->state()->getAndExecuteCommand(connection, session,
                                                                      RpcState::CommandType::ANY);
