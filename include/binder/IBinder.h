@@ -259,21 +259,20 @@ public:
      * but calls from different threads are allowed to be interleaved.
      *
      * This returns the object which is already attached. If this returns a
-     * non-null value, it means that attachObject failed. TODO(b/192023359):
-     * remove logs and add [[nodiscard]]
+     * non-null value, it means that attachObject failed (a given objectID can
+     * only be used once).
      */
-    virtual void* attachObject(const void* objectID, void* object, void* cleanupCookie,
-                               object_cleanup_func func) = 0;
+    [[nodiscard]] virtual void* attachObject(const void* objectID, void* object,
+                                             void* cleanupCookie, object_cleanup_func func) = 0;
     /**
      * Returns object attached with attachObject.
      */
-    virtual void*           findObject(const void* objectID) const = 0;
+    [[nodiscard]] virtual void* findObject(const void* objectID) const = 0;
     /**
      * Returns object attached with attachObject, and detaches it. This does not
-     * delete the object. This is equivalent to using attachObject to attach a null
-     * object.
+     * delete the object.
      */
-    virtual void* detachObject(const void* objectID) = 0;
+    [[nodiscard]] virtual void* detachObject(const void* objectID) = 0;
 
     /**
      * Use the lock that this binder contains internally. For instance, this can
