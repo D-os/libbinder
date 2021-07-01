@@ -233,13 +233,15 @@ ABpBinder::~ABpBinder() {}
 
 void ABpBinder::onLastStrongRef(const void* id) {
     // Since ABpBinder is OBJECT_LIFETIME_WEAK, we must remove this weak reference in order for
-    // the ABpBinder to be deleted. Since a strong reference to this ABpBinder object should no
-    // longer be able to exist at the time of this method call, there is no longer a need to
-    // recover it.
+    // the ABpBinder to be deleted. Even though we have no more references on the ABpBinder
+    // (BpRefBase), the remote object may still exist (for instance, if we
+    // receive it from another process, before the ABpBinder is attached).
 
     ABpBinderTag::Value* value =
-            static_cast<ABpBinderTag::Value*>(remote()->detachObject(ABpBinderTag::kId));
-    if (value) ABpBinderTag::clean(ABpBinderTag::kId, value, nullptr /*cookie*/);
+            static_cast<ABpBinderTag::Value*>(remote()->findObject(ABpBinderTag::kId));
+    CHECK_NE(nullptr, value) << "ABpBinder must always be attached";
+
+    remote()->withLock([&]() { value->binder = nullptr; });
 
     BpRefBase::onLastStrongRef(id);
 }
@@ -251,6 +253,9 @@ sp<AIBinder> ABpBinder::lookupOrCreateFromBinder(const ::android::sp<::android::
     if (ABBinderTag::has(binder)) {
         return static_cast<ABBinder*>(binder.get());
     }
+
+    // The following code ensures that for a given binder object (remote or local), if it is not an
+    // ABBinder then at most one ABpBinder object exists in a given process representing it.
 
     auto* value = static_cast<ABpBinderTag::Value*>(binder->findObject(ABpBinderTag::kId));
     if (value == nullptr) {
