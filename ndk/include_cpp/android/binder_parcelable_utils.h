@@ -46,7 +46,7 @@ class AParcelableHolder {
     AParcelableHolder() = delete;
     explicit AParcelableHolder(parcelable_stability_t stability)
         : mParcel(AParcel_create()), mStability(stability) {}
-
+    AParcelableHolder(AParcelableHolder&& other) = default;
     virtual ~AParcelableHolder() = default;
 
     binder_status_t writeToParcel(AParcel* parcel) const {
