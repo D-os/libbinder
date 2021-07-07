@@ -52,6 +52,9 @@
       "name": "CtsOsTestCases",
       "options": [
         {
+          "exclude-annotation": "android.platform.test.annotations.LargeTest"
+        },
+        {
           "exclude-filter": "android.os.cts.BuildTest#testSdkInt"
         },
         {
