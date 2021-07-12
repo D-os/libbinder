@@ -44,7 +44,7 @@ struct RpcWireHeader;
 
 #define RPC_FLAKE_PRONE false
 
-#ifdef RPC_FLAKE_PRONE
+#if RPC_FLAKE_PRONE
 void rpcMaybeWaitToFlake();
 #define MAYBE_WAIT_IN_FLAKE_MODE rpcMaybeWaitToFlake()
 #else
