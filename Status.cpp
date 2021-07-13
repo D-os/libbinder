@@ -130,13 +130,13 @@ status_t Status::readFromParcel(const Parcel& parcel) {
     }
 
     // The remote threw an exception.  Get the message back.
-    String16 message;
+    std::optional<String16> message;
     status = parcel.readString16(&message);
     if (status != OK) {
         setFromStatusT(status);
         return status;
     }
-    mMessage = String8(message);
+    mMessage = String8(message.value_or(String16()));
 
     // Skip over the remote stack trace data
     int32_t remote_stack_trace_header_size;
