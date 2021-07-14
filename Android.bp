@@ -192,6 +192,7 @@ cc_library {
 
     header_libs: [
         "libbinder_headers",
+        "libandroid_runtime_threads_headers",
     ],
 
     export_header_lib_headers: [
