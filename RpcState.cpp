@@ -275,23 +275,19 @@ status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
     LOG_RPC_DETAIL("Sending %s on fd %d: %s", what, connection->fd.get(),
                    hexString(data, size).c_str());
 
-    MAYBE_WAIT_IN_FLAKE_MODE;
-
     if (size > std::numeric_limits<ssize_t>::max()) {
         ALOGE("Cannot send %s at size %zu (too big)", what, size);
         (void)session->shutdownAndWait(false);
         return BAD_VALUE;
     }
 
-    ssize_t sent = TEMP_FAILURE_RETRY(send(connection->fd.get(), data, size, MSG_NOSIGNAL));
-
-    if (sent < 0 || sent != static_cast<ssize_t>(size)) {
-        int savedErrno = errno;
-        LOG_RPC_DETAIL("Failed to send %s (sent %zd of %zu bytes) on fd %d, error: %s", what, sent,
-                       size, connection->fd.get(), strerror(savedErrno));
-
+    if (status_t status = session->mShutdownTrigger->interruptableWriteFully(connection->fd.get(),
+                                                                             data, size);
+        status != OK) {
+        LOG_RPC_DETAIL("Failed to write %s (%zu bytes) on fd %d, error: %s", what, size,
+                       connection->fd.get(), statusToString(status).c_str());
         (void)session->shutdownAndWait(false);
-        return -savedErrno;
+        return status;
     }
 
     return OK;

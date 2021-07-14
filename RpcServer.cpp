@@ -16,6 +16,7 @@
 
 #define LOG_TAG "RpcServer"
 
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -152,7 +153,7 @@ void RpcServer::join() {
     }
 
     status_t status;
-    while ((status = mShutdownTrigger->triggerablePollRead(mServer)) == OK) {
+    while ((status = mShutdownTrigger->triggerablePoll(mServer, POLLIN)) == OK) {
         unique_fd clientFd(TEMP_FAILURE_RETRY(
                 accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
 

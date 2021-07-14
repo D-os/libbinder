@@ -178,9 +178,11 @@ bool RpcSession::FdTrigger::isTriggered() {
     return mWrite == -1;
 }
 
-status_t RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
+status_t RpcSession::FdTrigger::triggerablePoll(base::borrowed_fd fd, int16_t event) {
     while (true) {
-        pollfd pfd[]{{.fd = fd.get(), .events = POLLIN | POLLHUP, .revents = 0},
+        pollfd pfd[]{{.fd = fd.get(),
+                      .events = static_cast<int16_t>(event | POLLHUP),
+                      .revents = 0},
                      {.fd = mRead.get(), .events = POLLHUP, .revents = 0}};
         int ret = TEMP_FAILURE_RETRY(poll(pfd, arraysize(pfd), -1));
         if (ret < 0) {
@@ -192,8 +194,29 @@ status_t RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
         if (pfd[1].revents & POLLHUP) {
             return -ECANCELED;
         }
-        return pfd[0].revents & POLLIN ? OK : DEAD_OBJECT;
+        return pfd[0].revents & event ? OK : DEAD_OBJECT;
     }
+}
+
+status_t RpcSession::FdTrigger::interruptableWriteFully(base::borrowed_fd fd, const void* data,
+                                                        size_t size) {
+    const uint8_t* buffer = reinterpret_cast<const uint8_t*>(data);
+    const uint8_t* end = buffer + size;
+
+    MAYBE_WAIT_IN_FLAKE_MODE;
+
+    status_t status;
+    while ((status = triggerablePoll(fd, POLLOUT)) == OK) {
+        ssize_t writeSize = TEMP_FAILURE_RETRY(send(fd.get(), buffer, end - buffer, MSG_NOSIGNAL));
+        if (writeSize == 0) return DEAD_OBJECT;
+
+        if (writeSize < 0) {
+            return -errno;
+        }
+        buffer += writeSize;
+        if (buffer == end) return OK;
+    }
+    return status;
 }
 
 status_t RpcSession::FdTrigger::interruptableReadFully(base::borrowed_fd fd, void* data,
@@ -204,7 +227,7 @@ status_t RpcSession::FdTrigger::interruptableReadFully(base::borrowed_fd fd, voi
     MAYBE_WAIT_IN_FLAKE_MODE;
 
     status_t status;
-    while ((status = triggerablePollRead(fd)) == OK) {
+    while ((status = triggerablePoll(fd, POLLIN)) == OK) {
         ssize_t readSize = TEMP_FAILURE_RETRY(recv(fd.get(), buffer, end - buffer, MSG_NOSIGNAL));
         if (readSize == 0) return DEAD_OBJECT; // EOF
 
