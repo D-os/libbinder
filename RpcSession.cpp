@@ -476,32 +476,7 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
         LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
 
         if (reverse) {
-            std::mutex mutex;
-            std::condition_variable joinCv;
-            std::unique_lock<std::mutex> lock(mutex);
-            std::thread thread;
-            sp<RpcSession> thiz = sp<RpcSession>::fromExisting(this);
-            bool ownershipTransferred = false;
-            thread = std::thread([&]() {
-                std::unique_lock<std::mutex> threadLock(mutex);
-                unique_fd fd = std::move(serverFd);
-                // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-                sp<RpcSession> session = thiz;
-                session->preJoinThreadOwnership(std::move(thread));
-
-                // only continue once we have a response or the connection fails
-                auto setupResult = session->preJoinSetup(std::move(fd));
-
-                ownershipTransferred = true;
-                threadLock.unlock();
-                joinCv.notify_one();
-                // do not use & vars below
-
-                RpcSession::join(std::move(session), std::move(setupResult));
-            });
-            joinCv.wait(lock, [&] { return ownershipTransferred; });
-            LOG_ALWAYS_FATAL_IF(!ownershipTransferred);
-            return true;
+            return addIncomingConnection(std::move(serverFd));
         } else {
             return addOutgoingConnection(std::move(serverFd), true);
         }
@@ -509,6 +484,35 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
 
     ALOGE("Ran out of retries to connect to %s", addr.toString().c_str());
     return false;
+}
+
+bool RpcSession::addIncomingConnection(unique_fd fd) {
+    std::mutex mutex;
+    std::condition_variable joinCv;
+    std::unique_lock<std::mutex> lock(mutex);
+    std::thread thread;
+    sp<RpcSession> thiz = sp<RpcSession>::fromExisting(this);
+    bool ownershipTransferred = false;
+    thread = std::thread([&]() {
+        std::unique_lock<std::mutex> threadLock(mutex);
+        unique_fd movedFd = std::move(fd);
+        // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+        sp<RpcSession> session = thiz;
+        session->preJoinThreadOwnership(std::move(thread));
+
+        // only continue once we have a response or the connection fails
+        auto setupResult = session->preJoinSetup(std::move(movedFd));
+
+        ownershipTransferred = true;
+        threadLock.unlock();
+        joinCv.notify_one();
+        // do not use & vars below
+
+        RpcSession::join(std::move(session), std::move(setupResult));
+    });
+    joinCv.wait(lock, [&] { return ownershipTransferred; });
+    LOG_ALWAYS_FATAL_IF(!ownershipTransferred);
+    return true;
 }
 
 bool RpcSession::addOutgoingConnection(unique_fd fd, bool init) {
