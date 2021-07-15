@@ -399,7 +399,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
                             mOutgoingConnections.size());
     }
 
-    if (!setupOneSocketConnection(addr, RpcAddress::zero(), false /*reverse*/)) return false;
+    if (!setupOneSocketConnection(addr, RpcAddress::zero(), false /*incoming*/)) return false;
 
     // TODO(b/189955605): we should add additional sessions dynamically
     // instead of all at once.
@@ -420,7 +420,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     // we've already setup one client
     for (size_t i = 0; i + 1 < numThreadsAvailable; i++) {
         // TODO(b/189955605): shutdown existing connections?
-        if (!setupOneSocketConnection(addr, mId.value(), false /*reverse*/)) return false;
+        if (!setupOneSocketConnection(addr, mId.value(), false /*incoming*/)) return false;
     }
 
     // TODO(b/189955605): we should add additional sessions dynamically
@@ -430,14 +430,14 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     // any requests at all.
 
     for (size_t i = 0; i < mMaxThreads; i++) {
-        if (!setupOneSocketConnection(addr, mId.value(), true /*reverse*/)) return false;
+        if (!setupOneSocketConnection(addr, mId.value(), true /*incoming*/)) return false;
     }
 
     return true;
 }
 
 bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const RpcAddress& id,
-                                          bool reverse) {
+                                          bool incoming) {
     for (size_t tries = 0; tries < 5; tries++) {
         if (tries > 0) usleep(10000);
 
@@ -464,7 +464,7 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
         RpcConnectionHeader header{.options = 0};
         memcpy(&header.sessionId, &id.viewRawEmbedded(), sizeof(RpcWireAddress));
 
-        if (reverse) header.options |= RPC_CONNECTION_OPTION_REVERSE;
+        if (incoming) header.options |= RPC_CONNECTION_OPTION_INCOMING;
 
         if (sizeof(header) != TEMP_FAILURE_RETRY(write(serverFd.get(), &header, sizeof(header)))) {
             int savedErrno = errno;
@@ -475,7 +475,7 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
 
         LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
 
-        if (reverse) {
+        if (incoming) {
             return addIncomingConnection(std::move(serverFd));
         } else {
             return addOutgoingConnection(std::move(serverFd), true);

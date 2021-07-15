@@ -391,7 +391,7 @@ public:
     // This creates a new process serving an interface on a certain number of
     // threads.
     ProcessSession createRpcTestSocketServerProcess(
-            size_t numThreads, size_t numSessions, size_t numReverseConnections,
+            size_t numThreads, size_t numSessions, size_t numIncomingConnections,
             const std::function<void(const sp<RpcServer>&)>& configure) {
         CHECK_GE(numSessions, 1) << "Must have at least one session to a server";
 
@@ -446,7 +446,7 @@ public:
 
         for (size_t i = 0; i < numSessions; i++) {
             sp<RpcSession> session = RpcSession::make();
-            session->setMaxThreads(numReverseConnections);
+            session->setMaxThreads(numIncomingConnections);
 
             switch (socketType) {
                 case SocketType::UNIX:
@@ -468,12 +468,11 @@ public:
         return ret;
     }
 
-    BinderRpcTestProcessSession createRpcTestSocketServerProcess(size_t numThreads,
-                                                                 size_t numSessions = 1,
-                                                                 size_t numReverseConnections = 0) {
+    BinderRpcTestProcessSession createRpcTestSocketServerProcess(
+            size_t numThreads, size_t numSessions = 1, size_t numIncomingConnections = 0) {
         BinderRpcTestProcessSession ret{
                 .proc = createRpcTestSocketServerProcess(numThreads, numSessions,
-                                                         numReverseConnections,
+                                                         numIncomingConnections,
                                                          [&](const sp<RpcServer>& server) {
                                                              sp<MyBinderRpcTest> service =
                                                                      new MyBinderRpcTest;
@@ -1016,7 +1015,7 @@ TEST_P(BinderRpc, Callbacks) {
                     EXPECT_EQ(DEAD_OBJECT, status.transactionError()) << status;
                 }
 
-                // since this session has a reverse connection w/ a threadpool, we
+                // since this session has an incoming connection w/ a threadpool, we
                 // need to manually shut it down
                 EXPECT_TRUE(proc.proc.sessions.at(0).session->shutdownAndWait(true));
 
