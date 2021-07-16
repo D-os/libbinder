@@ -1218,6 +1218,43 @@ TEST(BinderRpc, Shutdown) {
             << "After server->shutdown() returns true, join() did not stop after 2s";
 }
 
+TEST(BinderRpc, Java) {
+#if !defined(__ANDROID__)
+    GTEST_SKIP() << "This test is only run on Android. Though it can technically run on host on"
+                    "createRpcDelegateServiceManager() with a device attached, such test belongs "
+                    "to binderHostDeviceTest. Hence, just disable this test on host.";
+#endif // !__ANDROID__
+    sp<IServiceManager> sm = defaultServiceManager();
+    ASSERT_NE(nullptr, sm);
+    // Any Java service with non-empty getInterfaceDescriptor() would do.
+    // Let's pick batteryproperties.
+    auto binder = sm->checkService(String16("batteryproperties"));
+    ASSERT_NE(nullptr, binder);
+    auto descriptor = binder->getInterfaceDescriptor();
+    ASSERT_GE(descriptor.size(), 0);
+    ASSERT_EQ(OK, binder->pingBinder());
+
+    auto rpcServer = RpcServer::make();
+    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+    unsigned int port;
+    ASSERT_TRUE(rpcServer->setupInetServer(0, &port));
+    auto socket = rpcServer->releaseServer();
+
+    auto keepAlive = sp<BBinder>::make();
+    ASSERT_EQ(OK, binder->setRpcClientDebug(std::move(socket), keepAlive));
+
+    auto rpcSession = RpcSession::make();
+    ASSERT_TRUE(rpcSession->setupInetClient("127.0.0.1", port));
+    auto rpcBinder = rpcSession->getRootObject();
+    ASSERT_NE(nullptr, rpcBinder);
+
+    ASSERT_EQ(OK, rpcBinder->pingBinder());
+
+    ASSERT_EQ(descriptor, rpcBinder->getInterfaceDescriptor())
+            << "getInterfaceDescriptor should not crash system_server";
+    ASSERT_EQ(OK, rpcBinder->pingBinder());
+}
+
 } // namespace android
 
 int main(int argc, char** argv) {
