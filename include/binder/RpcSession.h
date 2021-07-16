@@ -152,20 +152,23 @@ private:
         /**
          * Poll for a read event.
          *
+         * event - for pollfd
+         *
          * Return:
          *   true - time to read!
          *   false - trigger happened
          */
-        status_t triggerablePollRead(base::borrowed_fd fd);
+        status_t triggerablePoll(base::borrowed_fd fd, int16_t event);
 
         /**
-         * Read, but allow the read to be interrupted by this trigger.
+         * Read (or write), but allow to be interrupted by this trigger.
          *
          * Return:
-         *   true - read succeeded at 'size'
+         *   true - succeeded in completely processing 'size'
          *   false - interrupted (failure or trigger)
          */
         status_t interruptableReadFully(base::borrowed_fd fd, void* data, size_t size);
+        status_t interruptableWriteFully(base::borrowed_fd fd, const void* data, size_t size);
 
     private:
         base::unique_fd mWrite;
@@ -223,6 +226,7 @@ private:
     [[nodiscard]] bool setupSocketClient(const RpcSocketAddress& address);
     [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address,
                                                 const RpcAddress& sessionId, bool server);
+    [[nodiscard]] bool addIncomingConnection(base::unique_fd fd);
     [[nodiscard]] bool addOutgoingConnection(base::unique_fd fd, bool init);
     [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
                                     const wp<RpcSession::EventListener>& eventListener,
