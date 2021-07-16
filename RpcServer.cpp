@@ -16,6 +16,7 @@
 
 #define LOG_TAG "RpcServer"
 
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -152,7 +153,7 @@ void RpcServer::join() {
     }
 
     status_t status;
-    while ((status = mShutdownTrigger->triggerablePollRead(mServer)) == OK) {
+    while ((status = mShutdownTrigger->triggerablePoll(mServer, POLLIN)) == OK) {
         unique_fd clientFd(TEMP_FAILURE_RETRY(
                 accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
 
@@ -250,7 +251,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
               statusToString(status).c_str());
         // still need to cleanup before we can return
     }
-    bool reverse = header.options & RPC_CONNECTION_OPTION_REVERSE;
+    bool incoming = header.options & RPC_CONNECTION_OPTION_INCOMING;
 
     std::thread thisThread;
     sp<RpcSession> session;
@@ -275,8 +276,8 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         RpcAddress sessionId = RpcAddress::fromRawEmbedded(&header.sessionId);
 
         if (sessionId.isZero()) {
-            if (reverse) {
-                ALOGE("Cannot create a new session with a reverse connection, would leak");
+            if (incoming) {
+                ALOGE("Cannot create a new session with an incoming connection, would leak");
                 return;
             }
 
@@ -314,7 +315,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
             session = it->second;
         }
 
-        if (reverse) {
+        if (incoming) {
             LOG_ALWAYS_FATAL_IF(!session->addOutgoingConnection(std::move(clientFd), true),
                                 "server state must already be initialized");
             return;

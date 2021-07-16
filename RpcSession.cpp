@@ -175,9 +175,11 @@ bool RpcSession::FdTrigger::isTriggered() {
     return mWrite == -1;
 }
 
-status_t RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
+status_t RpcSession::FdTrigger::triggerablePoll(base::borrowed_fd fd, int16_t event) {
     while (true) {
-        pollfd pfd[]{{.fd = fd.get(), .events = POLLIN | POLLHUP, .revents = 0},
+        pollfd pfd[]{{.fd = fd.get(),
+                      .events = static_cast<int16_t>(event | POLLHUP),
+                      .revents = 0},
                      {.fd = mRead.get(), .events = POLLHUP, .revents = 0}};
         int ret = TEMP_FAILURE_RETRY(poll(pfd, arraysize(pfd), -1));
         if (ret < 0) {
@@ -189,8 +191,29 @@ status_t RpcSession::FdTrigger::triggerablePollRead(base::borrowed_fd fd) {
         if (pfd[1].revents & POLLHUP) {
             return -ECANCELED;
         }
-        return pfd[0].revents & POLLIN ? OK : DEAD_OBJECT;
+        return pfd[0].revents & event ? OK : DEAD_OBJECT;
     }
+}
+
+status_t RpcSession::FdTrigger::interruptableWriteFully(base::borrowed_fd fd, const void* data,
+                                                        size_t size) {
+    const uint8_t* buffer = reinterpret_cast<const uint8_t*>(data);
+    const uint8_t* end = buffer + size;
+
+    MAYBE_WAIT_IN_FLAKE_MODE;
+
+    status_t status;
+    while ((status = triggerablePoll(fd, POLLOUT)) == OK) {
+        ssize_t writeSize = TEMP_FAILURE_RETRY(send(fd.get(), buffer, end - buffer, MSG_NOSIGNAL));
+        if (writeSize == 0) return DEAD_OBJECT;
+
+        if (writeSize < 0) {
+            return -errno;
+        }
+        buffer += writeSize;
+        if (buffer == end) return OK;
+    }
+    return status;
 }
 
 status_t RpcSession::FdTrigger::interruptableReadFully(base::borrowed_fd fd, void* data,
@@ -201,7 +224,7 @@ status_t RpcSession::FdTrigger::interruptableReadFully(base::borrowed_fd fd, voi
     MAYBE_WAIT_IN_FLAKE_MODE;
 
     status_t status;
-    while ((status = triggerablePollRead(fd)) == OK) {
+    while ((status = triggerablePoll(fd, POLLIN)) == OK) {
         ssize_t readSize = TEMP_FAILURE_RETRY(recv(fd.get(), buffer, end - buffer, MSG_NOSIGNAL));
         if (readSize == 0) return DEAD_OBJECT; // EOF
 
@@ -330,7 +353,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
                             mOutgoingConnections.size());
     }
 
-    if (!setupOneSocketConnection(addr, RpcAddress::zero(), false /*reverse*/)) return false;
+    if (!setupOneSocketConnection(addr, RpcAddress::zero(), false /*incoming*/)) return false;
 
     // TODO(b/189955605): we should add additional sessions dynamically
     // instead of all at once.
@@ -351,7 +374,7 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     // we've already setup one client
     for (size_t i = 0; i + 1 < numThreadsAvailable; i++) {
         // TODO(b/189955605): shutdown existing connections?
-        if (!setupOneSocketConnection(addr, mId.value(), false /*reverse*/)) return false;
+        if (!setupOneSocketConnection(addr, mId.value(), false /*incoming*/)) return false;
     }
 
     // TODO(b/189955605): we should add additional sessions dynamically
@@ -361,14 +384,14 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
     // any requests at all.
 
     for (size_t i = 0; i < mMaxThreads; i++) {
-        if (!setupOneSocketConnection(addr, mId.value(), true /*reverse*/)) return false;
+        if (!setupOneSocketConnection(addr, mId.value(), true /*incoming*/)) return false;
     }
 
     return true;
 }
 
 bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const RpcAddress& id,
-                                          bool reverse) {
+                                          bool incoming) {
     for (size_t tries = 0; tries < 5; tries++) {
         if (tries > 0) usleep(10000);
 
@@ -395,7 +418,7 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
         RpcConnectionHeader header{.options = 0};
         memcpy(&header.sessionId, &id.viewRawEmbedded(), sizeof(RpcWireAddress));
 
-        if (reverse) header.options |= RPC_CONNECTION_OPTION_REVERSE;
+        if (incoming) header.options |= RPC_CONNECTION_OPTION_INCOMING;
 
         if (sizeof(header) != TEMP_FAILURE_RETRY(write(serverFd.get(), &header, sizeof(header)))) {
             int savedErrno = errno;
@@ -406,33 +429,8 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
 
         LOG_RPC_DETAIL("Socket at %s client with fd %d", addr.toString().c_str(), serverFd.get());
 
-        if (reverse) {
-            std::mutex mutex;
-            std::condition_variable joinCv;
-            std::unique_lock<std::mutex> lock(mutex);
-            std::thread thread;
-            sp<RpcSession> thiz = sp<RpcSession>::fromExisting(this);
-            bool ownershipTransferred = false;
-            thread = std::thread([&]() {
-                std::unique_lock<std::mutex> threadLock(mutex);
-                unique_fd fd = std::move(serverFd);
-                // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-                sp<RpcSession> session = thiz;
-                session->preJoinThreadOwnership(std::move(thread));
-
-                // only continue once we have a response or the connection fails
-                auto setupResult = session->preJoinSetup(std::move(fd));
-
-                ownershipTransferred = true;
-                threadLock.unlock();
-                joinCv.notify_one();
-                // do not use & vars below
-
-                RpcSession::join(std::move(session), std::move(setupResult));
-            });
-            joinCv.wait(lock, [&] { return ownershipTransferred; });
-            LOG_ALWAYS_FATAL_IF(!ownershipTransferred);
-            return true;
+        if (incoming) {
+            return addIncomingConnection(std::move(serverFd));
         } else {
             return addOutgoingConnection(std::move(serverFd), true);
         }
@@ -440,6 +438,35 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
 
     ALOGE("Ran out of retries to connect to %s", addr.toString().c_str());
     return false;
+}
+
+bool RpcSession::addIncomingConnection(unique_fd fd) {
+    std::mutex mutex;
+    std::condition_variable joinCv;
+    std::unique_lock<std::mutex> lock(mutex);
+    std::thread thread;
+    sp<RpcSession> thiz = sp<RpcSession>::fromExisting(this);
+    bool ownershipTransferred = false;
+    thread = std::thread([&]() {
+        std::unique_lock<std::mutex> threadLock(mutex);
+        unique_fd movedFd = std::move(fd);
+        // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
+        sp<RpcSession> session = thiz;
+        session->preJoinThreadOwnership(std::move(thread));
+
+        // only continue once we have a response or the connection fails
+        auto setupResult = session->preJoinSetup(std::move(movedFd));
+
+        ownershipTransferred = true;
+        threadLock.unlock();
+        joinCv.notify_one();
+        // do not use & vars below
+
+        RpcSession::join(std::move(session), std::move(setupResult));
+    });
+    joinCv.wait(lock, [&] { return ownershipTransferred; });
+    LOG_ALWAYS_FATAL_IF(!ownershipTransferred);
+    return true;
 }
 
 bool RpcSession::addOutgoingConnection(unique_fd fd, bool init) {
