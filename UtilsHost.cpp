@@ -111,15 +111,15 @@ android::base::Result<CommandResult> execute(std::vector<std::string> argStringV
     errWrite.reset();
     ret.pid = pid;
 
-    auto handlePoll = [](android::base::unique_fd* fd, const pollfd& pfd, std::string* s) {
+    auto handlePoll = [](android::base::unique_fd* fd, const pollfd* pfd, std::string* s) {
         if (!fd->ok()) return true;
-        if (pfd.revents & POLLIN) {
+        if (pfd->revents & POLLIN) {
             char buf[1024];
             ssize_t n = TEMP_FAILURE_RETRY(read(fd->get(), buf, sizeof(buf)));
             if (n < 0) return false;
             if (n > 0) *s += std::string_view(buf, n);
         }
-        if (pfd.revents & POLLHUP) {
+        if (pfd->revents & POLLHUP) {
             fd->reset();
         }
         return true;
@@ -142,9 +142,9 @@ android::base::Result<CommandResult> execute(std::vector<std::string> argStringV
         int pollRet = poll(fds, nfds, 1000 /* ms timeout */);
         if (pollRet == -1) return android::base::ErrnoError() << "poll()";
 
-        if (!handlePoll(&ret.outPipe, *outPollFd, &ret.stdout))
+        if (!handlePoll(&ret.outPipe, outPollFd, &ret.stdout))
             return android::base::ErrnoError() << "read(stdout)";
-        if (!handlePoll(&ret.errPipe, *errPollFd, &ret.stderr))
+        if (!handlePoll(&ret.errPipe, errPollFd, &ret.stderr))
             return android::base::ErrnoError() << "read(stderr)";
 
         if (end && end(ret)) return ret;
