@@ -176,7 +176,8 @@ private:
     friend RpcState;
     explicit RpcSession(std::unique_ptr<RpcTransportCtx> ctx);
 
-    [[nodiscard]] status_t sendDecStrong(uint64_t address);
+    // for 'target', see RpcState::sendDecStrongToTarget
+    [[nodiscard]] status_t sendDecStrongToTarget(uint64_t address, size_t target);
 
     class EventListener : public virtual RefBase {
     public:

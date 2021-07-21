@@ -163,10 +163,17 @@ status_t RpcState::onBinderEntering(const sp<RpcSession>& session, uint64_t addr
 
         _l.unlock();
 
+        // if this is a local binder, then we want to get rid of all refcounts
+        // (tell the other process it can drop the binder when it wants to - we
+        // have a local sp<>, so we will drop it when we want to as well). if
+        // this is a remote binder, then we need to hold onto one refcount until
+        // it is dropped in BpBinder::onLastStrongRef
+        size_t targetRecd = (*out)->localBinder() ? 0 : 1;
+
         // We have timesRecd RPC refcounts, but we only need to hold on to one
         // when we keep the object. All additional dec strongs are sent
         // immediately, we wait to send the last one in BpBinder::onLastDecStrong.
-        return session->sendDecStrong(address);
+        return session->sendDecStrongToTarget(address, targetRecd);
     }
 
     // we don't know about this binder, so the other side of the connection
@@ -567,32 +574,43 @@ status_t RpcState::waitForReply(const sp<RpcSession::RpcConnection>& connection,
     return OK;
 }
 
-status_t RpcState::sendDecStrong(const sp<RpcSession::RpcConnection>& connection,
-                                 const sp<RpcSession>& session, uint64_t addr) {
+status_t RpcState::sendDecStrongToTarget(const sp<RpcSession::RpcConnection>& connection,
+                                         const sp<RpcSession>& session, uint64_t addr,
+                                         size_t target) {
+    RpcDecStrong body = {
+            .address = RpcWireAddress::fromRaw(addr),
+    };
+
     {
         std::lock_guard<std::mutex> _l(mNodeMutex);
         if (mTerminated) return DEAD_OBJECT; // avoid fatal only, otherwise races
         auto it = mNodeForAddress.find(addr);
         LOG_ALWAYS_FATAL_IF(it == mNodeForAddress.end(),
                             "Sending dec strong on unknown address %" PRIu64, addr);
-        LOG_ALWAYS_FATAL_IF(it->second.timesRecd <= 0, "Bad dec strong %" PRIu64, addr);
 
-        it->second.timesRecd--;
+        LOG_ALWAYS_FATAL_IF(it->second.timesRecd < target, "Can't dec count of %zu to %zu.",
+                            it->second.timesRecd, target);
+
+        // typically this happens when multiple threads send dec refs at the
+        // same time - the transactions will get combined automatically
+        if (it->second.timesRecd == target) return OK;
+
+        body.amount = it->second.timesRecd - target;
+        it->second.timesRecd = target;
+
         LOG_ALWAYS_FATAL_IF(nullptr != tryEraseNode(it),
                             "Bad state. RpcState shouldn't own received binder");
     }
 
     RpcWireHeader cmd = {
             .command = RPC_COMMAND_DEC_STRONG,
-            .bodySize = sizeof(RpcWireAddress),
+            .bodySize = sizeof(RpcDecStrong),
     };
     if (status_t status = rpcSend(connection, session, "dec ref header", &cmd, sizeof(cmd));
         status != OK)
         return status;
-    if (status_t status = rpcSend(connection, session, "dec ref body", &addr, sizeof(addr));
-        status != OK)
-        return status;
-    return OK;
+
+    return rpcSend(connection, session, "dec ref body", &body, sizeof(body));
 }
 
 status_t RpcState::getAndExecuteCommand(const sp<RpcSession::RpcConnection>& connection,
@@ -912,16 +930,15 @@ status_t RpcState::processDecStrong(const sp<RpcSession::RpcConnection>& connect
         status != OK)
         return status;
 
-    if (command.bodySize != sizeof(RpcWireAddress)) {
-        ALOGE("Expecting %zu but got %" PRId32 " bytes for RpcWireAddress. Terminating!",
-              sizeof(RpcWireAddress), command.bodySize);
+    if (command.bodySize != sizeof(RpcDecStrong)) {
+        ALOGE("Expecting %zu but got %" PRId32 " bytes for RpcDecStrong. Terminating!",
+              sizeof(RpcDecStrong), command.bodySize);
         (void)session->shutdownAndWait(false);
         return BAD_VALUE;
     }
-    RpcWireAddress* address = reinterpret_cast<RpcWireAddress*>(commandData.data());
+    RpcDecStrong* body = reinterpret_cast<RpcDecStrong*>(commandData.data());
 
-    uint64_t addr = RpcWireAddress::toRaw(*address);
-
+    uint64_t addr = RpcWireAddress::toRaw(body->address);
     std::unique_lock<std::mutex> _l(mNodeMutex);
     auto it = mNodeForAddress.find(addr);
     if (it == mNodeForAddress.end()) {
@@ -939,15 +956,19 @@ status_t RpcState::processDecStrong(const sp<RpcSession::RpcConnection>& connect
         return BAD_VALUE;
     }
 
-    if (it->second.timesSent == 0) {
-        ALOGE("No record of sending binder, but requested decStrong: %" PRIu64, addr);
+    if (it->second.timesSent < body->amount) {
+        ALOGE("Record of sending binder %zu times, but requested decStrong for %" PRIu64 " of %u",
+              it->second.timesSent, addr, body->amount);
         return OK;
     }
 
     LOG_ALWAYS_FATAL_IF(it->second.sentRef == nullptr, "Inconsistent state, lost ref for %" PRIu64,
                         addr);
 
-    it->second.timesSent--;
+    LOG_RPC_DETAIL("Processing dec strong of %" PRIu64 " by %u from %zu", addr, body->amount,
+                   it->second.timesSent);
+
+    it->second.timesSent -= body->amount;
     sp<IBinder> tempHold = tryEraseNode(it);
     _l.unlock();
     tempHold = nullptr; // destructor may make binder calls on this session
