@@ -181,9 +181,7 @@ bool RpcSession::FdTrigger::isTriggered() {
 
 status_t RpcSession::FdTrigger::triggerablePoll(base::borrowed_fd fd, int16_t event) {
     while (true) {
-        pollfd pfd[]{{.fd = fd.get(),
-                      .events = static_cast<int16_t>(event | POLLHUP),
-                      .revents = 0},
+        pollfd pfd[]{{.fd = fd.get(), .events = static_cast<int16_t>(event), .revents = 0},
                      {.fd = mRead.get(), .events = POLLHUP, .revents = 0}};
         int ret = TEMP_FAILURE_RETRY(poll(pfd, arraysize(pfd), -1));
         if (ret < 0) {
