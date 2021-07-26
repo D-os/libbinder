@@ -23,20 +23,6 @@
 namespace android {
 namespace internal {
 
-// the libbinder parcel format is currently unstable
-
-// oldest version which is supported
-constexpr uint8_t kBinderWireFormatOldest = 1;
-// current version
-constexpr uint8_t kBinderWireFormatVersion = 1;
-
-Stability::Category Stability::Category::currentFromLevel(Level level) {
-    return {
-        .version = kBinderWireFormatVersion,
-        .level = level,
-    };
-}
-
 void Stability::forceDowngradeToStability(const sp<IBinder>& binder, Level level) {
     // Downgrading a remote binder would require also copying the version from
     // the binder sent here. In practice though, we don't need to downgrade the
@@ -44,8 +30,7 @@ void Stability::forceDowngradeToStability(const sp<IBinder>& binder, Level level
     // what we can do to it.
     LOG_ALWAYS_FATAL_IF(!binder || !binder->localBinder(), "Can only downgrade local binder");
 
-    auto stability = Category::currentFromLevel(level);
-    status_t result = setRepr(binder.get(), stability.repr(), REPR_LOG | REPR_ALLOW_DOWNGRADE);
+    status_t result = setRepr(binder.get(), level, REPR_LOG | REPR_ALLOW_DOWNGRADE);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
@@ -61,41 +46,31 @@ void Stability::forceDowngradeToVendorStability(const sp<IBinder>& binder) {
     forceDowngradeToStability(binder, Level::VENDOR);
 }
 
-std::string Stability::Category::debugString() {
-    return levelString(level) + " wire protocol version "
-        + std::to_string(version);
-}
-
 void Stability::markCompilationUnit(IBinder* binder) {
-    auto stability = Category::currentFromLevel(getLocalLevel());
-    status_t result = setRepr(binder, stability.repr(), REPR_LOG);
+    status_t result = setRepr(binder, getLocalLevel(), REPR_LOG);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
 void Stability::markVintf(IBinder* binder) {
-    auto stability = Category::currentFromLevel(Level::VINTF);
-    status_t result = setRepr(binder, stability.repr(), REPR_LOG);
+    status_t result = setRepr(binder, Level::VINTF, REPR_LOG);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
 std::string Stability::debugToString(const sp<IBinder>& binder) {
-    auto stability = getCategory(binder.get());
-    return stability.debugString();
+    return levelString(getRepr(binder.get()));
 }
 
 void Stability::markVndk(IBinder* binder) {
-    auto stability = Category::currentFromLevel(Level::VENDOR);
-    status_t result = setRepr(binder, stability.repr(), REPR_LOG);
+    status_t result = setRepr(binder, Level::VENDOR, REPR_LOG);
     LOG_ALWAYS_FATAL_IF(result != OK, "Should only mark known object.");
 }
 
 bool Stability::requiresVintfDeclaration(const sp<IBinder>& binder) {
-    return check(getCategory(binder.get()), Level::VINTF);
+    return check(getRepr(binder.get()), Level::VINTF);
 }
 
 void Stability::tryMarkCompilationUnit(IBinder* binder) {
-    auto stability = Category::currentFromLevel(getLocalLevel());
-    (void) setRepr(binder, stability.repr(), REPR_NONE);
+    (void)setRepr(binder, getLocalLevel(), REPR_NONE);
 }
 
 Stability::Level Stability::getLocalLevel() {
@@ -111,92 +86,77 @@ Stability::Level Stability::getLocalLevel() {
 #endif
 }
 
-status_t Stability::setRepr(IBinder* binder, int32_t representation, uint32_t flags) {
+status_t Stability::setRepr(IBinder* binder, int32_t setting, uint32_t flags) {
     bool log = flags & REPR_LOG;
     bool allowDowngrade = flags & REPR_ALLOW_DOWNGRADE;
 
-    auto current = getCategory(binder);
-    auto setting = Category::fromRepr(representation);
-
-    // If we have ahold of a binder with a newer declared version, then it
-    // should support older versions, and we will simply write our parcels with
-    // the current wire parcel format.
-    if (setting.version < kBinderWireFormatOldest) {
-        // always log, because this shouldn't happen
-        ALOGE("Cannot accept binder with older binder wire protocol version "
-              "%u. Versions less than %u are unsupported.", setting.version,
-               kBinderWireFormatOldest);
-        return BAD_TYPE;
-    }
+    int16_t current = getRepr(binder);
 
     // null binder is always written w/ 'UNDECLARED' stability
     if (binder == nullptr) {
-        if (setting.level == UNDECLARED) {
+        if (setting == UNDECLARED) {
             return OK;
         } else {
             if (log) {
-                ALOGE("Null binder written with stability %s.",
-                    levelString(setting.level).c_str());
+                ALOGE("Null binder written with stability %s.", levelString(setting).c_str());
             }
             return BAD_TYPE;
         }
     }
 
-    if (!isDeclaredLevel(setting.level)) {
+    if (!isDeclaredLevel(setting)) {
         if (log) {
-            ALOGE("Can only set known stability, not %u.", setting.level);
+            ALOGE("Can only set known stability, not %d.", setting);
         }
         return BAD_TYPE;
     }
+    Level levelSetting = static_cast<Level>(setting);
 
     if (current == setting) return OK;
 
-    bool hasAlreadyBeenSet = current.repr() != 0;
-    bool isAllowedDowngrade = allowDowngrade && check(current, setting.level);
+    bool hasAlreadyBeenSet = current != Level::UNDECLARED;
+    bool isAllowedDowngrade = allowDowngrade && check(current, levelSetting);
     if (hasAlreadyBeenSet && !isAllowedDowngrade) {
         if (log) {
             ALOGE("Interface being set with %s but it is already marked as %s",
-                  setting.debugString().c_str(),
-                  current.debugString().c_str());
+                  levelString(setting).c_str(), levelString(current).c_str());
         }
         return BAD_TYPE;
     }
 
     if (isAllowedDowngrade) {
-        ALOGI("Interface set with %s downgraded to %s stability",
-              current.debugString().c_str(),
-              setting.debugString().c_str());
+        ALOGI("Interface set with %s downgraded to %s stability", levelString(current).c_str(),
+              levelString(setting).c_str());
     }
 
     BBinder* local = binder->localBinder();
     if (local != nullptr) {
-        local->mStability = setting.repr();
+        local->mStability = setting;
     } else {
-        binder->remoteBinder()->mStability = setting.repr();
+        binder->remoteBinder()->mStability = setting;
     }
 
     return OK;
 }
 
-Stability::Category Stability::getCategory(IBinder* binder) {
+int16_t Stability::getRepr(IBinder* binder) {
     if (binder == nullptr) {
-        return Category::currentFromLevel(Level::UNDECLARED);
+        return Level::UNDECLARED;
     }
 
     BBinder* local = binder->localBinder();
     if (local != nullptr) {
-        return Category::fromRepr(local->mStability);
+        return local->mStability;
     }
 
-    return Category::fromRepr(binder->remoteBinder()->mStability);
+    return binder->remoteBinder()->mStability;
 }
 
-bool Stability::check(Category provided, Level required) {
-    bool stable = (provided.level & required) == required;
+bool Stability::check(int16_t provided, Level required) {
+    bool stable = (provided & required) == required;
 
-    if (provided.level != UNDECLARED && !isDeclaredLevel(provided.level)) {
-        ALOGE("Unknown stability when checking interface stability %d.",
-              provided.level);
+    if (provided != UNDECLARED && !isDeclaredLevel(provided)) {
+        ALOGE("Unknown stability when checking interface stability %d.", provided);
 
         stable = false;
     }
@@ -204,11 +164,11 @@ bool Stability::check(Category provided, Level required) {
     return stable;
 }
 
-bool Stability::isDeclaredLevel(Level stability) {
+bool Stability::isDeclaredLevel(int32_t stability) {
     return stability == VENDOR || stability == SYSTEM || stability == VINTF;
 }
 
-std::string Stability::levelString(Level level) {
+std::string Stability::levelString(int32_t level) {
     switch (level) {
         case Level::UNDECLARED: return "undeclared stability";
         case Level::VENDOR: return "vendor stability";
