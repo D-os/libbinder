@@ -237,8 +237,9 @@ TEST(RpcWire, CurrentVersion) {
     checkRepr(kCurrentRepr, RPC_WIRE_PROTOCOL_VERSION);
 }
 
-static_assert(RPC_WIRE_PROTOCOL_VERSION == RPC_WIRE_PROTOCOL_VERSION_EXPERIMENTAL,
-              "you better update this test!");
+static_assert(RPC_WIRE_PROTOCOL_VERSION == 0,
+              "If the binder wire protocol is updated, this test should test additional versions. "
+              "The binder wire protocol should only be updated on upstream AOSP.");
 
 TEST(RpcWire, ReleaseBranchHasFrozenRpcWireProtocol) {
     if (RPC_WIRE_PROTOCOL_VERSION == RPC_WIRE_PROTOCOL_VERSION_EXPERIMENTAL) {
