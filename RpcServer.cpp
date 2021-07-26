@@ -369,7 +369,7 @@ bool RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
     return true;
 }
 
-void RpcServer::onSessionLockedAllIncomingThreadsEnded(const sp<RpcSession>& session) {
+void RpcServer::onSessionAllIncomingThreadsEnded(const sp<RpcSession>& session) {
     auto id = session->mId;
     LOG_ALWAYS_FATAL_IF(id == std::nullopt, "Server sessions must be initialized with ID");
     LOG_RPC_DETAIL("Dropping session with address %s", id->toString().c_str());
