@@ -493,7 +493,7 @@ fn test_read_data() {
     assert_eq!(parcel.read::<i32>().unwrap(), 15);
     let start = parcel.get_data_position();
 
-    assert_eq!(parcel.read::<bool>().unwrap(), true);
+    assert!(parcel.read::<bool>().unwrap());
 
     unsafe {
         assert!(parcel.set_data_position(start).is_ok());
