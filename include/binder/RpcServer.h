@@ -105,6 +105,13 @@ public:
     size_t getMaxThreads();
 
     /**
+     * By default, the latest protocol version which is supported by a client is
+     * used. However, this can be used in order to prevent newer protocol
+     * versions from ever being used. This is expected to be useful for testing.
+     */
+    void setProtocolVersion(uint32_t version);
+
+    /**
      * The root object can be retrieved by any client, without any
      * authentication. TODO(b/183988761)
      *
@@ -164,6 +171,7 @@ private:
 
     bool mAgreedExperimental = false;
     size_t mMaxThreads = 1;
+    std::optional<uint32_t> mProtocolVersion;
     base::unique_fd mServer; // socket we are accepting sessions on
 
     std::mutex mLock; // for below
