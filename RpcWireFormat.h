@@ -37,9 +37,20 @@ struct RpcWireAddress {
  * either as part of a new session or an existing session
  */
 struct RpcConnectionHeader {
+    uint32_t version; // maximum supported by caller
+    uint8_t reserver0[4];
     RpcWireAddress sessionId;
     uint8_t options;
-    uint8_t reserved[7];
+    uint8_t reserved1[7];
+};
+
+/**
+ * In response to an RpcConnectionHeader which corresponds to a new session,
+ * this returns information to the server.
+ */
+struct RpcNewSessionResponse {
+    uint32_t version; // maximum supported by callee <= maximum supported by caller
+    uint8_t reserved[4];
 };
 
 #define RPC_CONNECTION_INIT_OKAY "cci"

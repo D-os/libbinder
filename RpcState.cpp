@@ -315,6 +315,18 @@ status_t RpcState::rpcRec(const sp<RpcSession::RpcConnection>& connection,
     return OK;
 }
 
+status_t RpcState::readNewSessionResponse(const sp<RpcSession::RpcConnection>& connection,
+                                          const sp<RpcSession>& session, uint32_t* version) {
+    RpcNewSessionResponse response;
+    if (status_t status =
+                rpcRec(connection, session, "new session response", &response, sizeof(response));
+        status != OK) {
+        return status;
+    }
+    *version = response.version;
+    return OK;
+}
+
 status_t RpcState::sendConnectionInit(const sp<RpcSession::RpcConnection>& connection,
                                       const sp<RpcSession>& session) {
     RpcOutgoingConnectionInit init{
