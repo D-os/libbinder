@@ -77,6 +77,25 @@ size_t RpcSession::getMaxThreads() {
     return mMaxThreads;
 }
 
+bool RpcSession::setProtocolVersion(uint32_t version) {
+    if (version >= RPC_WIRE_PROTOCOL_VERSION_NEXT &&
+        version != RPC_WIRE_PROTOCOL_VERSION_EXPERIMENTAL) {
+        ALOGE("Cannot start RPC session with version %u which is unknown (current protocol version "
+              "is %u).",
+              version, RPC_WIRE_PROTOCOL_VERSION);
+        return false;
+    }
+
+    std::lock_guard<std::mutex> _l(mMutex);
+    mProtocolVersion = version;
+    return true;
+}
+
+std::optional<uint32_t> RpcSession::getProtocolVersion() {
+    std::lock_guard<std::mutex> _l(mMutex);
+    return mProtocolVersion;
+}
+
 bool RpcSession::setupUnixDomainClient(const char* path) {
     return setupSocketClient(UnixSocketAddress(path));
 }
@@ -424,6 +443,18 @@ bool RpcSession::setupSocketClient(const RpcSocketAddress& addr) {
 
     if (!setupOneSocketConnection(addr, RpcAddress::zero(), false /*incoming*/)) return false;
 
+    {
+        ExclusiveConnection connection;
+        status_t status = ExclusiveConnection::find(sp<RpcSession>::fromExisting(this),
+                                                    ConnectionUse::CLIENT, &connection);
+        if (status != OK) return false;
+
+        uint32_t version;
+        status = state()->readNewSessionResponse(connection.get(),
+                                                 sp<RpcSession>::fromExisting(this), &version);
+        if (!setProtocolVersion(version)) return false;
+    }
+
     // TODO(b/189955605): we should add additional sessions dynamically
     // instead of all at once.
     // TODO(b/186470974): first risk of blocking
@@ -484,7 +515,10 @@ bool RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr, const Rp
             return false;
         }
 
-        RpcConnectionHeader header{.options = 0};
+        RpcConnectionHeader header{
+                .version = mProtocolVersion.value_or(RPC_WIRE_PROTOCOL_VERSION),
+                .options = 0,
+        };
         memcpy(&header.sessionId, &id.viewRawEmbedded(), sizeof(RpcWireAddress));
 
         if (incoming) header.options |= RPC_CONNECTION_OPTION_INCOMING;

@@ -110,6 +110,10 @@ size_t RpcServer::getMaxThreads() {
     return mMaxThreads;
 }
 
+void RpcServer::setProtocolVersion(uint32_t version) {
+    mProtocolVersion = version;
+}
+
 void RpcServer::setRootObject(const sp<IBinder>& binder) {
     std::lock_guard<std::mutex> _l(mLock);
     mRootObjectWeak = mRootObject = binder;
@@ -245,13 +249,37 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     RpcConnectionHeader header;
     status_t status = server->mShutdownTrigger->interruptableReadFully(clientFd.get(), &header,
                                                                        sizeof(header));
-    bool idValid = status == OK;
-    if (!idValid) {
+    if (status != OK) {
         ALOGE("Failed to read ID for client connecting to RPC server: %s",
               statusToString(status).c_str());
         // still need to cleanup before we can return
     }
-    bool incoming = header.options & RPC_CONNECTION_OPTION_INCOMING;
+
+    bool incoming = false;
+    uint32_t protocolVersion = 0;
+    RpcAddress sessionId = RpcAddress::zero();
+    bool requestingNewSession = false;
+
+    if (status == OK) {
+        incoming = header.options & RPC_CONNECTION_OPTION_INCOMING;
+        protocolVersion = std::min(header.version,
+                                   server->mProtocolVersion.value_or(RPC_WIRE_PROTOCOL_VERSION));
+        sessionId = RpcAddress::fromRawEmbedded(&header.sessionId);
+        requestingNewSession = sessionId.isZero();
+
+        if (requestingNewSession) {
+            RpcNewSessionResponse response{
+                    .version = protocolVersion,
+            };
+
+            status = server->mShutdownTrigger->interruptableWriteFully(clientFd.get(), &response,
+                                                                       sizeof(response));
+            if (status != OK) {
+                ALOGE("Failed to send new session response: %s", statusToString(status).c_str());
+                // still need to cleanup before we can return
+            }
+        }
+    }
 
     std::thread thisThread;
     sp<RpcSession> session;
@@ -269,19 +297,16 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         };
         server->mConnectingThreads.erase(threadId);
 
-        if (!idValid || server->mShutdownTrigger->isTriggered()) {
+        if (status != OK || server->mShutdownTrigger->isTriggered()) {
             return;
         }
 
-        RpcAddress sessionId = RpcAddress::fromRawEmbedded(&header.sessionId);
-
-        if (sessionId.isZero()) {
+        if (requestingNewSession) {
             if (incoming) {
                 ALOGE("Cannot create a new session with an incoming connection, would leak");
                 return;
             }
 
-            sessionId = RpcAddress::zero();
             size_t tries = 0;
             do {
                 // don't block if there is some entropy issue
@@ -295,6 +320,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
 
             session = RpcSession::make();
             session->setMaxThreads(server->mMaxThreads);
+            if (!session->setProtocolVersion(protocolVersion)) return;
             if (!session->setForServer(server,
                                        sp<RpcServer::EventListener>::fromExisting(
                                                static_cast<RpcServer::EventListener*>(
