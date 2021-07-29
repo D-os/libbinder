@@ -16,6 +16,7 @@
 
 #include <binder/RpcAddress.h>
 
+#include <android-base/hex.h>
 #include <binder/Parcel.h>
 
 #include "Debug.h"
@@ -94,7 +95,7 @@ bool RpcAddress::operator<(const RpcAddress& rhs) const {
 }
 
 std::string RpcAddress::toString() const {
-    return hexString(mRawAddr.get(), sizeof(RpcWireAddress));
+    return base::HexString(mRawAddr.get(), sizeof(RpcWireAddress));
 }
 
 status_t RpcAddress::writeToParcel(Parcel* parcel) const {
