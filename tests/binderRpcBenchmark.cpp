@@ -26,6 +26,7 @@
 
 #include <thread>
 
+#include <signal.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -154,6 +155,16 @@ int main(int argc, char** argv) {
     std::cerr << "\t\\" << Transport::KERNEL << " is KERNEL" << std::endl;
     std::cerr << "\t\\" << Transport::RPC << " is RPC" << std::endl;
 
+    if (0 == fork()) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP); // racey, okay
+        sp<RpcServer> server = RpcServer::make();
+        server->setRootObject(sp<MyBinderRpcBenchmark>::make());
+        server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+        CHECK(server->setupUnixDomainServer(addr.c_str()));
+        server->join();
+        exit(1);
+    }
+
 #ifdef __BIONIC__
     if (0 == fork()) {
         prctl(PR_SET_PDEATHSIG, SIGHUP); // racey, okay
@@ -161,6 +172,7 @@ int main(int argc, char** argv) {
                  defaultServiceManager()->addService(kKernelBinderInstance,
                                                      sp<MyBinderRpcBenchmark>::make()));
         IPCThreadState::self()->joinThreadPool();
+        exit(1);
     }
 
     ProcessState::self()->setThreadPoolMaxThreadCount(1);
@@ -169,14 +181,6 @@ int main(int argc, char** argv) {
     gKernelBinder = defaultServiceManager()->waitForService(kKernelBinderInstance);
     CHECK_NE(nullptr, gKernelBinder.get());
 #endif
-
-    std::thread([addr]() {
-        sp<RpcServer> server = RpcServer::make();
-        server->setRootObject(sp<MyBinderRpcBenchmark>::make());
-        server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
-        CHECK(server->setupUnixDomainServer(addr.c_str()));
-        server->join();
-    }).detach();
 
     for (size_t tries = 0; tries < 5; tries++) {
         usleep(10000);
