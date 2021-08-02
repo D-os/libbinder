@@ -87,6 +87,12 @@ bool RpcSession::setProtocolVersion(uint32_t version) {
     }
 
     std::lock_guard<std::mutex> _l(mMutex);
+    if (mProtocolVersion && version > *mProtocolVersion) {
+        ALOGE("Cannot upgrade explicitly capped protocol version %u to newer version %u",
+              *mProtocolVersion, version);
+        return false;
+    }
+
     mProtocolVersion = version;
     return true;
 }
