@@ -629,6 +629,12 @@ bool RpcSession::setForServer(const wp<RpcServer>& server, const wp<EventListene
 sp<RpcSession::RpcConnection> RpcSession::assignIncomingConnectionToThisThread(unique_fd fd) {
     std::lock_guard<std::mutex> _l(mMutex);
 
+    if (mIncomingConnections.size() >= mMaxThreads) {
+        ALOGE("Cannot add thread to session with %zu threads (max is set to %zu)",
+              mIncomingConnections.size(), mMaxThreads);
+        return nullptr;
+    }
+
     // Don't accept any more connections, some have shutdown. Usually this
     // happens when new connections are still being established as part of a
     // very short-lived session which shuts down after it already started
