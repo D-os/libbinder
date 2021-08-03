@@ -18,11 +18,13 @@
 #include "binder.h"
 #include "util.h"
 
+#include <android-base/hex.h>
 #include <android/os/IServiceManager.h>
 #include <binder/ParcelableHolder.h>
 #include <binder/PersistableBundle.h>
 
 using ::android::status_t;
+using ::android::base::HexString;
 
 enum ByteEnum : int8_t {};
 enum IntEnum : int32_t {};
@@ -128,7 +130,7 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     [] (const ::android::Parcel& p, uint8_t len) {
         FUZZ_LOG() << "about to readInplace";
         const void* r = p.readInplace(len);
-        FUZZ_LOG() << "readInplace done. pointer: " << r << " bytes: " << hexString(r, len);
+        FUZZ_LOG() << "readInplace done. pointer: " << r << " bytes: " << (r ? HexString(r, len) : "null");
     },
     PARCEL_READ_OPT_STATUS(int32_t, readInt32),
     PARCEL_READ_OPT_STATUS(uint32_t, readUint32),
@@ -153,7 +155,7 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         FUZZ_LOG() << "about to readString8Inplace";
         size_t outLen = 0;
         const char* str = p.readString8Inplace(&outLen);
-        std::string bytes = hexString(str, sizeof(char) * (outLen + 1));
+        std::string bytes = str ? HexString(str, sizeof(char) * (outLen + 1)) : "null";
         FUZZ_LOG() << "readString8Inplace: " << bytes << " size: " << outLen;
     },
     PARCEL_READ_OPT_STATUS(android::String16, readString16),
@@ -163,7 +165,7 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         FUZZ_LOG() << "about to readString16Inplace";
         size_t outLen = 0;
         const char16_t* str = p.readString16Inplace(&outLen);
-        std::string bytes = hexString(str, sizeof(char16_t) * (outLen + 1));
+        std::string bytes = str ? HexString(str, sizeof(char16_t) * (outLen + 1)) : "null";
         FUZZ_LOG() << "readString16Inplace: " << bytes << " size: " << outLen;
     },
     PARCEL_READ_WITH_STATUS(android::sp<android::IBinder>, readStrongBinder),

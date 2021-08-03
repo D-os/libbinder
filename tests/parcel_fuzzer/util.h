@@ -49,6 +49,3 @@ public:
     FuzzLog& log() { return *this; }
 };
 #endif
-
-std::string hexString(const void* bytes, size_t len);
-std::string hexString(const std::vector<uint8_t>& bytes);

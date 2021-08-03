@@ -22,6 +22,7 @@
 
 #include <iostream>
 
+#include <android-base/hex.h>
 #include <android-base/logging.h>
 #include <android/binder_auto_utils.h>
 #include <android/binder_libbinder.h>
@@ -35,6 +36,7 @@
 
 using android::fillRandomParcel;
 using android::sp;
+using android::base::HexString;
 
 void fillRandomParcel(::android::hardware::Parcel* p, FuzzedDataProvider&& provider) {
     // TODO: functionality to create random parcels for libhwbinder parcels
@@ -78,8 +80,8 @@ void doReadFuzz(const char* backend, const std::vector<ParcelRead<P>>& reads,
     CHECK(reads.size() <= 255) << reads.size();
 
     FUZZ_LOG() << "backend: " << backend;
-    FUZZ_LOG() << "input: " << hexString(p.data(), p.dataSize());
-    FUZZ_LOG() << "instructions: " << hexString(instructions);
+    FUZZ_LOG() << "input: " << HexString(p.data(), p.dataSize());
+    FUZZ_LOG() << "instructions: " << HexString(instructions.data(), instructions.size());
 
     for (size_t i = 0; i + 1 < instructions.size(); i += 2) {
         uint8_t a = instructions[i];

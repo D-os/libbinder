@@ -144,9 +144,6 @@ cc_library {
             enabled: false,
         },
         host: {
-            static_libs: [
-                "libbase",
-            ],
             srcs: [
                 "ServiceManagerHost.cpp",
                 "UtilsHost.cpp",
@@ -185,6 +182,10 @@ cc_library {
         "liblog",
         "libcutils",
         "libutils",
+    ],
+
+    static_libs: [
+        "libbase",
     ],
 
     header_libs: [
