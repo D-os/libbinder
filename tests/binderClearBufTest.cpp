@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <android-base/hex.h>
 #include <android-base/logging.h>
 #include <binder/Binder.h>
 #include <binder/IBinder.h>
@@ -29,22 +30,6 @@
 using namespace android;
 
 const String16 kServerName = String16("binderClearBuf");
-
-std::string hexString(const void* bytes, size_t len) {
-    if (bytes == nullptr) return "<null>";
-
-    const uint8_t* bytes8 = static_cast<const uint8_t*>(bytes);
-    char chars[] = "0123456789abcdef";
-    std::string result;
-    result.resize(len * 2);
-
-    for (size_t i = 0; i < len; i++) {
-        result[2 * i] = chars[bytes8[i] >> 4];
-        result[2 * i + 1] = chars[bytes8[i] & 0xf];
-    }
-
-    return result;
-}
 
 class FooBar : public BBinder {
  public:
@@ -83,7 +68,7 @@ class FooBar : public BBinder {
             lastReply = reply.data();
             lastReplySize = reply.dataSize();
         }
-        *outBuffer = hexString(lastReply, lastReplySize);
+        *outBuffer = android::base::HexString(lastReply, lastReplySize);
         return result;
     }
 };
