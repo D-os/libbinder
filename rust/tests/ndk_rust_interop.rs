@@ -90,7 +90,7 @@ impl IBinderRustNdkInteropTest for Service {
 pub unsafe extern "C" fn rust_start_service(service_name: *const c_char) -> c_int {
     let service_name = CStr::from_ptr(service_name).to_str().unwrap();
     let service = BnBinderRustNdkInteropTest::new_binder(Service, BinderFeatures::default());
-    match binder::add_service(&service_name, service.as_binder()) {
+    match binder::add_service(service_name, service.as_binder()) {
         Ok(_) => StatusCode::OK as c_int,
         Err(e) => e as c_int,
     }
