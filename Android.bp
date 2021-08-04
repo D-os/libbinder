@@ -247,6 +247,9 @@ filegroup {
         "aidl/android/content/pm/IPackageChangeObserver.aidl",
         "aidl/android/content/pm/IPackageManagerNative.aidl",
         "aidl/android/content/pm/PackageChangeEvent.aidl",
+        "aidl/android/content/pm/IStagedApexObserver.aidl",
+        "aidl/android/content/pm/ApexStagedEvent.aidl",
+        "aidl/android/content/pm/StagedApexInfo.aidl",
     ],
     path: "aidl",
 }
