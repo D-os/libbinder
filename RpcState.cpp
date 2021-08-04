@@ -18,6 +18,7 @@
 
 #include "RpcState.h"
 
+#include <android-base/hex.h>
 #include <android-base/scopeguard.h>
 #include <binder/BpBinder.h>
 #include <binder/IPCThreadState.h>
@@ -273,7 +274,7 @@ status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
                            const sp<RpcSession>& session, const char* what, const void* data,
                            size_t size) {
     LOG_RPC_DETAIL("Sending %s on fd %d: %s", what, connection->fd.get(),
-                   hexString(data, size).c_str());
+                   android::base::HexString(data, size).c_str());
 
     if (size > std::numeric_limits<ssize_t>::max()) {
         ALOGE("Cannot send %s at size %zu (too big)", what, size);
@@ -311,7 +312,7 @@ status_t RpcState::rpcRec(const sp<RpcSession::RpcConnection>& connection,
     }
 
     LOG_RPC_DETAIL("Received %s on fd %d: %s", what, connection->fd.get(),
-                   hexString(data, size).c_str());
+                   android::base::HexString(data, size).c_str());
     return OK;
 }
 
