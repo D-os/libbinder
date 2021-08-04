@@ -19,6 +19,7 @@
 #include <android-base/logging.h>
 #include <binder/IServiceManager.h>
 #include <binder/RpcSession.h>
+#include <binder/RpcTransportRaw.h>
 #include <fuzzbinder/random_fd.h>
 #include <utils/String16.h>
 
@@ -35,7 +36,7 @@ private:
 
 void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider) {
     if (provider.ConsumeBool()) {
-        auto session = sp<RpcSession>::make();
+        auto session = RpcSession::make(RpcTransportCtxFactoryRaw::make());
         CHECK(session->addNullDebuggingClient());
         p->markForRpc(session);
         fillRandomParcelData(p, std::move(provider));
