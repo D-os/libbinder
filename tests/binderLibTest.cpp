@@ -1192,7 +1192,7 @@ public:
         if (rpcServer == nullptr) return {};
         rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
         unsigned int port;
-        if (!rpcServer->setupInetServer(0, &port)) {
+        if (!rpcServer->setupInetServer("127.0.0.1", 0, &port)) {
             ADD_FAILURE() << "setupInetServer failed";
             return {};
         }
