@@ -54,6 +54,15 @@ constexpr unsigned int kShutdownWaitTime = 10;
 constexpr uint64_t kContextTestValue = 0xb4e42fb4d9a1d715;
 
 class MyBinderNdkUnitTest : public aidl::BnBinderNdkUnitTest {
+   public:
+    MyBinderNdkUnitTest() = default;
+    MyBinderNdkUnitTest(bool* deleted) : deleted(deleted) {}
+    ~MyBinderNdkUnitTest() {
+        if (deleted) {
+            *deleted = true;
+        }
+    }
+
     ndk::ScopedAStatus repeatInt(int32_t in, int32_t* out) {
         *out = in;
         return ndk::ScopedAStatus::ok();
@@ -122,6 +131,7 @@ class MyBinderNdkUnitTest : public aidl::BnBinderNdkUnitTest {
     }
 
     uint64_t contextTestValue = kContextTestValue;
+    bool* deleted = nullptr;
 };
 
 int generatedService() {
@@ -222,6 +232,27 @@ bool isServiceRunning(const char* serviceName) {
     AIBinder_decStrong(binder);
 
     return true;
+}
+
+TEST(NdkBinder, MakeShared) {
+    const char* kInstance = "make_shared_test_instance";
+    bool deleted = false;
+
+    {
+        auto service = std::make_shared<MyBinderNdkUnitTest>(&deleted);
+        auto binder = service->asBinder();
+        ASSERT_EQ(EX_NONE, AServiceManager_addService(binder.get(), kInstance));
+        auto binder2 = ndk::SpAIBinder(AServiceManager_checkService(kInstance));
+        ASSERT_EQ(binder.get(), binder2.get());
+
+        // overwrite service
+        ASSERT_EQ(EX_NONE,
+                  AServiceManager_addService(
+                          std::make_shared<MyBinderNdkUnitTest>(&deleted)->asBinder().get(),
+                          kInstance));
+    }
+
+    EXPECT_TRUE(deleted);
 }
 
 TEST(NdkBinder, GetServiceThatDoesntExist) {
