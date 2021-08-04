@@ -49,6 +49,7 @@ namespace android {
 
 static_assert(RPC_WIRE_PROTOCOL_VERSION + 1 == RPC_WIRE_PROTOCOL_VERSION_NEXT ||
               RPC_WIRE_PROTOCOL_VERSION == RPC_WIRE_PROTOCOL_VERSION_EXPERIMENTAL);
+const char* kLocalInetAddress = "127.0.0.1";
 
 TEST(BinderRpcParcel, EntireParcelFormatted) {
     Parcel p;
@@ -439,7 +440,7 @@ public:
                             CHECK(server->setupVsockServer(vsockPort));
                             break;
                         case SocketType::INET: {
-                            CHECK(server->setupInetServer(0, &outPort));
+                            CHECK(server->setupInetServer(kLocalInetAddress, 0, &outPort));
                             CHECK_NE(0, outPort);
                             break;
                         }
@@ -1253,7 +1254,7 @@ TEST(BinderRpc, Java) {
     auto rpcServer = RpcServer::make();
     rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     unsigned int port;
-    ASSERT_TRUE(rpcServer->setupInetServer(0, &port));
+    ASSERT_TRUE(rpcServer->setupInetServer(kLocalInetAddress, 0, &port));
     auto socket = rpcServer->releaseServer();
 
     auto keepAlive = sp<BBinder>::make();
