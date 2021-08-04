@@ -47,6 +47,7 @@ using std::string_view_literals::operator""sv;
 
 namespace {
 
+const char* kLocalInetAddress = "127.0.0.1";
 using ServiceRetriever = decltype(&android::IServiceManager::checkService);
 
 int Usage(const char* program) {
@@ -86,7 +87,7 @@ int Dispatch(const char* name, const ServiceRetriever& serviceRetriever) {
     }
     rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     unsigned int port;
-    if (!rpcServer->setupInetServer(0, &port)) {
+    if (!rpcServer->setupInetServer(kLocalInetAddress, 0, &port)) {
         LOG(ERROR) << "setupInetServer failed";
         return EX_SOFTWARE;
     }
@@ -199,7 +200,7 @@ int wrapServiceManager(const ServiceRetriever& serviceRetriever) {
     rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     rpcServer->setRootObject(service);
     unsigned int port;
-    if (!rpcServer->setupInetServer(0, &port)) {
+    if (!rpcServer->setupInetServer(kLocalInetAddress, 0, &port)) {
         LOG(ERROR) << "Unable to set up inet server";
         return EX_SOFTWARE;
     }

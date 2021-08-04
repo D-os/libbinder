@@ -72,8 +72,14 @@ public:
      * Set |port| to 0 to pick an ephemeral port; see discussion of
      * /proc/sys/net/ipv4/ip_local_port_range in ip(7). In this case, |assignedPort|
      * will be set to the picked port number, if it is not null.
+     *
+     * Set the IPv4 address for the socket to be listening on.
+     * "127.0.0.1" allows for local connections from the same device.
+     * "0.0.0.0" allows for connections on any IP address that the device may
+     * have
      */
-    [[nodiscard]] bool setupInetServer(unsigned int port, unsigned int* assignedPort);
+    [[nodiscard]] bool setupInetServer(const char* address, unsigned int port,
+                                       unsigned int* assignedPort);
 
     /**
      * If setup*Server has been successful, return true. Otherwise return false.
