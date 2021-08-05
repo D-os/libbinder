@@ -17,9 +17,14 @@
 #include <cstdint>
 #include <stddef.h>
 
+#include <android-base/result.h>
+#include <android-base/unique_fd.h>
+
 namespace android {
 
 // avoid optimizations
 void zeroMemory(uint8_t* data, size_t size);
+
+android::base::Result<void> setNonBlocking(android::base::borrowed_fd fd);
 
 }   // namespace android

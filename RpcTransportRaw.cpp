@@ -50,7 +50,7 @@ public:
         return ret;
     }
     Result<size_t> peek(void *buf, size_t size) override {
-        ssize_t ret = TEMP_FAILURE_RETRY(::recv(mSocket.get(), buf, size, MSG_PEEK | MSG_DONTWAIT));
+        ssize_t ret = TEMP_FAILURE_RETRY(::recv(mSocket.get(), buf, size, MSG_PEEK));
         if (ret < 0) {
             return ErrnoError() << "recv(MSG_PEEK)";
         }

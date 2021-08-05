@@ -39,6 +39,7 @@
 #include "RpcSocketAddress.h"
 #include "RpcState.h"
 #include "RpcWireFormat.h"
+#include "Utils.h"
 
 #ifdef __GLIBC__
 extern "C" pid_t gettid();
@@ -133,6 +134,10 @@ status_t RpcSession::setupPreconnectedClient(unique_fd fd, std::function<unique_
         if (!fd.ok()) {
             fd = request();
             if (!fd.ok()) return BAD_VALUE;
+        }
+        if (auto res = setNonBlocking(fd); !res.ok()) {
+            ALOGE("setupPreconnectedClient: %s", res.error().message().c_str());
+            return res.error().code() == 0 ? UNKNOWN_ERROR : -res.error().code();
         }
         return initAndAddConnection(std::move(fd), sessionId, incoming);
     });
@@ -470,8 +475,8 @@ status_t RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr,
     for (size_t tries = 0; tries < 5; tries++) {
         if (tries > 0) usleep(10000);
 
-        unique_fd serverFd(
-                TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
+        unique_fd serverFd(TEMP_FAILURE_RETRY(
+                socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)));
         if (serverFd == -1) {
             int savedErrno = errno;
             ALOGE("Could not create socket at %s: %s", addr.toString().c_str(),
