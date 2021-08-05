@@ -43,23 +43,31 @@
 namespace ndk {
 
 /**
+ * analog using std::shared_ptr for internally held refcount
+ *
  * ref must be called at least one time during the lifetime of this object. The recommended way to
  * construct this object is with SharedRefBase::make.
- *
- * Note - this class used to not inherit from enable_shared_from_this, so
- * std::make_shared works, but it won't be portable against old copies of this
- * class.
  */
-class SharedRefBase : public std::enable_shared_from_this<SharedRefBase> {
+class SharedRefBase {
    public:
     SharedRefBase() {}
-    virtual ~SharedRefBase() {}
+    virtual ~SharedRefBase() {
+        std::call_once(mFlagThis, [&]() {
+            __assert(__FILE__, __LINE__, "SharedRefBase: no ref created during lifetime");
+        });
+    }
 
     /**
      * A shared_ptr must be held to this object when this is called. This must be called once during
      * the lifetime of this object.
      */
-    std::shared_ptr<SharedRefBase> ref() { return shared_from_this(); }
+    std::shared_ptr<SharedRefBase> ref() {
+        std::shared_ptr<SharedRefBase> thiz = mThis.lock();
+
+        std::call_once(mFlagThis, [&]() { mThis = thiz = std::shared_ptr<SharedRefBase>(this); });
+
+        return thiz;
+    }
 
     /**
      * Convenience method for a ref (see above) which automatically casts to the desired child type.
@@ -78,13 +86,8 @@ class SharedRefBase : public std::enable_shared_from_this<SharedRefBase> {
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
         T* t = new T(std::forward<Args>(args)...);
 #pragma clang diagnostic pop
-
-        // T may have a private (though necessarily virtual!) destructor, so we
-        // can't use refbase. For getting the first ref, we don't use ref()
-        // since the internal shared_ptr isn't guaranteed to exist yet.
-        SharedRefBase* base = static_cast<SharedRefBase*>(t);
-        std::shared_ptr<SharedRefBase> strongBase(base);
-        return std::static_pointer_cast<T>(strongBase);
+        // warning: Potential leak of memory pointed to by 't' [clang-analyzer-unix.Malloc]
+        return t->template ref<T>();  // NOLINT(clang-analyzer-unix.Malloc)
     }
 
     static void operator delete(void* p) { std::free(p); }
@@ -97,9 +100,13 @@ class SharedRefBase : public std::enable_shared_from_this<SharedRefBase> {
 #if !defined(__ANDROID_API__) || __ANDROID_API__ >= 30 || defined(__ANDROID_APEX__)
    private:
 #else
-    [[deprecated("Prefer SharedRefBase::make<T>(...) or std::make_shared<T>() if possible.")]]
+    [[deprecated("Prefer SharedRefBase::make<T>(...) if possible.")]]
 #endif
     static void* operator new(size_t s) { return std::malloc(s); }
+
+   private:
+    std::once_flag mFlagThis;
+    std::weak_ptr<SharedRefBase> mThis;
 };
 
 /**
