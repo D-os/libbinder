@@ -32,10 +32,10 @@ public:
     virtual ~RpcTransport() = default;
 
     // replacement of ::send(). errno may not be set if TLS is enabled.
-    virtual android::base::Result<ssize_t> send(const void *buf, int size) = 0;
+    virtual android::base::Result<size_t> send(const void *buf, size_t size) = 0;
 
     // replacement of ::recv(). errno may not be set if TLS is enabled.
-    virtual android::base::Result<ssize_t> recv(void *buf, int size) = 0;
+    virtual android::base::Result<size_t> recv(void *buf, size_t size) = 0;
 
     // replacement of ::recv(MSG_PEEK). errno may not be set if TLS is enabled.
     //
@@ -44,7 +44,7 @@ public:
     // into an internal buffer in userspace. After that, pending() == true.
     // - For raw sockets, this calls ::recv(MSG_PEEK), which leaves the data in the kernel buffer;
     // pending() is always false.
-    virtual android::base::Result<ssize_t> peek(void *buf, int size) = 0;
+    virtual android::base::Result<size_t> peek(void *buf, size_t size) = 0;
 
     // Returns true if there are data pending in a userspace buffer that RpcTransport holds.
     //

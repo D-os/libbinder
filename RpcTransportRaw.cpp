@@ -32,21 +32,21 @@ namespace {
 class RpcTransportRaw : public RpcTransport {
 public:
     explicit RpcTransportRaw(android::base::unique_fd socket) : mSocket(std::move(socket)) {}
-    Result<ssize_t> send(const void *buf, int size) override {
+    Result<size_t> send(const void *buf, size_t size) override {
         ssize_t ret = TEMP_FAILURE_RETRY(::send(mSocket.get(), buf, size, MSG_NOSIGNAL));
         if (ret < 0) {
             return ErrnoError() << "send()";
         }
         return ret;
     }
-    Result<ssize_t> recv(void *buf, int size) override {
+    Result<size_t> recv(void *buf, size_t size) override {
         ssize_t ret = TEMP_FAILURE_RETRY(::recv(mSocket.get(), buf, size, MSG_NOSIGNAL));
         if (ret < 0) {
             return ErrnoError() << "recv()";
         }
         return ret;
     }
-    Result<ssize_t> peek(void *buf, int size) override {
+    Result<size_t> peek(void *buf, size_t size) override {
         ssize_t ret = TEMP_FAILURE_RETRY(::recv(mSocket.get(), buf, size, MSG_PEEK | MSG_DONTWAIT));
         if (ret < 0) {
             return ErrnoError() << "recv(MSG_PEEK)";
