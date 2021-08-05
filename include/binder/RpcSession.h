@@ -271,6 +271,8 @@ private:
             std::unique_ptr<RpcTransport> rpcTransport);
     [[nodiscard]] bool removeIncomingConnection(const sp<RpcConnection>& connection);
 
+    status_t initShutdownTrigger();
+
     enum class ConnectionUse {
         CLIENT,
         CLIENT_ASYNC,

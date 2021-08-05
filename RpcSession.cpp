@@ -139,6 +139,8 @@ status_t RpcSession::setupPreconnectedClient(unique_fd fd, std::function<unique_
 
 status_t RpcSession::addNullDebuggingClient() {
     // Note: only works on raw sockets.
+    if (auto status = initShutdownTrigger(); status != OK) return status;
+
     unique_fd serverFd(TEMP_FAILURE_RETRY(open("/dev/null", O_WRONLY | O_CLOEXEC)));
 
     if (serverFd == -1) {
@@ -484,6 +486,7 @@ status_t RpcSession::setupClient(
                             "Must only setup session once, but already has %zu clients",
                             mOutgoingConnections.size());
     }
+    if (auto status = initShutdownTrigger(); status != OK) return status;
 
     if (status_t status = connectAndInit(RpcAddress::zero(), false /*incoming*/); status != OK)
         return status;
@@ -653,19 +656,21 @@ status_t RpcSession::addIncomingConnection(std::unique_ptr<RpcTransport> rpcTran
     return OK;
 }
 
+status_t RpcSession::initShutdownTrigger() {
+    // first client connection added, but setForServer not called, so
+    // initializaing for a client.
+    if (mShutdownTrigger == nullptr) {
+        mShutdownTrigger = FdTrigger::make();
+        mEventListener = mShutdownListener = sp<WaitForShutdownListener>::make();
+        if (mShutdownTrigger == nullptr) return INVALID_OPERATION;
+    }
+    return OK;
+}
+
 status_t RpcSession::addOutgoingConnection(std::unique_ptr<RpcTransport> rpcTransport, bool init) {
     sp<RpcConnection> connection = sp<RpcConnection>::make();
     {
         std::lock_guard<std::mutex> _l(mMutex);
-
-        // first client connection added, but setForServer not called, so
-        // initializaing for a client.
-        if (mShutdownTrigger == nullptr) {
-            mShutdownTrigger = FdTrigger::make();
-            mEventListener = mShutdownListener = sp<WaitForShutdownListener>::make();
-            if (mShutdownTrigger == nullptr) return INVALID_OPERATION;
-        }
-
         connection->rpcTransport = std::move(rpcTransport);
         connection->exclusiveTid = gettid();
         mOutgoingConnections.push_back(connection);
