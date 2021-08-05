@@ -601,7 +601,7 @@ status_t RpcState::getAndExecuteCommand(const sp<RpcSession::RpcConnection>& con
 status_t RpcState::drainCommands(const sp<RpcSession::RpcConnection>& connection,
                                  const sp<RpcSession>& session, CommandType type) {
     uint8_t buf;
-    while (connection->rpcTransport->peek(&buf, sizeof(buf)).value_or(-1) > 0) {
+    while (connection->rpcTransport->peek(&buf, sizeof(buf)).value_or(0) > 0) {
         status_t status = getAndExecuteCommand(connection, session, type);
         if (status != OK) return status;
     }
