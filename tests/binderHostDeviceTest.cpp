@@ -101,8 +101,9 @@ public:
 
     [[nodiscard]] static sp<IBinder> get(unsigned int hostPort) {
         auto rpcSession = RpcSession::make();
-        if (!rpcSession->setupInetClient("127.0.0.1", hostPort)) {
-            ADD_FAILURE() << "Failed to setupInetClient on " << hostPort;
+        if (status_t status = rpcSession->setupInetClient("127.0.0.1", hostPort); status != OK) {
+            ADD_FAILURE() << "Failed to setupInetClient on " << hostPort << ": "
+                          << statusToString(status);
             return nullptr;
         }
         return rpcSession->getRootObject();

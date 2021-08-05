@@ -42,6 +42,8 @@ using android::ProcessState;
 using android::RpcServer;
 using android::RpcSession;
 using android::sp;
+using android::status_t;
+using android::statusToString;
 using android::String16;
 using android::binder::Status;
 
@@ -160,7 +162,7 @@ int main(int argc, char** argv) {
         sp<RpcServer> server = RpcServer::make();
         server->setRootObject(sp<MyBinderRpcBenchmark>::make());
         server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
-        CHECK(server->setupUnixDomainServer(addr.c_str()));
+        CHECK_EQ(OK, server->setupUnixDomainServer(addr.c_str()));
         server->join();
         exit(1);
     }
@@ -182,11 +184,13 @@ int main(int argc, char** argv) {
     CHECK_NE(nullptr, gKernelBinder.get());
 #endif
 
+    status_t status;
     for (size_t tries = 0; tries < 5; tries++) {
         usleep(10000);
-        if (gSession->setupUnixDomainClient(addr.c_str())) goto success;
+        status = gSession->setupUnixDomainClient(addr.c_str());
+        if (status == OK) goto success;
     }
-    LOG(FATAL) << "Could not connect.";
+    LOG(FATAL) << "Could not connect: " << statusToString(status).c_str();
 success:
 
     ::benchmark::RunSpecifiedBenchmarks();

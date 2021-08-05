@@ -78,17 +78,17 @@ public:
      * This should be called once per thread, matching 'join' in the remote
      * process.
      */
-    [[nodiscard]] bool setupUnixDomainClient(const char* path);
+    [[nodiscard]] status_t setupUnixDomainClient(const char* path);
 
     /**
      * Connects to an RPC server at the CVD & port.
      */
-    [[nodiscard]] bool setupVsockClient(unsigned int cvd, unsigned int port);
+    [[nodiscard]] status_t setupVsockClient(unsigned int cvd, unsigned int port);
 
     /**
      * Connects to an RPC server at the given address and port.
      */
-    [[nodiscard]] bool setupInetClient(const char* addr, unsigned int port);
+    [[nodiscard]] status_t setupInetClient(const char* addr, unsigned int port);
 
     /**
      * Starts talking to an RPC server which has already been connected to. This
@@ -100,8 +100,8 @@ public:
      *
      * For future compatibility, 'request' should not reference any stack data.
      */
-    [[nodiscard]] bool setupPreconnectedClient(base::unique_fd fd,
-                                               std::function<base::unique_fd()>&& request);
+    [[nodiscard]] status_t setupPreconnectedClient(base::unique_fd fd,
+                                                   std::function<base::unique_fd()>&& request);
 
     /**
      * For debugging!
@@ -110,7 +110,7 @@ public:
      * response will never be satisfied. All data sent here will be
      * unceremoniously cast down the bottomless pit, /dev/null.
      */
-    [[nodiscard]] bool addNullDebuggingClient();
+    [[nodiscard]] status_t addNullDebuggingClient();
 
     /**
      * Query the other side of the session for the root object hosted by that
@@ -253,15 +253,17 @@ private:
     // join on thread passed to preJoinThreadOwnership
     static void join(sp<RpcSession>&& session, PreJoinSetupResult&& result);
 
-    [[nodiscard]] bool setupClient(
-            const std::function<bool(const RpcAddress& sessionId, bool incoming)>& connectAndInit);
-    [[nodiscard]] bool setupSocketClient(const RpcSocketAddress& address);
-    [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address,
-                                                const RpcAddress& sessionId, bool incoming);
-    [[nodiscard]] bool initAndAddConnection(base::unique_fd fd, const RpcAddress& sessionId,
-                                            bool incoming);
-    [[nodiscard]] bool addIncomingConnection(std::unique_ptr<RpcTransport> rpcTransport);
-    [[nodiscard]] bool addOutgoingConnection(std::unique_ptr<RpcTransport> rpcTransport, bool init);
+    [[nodiscard]] status_t setupClient(
+            const std::function<status_t(const RpcAddress& sessionId, bool incoming)>&
+                    connectAndInit);
+    [[nodiscard]] status_t setupSocketClient(const RpcSocketAddress& address);
+    [[nodiscard]] status_t setupOneSocketConnection(const RpcSocketAddress& address,
+                                                    const RpcAddress& sessionId, bool incoming);
+    [[nodiscard]] status_t initAndAddConnection(base::unique_fd fd, const RpcAddress& sessionId,
+                                                bool incoming);
+    [[nodiscard]] status_t addIncomingConnection(std::unique_ptr<RpcTransport> rpcTransport);
+    [[nodiscard]] status_t addOutgoingConnection(std::unique_ptr<RpcTransport> rpcTransport,
+                                                 bool init);
     [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
                                     const wp<RpcSession::EventListener>& eventListener,
                                     const RpcAddress& sessionId);

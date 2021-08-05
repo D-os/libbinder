@@ -89,7 +89,7 @@ TEST_P(BinderRpcSimple, SetExternalServerTest) {
     auto server = RpcServer::make(newFactory(GetParam()));
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     ASSERT_FALSE(server->hasServer());
-    ASSERT_TRUE(server->setupExternalServer(std::move(sink)));
+    ASSERT_EQ(OK, server->setupExternalServer(std::move(sink)));
     ASSERT_TRUE(server->hasServer());
     base::unique_fd retrieved = server->releaseServer();
     ASSERT_FALSE(server->hasServer());
@@ -484,13 +484,13 @@ public:
                         case SocketType::PRECONNECTED:
                             [[fallthrough]];
                         case SocketType::UNIX:
-                            CHECK(server->setupUnixDomainServer(addr.c_str())) << addr;
+                            CHECK_EQ(OK, server->setupUnixDomainServer(addr.c_str())) << addr;
                             break;
                         case SocketType::VSOCK:
-                            CHECK(server->setupVsockServer(vsockPort));
+                            CHECK_EQ(OK, server->setupVsockServer(vsockPort));
                             break;
                         case SocketType::INET: {
-                            CHECK(server->setupInetServer(kLocalInetAddress, 0, &outPort));
+                            CHECK_EQ(OK, server->setupInetServer(kLocalInetAddress, 0, &outPort));
                             CHECK_NE(0, outPort);
                             break;
                         }
@@ -516,30 +516,35 @@ public:
             CHECK_NE(0, outPort);
         }
 
+        status_t status;
+
         for (size_t i = 0; i < options.numSessions; i++) {
             sp<RpcSession> session = RpcSession::make(newFactory(rpcSecurity));
             session->setMaxThreads(options.numIncomingConnections);
 
             switch (socketType) {
                 case SocketType::PRECONNECTED:
-                    if (session->setupPreconnectedClient({}, [=]() {
-                            return connectToUds(addr.c_str());
-                        }))
-                        goto success;
+                    status = session->setupPreconnectedClient({}, [=]() {
+                        return connectToUds(addr.c_str());
+                    });
+                    if (status == OK) goto success;
                     break;
                 case SocketType::UNIX:
-                    if (session->setupUnixDomainClient(addr.c_str())) goto success;
+                    status = session->setupUnixDomainClient(addr.c_str());
+                    if (status == OK) goto success;
                     break;
                 case SocketType::VSOCK:
-                    if (session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort)) goto success;
+                    status = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
+                    if (status == OK) goto success;
                     break;
                 case SocketType::INET:
-                    if (session->setupInetClient("127.0.0.1", outPort)) goto success;
+                    status = session->setupInetClient("127.0.0.1", outPort);
+                    if (status == OK) goto success;
                     break;
                 default:
                     LOG_ALWAYS_FATAL("Unknown socket type");
             }
-            LOG_ALWAYS_FATAL("Could not connect");
+            LOG_ALWAYS_FATAL("Could not connect %s", statusToString(status).c_str());
         success:
             ret.sessions.push_back({session, session->getRootObject()});
         }
@@ -1191,14 +1196,14 @@ static bool testSupportVsockLoopback() {
     unsigned int vsockPort = allocateVsockPort();
     sp<RpcServer> server = RpcServer::make(RpcTransportCtxFactoryRaw::make());
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
-    CHECK(server->setupVsockServer(vsockPort));
+    CHECK_EQ(OK, server->setupVsockServer(vsockPort));
     server->start();
 
     sp<RpcSession> session = RpcSession::make(RpcTransportCtxFactoryRaw::make());
-    bool okay = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
+    status_t status = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
     while (!server->shutdown()) usleep(10000);
-    ALOGE("Detected vsock loopback supported: %d", okay);
-    return okay;
+    ALOGE("Detected vsock loopback supported: %s", statusToString(status).c_str());
+    return status == OK;
 }
 
 static std::vector<SocketType> testSocketTypes() {
@@ -1274,7 +1279,7 @@ TEST_P(BinderRpcSimple, Shutdown) {
     unlink(addr.c_str());
     auto server = RpcServer::make(newFactory(GetParam()));
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
-    ASSERT_TRUE(server->setupUnixDomainServer(addr.c_str()));
+    ASSERT_EQ(OK, server->setupUnixDomainServer(addr.c_str()));
     auto joinEnds = std::make_shared<OneOffSignal>();
 
     // If things are broken and the thread never stops, don't block other tests. Because the thread
@@ -1315,14 +1320,14 @@ TEST(BinderRpc, Java) {
     auto rpcServer = RpcServer::make();
     rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     unsigned int port;
-    ASSERT_TRUE(rpcServer->setupInetServer(kLocalInetAddress, 0, &port));
+    ASSERT_EQ(OK, rpcServer->setupInetServer(kLocalInetAddress, 0, &port));
     auto socket = rpcServer->releaseServer();
 
     auto keepAlive = sp<BBinder>::make();
     ASSERT_EQ(OK, binder->setRpcClientDebug(std::move(socket), keepAlive));
 
     auto rpcSession = RpcSession::make();
-    ASSERT_TRUE(rpcSession->setupInetClient("127.0.0.1", port));
+    ASSERT_EQ(OK, rpcSession->setupInetClient("127.0.0.1", port));
     auto rpcBinder = rpcSession->getRootObject();
     ASSERT_NE(nullptr, rpcBinder);
 
