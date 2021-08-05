@@ -91,6 +91,19 @@ public:
     [[nodiscard]] bool setupInetClient(const char* addr, unsigned int port);
 
     /**
+     * Starts talking to an RPC server which has already been connected to. This
+     * is expected to be used when another process has permission to connect to
+     * a binder RPC service, but this process only has permission to talk to
+     * that service.
+     *
+     * For convenience, if 'fd' is -1, 'request' will be called.
+     *
+     * For future compatibility, 'request' should not reference any stack data.
+     */
+    [[nodiscard]] bool setupPreconnectedClient(base::unique_fd fd,
+                                               std::function<base::unique_fd()>&& request);
+
+    /**
      * For debugging!
      *
      * Sets up an empty connection. All queries to this connection which require a
@@ -240,9 +253,13 @@ private:
     // join on thread passed to preJoinThreadOwnership
     static void join(sp<RpcSession>&& session, PreJoinSetupResult&& result);
 
+    [[nodiscard]] bool setupClient(
+            const std::function<bool(const RpcAddress& sessionId, bool incoming)>& connectAndInit);
     [[nodiscard]] bool setupSocketClient(const RpcSocketAddress& address);
     [[nodiscard]] bool setupOneSocketConnection(const RpcSocketAddress& address,
-                                                const RpcAddress& sessionId, bool server);
+                                                const RpcAddress& sessionId, bool incoming);
+    [[nodiscard]] bool initAndAddConnection(base::unique_fd fd, const RpcAddress& sessionId,
+                                            bool incoming);
     [[nodiscard]] bool addIncomingConnection(std::unique_ptr<RpcTransport> rpcTransport);
     [[nodiscard]] bool addOutgoingConnection(std::unique_ptr<RpcTransport> rpcTransport, bool init);
     [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
