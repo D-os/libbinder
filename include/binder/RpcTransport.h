@@ -23,42 +23,30 @@
 
 #include <android-base/result.h>
 #include <android-base/unique_fd.h>
+#include <utils/Errors.h>
 
 namespace android {
+
+class FdTrigger;
 
 // Represents a socket connection.
 class RpcTransport {
 public:
     virtual ~RpcTransport() = default;
 
-    // replacement of ::send(). errno may not be set if TLS is enabled.
-    virtual android::base::Result<size_t> send(const void *buf, size_t size) = 0;
-
-    // replacement of ::recv(). errno may not be set if TLS is enabled.
-    virtual android::base::Result<size_t> recv(void *buf, size_t size) = 0;
-
-    // replacement of ::recv(MSG_PEEK). errno may not be set if TLS is enabled.
-    //
-    // Implementation details:
-    // - For TLS, this may invoke syscalls and read data from the transport
-    // into an internal buffer in userspace. After that, pending() == true.
-    // - For raw sockets, this calls ::recv(MSG_PEEK), which leaves the data in the kernel buffer;
-    // pending() is always false.
+    // replacement of ::recv(MSG_PEEK). Error code may not be set if TLS is enabled.
     virtual android::base::Result<size_t> peek(void *buf, size_t size) = 0;
 
-    // Returns true if there are data pending in a userspace buffer that RpcTransport holds.
-    //
-    // Implementation details:
-    // - For TLS, this does not invoke any syscalls or read any data from the
-    // transport. This only returns whether there are data pending in the internal buffer in
-    // userspace.
-    // - For raw sockets, this always returns false.
-    virtual bool pending() = 0;
-
-    // Returns fd for polling.
-    //
-    // Do not directly read / write on this raw fd!
-    [[nodiscard]] virtual android::base::borrowed_fd pollSocket() const = 0;
+    /**
+     * Read (or write), but allow to be interrupted by a trigger.
+     *
+     * Return:
+     *   OK - succeeded in completely processing 'size'
+     *   error - interrupted (failure or trigger)
+     */
+    virtual status_t interruptableWriteFully(FdTrigger *fdTrigger, const void *buf,
+                                             size_t size) = 0;
+    virtual status_t interruptableReadFully(FdTrigger *fdTrigger, void *buf, size_t size) = 0;
 
 protected:
     RpcTransport() = default;

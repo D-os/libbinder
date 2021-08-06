@@ -39,6 +39,7 @@ class RpcServer;
 class RpcSocketAddress;
 class RpcState;
 class RpcTransport;
+class FdTrigger;
 
 constexpr uint32_t RPC_WIRE_PROTOCOL_VERSION_NEXT = 0;
 constexpr uint32_t RPC_WIRE_PROTOCOL_VERSION_EXPERIMENTAL = 0xF0000000;
@@ -160,50 +161,6 @@ private:
     friend RpcServer;
     friend RpcState;
     explicit RpcSession(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory);
-
-    /** This is not a pipe. */
-    struct FdTrigger {
-        /** Returns nullptr for error case */
-        static std::unique_ptr<FdTrigger> make();
-
-        /**
-         * Close the write end of the pipe so that the read end receives POLLHUP.
-         * Not threadsafe.
-         */
-        void trigger();
-
-        /**
-         * Whether this has been triggered.
-         */
-        bool isTriggered();
-
-        /**
-         * Poll for a read event.
-         *
-         * event - for pollfd
-         *
-         * Return:
-         *   true - time to read!
-         *   false - trigger happened
-         */
-        status_t triggerablePoll(base::borrowed_fd fd, int16_t event);
-
-        /**
-         * Read (or write), but allow to be interrupted by this trigger.
-         *
-         * Return:
-         *   true - succeeded in completely processing 'size'
-         *   false - interrupted (failure or trigger)
-         */
-        status_t interruptableReadFully(RpcTransport* rpcTransport, void* data, size_t size);
-        status_t interruptableWriteFully(RpcTransport* rpcTransport, const void* data, size_t size);
-
-    private:
-        status_t triggerablePoll(RpcTransport* rpcTransport, int16_t event);
-
-        base::unique_fd mWrite;
-        base::unique_fd mRead;
-    };
 
     class EventListener : public virtual RefBase {
     public:
