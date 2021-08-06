@@ -56,8 +56,13 @@ protected:
 class RpcTransportCtx {
 public:
     virtual ~RpcTransportCtx() = default;
+
+    // Create a new RpcTransport object.
+    //
+    // Implemenion details: for TLS, this function may incur I/O. |fdTrigger| may be used
+    // to interrupt I/O. This function blocks until handshake is finished.
     [[nodiscard]] virtual std::unique_ptr<RpcTransport> newTransport(
-            android::base::unique_fd fd) const = 0;
+            android::base::unique_fd fd, FdTrigger *fdTrigger) const = 0;
 
 protected:
     RpcTransportCtx() = default;

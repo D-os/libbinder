@@ -260,7 +260,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     status_t status = OK;
 
     int clientFdForLog = clientFd.get();
-    auto client = server->mCtx->newTransport(std::move(clientFd));
+    auto client = server->mCtx->newTransport(std::move(clientFd), server->mShutdownTrigger.get());
     if (client == nullptr) {
         ALOGE("Dropping accept4()-ed socket because sslAccept fails");
         status = DEAD_OBJECT;

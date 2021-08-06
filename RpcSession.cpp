@@ -160,7 +160,7 @@ status_t RpcSession::addNullDebuggingClient() {
         ALOGE("Unable to create RpcTransportCtx for null debugging client");
         return NO_MEMORY;
     }
-    auto server = ctx->newTransport(std::move(serverFd));
+    auto server = ctx->newTransport(std::move(serverFd), mShutdownTrigger.get());
     if (server == nullptr) {
         ALOGE("Unable to set up RpcTransport");
         return UNKNOWN_ERROR;
@@ -536,7 +536,7 @@ status_t RpcSession::initAndAddConnection(unique_fd fd, const RpcAddress& sessio
               mRpcTransportCtxFactory->toCString());
         return NO_MEMORY;
     }
-    auto server = ctx->newTransport(std::move(fd));
+    auto server = ctx->newTransport(std::move(fd), mShutdownTrigger.get());
     if (server == nullptr) {
         ALOGE("Unable to set up RpcTransport in %s context", mRpcTransportCtxFactory->toCString());
         return UNKNOWN_ERROR;
