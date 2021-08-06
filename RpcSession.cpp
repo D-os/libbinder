@@ -500,7 +500,6 @@ bool RpcSession::setupClient(
 
     // TODO(b/189955605): we should add additional sessions dynamically
     // instead of all at once.
-    // TODO(b/186470974): first risk of blocking
     size_t numThreadsAvailable;
     if (status_t status = getRemoteMaxThreads(&numThreadsAvailable); status != OK) {
         ALOGE("Could not get max threads after initial session setup: %s",
