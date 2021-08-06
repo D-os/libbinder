@@ -158,8 +158,10 @@ sp<IBinder> getDeviceService(std::vector<std::string>&& serviceDispatcherArgs) {
     LOG_ALWAYS_FATAL_IF(!forwardResult->hostPort().has_value());
 
     auto rpcSession = RpcSession::make();
-    if (!rpcSession->setupInetClient("127.0.0.1", *forwardResult->hostPort())) {
-        ALOGE("Unable to set up inet client on host port %u", *forwardResult->hostPort());
+    if (status_t status = rpcSession->setupInetClient("127.0.0.1", *forwardResult->hostPort());
+        status != OK) {
+        ALOGE("Unable to set up inet client on host port %u: %s", *forwardResult->hostPort(),
+              statusToString(status).c_str());
         return nullptr;
     }
     auto binder = rpcSession->getRootObject();

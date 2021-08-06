@@ -37,7 +37,7 @@ private:
 void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider) {
     if (provider.ConsumeBool()) {
         auto session = RpcSession::make(RpcTransportCtxFactoryRaw::make());
-        CHECK(session->addNullDebuggingClient());
+        CHECK_EQ(OK, session->addNullDebuggingClient());
         p->markForRpc(session);
         fillRandomParcelData(p, std::move(provider));
         return;
