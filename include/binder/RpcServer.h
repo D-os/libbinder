@@ -59,12 +59,12 @@ public:
      *     process B makes binder b and sends it to A
      *     A uses this 'back session' to send things back to B
      */
-    [[nodiscard]] bool setupUnixDomainServer(const char* path);
+    [[nodiscard]] status_t setupUnixDomainServer(const char* path);
 
     /**
      * Creates an RPC server at the current port.
      */
-    [[nodiscard]] bool setupVsockServer(unsigned int port);
+    [[nodiscard]] status_t setupVsockServer(unsigned int port);
 
     /**
      * Creates an RPC server at the current port using IPv4.
@@ -80,8 +80,8 @@ public:
      * "0.0.0.0" allows for connections on any IP address that the device may
      * have
      */
-    [[nodiscard]] bool setupInetServer(const char* address, unsigned int port,
-                                       unsigned int* assignedPort);
+    [[nodiscard]] status_t setupInetServer(const char* address, unsigned int port,
+                                           unsigned int* assignedPort);
 
     /**
      * If setup*Server has been successful, return true. Otherwise return false.
@@ -97,7 +97,7 @@ public:
      * Set up server using an external FD previously set up by releaseServer().
      * Return false if there's already a server.
      */
-    bool setupExternalServer(base::unique_fd serverFd);
+    [[nodiscard]] status_t setupExternalServer(base::unique_fd serverFd);
 
     void iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
 
@@ -175,7 +175,7 @@ private:
     void onSessionIncomingThreadEnded() override;
 
     static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
-    bool setupSocketServer(const RpcSocketAddress& address);
+    status_t setupSocketServer(const RpcSocketAddress& address);
 
     const std::unique_ptr<RpcTransportCtxFactory> mRpcTransportCtxFactory;
     bool mAgreedExperimental = false;
