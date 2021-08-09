@@ -283,8 +283,8 @@ status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
     }
 
     if (status_t status =
-                session->mShutdownTrigger->interruptableWriteFully(connection->rpcTransport.get(),
-                                                                   data, size);
+                connection->rpcTransport->interruptableWriteFully(session->mShutdownTrigger.get(),
+                                                                  data, size);
         status != OK) {
         LOG_RPC_DETAIL("Failed to write %s (%zu bytes) on RpcTransport %p, error: %s", what, size,
                        connection->rpcTransport.get(), statusToString(status).c_str());
@@ -305,8 +305,8 @@ status_t RpcState::rpcRec(const sp<RpcSession::RpcConnection>& connection,
     }
 
     if (status_t status =
-                session->mShutdownTrigger->interruptableReadFully(connection->rpcTransport.get(),
-                                                                  data, size);
+                connection->rpcTransport->interruptableReadFully(session->mShutdownTrigger.get(),
+                                                                 data, size);
         status != OK) {
         LOG_RPC_DETAIL("Failed to read %s (%zu bytes) on RpcTransport %p, error: %s", what, size,
                        connection->rpcTransport.get(), statusToString(status).c_str());

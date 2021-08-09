@@ -29,6 +29,7 @@
 #include <binder/RpcTransportRaw.h>
 #include <log/log.h>
 
+#include "FdTrigger.h"
 #include "RpcSocketAddress.h"
 #include "RpcState.h"
 #include "RpcWireFormat.h"
@@ -156,7 +157,7 @@ void RpcServer::join() {
         LOG_ALWAYS_FATAL_IF(!mServer.ok(), "RpcServer must be setup to join.");
         LOG_ALWAYS_FATAL_IF(mShutdownTrigger != nullptr, "Already joined");
         mJoinThreadRunning = true;
-        mShutdownTrigger = RpcSession::FdTrigger::make();
+        mShutdownTrigger = FdTrigger::make();
         LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr, "Cannot create join signaler");
 
         mCtx = mRpcTransportCtxFactory->newServerCtx();
@@ -167,7 +168,7 @@ void RpcServer::join() {
     status_t status;
     while ((status = mShutdownTrigger->triggerablePoll(mServer, POLLIN)) == OK) {
         unique_fd clientFd(TEMP_FAILURE_RETRY(
-                accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC)));
+                accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC | SOCK_NONBLOCK)));
 
         if (clientFd < 0) {
             ALOGE("Could not accept4 socket: %s", strerror(errno));
@@ -259,7 +260,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     status_t status = OK;
 
     int clientFdForLog = clientFd.get();
-    auto client = server->mCtx->newTransport(std::move(clientFd));
+    auto client = server->mCtx->newTransport(std::move(clientFd), server->mShutdownTrigger.get());
     if (client == nullptr) {
         ALOGE("Dropping accept4()-ed socket because sslAccept fails");
         status = DEAD_OBJECT;
@@ -270,8 +271,8 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
 
     RpcConnectionHeader header;
     if (status == OK) {
-        status = server->mShutdownTrigger->interruptableReadFully(client.get(), &header,
-                                                                  sizeof(header));
+        status = client->interruptableReadFully(server->mShutdownTrigger.get(), &header,
+                                                sizeof(header));
         if (status != OK) {
             ALOGE("Failed to read ID for client connecting to RPC server: %s",
                   statusToString(status).c_str());
@@ -296,8 +297,8 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
                     .version = protocolVersion,
             };
 
-            status = server->mShutdownTrigger->interruptableWriteFully(client.get(), &response,
-                                                                       sizeof(response));
+            status = client->interruptableWriteFully(server->mShutdownTrigger.get(), &response,
+                                                     sizeof(response));
             if (status != OK) {
                 ALOGE("Failed to send new session response: %s", statusToString(status).c_str());
                 // still need to cleanup before we can return
@@ -387,8 +388,8 @@ status_t RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
     LOG_RPC_DETAIL("Setting up socket server %s", addr.toString().c_str());
     LOG_ALWAYS_FATAL_IF(hasServer(), "Each RpcServer can only have one server.");
 
-    unique_fd serverFd(
-            TEMP_FAILURE_RETRY(socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC, 0)));
+    unique_fd serverFd(TEMP_FAILURE_RETRY(
+            socket(addr.addr()->sa_family, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)));
     if (serverFd == -1) {
         int savedErrno = errno;
         ALOGE("Could not create socket: %s", strerror(savedErrno));
