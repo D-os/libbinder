@@ -32,6 +32,7 @@
 
 namespace android {
 
+class FdTrigger;
 class RpcSocketAddress;
 
 /**
@@ -190,7 +191,7 @@ private:
     sp<IBinder> mRootObject;
     wp<IBinder> mRootObjectWeak;
     std::map<RpcAddress, sp<RpcSession>> mSessions;
-    std::unique_ptr<RpcSession::FdTrigger> mShutdownTrigger;
+    std::unique_ptr<FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;
     std::unique_ptr<RpcTransportCtx> mCtx;
 };
