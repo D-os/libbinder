@@ -224,6 +224,17 @@ bool isServiceRunning(const char* serviceName) {
     return true;
 }
 
+TEST(NdkBinder, DetectDoubleOwn) {
+    auto badService = ndk::SharedRefBase::make<MyBinderNdkUnitTest>();
+    EXPECT_DEATH(std::shared_ptr<MyBinderNdkUnitTest>(badService.get()),
+                 "Is this object double-owned?");
+}
+
+TEST(NdkBinder, DetectNoSharedRefBaseCreated) {
+    EXPECT_DEATH(std::make_shared<MyBinderNdkUnitTest>(),
+                 "SharedRefBase: no ref created during lifetime");
+}
+
 TEST(NdkBinder, GetServiceThatDoesntExist) {
     sp<IFoo> foo = IFoo::getService("asdfghkl;");
     EXPECT_EQ(nullptr, foo.get());
