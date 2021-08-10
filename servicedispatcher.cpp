@@ -23,9 +23,12 @@
 #include <android-base/logging.h>
 #include <android-base/properties.h>
 #include <android-base/stringprintf.h>
+#include <android/debug/BnAdbCallback.h>
+#include <android/debug/IAdbManager.h>
 #include <android/os/BnServiceManager.h>
 #include <android/os/IServiceManager.h>
 #include <binder/IServiceManager.h>
+#include <binder/ProcessState.h>
 #include <binder/RpcServer.h>
 
 using android::BBinder;
@@ -50,6 +53,7 @@ namespace {
 
 const char* kLocalInetAddress = "127.0.0.1";
 using ServiceRetriever = decltype(&android::IServiceManager::checkService);
+using android::debug::IAdbManager;
 
 int Usage(const char* program) {
     auto basename = Basename(program);
@@ -213,6 +217,25 @@ int wrapServiceManager(const ServiceRetriever& serviceRetriever) {
     __builtin_unreachable();
 }
 
+class AdbCallback : public android::debug::BnAdbCallback {
+public:
+    android::binder::Status onDebuggingChanged(bool enabled,
+                                               android::debug::AdbTransportType) override {
+        if (!enabled) {
+            LOG(ERROR) << "ADB debugging disabled, exiting.";
+            exit(EX_SOFTWARE);
+        }
+        return android::binder::Status::ok();
+    }
+};
+
+void exitOnAdbDebuggingDisabled() {
+    auto adb = android::waitForService<IAdbManager>(String16("adb"));
+    CHECK(adb != nullptr) << "Unable to retrieve service adb";
+    auto status = adb->registerCallback(sp<AdbCallback>::make());
+    CHECK(status.isOk()) << "Unable to call IAdbManager::registerCallback: " << status;
+}
+
 // Log to logd. For warning and more severe messages, also log to stderr.
 class ServiceDispatcherLogger {
 public:
@@ -252,6 +275,10 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+
+    android::ProcessState::self()->setThreadPoolMaxThreadCount(1);
+    android::ProcessState::self()->startThreadPool();
+    exitOnAdbDebuggingDisabled();
 
     if (optind + 1 != argc) return Usage(argv[0]);
     auto name = argv[optind];
