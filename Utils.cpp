@@ -18,10 +18,24 @@
 
 #include <string.h>
 
+using android::base::ErrnoError;
+using android::base::Result;
+
 namespace android {
 
 void zeroMemory(uint8_t* data, size_t size) {
     memset(data, 0, size);
 }
 
-}   // namespace android
+Result<void> setNonBlocking(android::base::borrowed_fd fd) {
+    int flags = TEMP_FAILURE_RETRY(fcntl(fd.get(), F_GETFL));
+    if (flags == -1) {
+        return ErrnoError() << "Could not get flags for fd";
+    }
+    if (int ret = TEMP_FAILURE_RETRY(fcntl(fd.get(), F_SETFL, flags | O_NONBLOCK)); ret == -1) {
+        return ErrnoError() << "Could not set non-blocking flag for fd";
+    }
+    return {};
+}
+
+} // namespace android
