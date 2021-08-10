@@ -90,6 +90,8 @@ public:
     static void         setLimitCallback(binder_proxy_limit_callback cb);
     static void         setBinderProxyCountWatermarks(int high, int low);
 
+    std::optional<int32_t> getDebugBinderHandle() const;
+
     class ObjectManager {
     public:
         ObjectManager();
