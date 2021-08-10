@@ -188,6 +188,14 @@ int32_t BpBinder::binderHandle() const {
     return std::get<BinderHandle>(mHandle).handle;
 }
 
+std::optional<int32_t> BpBinder::getDebugBinderHandle() const {
+    if (!isRpcBinder()) {
+        return binderHandle();
+    } else {
+        return std::nullopt;
+    }
+}
+
 bool BpBinder::isDescriptorCached() const {
     Mutex::Autolock _l(mLock);
     return mDescriptorCache.size() ? true : false;
