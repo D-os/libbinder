@@ -153,7 +153,7 @@ BENCHMARK(BM_throughputForTransportAndBytes)
                        {64, 1024, 2048, 4096, 8182, 16364, 32728, 65535, 65536, 65537}});
 
 void BM_repeatBinder(benchmark::State& state) {
-    sp<IBinder> binder = gSession->getRootObject();
+    sp<IBinder> binder = getBinderForOptions(state);
     CHECK(binder != nullptr);
     sp<IBinderRpcBenchmark> iface = interface_cast<IBinderRpcBenchmark>(binder);
     CHECK(iface != nullptr);
