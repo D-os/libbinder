@@ -522,7 +522,8 @@ public:
         status_t status;
 
         for (size_t i = 0; i < options.numSessions; i++) {
-            sp<RpcSession> session = RpcSession::make(newFactory(rpcSecurity));
+            sp<RpcSession> session =
+                    RpcSession::make(newFactory(rpcSecurity), std::nullopt, std::nullopt);
             session->setMaxThreads(options.numIncomingConnections);
 
             switch (socketType) {
@@ -1207,7 +1208,8 @@ static bool testSupportVsockLoopback() {
     }
     server->start();
 
-    sp<RpcSession> session = RpcSession::make(RpcTransportCtxFactoryRaw::make());
+    sp<RpcSession> session =
+            RpcSession::make(RpcTransportCtxFactoryRaw::make(), std::nullopt, std::nullopt);
     status_t status = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
     while (!server->shutdown()) usleep(10000);
     ALOGE("Detected vsock loopback supported: %s", statusToString(status).c_str());
