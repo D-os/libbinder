@@ -166,6 +166,34 @@ bssl::UniquePtr<X509> makeSelfSignedCert(EVP_PKEY* evp_pkey, const int valid_day
     }
 }
 
+// Helper class to ErrorQueue::toString
+class ErrorQueueString {
+public:
+    static std::string toString() {
+        ErrorQueueString thiz;
+        ERR_print_errors_cb(staticCallback, &thiz);
+        return thiz.mSs.str();
+    }
+
+private:
+    static int staticCallback(const char* str, size_t len, void* ctx) {
+        return reinterpret_cast<ErrorQueueString*>(ctx)->callback(str, len);
+    }
+    int callback(const char* str, size_t len) {
+        if (len == 0) return 1; // continue
+        // ERR_print_errors_cb place a new line at the end, but it doesn't say so in the API.
+        if (str[len - 1] == '\n') len -= 1;
+        if (!mIsFirst) {
+            mSs << '\n';
+        }
+        mSs << std::string_view(str, len);
+        mIsFirst = false;
+        return 1; // continue
+    }
+    std::stringstream mSs;
+    bool mIsFirst = true;
+};
+
 // Handles libssl's error queue.
 //
 // Call into any of its member functions to ensure the error queue is properly handled or cleared.
@@ -182,17 +210,10 @@ public:
 
     // Stores the error queue in |ssl| into a string, then clears the error queue.
     std::string toString() {
-        std::stringstream ss;
-        ERR_print_errors_cb(
-                [](const char* str, size_t len, void* ctx) {
-                    auto ss = (std::stringstream*)ctx;
-                    (*ss) << std::string_view(str, len) << "\n";
-                    return 1; // continue
-                },
-                &ss);
+        auto ret = ErrorQueueString::toString();
         // Though ERR_print_errors_cb should have cleared it, it is okay to clear again.
         clear();
-        return ss.str();
+        return ret;
     }
 
     // |sslError| should be from Ssl::getError().
