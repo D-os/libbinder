@@ -409,7 +409,7 @@ static int open_driver(const char *driver)
         uint32_t enable = DEFAULT_ENABLE_ONEWAY_SPAM_DETECTION;
         result = ioctl(fd, BINDER_ENABLE_ONEWAY_SPAM_DETECTION, &enable);
         if (result == -1) {
-            ALOGD("Binder ioctl to enable oneway spam detection failed: %s", strerror(errno));
+            ALOGV("Binder ioctl to enable oneway spam detection failed: %s", strerror(errno));
         }
     } else {
         ALOGW("Opening '%s' failed: %s\n", driver, strerror(errno));
