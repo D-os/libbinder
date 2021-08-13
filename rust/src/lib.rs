@@ -101,45 +101,50 @@ mod binder;
 mod binder_async;
 mod error;
 mod native;
+mod parcel;
 mod state;
 
 use binder_ndk_sys as sys;
 
-pub mod parcel;
-
-pub use crate::binder::{
-    BinderFeatures, FromIBinder, IBinder, IBinderInternal, Interface, InterfaceClass, Remotable,
-    Stability, Strong, ToAsyncInterface, ToSyncInterface, TransactionCode, TransactionFlags, Weak,
-    FIRST_CALL_TRANSACTION, FLAG_CLEAR_BUF, FLAG_ONEWAY, FLAG_PRIVATE_LOCAL, LAST_CALL_TRANSACTION,
+pub use binder::{BinderFeatures, FromIBinder, IBinder, Interface, Strong, Weak};
+pub use crate::binder_async::{BinderAsyncPool, BoxFuture};
+pub use error::{ExceptionCode, Status, StatusCode};
+pub use native::{
+    add_service, force_lazy_services_persist, is_handling_transaction, register_lazy_service,
 };
-pub use crate::binder_async::{BoxFuture, BinderAsyncPool, BinderAsyncRuntime};
-pub use error::{status_t, ExceptionCode, Result, Status, StatusCode};
-pub use native::{add_service, force_lazy_services_persist, is_handling_transaction, register_lazy_service, Binder};
-pub use parcel::{BorrowedParcel, Parcel};
-pub use proxy::{get_interface, get_service, wait_for_interface, wait_for_service};
-pub use proxy::{AssociateClass, DeathRecipient, Proxy, SpIBinder, WpIBinder};
+pub use parcel::{ParcelFileDescriptor, Parcelable, ParcelableHolder};
+pub use proxy::{
+    get_interface, get_service, wait_for_interface, wait_for_service, DeathRecipient, SpIBinder,
+    WpIBinder,
+};
 pub use state::{ProcessState, ThreadState};
 
+/// Binder result containing a [`Status`] on error.
+pub type Result<T> = std::result::Result<T, Status>;
+
+/// Advanced Binder APIs needed internally by AIDL or when manually using Binder
+/// without AIDL.
+pub mod binder_impl {
+    pub use crate::binder::{
+        IBinderInternal, InterfaceClass, Remotable, Stability, ToAsyncInterface, ToSyncInterface,
+        TransactionCode, TransactionFlags, FIRST_CALL_TRANSACTION, FLAG_CLEAR_BUF, FLAG_ONEWAY,
+        FLAG_PRIVATE_LOCAL, LAST_CALL_TRANSACTION,
+    };
+    pub use crate::binder_async::BinderAsyncRuntime;
+    pub use crate::error::status_t;
+    pub use crate::native::Binder;
+    pub use crate::parcel::{
+        BorrowedParcel, Deserialize, DeserializeArray, DeserializeOption, Parcel,
+        ParcelableMetadata, Serialize, SerializeArray, SerializeOption, NON_NULL_PARCELABLE_FLAG,
+        NULL_PARCELABLE_FLAG,
+    };
+    pub use crate::proxy::{AssociateClass, Proxy};
+}
+
 /// Unstable, in-development API that only allowlisted clients are allowed to use.
+#[doc(hidden)]
 pub mod unstable_api {
     pub use crate::binder::AsNative;
     pub use crate::proxy::unstable_api::new_spibinder;
     pub use crate::sys::AIBinder;
-}
-
-/// The public API usable outside AIDL-generated interface crates.
-pub mod public_api {
-    pub use super::parcel::{ParcelFileDescriptor, ParcelableHolder};
-    pub use super::{
-        add_service, force_lazy_services_persist, get_interface, register_lazy_service,
-        wait_for_interface,
-    };
-    pub use super::{
-        BinderAsyncPool, BinderFeatures, BoxFuture, DeathRecipient, ExceptionCode, IBinder,
-        Interface, ProcessState, SpIBinder, Status, StatusCode, Strong, ThreadState, Weak,
-        WpIBinder,
-    };
-
-    /// Binder result containing a [`Status`] on error.
-    pub type Result<T> = std::result::Result<T, Status>;
 }
