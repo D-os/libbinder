@@ -245,9 +245,10 @@ public:
     template<typename T>
     status_t            writeNullableParcelable(const std::optional<T>& parcelable)
             { return writeData(parcelable); }
-    template<typename T>
-    status_t            writeNullableParcelable(const std::unique_ptr<T>& parcelable) __attribute__((deprecated("use std::optional version instead")))
-            { return writeData(parcelable); }
+    template <typename T>
+    status_t writeNullableParcelable(const std::unique_ptr<T>& parcelable) {
+        return writeData(parcelable);
+    }
 
     status_t            writeParcelable(const Parcelable& parcelable);
 
@@ -401,9 +402,10 @@ public:
     template<typename T>
     status_t            readParcelable(std::optional<T>* parcelable) const
             { return readData(parcelable); }
-    template<typename T>
-    status_t            readParcelable(std::unique_ptr<T>* parcelable) const __attribute__((deprecated("use std::optional version instead")))
-            { return readData(parcelable); }
+    template <typename T>
+    status_t readParcelable(std::unique_ptr<T>* parcelable) const {
+        return readData(parcelable);
+    }
 
     // If strong binder would be nullptr, readStrongBinder() returns an error.
     // TODO: T must be derived from IInterface, fix for clarity.
