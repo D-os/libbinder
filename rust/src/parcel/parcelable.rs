@@ -764,6 +764,30 @@ macro_rules! impl_deserialize_for_parcelable {
     }
 }
 
+impl<T: Serialize> Serialize for Box<T> {
+    fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
+        Serialize::serialize(&**self, parcel)
+    }
+}
+
+impl<T: Deserialize> Deserialize for Box<T> {
+    fn deserialize(parcel: &Parcel) -> Result<Self> {
+        Deserialize::deserialize(parcel).map(Box::new)
+    }
+}
+
+impl<T: SerializeOption> SerializeOption for Box<T> {
+    fn serialize_option(this: Option<&Self>, parcel: &mut Parcel) -> Result<()> {
+        SerializeOption::serialize_option(this.map(|inner| &**inner), parcel)
+    }
+}
+
+impl<T: DeserializeOption> DeserializeOption for Box<T> {
+    fn deserialize_option(parcel: &Parcel) -> Result<Option<Self>> {
+        DeserializeOption::deserialize_option(parcel).map(|t| t.map(Box::new))
+    }
+}
+
 #[test]
 fn test_custom_parcelable() {
     use crate::binder::Interface;
