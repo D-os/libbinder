@@ -160,7 +160,7 @@ cc_test {
     ],
     static_libs: [
         "binderRpcTestIface-cpp",
-        "binderRpcTestIface-ndk_platform",
+        "binderRpcTestIface-ndk",
     ],
     test_suites: ["general-tests"],
     require_root: true,
@@ -296,7 +296,7 @@ cc_test {
     ],
     static_libs: [
         "binderStabilityTestIface-cpp",
-        "binderStabilityTestIface-ndk_platform",
+        "binderStabilityTestIface-ndk",
     ],
 
     test_suites: ["device-tests", "vts"],

@@ -17,6 +17,7 @@
 #include <mutex>
 #include <unistd.h>
 
+#include <android/permission_manager.h>
 #include <binder/ActivityManager.h>
 #include <binder/Binder.h>
 #include <binder/IServiceManager.h>
@@ -61,23 +62,27 @@ int ActivityManager::openContentUri(const String16& stringUri)
     return service != nullptr ? service->openContentUri(stringUri) : -1;
 }
 
-void ActivityManager::registerUidObserver(const sp<IUidObserver>& observer,
+status_t ActivityManager::registerUidObserver(const sp<IUidObserver>& observer,
                                           const int32_t event,
                                           const int32_t cutpoint,
                                           const String16& callingPackage)
 {
     sp<IActivityManager> service = getService();
     if (service != nullptr) {
-        service->registerUidObserver(observer, event, cutpoint, callingPackage);
+        return service->registerUidObserver(observer, event, cutpoint, callingPackage);
     }
+    // ActivityManagerService appears dead. Return usual error code for dead service.
+    return DEAD_OBJECT;
 }
 
-void ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
+status_t ActivityManager::unregisterUidObserver(const sp<IUidObserver>& observer)
 {
     sp<IActivityManager> service = getService();
     if (service != nullptr) {
-        service->unregisterUidObserver(observer);
+        return service->unregisterUidObserver(observer);
     }
+    // ActivityManagerService appears dead. Return usual error code for dead service.
+    return DEAD_OBJECT;
 }
 
 bool ActivityManager::isUidActive(const uid_t uid, const String16& callingPackage)
@@ -96,6 +101,18 @@ int32_t ActivityManager::getUidProcessState(const uid_t uid, const String16& cal
         return service->getUidProcessState(uid, callingPackage);
     }
     return PROCESS_STATE_UNKNOWN;
+}
+
+status_t ActivityManager::checkPermission(const String16& permission,
+                                     const pid_t pid,
+                                     const uid_t uid,
+                                     int32_t* outResult) {
+    sp<IActivityManager> service = getService();
+    if (service != nullptr) {
+        return service->checkPermission(permission, pid, uid, outResult);
+    }
+    // ActivityManagerService appears dead. Return usual error code for dead service.
+    return DEAD_OBJECT;
 }
 
 status_t ActivityManager::linkToDeath(const sp<IBinder::DeathRecipient>& recipient) {
