@@ -31,6 +31,18 @@ bssl::UniquePtr<X509> fromPem(const std::vector<uint8_t>& cert) {
     return bssl::UniquePtr<X509>(PEM_read_bio_X509(certBio.get(), nullptr, nullptr, nullptr));
 }
 
+bssl::UniquePtr<X509> fromDer(const std::vector<uint8_t>& cert) {
+    if (cert.size() > std::numeric_limits<long>::max()) return nullptr;
+    const unsigned char* data = cert.data();
+    auto expectedEnd = data + cert.size();
+    bssl::UniquePtr<X509> ret(d2i_X509(nullptr, &data, static_cast<long>(cert.size())));
+    if (data != expectedEnd) {
+        ALOGE("%s: %td bytes remaining!", __PRETTY_FUNCTION__, expectedEnd - data);
+        return nullptr;
+    }
+    return ret;
+}
+
 } // namespace
 
 bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& cert,
@@ -38,6 +50,8 @@ bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& cert,
     switch (format) {
         case CertificateFormat::PEM:
             return fromPem(cert);
+        case CertificateFormat::DER:
+            return fromDer(cert);
     }
     LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
 }
@@ -47,6 +61,9 @@ std::vector<uint8_t> serializeCertificate(X509* x509, CertificateFormat format) 
     switch (format) {
         case CertificateFormat::PEM: {
             TEST_AND_RETURN({}, PEM_write_bio_X509(certBio.get(), x509));
+        } break;
+        case CertificateFormat::DER: {
+            TEST_AND_RETURN({}, i2d_X509_bio(certBio.get(), x509));
         } break;
         default: {
             LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
