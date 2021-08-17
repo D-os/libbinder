@@ -71,7 +71,7 @@ cc_test {
     srcs: ["libbinder_ndk_unit_test.cpp"],
     static_libs: [
         "IBinderNdkUnitTest-cpp",
-        "IBinderNdkUnitTest-ndk_platform",
+        "IBinderNdkUnitTest-ndk",
     ],
     test_suites: [
         "general-tests",
@@ -88,8 +88,8 @@ cc_test {
     ],
     static_libs: [
         "IBinderVendorDoubleLoadTest-cpp",
-        "IBinderVendorDoubleLoadTest-ndk_platform",
-        "libbinder_aidl_test_stub-ndk_platform",
+        "IBinderVendorDoubleLoadTest-ndk",
+        "libbinder_aidl_test_stub-ndk",
     ],
     // critical that libbinder/libbinder_ndk are shared for VTS
     shared_libs: [
