@@ -456,11 +456,23 @@ public:
     static std::unique_ptr<RpcTransportCtxTls> create();
     std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd fd,
                                                FdTrigger* fdTrigger) const override;
+    std::string getCertificate(CertificateFormat) const override;
+    status_t addTrustedPeerCertificate(CertificateFormat, std::string_view cert) override;
 
 protected:
     virtual void preHandshake(Ssl* ssl) const = 0;
     bssl::UniquePtr<SSL_CTX> mCtx;
 };
+
+std::string RpcTransportCtxTls::getCertificate(CertificateFormat) const {
+    // TODO(b/195166979): return certificate here
+    return {};
+}
+
+status_t RpcTransportCtxTls::addTrustedPeerCertificate(CertificateFormat, std::string_view) {
+    // TODO(b/195166979): set certificate here
+    return OK;
+}
 
 // Common implementation for creating server and client contexts. The child class, |Impl|, is
 // provided as a template argument so that this function can initialize an |Impl| object.
