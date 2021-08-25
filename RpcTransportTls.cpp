@@ -166,6 +166,34 @@ bssl::UniquePtr<X509> makeSelfSignedCert(EVP_PKEY* evp_pkey, const int valid_day
     }
 }
 
+// Helper class to ErrorQueue::toString
+class ErrorQueueString {
+public:
+    static std::string toString() {
+        ErrorQueueString thiz;
+        ERR_print_errors_cb(staticCallback, &thiz);
+        return thiz.mSs.str();
+    }
+
+private:
+    static int staticCallback(const char* str, size_t len, void* ctx) {
+        return reinterpret_cast<ErrorQueueString*>(ctx)->callback(str, len);
+    }
+    int callback(const char* str, size_t len) {
+        if (len == 0) return 1; // continue
+        // ERR_print_errors_cb place a new line at the end, but it doesn't say so in the API.
+        if (str[len - 1] == '\n') len -= 1;
+        if (!mIsFirst) {
+            mSs << '\n';
+        }
+        mSs << std::string_view(str, len);
+        mIsFirst = false;
+        return 1; // continue
+    }
+    std::stringstream mSs;
+    bool mIsFirst = true;
+};
+
 // Handles libssl's error queue.
 //
 // Call into any of its member functions to ensure the error queue is properly handled or cleared.
@@ -182,17 +210,10 @@ public:
 
     // Stores the error queue in |ssl| into a string, then clears the error queue.
     std::string toString() {
-        std::stringstream ss;
-        ERR_print_errors_cb(
-                [](const char* str, size_t len, void* ctx) {
-                    auto ss = (std::stringstream*)ctx;
-                    (*ss) << std::string_view(str, len) << "\n";
-                    return 1; // continue
-                },
-                &ss);
+        auto ret = ErrorQueueString::toString();
         // Though ERR_print_errors_cb should have cleared it, it is okay to clear again.
         clear();
-        return ss.str();
+        return ret;
     }
 
     // |sslError| should be from Ssl::getError().
@@ -428,65 +449,46 @@ bool setFdAndDoHandshake(Ssl* ssl, android::base::borrowed_fd fd, FdTrigger* fdT
     }
 }
 
-class RpcTransportCtxTlsServer : public RpcTransportCtx {
+class RpcTransportCtxTls : public RpcTransportCtx {
 public:
-    static std::unique_ptr<RpcTransportCtxTlsServer> create();
-    std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd acceptedFd,
+    template <typename Impl,
+              typename = std::enable_if_t<std::is_base_of_v<RpcTransportCtxTls, Impl>>>
+    static std::unique_ptr<RpcTransportCtxTls> create();
+    std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd fd,
                                                FdTrigger* fdTrigger) const override;
+    std::string getCertificate(CertificateFormat) const override;
+    status_t addTrustedPeerCertificate(CertificateFormat, std::string_view cert) override;
 
-private:
+protected:
+    virtual void preHandshake(Ssl* ssl) const = 0;
     bssl::UniquePtr<SSL_CTX> mCtx;
 };
 
-std::unique_ptr<RpcTransportCtxTlsServer> RpcTransportCtxTlsServer::create() {
+std::string RpcTransportCtxTls::getCertificate(CertificateFormat) const {
+    // TODO(b/195166979): return certificate here
+    return {};
+}
+
+status_t RpcTransportCtxTls::addTrustedPeerCertificate(CertificateFormat, std::string_view) {
+    // TODO(b/195166979): set certificate here
+    return OK;
+}
+
+// Common implementation for creating server and client contexts. The child class, |Impl|, is
+// provided as a template argument so that this function can initialize an |Impl| object.
+template <typename Impl, typename>
+std::unique_ptr<RpcTransportCtxTls> RpcTransportCtxTls::create() {
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     TEST_AND_RETURN(nullptr, ctx != nullptr);
 
-    // Server use self-signing cert
     auto evp_pkey = makeKeyPairForSelfSignedCert();
     TEST_AND_RETURN(nullptr, evp_pkey != nullptr);
     auto cert = makeSelfSignedCert(evp_pkey.get(), kCertValidDays);
     TEST_AND_RETURN(nullptr, cert != nullptr);
     TEST_AND_RETURN(nullptr, SSL_CTX_use_PrivateKey(ctx.get(), evp_pkey.get()));
     TEST_AND_RETURN(nullptr, SSL_CTX_use_certificate(ctx.get(), cert.get()));
-    // Require at least TLS 1.3
-    TEST_AND_RETURN(nullptr, SSL_CTX_set_min_proto_version(ctx.get(), TLS1_3_VERSION));
 
-    if constexpr (SHOULD_LOG_TLS_DETAIL) { // NOLINT
-        SSL_CTX_set_info_callback(ctx.get(), sslDebugLog);
-    }
-
-    auto rpcTransportTlsServerCtx = std::make_unique<RpcTransportCtxTlsServer>();
-    rpcTransportTlsServerCtx->mCtx = std::move(ctx);
-    return rpcTransportTlsServerCtx;
-}
-
-std::unique_ptr<RpcTransport> RpcTransportCtxTlsServer::newTransport(
-        android::base::unique_fd acceptedFd, FdTrigger* fdTrigger) const {
-    bssl::UniquePtr<SSL> ssl(SSL_new(mCtx.get()));
-    TEST_AND_RETURN(nullptr, ssl != nullptr);
-    Ssl wrapped(std::move(ssl));
-
-    wrapped.call(SSL_set_accept_state).errorQueue.clear();
-    TEST_AND_RETURN(nullptr, setFdAndDoHandshake(&wrapped, acceptedFd, fdTrigger));
-    return std::make_unique<RpcTransportTls>(std::move(acceptedFd), std::move(wrapped));
-}
-
-class RpcTransportCtxTlsClient : public RpcTransportCtx {
-public:
-    static std::unique_ptr<RpcTransportCtxTlsClient> create();
-    std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd connectedFd,
-                                               FdTrigger* fdTrigger) const override;
-
-private:
-    bssl::UniquePtr<SSL_CTX> mCtx;
-};
-
-std::unique_ptr<RpcTransportCtxTlsClient> RpcTransportCtxTlsClient::create() {
-    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-    TEST_AND_RETURN(nullptr, ctx != nullptr);
-
-    // TODO(b/195166979): server should send certificate in a different channel, and client
+    // TODO(b/195166979): peer should send certificate in a different channel, and this class
     //  should verify it here.
     SSL_CTX_set_custom_verify(ctx.get(), SSL_VERIFY_PEER,
                               [](SSL*, uint8_t*) -> ssl_verify_result_t { return ssl_verify_ok; });
@@ -498,30 +500,44 @@ std::unique_ptr<RpcTransportCtxTlsClient> RpcTransportCtxTlsClient::create() {
         SSL_CTX_set_info_callback(ctx.get(), sslDebugLog);
     }
 
-    auto rpcTransportTlsClientCtx = std::make_unique<RpcTransportCtxTlsClient>();
-    rpcTransportTlsClientCtx->mCtx = std::move(ctx);
-    return rpcTransportTlsClientCtx;
+    auto ret = std::make_unique<Impl>();
+    ret->mCtx = std::move(ctx);
+    return ret;
 }
 
-std::unique_ptr<RpcTransport> RpcTransportCtxTlsClient::newTransport(
-        android::base::unique_fd connectedFd, FdTrigger* fdTrigger) const {
+std::unique_ptr<RpcTransport> RpcTransportCtxTls::newTransport(android::base::unique_fd fd,
+                                                               FdTrigger* fdTrigger) const {
     bssl::UniquePtr<SSL> ssl(SSL_new(mCtx.get()));
     TEST_AND_RETURN(nullptr, ssl != nullptr);
     Ssl wrapped(std::move(ssl));
 
-    wrapped.call(SSL_set_connect_state).errorQueue.clear();
-    TEST_AND_RETURN(nullptr, setFdAndDoHandshake(&wrapped, connectedFd, fdTrigger));
-    return std::make_unique<RpcTransportTls>(std::move(connectedFd), std::move(wrapped));
+    preHandshake(&wrapped);
+    TEST_AND_RETURN(nullptr, setFdAndDoHandshake(&wrapped, fd, fdTrigger));
+    return std::make_unique<RpcTransportTls>(std::move(fd), std::move(wrapped));
 }
+
+class RpcTransportCtxTlsServer : public RpcTransportCtxTls {
+protected:
+    void preHandshake(Ssl* ssl) const override {
+        ssl->call(SSL_set_accept_state).errorQueue.clear();
+    }
+};
+
+class RpcTransportCtxTlsClient : public RpcTransportCtxTls {
+protected:
+    void preHandshake(Ssl* ssl) const override {
+        ssl->call(SSL_set_connect_state).errorQueue.clear();
+    }
+};
 
 } // namespace
 
 std::unique_ptr<RpcTransportCtx> RpcTransportCtxFactoryTls::newServerCtx() const {
-    return android::RpcTransportCtxTlsServer::create();
+    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsServer>();
 }
 
 std::unique_ptr<RpcTransportCtx> RpcTransportCtxFactoryTls::newClientCtx() const {
-    return android::RpcTransportCtxTlsClient::create();
+    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsClient>();
 }
 
 const char* RpcTransportCtxFactoryTls::toCString() const {
