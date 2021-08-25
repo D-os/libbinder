@@ -326,6 +326,8 @@ cc_library {
         "//packages/modules/Virtualization/authfs:__subpackages__",
         "//packages/modules/Virtualization/compos:__subpackages__",
         "//packages/modules/Virtualization/microdroid",
+        "//packages/modules/Virtualization/microdroid_manager",
+        "//packages/modules/Virtualization/virtualizationservice",
     ],
 }
 
