@@ -39,8 +39,7 @@ namespace android {
 using base::ScopeGuard;
 using base::unique_fd;
 
-RpcServer::RpcServer(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory)
-      : mRpcTransportCtxFactory(std::move(rpcTransportCtxFactory)) {}
+RpcServer::RpcServer(std::unique_ptr<RpcTransportCtx> ctx) : mCtx(std::move(ctx)) {}
 RpcServer::~RpcServer() {
     (void)shutdown();
 }
@@ -49,7 +48,9 @@ sp<RpcServer> RpcServer::make(std::unique_ptr<RpcTransportCtxFactory> rpcTranspo
     // Default is without TLS.
     if (rpcTransportCtxFactory == nullptr)
         rpcTransportCtxFactory = RpcTransportCtxFactoryRaw::make();
-    return sp<RpcServer>::make(std::move(rpcTransportCtxFactory));
+    auto ctx = rpcTransportCtxFactory->newServerCtx();
+    if (ctx == nullptr) return nullptr;
+    return sp<RpcServer>::make(std::move(ctx));
 }
 
 void RpcServer::iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction() {
@@ -138,6 +139,20 @@ sp<IBinder> RpcServer::getRootObject() {
     return ret;
 }
 
+std::string RpcServer::getCertificate(CertificateFormat format) {
+    std::lock_guard<std::mutex> _l(mLock);
+    return mCtx->getCertificate(format);
+}
+
+status_t RpcServer::addTrustedPeerCertificate(CertificateFormat format, std::string_view cert) {
+    std::lock_guard<std::mutex> _l(mLock);
+    // Ensure that join thread is not running or shutdown trigger is not set up. In either case,
+    // it means there are child threads running. It is invalid to add trusted peer certificates
+    // after join thread and/or child threads are running to avoid race condition.
+    if (mJoinThreadRunning || mShutdownTrigger != nullptr) return INVALID_OPERATION;
+    return mCtx->addTrustedPeerCertificate(format, cert);
+}
+
 static void joinRpcServer(sp<RpcServer>&& thiz) {
     thiz->join();
 }
@@ -159,10 +174,6 @@ void RpcServer::join() {
         mJoinThreadRunning = true;
         mShutdownTrigger = FdTrigger::make();
         LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr, "Cannot create join signaler");
-
-        mCtx = mRpcTransportCtxFactory->newServerCtx();
-        LOG_ALWAYS_FATAL_IF(mCtx == nullptr, "Unable to create RpcTransportCtx with %s sockets",
-                            mRpcTransportCtxFactory->toCString());
     }
 
     status_t status;
@@ -229,7 +240,6 @@ bool RpcServer::shutdown() {
     LOG_RPC_DETAIL("Finished waiting on shutdown.");
 
     mShutdownTrigger = nullptr;
-    mCtx = nullptr;
     return true;
 }
 
