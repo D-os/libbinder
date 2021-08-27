@@ -111,7 +111,10 @@ public:
     std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd fd, FdTrigger*) const {
         return std::make_unique<RpcTransportRaw>(std::move(fd));
     }
+    std::string getCertificate(CertificateFormat) const override { return {}; }
+    status_t addTrustedPeerCertificate(CertificateFormat, std::string_view) override { return OK; }
 };
+
 } // namespace
 
 std::unique_ptr<RpcTransportCtx> RpcTransportCtxFactoryRaw::newServerCtx() const {
