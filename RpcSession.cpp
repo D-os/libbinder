@@ -49,8 +49,7 @@ namespace android {
 
 using base::unique_fd;
 
-RpcSession::RpcSession(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory)
-      : mRpcTransportCtxFactory(std::move(rpcTransportCtxFactory)) {
+RpcSession::RpcSession(std::unique_ptr<RpcTransportCtx> ctx) : mCtx(std::move(ctx)) {
     LOG_RPC_DETAIL("RpcSession created %p", this);
 
     mState = std::make_unique<RpcState>();
@@ -63,11 +62,26 @@ RpcSession::~RpcSession() {
                         "Should not be able to destroy a session with servers in use.");
 }
 
-sp<RpcSession> RpcSession::make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory) {
+sp<RpcSession> RpcSession::make() {
     // Default is without TLS.
-    if (rpcTransportCtxFactory == nullptr)
-        rpcTransportCtxFactory = RpcTransportCtxFactoryRaw::make();
-    return sp<RpcSession>::make(std::move(rpcTransportCtxFactory));
+    return make(RpcTransportCtxFactoryRaw::make(), std::nullopt, std::nullopt);
+}
+
+sp<RpcSession> RpcSession::make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory,
+                                std::optional<CertificateFormat> serverCertificateFormat,
+                                std::optional<std::string> serverCertificate) {
+    auto ctx = rpcTransportCtxFactory->newClientCtx();
+    if (ctx == nullptr) return nullptr;
+    LOG_ALWAYS_FATAL_IF(serverCertificateFormat.has_value() != serverCertificate.has_value());
+    if (serverCertificateFormat.has_value() && serverCertificate.has_value()) {
+        status_t status =
+                ctx->addTrustedPeerCertificate(*serverCertificateFormat, *serverCertificate);
+        if (status != OK) {
+            ALOGE("Cannot add trusted server certificate: %s", statusToString(status).c_str());
+            return nullptr;
+        }
+    }
+    return sp<RpcSession>::make(std::move(ctx));
 }
 
 void RpcSession::setMaxThreads(size_t threads) {
@@ -155,12 +169,7 @@ status_t RpcSession::addNullDebuggingClient() {
         return -savedErrno;
     }
 
-    auto ctx = mRpcTransportCtxFactory->newClientCtx();
-    if (ctx == nullptr) {
-        ALOGE("Unable to create RpcTransportCtx for null debugging client");
-        return NO_MEMORY;
-    }
-    auto server = ctx->newTransport(std::move(serverFd), mShutdownTrigger.get());
+    auto server = mCtx->newTransport(std::move(serverFd), mShutdownTrigger.get());
     if (server == nullptr) {
         ALOGE("Unable to set up RpcTransport");
         return UNKNOWN_ERROR;
@@ -531,15 +540,9 @@ status_t RpcSession::setupOneSocketConnection(const RpcSocketAddress& addr,
 status_t RpcSession::initAndAddConnection(unique_fd fd, const RpcAddress& sessionId,
                                           bool incoming) {
     LOG_ALWAYS_FATAL_IF(mShutdownTrigger == nullptr);
-    auto ctx = mRpcTransportCtxFactory->newClientCtx();
-    if (ctx == nullptr) {
-        ALOGE("Unable to create client RpcTransportCtx with %s sockets",
-              mRpcTransportCtxFactory->toCString());
-        return NO_MEMORY;
-    }
-    auto server = ctx->newTransport(std::move(fd), mShutdownTrigger.get());
+    auto server = mCtx->newTransport(std::move(fd), mShutdownTrigger.get());
     if (server == nullptr) {
-        ALOGE("Unable to set up RpcTransport in %s context", mRpcTransportCtxFactory->toCString());
+        ALOGE("%s: Unable to set up RpcTransport", __PRETTY_FUNCTION__);
         return UNKNOWN_ERROR;
     }
 
@@ -692,6 +695,10 @@ bool RpcSession::removeIncomingConnection(const sp<RpcConnection>& connection) {
         return true;
     }
     return false;
+}
+
+std::string RpcSession::getCertificate(CertificateFormat format) {
+    return mCtx->getCertificate(format);
 }
 
 status_t RpcSession::ExclusiveConnection::find(const sp<RpcSession>& session, ConnectionUse use,
