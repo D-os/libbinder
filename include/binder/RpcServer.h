@@ -134,6 +134,17 @@ public:
     sp<IBinder> getRootObject();
 
     /**
+     * See RpcTransportCtx::getCertificate
+     */
+    std::string getCertificate(CertificateFormat);
+
+    /**
+     * See RpcTransportCtx::addTrustedPeerCertificate.
+     * Thread-safe. This is only possible before the server is join()-ing.
+     */
+    status_t addTrustedPeerCertificate(CertificateFormat, std::string_view cert);
+
+    /**
      * Runs join() in a background thread. Immediately returns.
      */
     void start();
@@ -170,7 +181,7 @@ public:
 
 private:
     friend sp<RpcServer>;
-    explicit RpcServer(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory);
+    explicit RpcServer(std::unique_ptr<RpcTransportCtx> ctx);
 
     void onSessionAllIncomingThreadsEnded(const sp<RpcSession>& session) override;
     void onSessionIncomingThreadEnded() override;
@@ -178,7 +189,7 @@ private:
     static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
     status_t setupSocketServer(const RpcSocketAddress& address);
 
-    const std::unique_ptr<RpcTransportCtxFactory> mRpcTransportCtxFactory;
+    const std::unique_ptr<RpcTransportCtx> mCtx;
     bool mAgreedExperimental = false;
     size_t mMaxThreads = 1;
     std::optional<uint32_t> mProtocolVersion;
@@ -193,7 +204,6 @@ private:
     std::map<RpcAddress, sp<RpcSession>> mSessions;
     std::unique_ptr<FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;
-    std::unique_ptr<RpcTransportCtx> mCtx;
 };
 
 } // namespace android
