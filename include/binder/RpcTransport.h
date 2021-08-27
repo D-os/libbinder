@@ -29,7 +29,13 @@ namespace android {
 
 class FdTrigger;
 
+enum class CertificateFormat {
+    PEM,
+    // TODO(b/195166979): support other formats, e.g. DER
+};
+
 // Represents a socket connection.
+// No thread-safety is guaranteed for these APIs.
 class RpcTransport {
 public:
     virtual ~RpcTransport() = default;
@@ -53,22 +59,43 @@ protected:
 };
 
 // Represents the context that generates the socket connection.
+// All APIs are thread-safe. See RpcTransportCtxRaw and RpcTransportCtxTls for details.
 class RpcTransportCtx {
 public:
     virtual ~RpcTransportCtx() = default;
 
     // Create a new RpcTransport object.
     //
-    // Implemenion details: for TLS, this function may incur I/O. |fdTrigger| may be used
+    // Implementation details: for TLS, this function may incur I/O. |fdTrigger| may be used
     // to interrupt I/O. This function blocks until handshake is finished.
     [[nodiscard]] virtual std::unique_ptr<RpcTransport> newTransport(
             android::base::unique_fd fd, FdTrigger *fdTrigger) const = 0;
+
+    // Return the preconfigured certificate of this context.
+    //
+    // Implementation details:
+    // - For raw sockets, this always returns empty string.
+    // - For TLS, this returns the certificate. See RpcTransportTls for details.
+    [[nodiscard]] virtual std::string getCertificate(CertificateFormat format) const = 0;
+
+    // Add a trusted peer certificate. Peers presenting this certificate are accepted.
+    //
+    // Caller must ensure that newTransport() are called after all trusted peer certificates
+    // are added. Otherwise, RpcTransport-s created before may not trust peer certificates
+    // added later.
+    //
+    // Implementation details:
+    // - For raw sockets, this always returns OK.
+    // - For TLS, this adds trusted peer certificate. See RpcTransportTls for details.
+    [[nodiscard]] virtual status_t addTrustedPeerCertificate(CertificateFormat format,
+                                                             std::string_view cert) = 0;
 
 protected:
     RpcTransportCtx() = default;
 };
 
 // A factory class that generates RpcTransportCtx.
+// All APIs are thread-safe.
 class RpcTransportCtxFactory {
 public:
     virtual ~RpcTransportCtxFactory() = default;
