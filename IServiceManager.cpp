@@ -148,7 +148,8 @@ public:
 
         const bool isVendorService =
             strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
-        const long timeout = uptimeMillis() + 5000;
+        const long timeout = 5000;
+        int64_t startTime = uptimeMillis();
         if (!gSystemBootCompleted && !isVendorService) {
             // Vendor code can't access system properties
             char bootCompleted[PROPERTY_VALUE_MAX];
@@ -159,7 +160,7 @@ public:
         const long sleepTime = gSystemBootCompleted ? 1000 : 100;
 
         int n = 0;
-        while (uptimeMillis() < timeout) {
+        while (uptimeMillis() - startTime < timeout) {
             n++;
             if (isVendorService) {
                 ALOGI("Waiting for vendor service %s...", String8(name).string());
