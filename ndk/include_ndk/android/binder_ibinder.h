@@ -219,6 +219,21 @@ typedef binder_status_t (*AIBinder_onDump)(AIBinder* binder, int fd, const char*
 void AIBinder_Class_setOnDump(AIBinder_Class* clazz, AIBinder_onDump onDump) __INTRODUCED_IN(29);
 
 /**
+ * This tells users of this class not to use a transaction header. By default, libbinder_ndk users
+ * read/write transaction headers implicitly (in the SDK, this must be manually written by
+ * android.os.Parcel#writeInterfaceToken, and it is read/checked with
+ * android.os.Parcel#enforceInterface). This method is provided in order to talk to legacy code
+ * which does not write an interface token. When this is disabled, type safety is reduced, so you
+ * must have a separate way of determining the binder you are talking to is the right type. Must
+ * be called before any instance of the class is created.
+ *
+ * Available since API level 32.
+ *
+ * \param clazz class to disable interface header on.
+ */
+void AIBinder_Class_disableInterfaceTokenHeader(AIBinder_Class* clazz) __INTRODUCED_IN(32);
+
+/**
  * Creates a new binder object of the appropriate class.
  *
  * Ownership of args is passed to this object. The lifecycle is implemented with AIBinder_incStrong

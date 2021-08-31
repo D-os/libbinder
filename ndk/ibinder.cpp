@@ -172,7 +172,7 @@ status_t ABBinder::dump(int fd, const ::android::Vector<String16>& args) {
 status_t ABBinder::onTransact(transaction_code_t code, const Parcel& data, Parcel* reply,
                               binder_flags_t flags) {
     if (isUserCommand(code)) {
-        if (!data.checkInterface(this)) {
+        if (getClass()->writeHeader && !data.checkInterface(this)) {
             return STATUS_BAD_TYPE;
         }
 
@@ -352,6 +352,12 @@ void AIBinder_Class_setOnDump(AIBinder_Class* clazz, AIBinder_onDump onDump) {
 
     // this is required to be called before instances are instantiated
     clazz->onDump = onDump;
+}
+
+void AIBinder_Class_disableInterfaceTokenHeader(AIBinder_Class* clazz) {
+    CHECK(clazz != nullptr) << "disableInterfaceTokenHeader requires non-null clazz";
+
+    clazz->writeHeader = false;
 }
 
 void AIBinder_Class_setHandleShellCommand(AIBinder_Class* clazz,
@@ -606,7 +612,10 @@ binder_status_t AIBinder_prepareTransaction(AIBinder* binder, AParcel** in) {
     *in = new AParcel(binder);
     (*in)->get()->markForBinder(binder->getBinder());
 
-    status_t status = (*in)->get()->writeInterfaceToken(clazz->getInterfaceDescriptor());
+    status_t status = android::OK;
+    if (clazz->writeHeader) {
+        status = (*in)->get()->writeInterfaceToken(clazz->getInterfaceDescriptor());
+    }
     binder_status_t ret = PruneStatusT(status);
 
     if (ret != STATUS_OK) {

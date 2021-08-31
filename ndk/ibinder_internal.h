@@ -116,6 +116,9 @@ struct AIBinder_Class {
     const ::android::String16& getInterfaceDescriptor() const { return mWideInterfaceDescriptor; }
     const char* getInterfaceDescriptorUtf8() const { return mInterfaceDescriptor.c_str(); }
 
+    // whether a transaction header should be written
+    bool writeHeader = true;
+
     // required to be non-null, implemented for every class
     const AIBinder_Class_onCreate onCreate = nullptr;
     const AIBinder_Class_onDestroy onDestroy = nullptr;
