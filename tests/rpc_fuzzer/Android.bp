@@ -22,18 +22,19 @@ cc_fuzz {
         "libbase",
         "libcutils",
         "liblog",
-        "libutils",
     ],
 
     target: {
         android: {
             shared_libs: [
                 "libbinder",
+                "libutils",
             ],
         },
         host: {
             static_libs: [
                 "libbinder",
+                "libutils",
             ],
         },
     },
