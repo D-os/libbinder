@@ -135,3 +135,23 @@ rust_test {
         "libbinder_ndk_sys",
     ],
 }
+
+rust_test {
+    name: "libbinder_ndk_bindgen_test",
+    srcs: [":libbinder_ndk_bindgen"],
+    crate_name: "binder_ndk_bindgen",
+    test_suites: ["general-tests"],
+    auto_gen_config: true,
+    clippy_lints: "none",
+    lints: "none",
+}
+
+rust_test {
+    name: "libbinder_rpc_unstable_bindgen_test",
+    srcs: [":libbinder_rpc_unstable_bindgen"],
+    crate_name: "binder_rpc_unstable_bindgen",
+    test_suites: ["general-tests"],
+    auto_gen_config: true,
+    clippy_lints: "none",
+    lints: "none",
+}
