@@ -1299,6 +1299,16 @@ TEST_P(BinderRpc, Fds) {
     ASSERT_EQ(beforeFds, countFds()) << (system("ls -l /proc/self/fd/"), "fd leak?");
 }
 
+TEST_P(BinderRpc, AidlDelegatorTest) {
+    auto proc = createRpcTestSocketServerProcess({});
+    auto myDelegator = sp<IBinderRpcTestDelegator>::make(proc.rootIface);
+    ASSERT_NE(nullptr, myDelegator);
+
+    std::string doubled;
+    EXPECT_OK(myDelegator->doubleString("cool ", &doubled));
+    EXPECT_EQ("cool cool ", doubled);
+}
+
 static bool testSupportVsockLoopback() {
     // We don't need to enable TLS to know if vsock is supported.
     unsigned int vsockPort = allocateVsockPort();
