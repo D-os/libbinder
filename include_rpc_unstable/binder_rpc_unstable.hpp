@@ -23,4 +23,13 @@ struct AIBinder;
 bool RunRpcServer(AIBinder* service, unsigned int port);
 AIBinder* RpcClient(unsigned int cid, unsigned int port);
 
+// Connect to an RPC server with preconnected file descriptors.
+//
+// requestFd should connect to the server and return a valid file descriptor, or
+// -1 if connection fails.
+//
+// param will be passed to requestFd. Callers can use param to pass contexts to
+// the requestFd function.
+AIBinder* RpcPreconnectedClient(int (*requestFd)(void* param), void* param);
+
 }
