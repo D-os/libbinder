@@ -33,6 +33,7 @@ mod parcelable;
 pub use self::file_descriptor::ParcelFileDescriptor;
 pub use self::parcelable::{
     Deserialize, DeserializeArray, DeserializeOption, Serialize, SerializeArray, SerializeOption,
+    Parcelable,
 };
 
 /// Container for a message (data and object references) that can be sent
