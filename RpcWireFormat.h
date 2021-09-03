@@ -31,6 +31,7 @@ struct RpcWireAddress {
     uint64_t options;
     uint8_t address[32];
 };
+static_assert(sizeof(RpcWireAddress) == 40);
 
 /**
  * This is sent to an RpcServer in order to request a new connection is created,
@@ -43,6 +44,7 @@ struct RpcConnectionHeader {
     uint8_t options;
     uint8_t reserved1[7];
 };
+static_assert(sizeof(RpcConnectionHeader) == 56);
 
 /**
  * In response to an RpcConnectionHeader which corresponds to a new session,
@@ -52,6 +54,7 @@ struct RpcNewSessionResponse {
     uint32_t version; // maximum supported by callee <= maximum supported by caller
     uint8_t reserved[4];
 };
+static_assert(sizeof(RpcNewSessionResponse) == 8);
 
 #define RPC_CONNECTION_INIT_OKAY "cci"
 
@@ -64,6 +67,7 @@ struct RpcOutgoingConnectionInit {
     char msg[4];
     uint8_t reserved[4];
 };
+static_assert(sizeof(RpcOutgoingConnectionInit) == 8);
 
 enum : uint32_t {
     /**
@@ -105,6 +109,7 @@ struct RpcWireHeader {
 
     uint32_t reserved[2];
 };
+static_assert(sizeof(RpcWireHeader) == 16);
 
 struct RpcWireTransaction {
     RpcWireAddress address;
@@ -117,11 +122,13 @@ struct RpcWireTransaction {
 
     uint8_t data[];
 };
+static_assert(sizeof(RpcWireTransaction) == 72);
 
 struct RpcWireReply {
     int32_t status; // transact return
     uint8_t data[];
 };
+static_assert(sizeof(RpcWireReply) == 4);
 
 #pragma clang diagnostic pop
 
