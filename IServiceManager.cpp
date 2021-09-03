@@ -215,7 +215,8 @@ sp<IBinder> ServiceManagerShim::getService(const String16& name) const
 
     const bool isVendorService =
         strcmp(ProcessState::self()->getDriverName().c_str(), "/dev/vndbinder") == 0;
-    const long timeout = uptimeMillis() + 5000;
+    const long timeout = 5000;
+    int64_t startTime = uptimeMillis();
     // Vendor code can't access system properties
     if (!gSystemBootCompleted && !isVendorService) {
 #ifdef __ANDROID__
@@ -230,7 +231,7 @@ sp<IBinder> ServiceManagerShim::getService(const String16& name) const
     const long sleepTime = gSystemBootCompleted ? 1000 : 100;
 
     int n = 0;
-    while (uptimeMillis() < timeout) {
+    while (uptimeMillis() - startTime < timeout) {
         n++;
         ALOGI("Waiting for service '%s' on '%s'...", String8(name).string(),
             ProcessState::self()->getDriverName().c_str());
