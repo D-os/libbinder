@@ -29,12 +29,14 @@ use std::fmt;
 
 mod file_descriptor;
 mod parcelable;
+mod parcelable_holder;
 
 pub use self::file_descriptor::ParcelFileDescriptor;
 pub use self::parcelable::{
     Deserialize, DeserializeArray, DeserializeOption, Serialize, SerializeArray, SerializeOption,
     Parcelable, NON_NULL_PARCELABLE_FLAG, NULL_PARCELABLE_FLAG,
 };
+pub use self::parcelable_holder::{ParcelableHolder, ParcelableMetadata};
 
 /// Container for a message (data and object references) that can be sent
 /// through Binder.
