@@ -21,6 +21,7 @@
 #include <android-base/strings.h>
 #include <binder/Parcel.h>
 #include <binder/RpcSession.h>
+#include <binder/Status.h>
 #include <gtest/gtest.h>
 
 #include "../Debug.h"
@@ -154,6 +155,9 @@ static const std::vector<std::function<void(Parcel* p)>> kFillFuns {
     [](Parcel* p) { ASSERT_EQ(OK, p->writeVectorSize(std::optional<std::vector<int32_t>>(std::nullopt))); },
     [](Parcel* p) { ASSERT_EQ(OK, p->writeVectorSize(std::optional<std::vector<int32_t>>({0, 1, 17}))); },
     [](Parcel* p) { ASSERT_EQ(OK, p->writeNoException()); },
+    [](Parcel* p) { ASSERT_EQ(OK, binder::Status::ok().writeToParcel(p)); },
+    [](Parcel* p) { ASSERT_EQ(OK, binder::Status::fromExceptionCode(7, ":D").writeToParcel(p)); },
+    [](Parcel* p) { ASSERT_EQ(OK, binder::Status::fromServiceSpecificError(8, ":/").writeToParcel(p)); },
 };
 // clang-format on
 
@@ -226,7 +230,8 @@ const std::string kCurrentRepr =
         "020000000000000001000000|020000000000000001000000|ffffffff|"
         "0200000000000000000000000100000000000000|0200000000000000000000000100000000000000|"
         "ffffffff|010000000100000025000000|010000000100000025000000|00000000|0100000025000000|"
-        "0100000025000000|03000000|00000000|ffffffff|03000000|00000000";
+        "0100000025000000|03000000|00000000|ffffffff|03000000|00000000|00000000|"
+        "07000000020000003a0044000000000000000000|f8ffffff020000003a002f00000000000000000008000000";
 
 TEST(RpcWire, CurrentVersion) {
     checkRepr(kCurrentRepr, RPC_WIRE_PROTOCOL_VERSION);
