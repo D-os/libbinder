@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-use crate::binder::{AsNative, FromIBinder, Strong};
+use crate::binder::{AsNative, FromIBinder, Stability, Strong};
 use crate::error::{status_result, status_t, Result, Status, StatusCode};
 use crate::parcel::Parcel;
 use crate::proxy::SpIBinder;
 use crate::sys;
 
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::ffi::c_void;
 use std::os::raw::{c_char, c_ulong};
 use std::mem::{self, MaybeUninit};
@@ -605,6 +605,18 @@ impl<T: DeserializeArray> Deserialize for Vec<T> {
 impl<T: DeserializeArray> DeserializeOption for Vec<T> {
     fn deserialize_option(parcel: &Parcel) -> Result<Option<Self>> {
         DeserializeArray::deserialize_array(parcel)
+    }
+}
+
+impl Serialize for Stability {
+    fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
+        i32::from(*self).serialize(parcel)
+    }
+}
+
+impl Deserialize for Stability {
+    fn deserialize(parcel: &Parcel) -> Result<Self> {
+        i32::deserialize(parcel).and_then(Stability::try_from)
     }
 }
 
