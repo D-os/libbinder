@@ -69,6 +69,21 @@ unsafe impl AsNative<sys::AParcel> for Parcel {
 }
 
 impl Parcel {
+    /// Create a new empty `Parcel`.
+    ///
+    /// Creates a new owned empty parcel that can be written to
+    /// using the serialization methods and appended to and
+    /// from using `append_from` and `append_from_all`.
+    pub fn new() -> Parcel {
+        let parcel = unsafe {
+            // Safety: If `AParcel_create` succeeds, it always returns
+            // a valid pointer. If it fails, the process will crash.
+            sys::AParcel_create()
+        };
+        assert!(!parcel.is_null());
+        Self::Owned(parcel)
+    }
+
     /// Create a borrowed reference to a parcel object from a raw pointer.
     ///
     /// # Safety
@@ -104,6 +119,22 @@ impl Parcel {
             Self::Owned(_) => true,
             Self::Borrowed(_) => false,
         }
+    }
+}
+
+impl Default for Parcel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Clone for Parcel {
+    fn clone(&self) -> Self {
+        let mut new_parcel = Self::new();
+        new_parcel
+            .append_all_from(self)
+            .expect("Failed to append from Parcel");
+        new_parcel
     }
 }
 
@@ -213,6 +244,30 @@ impl Parcel {
     /// on that.
     pub unsafe fn set_data_position(&self, pos: i32) -> Result<()> {
         status_result(sys::AParcel_setDataPosition(self.as_native(), pos))
+    }
+
+    /// Append a subset of another `Parcel`.
+    ///
+    /// This appends `size` bytes of data from `other` starting at offset
+    /// `start` to the current `Parcel`, or returns an error if not possible.
+    pub fn append_from(&mut self, other: &Self, start: i32, size: i32) -> Result<()> {
+        let status = unsafe {
+            // Safety: `Parcel::appendFrom` from C++ checks that `start`
+            // and `size` are in bounds, and returns an error otherwise.
+            // Both `self` and `other` always contain valid pointers.
+            sys::AParcel_appendFrom(
+                other.as_native(),
+                self.as_native_mut(),
+                start,
+                size,
+            )
+        };
+        status_result(status)
+    }
+
+    /// Append the contents of another `Parcel`.
+    pub fn append_all_from(&mut self, other: &Self) -> Result<()> {
+        self.append_from(other, 0, other.get_data_size())
     }
 }
 
@@ -428,43 +483,9 @@ impl fmt::Debug for Parcel {
     }
 }
 
-#[cfg(test)]
-impl Parcel {
-    /// Create a new parcel tied to a bogus binder. TESTING ONLY!
-    ///
-    /// This can only be used for testing! All real parcel operations must be
-    /// done in the callback to [`IBinder::transact`] or in
-    /// [`Remotable::on_transact`] using the parcels provided to these methods.
-    pub(crate) fn new_for_test(binder: &mut SpIBinder) -> Result<Self> {
-        let mut input = ptr::null_mut();
-        let status = unsafe {
-            // Safety: `SpIBinder` guarantees that `binder` always contains a
-            // valid pointer to an `AIBinder`. We pass a valid, mutable out
-            // pointer to receive a newly constructed parcel. When successful
-            // this function assigns a new pointer to an `AParcel` to `input`
-            // and transfers ownership of this pointer to the caller. Thus,
-            // after this call, `input` will either be null or point to a valid,
-            // owned `AParcel`.
-            sys::AIBinder_prepareTransaction(binder.as_native_mut(), &mut input)
-        };
-        status_result(status)?;
-        unsafe {
-            // Safety: `input` is either null or a valid, owned pointer to an
-            // `AParcel`, so is valid to safe to
-            // `Parcel::owned`. `Parcel::owned` takes ownership of the parcel
-            // pointer.
-            Parcel::owned(input).ok_or(StatusCode::UNEXPECTED_NULL)
-        }
-    }
-}
-
 #[test]
 fn test_read_write() {
-    use crate::binder::Interface;
-    use crate::native::Binder;
-
-    let mut service = Binder::new(()).as_binder();
-    let mut parcel = Parcel::new_for_test(&mut service).unwrap();
+    let mut parcel = Parcel::new();
     let start = parcel.get_data_position();
 
     assert_eq!(parcel.read::<bool>(), Err(StatusCode::NOT_ENOUGH_DATA));
@@ -494,11 +515,7 @@ fn test_read_write() {
 #[test]
 #[allow(clippy::float_cmp)]
 fn test_read_data() {
-    use crate::binder::Interface;
-    use crate::native::Binder;
-
-    let mut service = Binder::new(()).as_binder();
-    let mut parcel = Parcel::new_for_test(&mut service).unwrap();
+    let mut parcel = Parcel::new();
     let str_start = parcel.get_data_position();
 
     parcel.write(&b"Hello, Binder!\0"[..]).unwrap();
@@ -573,11 +590,7 @@ fn test_read_data() {
 
 #[test]
 fn test_utf8_utf16_conversions() {
-    use crate::binder::Interface;
-    use crate::native::Binder;
-
-    let mut service = Binder::new(()).as_binder();
-    let mut parcel = Parcel::new_for_test(&mut service).unwrap();
+    let mut parcel = Parcel::new();
     let start = parcel.get_data_position();
 
     assert!(parcel.write("Hello, Binder!").is_ok());
@@ -637,11 +650,7 @@ fn test_utf8_utf16_conversions() {
 
 #[test]
 fn test_sized_write() {
-    use crate::binder::Interface;
-    use crate::native::Binder;
-
-    let mut service = Binder::new(()).as_binder();
-    let mut parcel = Parcel::new_for_test(&mut service).unwrap();
+    let mut parcel = Parcel::new();
     let start = parcel.get_data_position();
 
     let arr = [1i32, 2i32, 3i32];
@@ -668,4 +677,44 @@ fn test_sized_write() {
         parcel.read::<Vec<i32>>().unwrap(),
         &arr,
     );
+}
+
+#[test]
+fn test_append_from() {
+    let mut parcel1 = Parcel::new();
+    parcel1.write(&42i32).expect("Could not perform write");
+
+    let mut parcel2 = Parcel::new();
+    assert_eq!(Ok(()), parcel2.append_all_from(&parcel1));
+    assert_eq!(4, parcel2.get_data_size());
+    assert_eq!(Ok(()), parcel2.append_all_from(&parcel1));
+    assert_eq!(8, parcel2.get_data_size());
+    unsafe {
+        parcel2.set_data_position(0).unwrap();
+    }
+    assert_eq!(Ok(42), parcel2.read::<i32>());
+    assert_eq!(Ok(42), parcel2.read::<i32>());
+
+    let mut parcel2 = Parcel::new();
+    assert_eq!(Ok(()), parcel2.append_from(&parcel1, 0, 2));
+    assert_eq!(Ok(()), parcel2.append_from(&parcel1, 2, 2));
+    assert_eq!(4, parcel2.get_data_size());
+    unsafe {
+        parcel2.set_data_position(0).unwrap();
+    }
+    assert_eq!(Ok(42), parcel2.read::<i32>());
+
+    let mut parcel2 = Parcel::new();
+    assert_eq!(Ok(()), parcel2.append_from(&parcel1, 0, 2));
+    assert_eq!(2, parcel2.get_data_size());
+    unsafe {
+        parcel2.set_data_position(0).unwrap();
+    }
+    assert_eq!(Err(StatusCode::NOT_ENOUGH_DATA), parcel2.read::<i32>());
+
+    let mut parcel2 = Parcel::new();
+    assert_eq!(Err(StatusCode::BAD_VALUE), parcel2.append_from(&parcel1, 4, 2));
+    assert_eq!(Err(StatusCode::BAD_VALUE), parcel2.append_from(&parcel1, 2, 4));
+    assert_eq!(Err(StatusCode::BAD_VALUE), parcel2.append_from(&parcel1, -1, 4));
+    assert_eq!(Err(StatusCode::BAD_VALUE), parcel2.append_from(&parcel1, 2, -1));
 }
