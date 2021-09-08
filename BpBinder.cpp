@@ -36,7 +36,8 @@ namespace android {
 // ---------------------------------------------------------------------------
 
 Mutex BpBinder::sTrackingLock;
-std::unordered_map<int32_t,uint32_t> BpBinder::sTrackingMap;
+std::unordered_map<int32_t, uint32_t> BpBinder::sTrackingMap;
+std::unordered_map<int32_t, uint32_t> BpBinder::sLastLimitCallbackMap;
 int BpBinder::sNumTrackedUids = 0;
 std::atomic_bool BpBinder::sCountByUidEnabled(false);
 binder_proxy_limit_callback BpBinder::sLimitCallback;
@@ -46,6 +47,10 @@ bool BpBinder::sBinderProxyThrottleCreate = false;
 uint32_t BpBinder::sBinderProxyCountHighWatermark = 2500;
 // Another arbitrary value a binder count needs to drop below before another callback will be called
 uint32_t BpBinder::sBinderProxyCountLowWatermark = 2000;
+
+// Once the limit has been exceeded, keep calling the limit callback for every this many new proxies
+// created over the limit.
+constexpr uint32_t REPEAT_LIMIT_CALLBACK_INTERVAL = 1000;
 
 enum {
     LIMIT_REACHED_MASK = 0x80000000,        // A flag denoting that the limit has been reached
@@ -120,12 +125,24 @@ sp<BpBinder> BpBinder::create(int32_t handle) {
             if (sBinderProxyThrottleCreate) {
                 return nullptr;
             }
+            trackedValue = trackedValue & COUNTING_VALUE_MASK;
+            uint32_t lastLimitCallbackAt = sLastLimitCallbackMap[trackedUid];
+
+            if (trackedValue > lastLimitCallbackAt &&
+                (trackedValue - lastLimitCallbackAt > REPEAT_LIMIT_CALLBACK_INTERVAL)) {
+                ALOGE("Still too many binder proxy objects sent to uid %d from uid %d (%d proxies "
+                      "held)",
+                      getuid(), trackedUid, trackedValue);
+                if (sLimitCallback) sLimitCallback(trackedUid);
+                sLastLimitCallbackMap[trackedUid] = trackedValue;
+            }
         } else {
             if ((trackedValue & COUNTING_VALUE_MASK) >= sBinderProxyCountHighWatermark) {
                 ALOGE("Too many binder proxy objects sent to uid %d from uid %d (%d proxies held)",
                       getuid(), trackedUid, trackedValue);
                 sTrackingMap[trackedUid] |= LIMIT_REACHED_MASK;
                 if (sLimitCallback) sLimitCallback(trackedUid);
+                sLastLimitCallbackMap[trackedUid] = trackedValue & COUNTING_VALUE_MASK;
                 if (sBinderProxyThrottleCreate) {
                     ALOGI("Throttling binder proxy creates from uid %d in uid %d until binder proxy"
                           " count drops below %d",
@@ -465,8 +482,9 @@ BpBinder::~BpBinder()
                 ((trackedValue & COUNTING_VALUE_MASK) <= sBinderProxyCountLowWatermark)
                 )) {
                 ALOGI("Limit reached bit reset for uid %d (fewer than %d proxies from uid %d held)",
-                                   getuid(), mTrackedUid, sBinderProxyCountLowWatermark);
+                      getuid(), sBinderProxyCountLowWatermark, mTrackedUid);
                 sTrackingMap[mTrackedUid] &= ~LIMIT_REACHED_MASK;
+                sLastLimitCallbackMap.erase(mTrackedUid);
             }
             if (--sTrackingMap[mTrackedUid] == 0) {
                 sTrackingMap.erase(mTrackedUid);
