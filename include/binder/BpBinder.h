@@ -194,6 +194,7 @@ private:
     static uint32_t                             sBinderProxyCountHighWatermark;
     static uint32_t                             sBinderProxyCountLowWatermark;
     static bool                                 sBinderProxyThrottleCreate;
+    static std::unordered_map<int32_t,uint32_t> sLastLimitCallbackMap;
 };
 
 } // namespace android
