@@ -141,7 +141,7 @@ LIBBINDER_NDK31 { # introduced=31
     AParcel_reset;
 };
 
-LIBBINDER_NDK32 { # introduced=32
+LIBBINDER_NDK33 { # introduced=33
   global:
     AIBinder_Class_disableInterfaceTokenHeader;
 };
