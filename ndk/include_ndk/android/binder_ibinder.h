@@ -227,11 +227,11 @@ void AIBinder_Class_setOnDump(AIBinder_Class* clazz, AIBinder_onDump onDump) __I
  * must have a separate way of determining the binder you are talking to is the right type. Must
  * be called before any instance of the class is created.
  *
- * Available since API level 32.
+ * Available since API level 33.
  *
  * \param clazz class to disable interface header on.
  */
-void AIBinder_Class_disableInterfaceTokenHeader(AIBinder_Class* clazz) __INTRODUCED_IN(32);
+void AIBinder_Class_disableInterfaceTokenHeader(AIBinder_Class* clazz) __INTRODUCED_IN(33);
 
 /**
  * Creates a new binder object of the appropriate class.
