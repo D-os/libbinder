@@ -334,11 +334,7 @@ cc_library {
     // This library is intentionally limited to these targets, and it will be removed later.
     // Do not expand the visibility.
     visibility: [
-        "//packages/modules/Virtualization/authfs:__subpackages__",
-        "//packages/modules/Virtualization/compos:__subpackages__",
-        "//packages/modules/Virtualization/microdroid",
-        "//packages/modules/Virtualization/microdroid_manager",
-        "//packages/modules/Virtualization/virtualizationservice",
+        "//packages/modules/Virtualization:__subpackages__",
     ],
 }
 
