@@ -446,14 +446,17 @@ class RpcTransportCtxTls : public RpcTransportCtx {
 public:
     template <typename Impl,
               typename = std::enable_if_t<std::is_base_of_v<RpcTransportCtxTls, Impl>>>
-    static std::unique_ptr<RpcTransportCtxTls> create();
+    static std::unique_ptr<RpcTransportCtxTls> create(
+            std::shared_ptr<RpcCertificateVerifier> verifier);
     std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd fd,
                                                FdTrigger* fdTrigger) const override;
     std::string getCertificate(CertificateFormat) const override;
 
 protected:
+    static ssl_verify_result_t sslCustomVerify(SSL* ssl, uint8_t* outAlert);
     virtual void preHandshake(Ssl* ssl) const = 0;
     bssl::UniquePtr<SSL_CTX> mCtx;
+    std::shared_ptr<RpcCertificateVerifier> mCertVerifier;
 };
 
 std::string RpcTransportCtxTls::getCertificate(CertificateFormat) const {
@@ -461,10 +464,36 @@ std::string RpcTransportCtxTls::getCertificate(CertificateFormat) const {
     return {};
 }
 
+// Verify by comparing the leaf of peer certificate with every certificate in
+// mTrustedPeerCertificates. Does not support certificate chains.
+ssl_verify_result_t RpcTransportCtxTls::sslCustomVerify(SSL* ssl, uint8_t* outAlert) {
+    LOG_ALWAYS_FATAL_IF(outAlert == nullptr);
+    const char* logPrefix = SSL_is_server(ssl) ? "Server" : "Client";
+
+    bssl::UniquePtr<X509> peerCert(SSL_get_peer_certificate(ssl)); // Does not set error queue
+    LOG_ALWAYS_FATAL_IF(peerCert == nullptr,
+                        "%s: libssl should not ask to verify non-existing cert", logPrefix);
+
+    auto ctx = SSL_get_SSL_CTX(ssl); // Does not set error queue
+    LOG_ALWAYS_FATAL_IF(ctx == nullptr);
+    // void* -> RpcTransportCtxTls*
+    auto rpcTransportCtxTls = reinterpret_cast<RpcTransportCtxTls*>(SSL_CTX_get_app_data(ctx));
+    LOG_ALWAYS_FATAL_IF(rpcTransportCtxTls == nullptr);
+
+    status_t verifyStatus = rpcTransportCtxTls->mCertVerifier->verify(peerCert.get(), outAlert);
+    if (verifyStatus == OK) {
+        return ssl_verify_ok;
+    }
+    LOG_TLS_DETAIL("%s: Failed to verify client: status = %s, alert = %s", logPrefix,
+                   statusToString(verifyStatus).c_str(), SSL_alert_desc_string_long(*outAlert));
+    return ssl_verify_invalid;
+}
+
 // Common implementation for creating server and client contexts. The child class, |Impl|, is
 // provided as a template argument so that this function can initialize an |Impl| object.
 template <typename Impl, typename>
-std::unique_ptr<RpcTransportCtxTls> RpcTransportCtxTls::create() {
+std::unique_ptr<RpcTransportCtxTls> RpcTransportCtxTls::create(
+        std::shared_ptr<RpcCertificateVerifier> verifier) {
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     TEST_AND_RETURN(nullptr, ctx != nullptr);
 
@@ -475,10 +504,10 @@ std::unique_ptr<RpcTransportCtxTls> RpcTransportCtxTls::create() {
     TEST_AND_RETURN(nullptr, SSL_CTX_use_PrivateKey(ctx.get(), evp_pkey.get()));
     TEST_AND_RETURN(nullptr, SSL_CTX_use_certificate(ctx.get(), cert.get()));
 
-    // TODO(b/195166979): peer should send certificate in a different channel, and this class
-    //  should verify it here.
-    SSL_CTX_set_custom_verify(ctx.get(), SSL_VERIFY_PEER,
-                              [](SSL*, uint8_t*) -> ssl_verify_result_t { return ssl_verify_ok; });
+    // Enable two-way authentication by setting SSL_VERIFY_FAIL_IF_NO_PEER_CERT on server.
+    // Client ignores SSL_VERIFY_FAIL_IF_NO_PEER_CERT flag.
+    SSL_CTX_set_custom_verify(ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                              sslCustomVerify);
 
     // Require at least TLS 1.3
     TEST_AND_RETURN(nullptr, SSL_CTX_set_min_proto_version(ctx.get(), TLS1_3_VERSION));
@@ -488,7 +517,10 @@ std::unique_ptr<RpcTransportCtxTls> RpcTransportCtxTls::create() {
     }
 
     auto ret = std::make_unique<Impl>();
+    // RpcTransportCtxTls* -> void*
+    TEST_AND_RETURN(nullptr, SSL_CTX_set_app_data(ctx.get(), reinterpret_cast<void*>(ret.get())));
     ret->mCtx = std::move(ctx);
+    ret->mCertVerifier = std::move(verifier);
     return ret;
 }
 
@@ -520,11 +552,11 @@ protected:
 } // namespace
 
 std::unique_ptr<RpcTransportCtx> RpcTransportCtxFactoryTls::newServerCtx() const {
-    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsServer>();
+    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsServer>(mCertVerifier);
 }
 
 std::unique_ptr<RpcTransportCtx> RpcTransportCtxFactoryTls::newClientCtx() const {
-    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsClient>();
+    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsClient>(mCertVerifier);
 }
 
 const char* RpcTransportCtxFactoryTls::toCString() const {
