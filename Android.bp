@@ -325,6 +325,7 @@ cc_library {
         "libbinder_ndk",
         "libutils",
     ],
+    export_include_dirs: ["include_rpc_unstable"],
 
     // enumerate stable entry points, for apex use
     stubs: {
@@ -336,6 +337,11 @@ cc_library {
     visibility: [
         "//packages/modules/Virtualization:__subpackages__",
     ],
+}
+
+filegroup {
+    name: "libbinder_rpc_unstable_header",
+    srcs: ["include_rpc_unstable/binder_rpc_unstable.hpp"],
 }
 
 // libbinder historically contained additional interfaces that provided specific
