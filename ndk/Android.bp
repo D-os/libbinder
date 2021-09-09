@@ -117,6 +117,9 @@ cc_library {
             "30",
         ],
     },
+    sanitize: {
+        misc_undefined: ["integer"],
+    },
     tidy: true,
     tidy_flags: [
         // Only check our headers
