@@ -144,15 +144,6 @@ std::string RpcServer::getCertificate(CertificateFormat format) {
     return mCtx->getCertificate(format);
 }
 
-status_t RpcServer::addTrustedPeerCertificate(CertificateFormat format, std::string_view cert) {
-    std::lock_guard<std::mutex> _l(mLock);
-    // Ensure that join thread is not running or shutdown trigger is not set up. In either case,
-    // it means there are child threads running. It is invalid to add trusted peer certificates
-    // after join thread and/or child threads are running to avoid race condition.
-    if (mJoinThreadRunning || mShutdownTrigger != nullptr) return INVALID_OPERATION;
-    return mCtx->addTrustedPeerCertificate(format, cert);
-}
-
 static void joinRpcServer(sp<RpcServer>&& thiz) {
     thiz->join();
 }

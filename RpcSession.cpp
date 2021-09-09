@@ -64,23 +64,12 @@ RpcSession::~RpcSession() {
 
 sp<RpcSession> RpcSession::make() {
     // Default is without TLS.
-    return make(RpcTransportCtxFactoryRaw::make(), std::nullopt, std::nullopt);
+    return make(RpcTransportCtxFactoryRaw::make());
 }
 
-sp<RpcSession> RpcSession::make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory,
-                                std::optional<CertificateFormat> serverCertificateFormat,
-                                std::optional<std::string> serverCertificate) {
+sp<RpcSession> RpcSession::make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory) {
     auto ctx = rpcTransportCtxFactory->newClientCtx();
     if (ctx == nullptr) return nullptr;
-    LOG_ALWAYS_FATAL_IF(serverCertificateFormat.has_value() != serverCertificate.has_value());
-    if (serverCertificateFormat.has_value() && serverCertificate.has_value()) {
-        status_t status =
-                ctx->addTrustedPeerCertificate(*serverCertificateFormat, *serverCertificate);
-        if (status != OK) {
-            ALOGE("Cannot add trusted server certificate: %s", statusToString(status).c_str());
-            return nullptr;
-        }
-    }
     return sp<RpcSession>::make(std::move(ctx));
 }
 

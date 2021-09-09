@@ -75,18 +75,6 @@ public:
     // - For TLS, this returns the certificate. See RpcTransportTls for details.
     [[nodiscard]] virtual std::string getCertificate(CertificateFormat format) const = 0;
 
-    // Add a trusted peer certificate. Peers presenting this certificate are accepted.
-    //
-    // Caller must ensure that newTransport() are called after all trusted peer certificates
-    // are added. Otherwise, RpcTransport-s created before may not trust peer certificates
-    // added later.
-    //
-    // Implementation details:
-    // - For raw sockets, this always returns OK.
-    // - For TLS, this adds trusted peer certificate. See RpcTransportTls for details.
-    [[nodiscard]] virtual status_t addTrustedPeerCertificate(CertificateFormat format,
-                                                             std::string_view cert) = 0;
-
 protected:
     RpcTransportCtx() = default;
 };
