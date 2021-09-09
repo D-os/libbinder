@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-use crate::binder::{AsNative, Interface, InterfaceClassMethods, Remotable, Stability, TransactionCode};
+use crate::binder::{
+    AsNative, Interface, InterfaceClassMethods, Remotable, Stability, TransactionCode,
+};
 use crate::error::{status_result, status_t, Result, StatusCode};
 use crate::parcel::{Parcel, Serialize};
 use crate::proxy::SpIBinder;
@@ -321,7 +323,12 @@ impl<T: Remotable> InterfaceClassMethods for Binder<T> {
     /// contains a `T` pointer in its user data. fd should be a non-owned file
     /// descriptor, and args must be an array of null-terminated string
     /// poiinters with length num_args.
-    unsafe extern "C" fn on_dump(binder: *mut sys::AIBinder, fd: i32, args: *mut *const c_char, num_args: u32) -> status_t {
+    unsafe extern "C" fn on_dump(
+        binder: *mut sys::AIBinder,
+        fd: i32,
+        args: *mut *const c_char,
+        num_args: u32,
+    ) -> status_t {
         if fd < 0 {
             return StatusCode::UNEXPECTED_NULL as status_t;
         }
@@ -445,6 +452,41 @@ pub fn add_service(identifier: &str, mut binder: SpIBinder) -> Result<()> {
         sys::AServiceManager_addService(binder.as_native_mut(), instance.as_ptr())
     };
     status_result(status)
+}
+
+/// Register a dynamic service via the LazyServiceRegistrar.
+///
+/// Registers the given binder object with the given identifier. If successful,
+/// this service can then be retrieved using that identifier. The service process
+/// will be shut down once all registered services are no longer in use.
+///
+/// If any service in the process is registered as lazy, all should be, otherwise
+/// the process may be shut down while a service is in use.
+pub fn register_lazy_service(identifier: &str, mut binder: SpIBinder) -> Result<()> {
+    let instance = CString::new(identifier).unwrap();
+    let status = unsafe {
+        // Safety: `AServiceManager_registerLazyService` expects valid `AIBinder` and C
+        // string pointers. Caller retains ownership of both
+        // pointers. `AServiceManager_registerLazyService` creates a new strong reference
+        // and copies the string, so both pointers need only be valid until the
+        // call returns.
+
+        sys::AServiceManager_registerLazyService(binder.as_native_mut(), instance.as_ptr())
+    };
+    status_result(status)
+}
+
+/// Prevent a process which registers lazy services from being shut down even when none
+/// of the services is in use.
+///
+/// If persist is true then shut down will be blocked until this function is called again with
+/// persist false. If this is to be the initial state, call this function before calling
+/// register_lazy_service.
+pub fn force_lazy_services_persist(persist: bool) {
+    unsafe {
+        // Safety: No borrowing or transfer of ownership occurs here.
+        sys::AServiceManager_forceLazyServicesPersist(persist)
+    }
 }
 
 /// Tests often create a base BBinder instance; so allowing the unit
