@@ -109,7 +109,7 @@ rust_bindgen {
 // TODO(b/184872979): remove once the Rust API is created.
 rust_bindgen {
     name: "libbinder_rpc_unstable_bindgen",
-    wrapper_src: "src/binder_rpc_unstable.hpp",
+    wrapper_src: ":libbinder_rpc_unstable_header",
     crate_name: "binder_rpc_unstable_bindgen",
     source_stem: "bindings",
     shared_libs: [
