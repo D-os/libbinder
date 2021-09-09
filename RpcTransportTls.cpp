@@ -537,8 +537,14 @@ const char* RpcTransportCtxFactoryTls::toCString() const {
     return "tls";
 }
 
-std::unique_ptr<RpcTransportCtxFactory> RpcTransportCtxFactoryTls::make() {
-    return std::unique_ptr<RpcTransportCtxFactoryTls>(new RpcTransportCtxFactoryTls());
+std::unique_ptr<RpcTransportCtxFactory> RpcTransportCtxFactoryTls::make(
+        std::shared_ptr<RpcCertificateVerifier> verifier) {
+    if (verifier == nullptr) {
+        ALOGE("%s: Must provide a certificate verifier", __PRETTY_FUNCTION__);
+        return nullptr;
+    }
+    return std::unique_ptr<RpcTransportCtxFactoryTls>(
+            new RpcTransportCtxFactoryTls(std::move(verifier)));
 }
 
 } // namespace android
