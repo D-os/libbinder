@@ -20,7 +20,16 @@ extern "C" {
 
 struct AIBinder;
 
+// Starts an RPC server on a given port and a given root IBinder object.
+// This function sets up the server and joins before returning.
 bool RunRpcServer(AIBinder* service, unsigned int port);
+
+// Starts an RPC server on a given port and a given root IBinder object.
+// This function sets up the server, calls readyCallback with a given param, and
+// then joins before returning.
+bool RunRpcServerCallback(AIBinder* service, unsigned int port, void (*readyCallback)(void* param),
+                          void* param);
+
 AIBinder* RpcClient(unsigned int cid, unsigned int port);
 
 // Connect to an RPC server with preconnected file descriptors.
