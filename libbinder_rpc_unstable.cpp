@@ -15,6 +15,7 @@
  */
 
 #include <android-base/logging.h>
+#include <android-base/unique_fd.h>
 #include <android/binder_libbinder.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcSession.h>
@@ -24,10 +25,12 @@ using android::RpcServer;
 using android::RpcSession;
 using android::status_t;
 using android::statusToString;
+using android::base::unique_fd;
 
 extern "C" {
 
-bool RunRpcServer(AIBinder* service, unsigned int port) {
+bool RunRpcServerCallback(AIBinder* service, unsigned int port, void (*readyCallback)(void* param),
+                          void* param) {
     auto server = RpcServer::make();
     server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     if (status_t status = server->setupVsockServer(port); status != OK) {
@@ -36,6 +39,8 @@ bool RunRpcServer(AIBinder* service, unsigned int port) {
         return false;
     }
     server->setRootObject(AIBinder_toPlatformBinder(service));
+
+    if (readyCallback) readyCallback(param);
     server->join();
 
     // Shutdown any open sessions since server failed.
@@ -43,11 +48,25 @@ bool RunRpcServer(AIBinder* service, unsigned int port) {
     return true;
 }
 
+bool RunRpcServer(AIBinder* service, unsigned int port) {
+    return RunRpcServerCallback(service, port, nullptr, nullptr);
+}
+
 AIBinder* RpcClient(unsigned int cid, unsigned int port) {
     auto session = RpcSession::make();
     if (status_t status = session->setupVsockClient(cid, port); status != OK) {
         LOG(ERROR) << "Failed to set up vsock client with CID " << cid << " and port " << port
                    << " error: " << statusToString(status).c_str();
+        return nullptr;
+    }
+    return AIBinder_fromPlatformBinder(session->getRootObject());
+}
+
+AIBinder* RpcPreconnectedClient(int (*requestFd)(void* param), void* param) {
+    auto session = RpcSession::make();
+    auto request = [=] { return unique_fd{requestFd(param)}; };
+    if (status_t status = session->setupPreconnectedClient(unique_fd{}, request); status != OK) {
+        LOG(ERROR) << "Failed to set up vsock client. error: " << statusToString(status).c_str();
         return nullptr;
     }
     return AIBinder_fromPlatformBinder(session->getRootObject());
