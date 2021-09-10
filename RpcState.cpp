@@ -397,7 +397,7 @@ status_t RpcState::getMaxThreads(const sp<RpcSession::RpcConnection>& connection
 }
 
 status_t RpcState::getSessionId(const sp<RpcSession::RpcConnection>& connection,
-                                const sp<RpcSession>& session, RpcAddress* sessionIdOut) {
+                                const sp<RpcSession>& session, std::vector<uint8_t>* sessionIdOut) {
     Parcel data;
     data.markForRpc(session);
     Parcel reply;
@@ -410,7 +410,7 @@ status_t RpcState::getSessionId(const sp<RpcSession::RpcConnection>& connection,
         return status;
     }
 
-    return sessionIdOut->readFromParcel(reply);
+    return reply.readByteVector(sessionIdOut);
 }
 
 status_t RpcState::transact(const sp<RpcSession::RpcConnection>& connection,
@@ -792,7 +792,7 @@ processTransactInternalTailCall:
                     // for client connections, this should always report the value
                     // originally returned from the server, so this is asserting
                     // that it exists
-                    replyStatus = session->mId.value().writeToParcel(&reply);
+                    replyStatus = reply.writeByteVector(session->mId);
                     break;
                 }
                 default: {

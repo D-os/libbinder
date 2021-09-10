@@ -17,7 +17,6 @@
 
 #include <android-base/unique_fd.h>
 #include <binder/IBinder.h>
-#include <binder/RpcAddress.h>
 #include <binder/RpcSession.h>
 #include <binder/RpcTransport.h>
 #include <utils/Errors.h>
@@ -201,7 +200,7 @@ private:
     std::map<std::thread::id, std::thread> mConnectingThreads;
     sp<IBinder> mRootObject;
     wp<IBinder> mRootObjectWeak;
-    std::map<RpcAddress, sp<RpcSession>> mSessions;
+    std::map<std::vector<uint8_t>, sp<RpcSession>> mSessions;
     std::unique_ptr<FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;
 };
