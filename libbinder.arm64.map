@@ -150,6 +150,7 @@ LIBBINDER {
     _ZN7android14IPCThreadState20clearCallingIdentityEv;
     _ZN7android14IPCThreadState20getAndExecuteCommandEv;
     _ZN7android14IPCThreadState20getProcessFreezeInfoEiPbS1_;
+    _ZN7android14IPCThreadState20getProcessFreezeInfoEiPjS1_;
     _ZN7android14IPCThreadState20handlePolledCommandsEv;
     _ZN7android14IPCThreadState20processPendingDerefsEv;
     _ZN7android14IPCThreadState20writeTransactionDataEijijRKNS_6ParcelEPi;
