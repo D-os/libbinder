@@ -22,6 +22,7 @@
 #include <openssl/bn.h>
 #include <openssl/ssl.h>
 
+#include <binder/RpcCertificateUtils.h>
 #include <binder/RpcTransportTls.h>
 
 #include "FdTrigger.h"
@@ -459,9 +460,9 @@ protected:
     std::shared_ptr<RpcCertificateVerifier> mCertVerifier;
 };
 
-std::vector<uint8_t> RpcTransportCtxTls::getCertificate(CertificateFormat) const {
-    // TODO(b/195166979): return certificate here
-    return {};
+std::vector<uint8_t> RpcTransportCtxTls::getCertificate(CertificateFormat format) const {
+    X509* x509 = SSL_CTX_get0_certificate(mCtx.get()); // does not own
+    return serializeCertificate(x509, format);
 }
 
 // Verify by comparing the leaf of peer certificate with every certificate in

@@ -262,6 +262,7 @@ cc_defaults {
     ],
     srcs: [
         "RpcTransportTls.cpp",
+        "RpcCertificateUtils.cpp",
     ],
 }
 
