@@ -25,14 +25,11 @@
 #include <android-base/unique_fd.h>
 #include <utils/Errors.h>
 
+#include <binder/CertificateFormat.h>
+
 namespace android {
 
 class FdTrigger;
-
-enum class CertificateFormat {
-    PEM,
-    // TODO(b/195166979): support other formats, e.g. DER
-};
 
 // Represents a socket connection.
 // No thread-safety is guaranteed for these APIs.
