@@ -26,6 +26,7 @@
 
 #include "FdTrigger.h"
 #include "RpcState.h"
+#include "Utils.h"
 
 #define SHOULD_LOG_TLS_DETAIL false
 
@@ -34,14 +35,6 @@
 #else
 #define LOG_TLS_DETAIL(...) ALOGV(__VA_ARGS__) // for type checking
 #endif
-
-#define TEST_AND_RETURN(value, expr)            \
-    do {                                        \
-        if (!(expr)) {                          \
-            ALOGE("Failed to call: %s", #expr); \
-            return value;                       \
-        }                                       \
-    } while (0)
 
 using android::base::ErrnoError;
 using android::base::Error;
