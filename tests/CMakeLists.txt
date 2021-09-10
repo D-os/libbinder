@@ -11,3 +11,5 @@ target_link_libraries(binderLibTest binder gtest)
 
 add_executable(binderThroughputTest "binderThroughputTest.cpp")
 target_link_libraries(binderThroughputTest binder utils gtest)
+
+gtest_discover_tests(binderDriverInterfaceTest binderLibTest binderThroughputTest)
