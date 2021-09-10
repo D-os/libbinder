@@ -141,7 +141,7 @@ sp<IBinder> RpcServer::getRootObject() {
     return ret;
 }
 
-std::string RpcServer::getCertificate(CertificateFormat format) {
+std::vector<uint8_t> RpcServer::getCertificate(CertificateFormat format) {
     std::lock_guard<std::mutex> _l(mLock);
     return mCtx->getCertificate(format);
 }

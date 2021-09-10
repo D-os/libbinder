@@ -111,7 +111,7 @@ public:
     std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd fd, FdTrigger*) const {
         return std::make_unique<RpcTransportRaw>(std::move(fd));
     }
-    std::string getCertificate(CertificateFormat) const override { return {}; }
+    std::vector<uint8_t> getCertificate(CertificateFormat) const override { return {}; }
 };
 
 } // namespace

@@ -703,7 +703,7 @@ bool RpcSession::removeIncomingConnection(const sp<RpcConnection>& connection) {
     return false;
 }
 
-std::string RpcSession::getCertificate(CertificateFormat format) {
+std::vector<uint8_t> RpcSession::getCertificate(CertificateFormat format) {
     return mCtx->getCertificate(format);
 }
 
