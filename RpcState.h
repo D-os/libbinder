@@ -79,11 +79,11 @@ public:
                                     const sp<IBinder>& address, uint32_t code, const Parcel& data,
                                     const sp<RpcSession>& session, Parcel* reply, uint32_t flags);
     [[nodiscard]] status_t transactAddress(const sp<RpcSession::RpcConnection>& connection,
-                                           const RpcAddress& address, uint32_t code,
-                                           const Parcel& data, const sp<RpcSession>& session,
-                                           Parcel* reply, uint32_t flags);
+                                           uint64_t address, uint32_t code, const Parcel& data,
+                                           const sp<RpcSession>& session, Parcel* reply,
+                                           uint32_t flags);
     [[nodiscard]] status_t sendDecStrong(const sp<RpcSession::RpcConnection>& connection,
-                                         const sp<RpcSession>& session, const RpcAddress& address);
+                                         const sp<RpcSession>& session, uint64_t address);
 
     enum class CommandType {
         ANY,
@@ -99,15 +99,15 @@ public:
      * ownership to the outgoing binder.
      */
     [[nodiscard]] status_t onBinderLeaving(const sp<RpcSession>& session, const sp<IBinder>& binder,
-                                           RpcAddress* outAddress);
+                                           uint64_t* outAddress);
 
     /**
      * Called by Parcel for incoming binders. This either returns the refcount
      * to the process, if this process already has one, or it takes ownership of
      * that refcount
      */
-    [[nodiscard]] status_t onBinderEntering(const sp<RpcSession>& session,
-                                            const RpcAddress& address, sp<IBinder>* out);
+    [[nodiscard]] status_t onBinderEntering(const sp<RpcSession>& session, uint64_t address,
+                                            sp<IBinder>* out);
 
     size_t countBinders();
     void dump();
@@ -221,15 +221,16 @@ private:
     // happens, and there is a strong reference to the binder kept by
     // binderNode, this returns that strong reference, so that it can be
     // dropped after any locks are removed.
-    sp<IBinder> tryEraseNode(std::map<RpcAddress, BinderNode>::iterator& it);
+    sp<IBinder> tryEraseNode(std::map<uint64_t, BinderNode>::iterator& it);
     // true - success
     // false - session shutdown, halt
     [[nodiscard]] bool nodeProgressAsyncNumber(BinderNode* node);
 
     std::mutex mNodeMutex;
     bool mTerminated = false;
+    uint32_t mNextId = 0;
     // binders known by both sides of a session
-    std::map<RpcAddress, BinderNode> mNodeForAddress;
+    std::map<uint64_t, BinderNode> mNodeForAddress;
 };
 
 } // namespace android

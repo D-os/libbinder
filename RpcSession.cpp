@@ -226,7 +226,7 @@ status_t RpcSession::transact(const sp<IBinder>& binder, uint32_t code, const Pa
                              sp<RpcSession>::fromExisting(this), reply, flags);
 }
 
-status_t RpcSession::sendDecStrong(const RpcAddress& address) {
+status_t RpcSession::sendDecStrong(uint64_t address) {
     ExclusiveConnection connection;
     status_t status = ExclusiveConnection::find(sp<RpcSession>::fromExisting(this),
                                                 ConnectionUse::CLIENT_REFCOUNT, &connection);

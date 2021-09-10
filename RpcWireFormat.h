@@ -22,14 +22,21 @@ namespace android {
 
 constexpr uint8_t RPC_CONNECTION_OPTION_INCOMING = 0x1; // default is outgoing
 
-constexpr uint64_t RPC_WIRE_ADDRESS_OPTION_CREATED = 1 << 0; // distinguish from '0' address
-constexpr uint64_t RPC_WIRE_ADDRESS_OPTION_FOR_SERVER = 1 << 1;
+constexpr uint32_t RPC_WIRE_ADDRESS_OPTION_CREATED = 1 << 0; // distinguish from '0' address
+constexpr uint32_t RPC_WIRE_ADDRESS_OPTION_FOR_SERVER = 1 << 1;
 
 struct RpcWireAddress {
-    uint64_t options;
-    uint8_t address[32];
+    uint32_t options;
+    uint32_t address;
+
+    static inline RpcWireAddress fromRaw(uint64_t raw) {
+        return *reinterpret_cast<RpcWireAddress*>(&raw);
+    }
+    static inline uint64_t toRaw(RpcWireAddress addr) {
+        return *reinterpret_cast<uint64_t*>(&addr);
+    }
 };
-static_assert(sizeof(RpcWireAddress) == 40);
+static_assert(sizeof(RpcWireAddress) == sizeof(uint64_t));
 
 /**
  * This is sent to an RpcServer in order to request a new connection is created,
@@ -121,7 +128,7 @@ struct RpcWireTransaction {
 
     uint8_t data[];
 };
-static_assert(sizeof(RpcWireTransaction) == 72);
+static_assert(sizeof(RpcWireTransaction) == 40);
 
 struct RpcWireReply {
     int32_t status; // transact return
