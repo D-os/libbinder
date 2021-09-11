@@ -57,9 +57,7 @@ public:
     // Create an RpcSession with the given configuration. |serverCertificateFormat| and
     // |serverCertificate| must have values or be nullopt simultaneously. If they have values, set
     // server certificate.
-    static sp<RpcSession> make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory,
-                               std::optional<CertificateFormat> serverCertificateFormat,
-                               std::optional<std::string> serverCertificate);
+    static sp<RpcSession> make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory);
 
     /**
      * Set the maximum number of threads allowed to be made (for things like callbacks).

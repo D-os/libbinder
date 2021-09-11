@@ -19,6 +19,15 @@
 
 #include <android-base/result.h>
 #include <android-base/unique_fd.h>
+#include <log/log.h>
+
+#define TEST_AND_RETURN(value, expr)            \
+    do {                                        \
+        if (!(expr)) {                          \
+            ALOGE("Failed to call: %s", #expr); \
+            return value;                       \
+        }                                       \
+    } while (0)
 
 namespace android {
 
