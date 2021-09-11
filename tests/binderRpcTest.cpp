@@ -46,6 +46,7 @@
 #include "../RpcSocketAddress.h" // for testing preconnected clients
 #include "../RpcState.h"   // for debugging
 #include "../vm_sockets.h" // for VMADDR_*
+#include "RpcCertificateVerifierSimple.h"
 
 using namespace std::chrono_literals;
 
@@ -61,12 +62,18 @@ static inline std::vector<RpcSecurity> RpcSecurityValues() {
     return {RpcSecurity::RAW, RpcSecurity::TLS};
 }
 
-static inline std::unique_ptr<RpcTransportCtxFactory> newFactory(RpcSecurity rpcSecurity) {
+static inline std::unique_ptr<RpcTransportCtxFactory> newFactory(
+        RpcSecurity rpcSecurity, std::shared_ptr<RpcCertificateVerifier> verifier = nullptr) {
     switch (rpcSecurity) {
         case RpcSecurity::RAW:
             return RpcTransportCtxFactoryRaw::make();
-        case RpcSecurity::TLS:
-            return RpcTransportCtxFactoryTls::make();
+        case RpcSecurity::TLS: {
+            // TODO(b/198833574): exchange keys and set proper verifier
+            if (verifier == nullptr) {
+                verifier = std::make_shared<RpcCertificateVerifierSimple>();
+            }
+            return RpcTransportCtxFactoryTls::make(std::move(verifier));
+        }
         default:
             LOG_ALWAYS_FATAL("Unknown RpcSecurity %d", rpcSecurity);
     }
@@ -522,8 +529,7 @@ public:
         status_t status;
 
         for (size_t i = 0; i < options.numSessions; i++) {
-            sp<RpcSession> session =
-                    RpcSession::make(newFactory(rpcSecurity), std::nullopt, std::nullopt);
+            sp<RpcSession> session = RpcSession::make(newFactory(rpcSecurity));
             session->setMaxThreads(options.numIncomingConnections);
 
             switch (socketType) {
@@ -1208,8 +1214,7 @@ static bool testSupportVsockLoopback() {
     }
     server->start();
 
-    sp<RpcSession> session =
-            RpcSession::make(RpcTransportCtxFactoryRaw::make(), std::nullopt, std::nullopt);
+    sp<RpcSession> session = RpcSession::make(RpcTransportCtxFactoryRaw::make());
     status_t status = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
     while (!server->shutdown()) usleep(10000);
     ALOGE("Detected vsock loopback supported: %s", statusToString(status).c_str());
