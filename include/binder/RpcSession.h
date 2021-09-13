@@ -182,12 +182,12 @@ private:
     public:
         void onSessionAllIncomingThreadsEnded(const sp<RpcSession>& session) override;
         void onSessionIncomingThreadEnded() override;
-        void waitForShutdown(std::unique_lock<std::mutex>& lock);
+        void waitForShutdown(std::unique_lock<std::mutex>& lock, const sp<RpcSession>& session);
 
     private:
         std::condition_variable mCv;
-        volatile bool mShutdown = false;
     };
+    friend WaitForShutdownListener;
 
     struct RpcConnection : public RefBase {
         std::unique_ptr<RpcTransport> rpcTransport;
