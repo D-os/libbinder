@@ -74,6 +74,8 @@ struct binder_frozen_status_info {
     //
     // Indicates whether the process has received any sync calls since last
     // freeze (cleared at freeze/unfreeze)
+    // bit 0: received sync transaction after being frozen
+    // bit 1: new pending sync transaction during freezing
     //
     __u32 sync_recv;
     //
