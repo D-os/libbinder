@@ -20,18 +20,23 @@ namespace android {
 #pragma clang diagnostic push
 #pragma clang diagnostic error "-Wpadded"
 
-enum : uint8_t {
-    RPC_CONNECTION_OPTION_INCOMING = 0x1, // default is outgoing
-};
+constexpr uint8_t RPC_CONNECTION_OPTION_INCOMING = 0x1; // default is outgoing
 
-constexpr uint64_t RPC_WIRE_ADDRESS_OPTION_CREATED = 1 << 0; // distinguish from '0' address
-constexpr uint64_t RPC_WIRE_ADDRESS_OPTION_FOR_SERVER = 1 << 1;
+constexpr uint32_t RPC_WIRE_ADDRESS_OPTION_CREATED = 1 << 0; // distinguish from '0' address
+constexpr uint32_t RPC_WIRE_ADDRESS_OPTION_FOR_SERVER = 1 << 1;
 
 struct RpcWireAddress {
-    uint64_t options;
-    uint8_t address[32];
+    uint32_t options;
+    uint32_t address;
+
+    static inline RpcWireAddress fromRaw(uint64_t raw) {
+        return *reinterpret_cast<RpcWireAddress*>(&raw);
+    }
+    static inline uint64_t toRaw(RpcWireAddress addr) {
+        return *reinterpret_cast<uint64_t*>(&addr);
+    }
 };
-static_assert(sizeof(RpcWireAddress) == 40);
+static_assert(sizeof(RpcWireAddress) == sizeof(uint64_t));
 
 /**
  * This is sent to an RpcServer in order to request a new connection is created,
@@ -39,12 +44,13 @@ static_assert(sizeof(RpcWireAddress) == 40);
  */
 struct RpcConnectionHeader {
     uint32_t version; // maximum supported by caller
-    uint8_t reserver0[4];
-    RpcWireAddress sessionId;
     uint8_t options;
-    uint8_t reserved1[7];
+    uint8_t reservered[9];
+    // Follows is sessionIdSize bytes.
+    // if size is 0, this is requesting a new session.
+    uint16_t sessionIdSize;
 };
-static_assert(sizeof(RpcConnectionHeader) == 56);
+static_assert(sizeof(RpcConnectionHeader) == 16);
 
 /**
  * In response to an RpcConnectionHeader which corresponds to a new session,
@@ -122,7 +128,7 @@ struct RpcWireTransaction {
 
     uint8_t data[];
 };
-static_assert(sizeof(RpcWireTransaction) == 72);
+static_assert(sizeof(RpcWireTransaction) == 40);
 
 struct RpcWireReply {
     int32_t status; // transact return
