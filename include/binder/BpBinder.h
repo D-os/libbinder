@@ -17,7 +17,6 @@
 #pragma once
 
 #include <binder/IBinder.h>
-#include <binder/RpcAddress.h>
 #include <utils/KeyedVector.h>
 #include <utils/Mutex.h>
 #include <utils/threads.h>
@@ -41,7 +40,7 @@ class BpBinder : public IBinder
 {
 public:
     static sp<BpBinder> create(int32_t handle);
-    static sp<BpBinder> create(const sp<RpcSession>& session, const RpcAddress& address);
+    static sp<BpBinder> create(const sp<RpcSession>& session, uint64_t address);
 
     /**
      * Return value:
@@ -129,7 +128,7 @@ public:
         int32_t binderHandle() const { return mBinder->binderHandle(); }
 
         // valid if isRpcBinder
-        const RpcAddress& rpcAddress() const { return mBinder->rpcAddress(); }
+        uint64_t rpcAddress() const { return mBinder->rpcAddress(); }
         const sp<RpcSession>& rpcSession() const { return mBinder->rpcSession(); }
 
         const BpBinder* mBinder;
@@ -147,12 +146,12 @@ private:
     };
     struct RpcHandle {
         sp<RpcSession> session;
-        RpcAddress address;
+        uint64_t address;
     };
     using Handle = std::variant<BinderHandle, RpcHandle>;
 
     int32_t binderHandle() const;
-    const RpcAddress& rpcAddress() const;
+    uint64_t rpcAddress() const;
     const sp<RpcSession>& rpcSession() const;
 
     explicit BpBinder(Handle&& handle);
