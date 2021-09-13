@@ -17,7 +17,6 @@
 
 #include <android-base/unique_fd.h>
 #include <binder/IBinder.h>
-#include <binder/RpcAddress.h>
 #include <binder/RpcTransport.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
@@ -152,7 +151,7 @@ public:
 
     [[nodiscard]] status_t transact(const sp<IBinder>& binder, uint32_t code, const Parcel& data,
                                     Parcel* reply, uint32_t flags);
-    [[nodiscard]] status_t sendDecStrong(const RpcAddress& address);
+    [[nodiscard]] status_t sendDecStrong(uint64_t address);
 
     ~RpcSession();
 
@@ -220,19 +219,21 @@ private:
     static void join(sp<RpcSession>&& session, PreJoinSetupResult&& result);
 
     [[nodiscard]] status_t setupClient(
-            const std::function<status_t(const RpcAddress& sessionId, bool incoming)>&
+            const std::function<status_t(const std::vector<uint8_t>& sessionId, bool incoming)>&
                     connectAndInit);
     [[nodiscard]] status_t setupSocketClient(const RpcSocketAddress& address);
     [[nodiscard]] status_t setupOneSocketConnection(const RpcSocketAddress& address,
-                                                    const RpcAddress& sessionId, bool incoming);
-    [[nodiscard]] status_t initAndAddConnection(base::unique_fd fd, const RpcAddress& sessionId,
+                                                    const std::vector<uint8_t>& sessionId,
+                                                    bool incoming);
+    [[nodiscard]] status_t initAndAddConnection(base::unique_fd fd,
+                                                const std::vector<uint8_t>& sessionId,
                                                 bool incoming);
     [[nodiscard]] status_t addIncomingConnection(std::unique_ptr<RpcTransport> rpcTransport);
     [[nodiscard]] status_t addOutgoingConnection(std::unique_ptr<RpcTransport> rpcTransport,
                                                  bool init);
     [[nodiscard]] bool setForServer(const wp<RpcServer>& server,
                                     const wp<RpcSession::EventListener>& eventListener,
-                                    const RpcAddress& sessionId);
+                                    const std::vector<uint8_t>& sessionId);
     sp<RpcConnection> assignIncomingConnectionToThisThread(
             std::unique_ptr<RpcTransport> rpcTransport);
     [[nodiscard]] bool removeIncomingConnection(const sp<RpcConnection>& connection);
@@ -289,7 +290,7 @@ private:
     sp<WaitForShutdownListener> mShutdownListener; // used for client sessions
     wp<EventListener> mEventListener; // mForServer if server, mShutdownListener if client
 
-    std::optional<RpcAddress> mId;
+    std::vector<uint8_t> mId;
 
     std::unique_ptr<FdTrigger> mShutdownTrigger;
 
