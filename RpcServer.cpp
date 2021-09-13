@@ -23,6 +23,8 @@
 #include <thread>
 #include <vector>
 
+#include <android-base/file.h>
+#include <android-base/hex.h>
 #include <android-base/scopeguard.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
@@ -281,17 +283,29 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         }
     }
 
+    std::vector<uint8_t> sessionId;
+    if (status == OK) {
+        if (header.sessionIdSize > 0) {
+            sessionId.resize(header.sessionIdSize);
+            status = client->interruptableReadFully(server->mShutdownTrigger.get(),
+                                                    sessionId.data(), sessionId.size());
+            if (status != OK) {
+                ALOGE("Failed to read session ID for client connecting to RPC server: %s",
+                      statusToString(status).c_str());
+                // still need to cleanup before we can return
+            }
+        }
+    }
+
     bool incoming = false;
     uint32_t protocolVersion = 0;
-    RpcAddress sessionId = RpcAddress::zero();
     bool requestingNewSession = false;
 
     if (status == OK) {
         incoming = header.options & RPC_CONNECTION_OPTION_INCOMING;
         protocolVersion = std::min(header.version,
                                    server->mProtocolVersion.value_or(RPC_WIRE_PROTOCOL_VERSION));
-        sessionId = RpcAddress::fromRawEmbedded(&header.sessionId);
-        requestingNewSession = sessionId.isZero();
+        requestingNewSession = sessionId.empty();
 
         if (requestingNewSession) {
             RpcNewSessionResponse response{
@@ -333,15 +347,26 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
                 return;
             }
 
+            // Uniquely identify session at the application layer. Even if a
+            // client/server use the same certificates, if they create multiple
+            // sessions, we still want to distinguish between them.
+            constexpr size_t kSessionIdSize = 32;
+            sessionId.resize(kSessionIdSize);
             size_t tries = 0;
             do {
                 // don't block if there is some entropy issue
                 if (tries++ > 5) {
-                    ALOGE("Cannot find new address: %s", sessionId.toString().c_str());
+                    ALOGE("Cannot find new address: %s",
+                          base::HexString(sessionId.data(), sessionId.size()).c_str());
                     return;
                 }
 
-                sessionId = RpcAddress::random(true /*forServer*/);
+                base::unique_fd fd(TEMP_FAILURE_RETRY(
+                        open("/dev/urandom", O_RDONLY | O_CLOEXEC | O_NOFOLLOW)));
+                if (!base::ReadFully(fd, sessionId.data(), sessionId.size())) {
+                    ALOGE("Could not read from /dev/urandom to create session ID");
+                    return;
+                }
             } while (server->mSessions.end() != server->mSessions.find(sessionId));
 
             session = RpcSession::make();
@@ -361,7 +386,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
             auto it = server->mSessions.find(sessionId);
             if (it == server->mSessions.end()) {
                 ALOGE("Cannot add thread, no record of session with ID %s",
-                      sessionId.toString().c_str());
+                      base::HexString(sessionId.data(), sessionId.size()).c_str());
                 return;
             }
             session = it->second;
@@ -423,16 +448,17 @@ status_t RpcServer::setupSocketServer(const RpcSocketAddress& addr) {
 }
 
 void RpcServer::onSessionAllIncomingThreadsEnded(const sp<RpcSession>& session) {
-    auto id = session->mId;
-    LOG_ALWAYS_FATAL_IF(id == std::nullopt, "Server sessions must be initialized with ID");
-    LOG_RPC_DETAIL("Dropping session with address %s", id->toString().c_str());
+    const std::vector<uint8_t>& id = session->mId;
+    LOG_ALWAYS_FATAL_IF(id.empty(), "Server sessions must be initialized with ID");
+    LOG_RPC_DETAIL("Dropping session with address %s",
+                   base::HexString(id.data(), id.size()).c_str());
 
     std::lock_guard<std::mutex> _l(mLock);
-    auto it = mSessions.find(*id);
+    auto it = mSessions.find(id);
     LOG_ALWAYS_FATAL_IF(it == mSessions.end(), "Bad state, unknown session id %s",
-                        id->toString().c_str());
+                        base::HexString(id.data(), id.size()).c_str());
     LOG_ALWAYS_FATAL_IF(it->second != session, "Bad state, session has id mismatch %s",
-                        id->toString().c_str());
+                        base::HexString(id.data(), id.size()).c_str());
     (void)mSessions.erase(it);
 }
 

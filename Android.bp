@@ -120,7 +120,6 @@ cc_library {
         "ParcelFileDescriptor.cpp",
         "PersistableBundle.cpp",
         "ProcessState.cpp",
-        "RpcAddress.cpp",
         "RpcSession.cpp",
         "RpcServer.cpp",
         "RpcState.cpp",
