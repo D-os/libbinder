@@ -63,7 +63,7 @@ std::ostream& operator<<(std::ostream& os, const CommandResult& res) {
     if (res.exitCode) os << "code=" << *res.exitCode;
     if (res.signal) os << "signal=" << *res.signal;
     if (res.pid) os << ", pid=" << *res.pid;
-    return os << ", stdout=" << res.stdout << ", stderr=" << res.stderr;
+    return os << ", stdout=" << res.stdoutStr << ", stderr=" << res.stderrStr;
 }
 
 std::string CommandResult::toString() const {
@@ -142,9 +142,9 @@ android::base::Result<CommandResult> execute(std::vector<std::string> argStringV
         int pollRet = poll(fds, nfds, 1000 /* ms timeout */);
         if (pollRet == -1) return android::base::ErrnoError() << "poll()";
 
-        if (!handlePoll(&ret.outPipe, outPollFd, &ret.stdout))
+        if (!handlePoll(&ret.outPipe, outPollFd, &ret.stdoutStr))
             return android::base::ErrnoError() << "read(stdout)";
-        if (!handlePoll(&ret.errPipe, errPollFd, &ret.stderr))
+        if (!handlePoll(&ret.errPipe, errPollFd, &ret.stderrStr))
             return android::base::ErrnoError() << "read(stderr)";
 
         if (end && end(ret)) return ret;

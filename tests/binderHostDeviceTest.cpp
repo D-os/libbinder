@@ -75,10 +75,10 @@ public:
         auto debuggableResult = execute(Split("adb shell getprop ro.debuggable", " "), nullptr);
         ASSERT_THAT(debuggableResult, Ok());
         ASSERT_EQ(0, debuggableResult->exitCode) << *debuggableResult;
-        auto debuggableBool = ParseBool(Trim(debuggableResult->stdout));
-        ASSERT_NE(ParseBoolResult::kError, debuggableBool) << Trim(debuggableResult->stdout);
+        auto debuggableBool = ParseBool(Trim(debuggableResult->stdoutStr));
+        ASSERT_NE(ParseBoolResult::kError, debuggableBool) << Trim(debuggableResult->stdoutStr);
         if (debuggableBool == ParseBoolResult::kFalse) {
-            GTEST_SKIP() << "ro.debuggable=" << Trim(debuggableResult->stdout);
+            GTEST_SKIP() << "ro.debuggable=" << Trim(debuggableResult->stdoutStr);
         }
 
         auto lsResult = execute(Split("adb shell which servicedispatcher", " "), nullptr);
