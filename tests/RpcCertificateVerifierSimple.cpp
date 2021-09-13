@@ -33,7 +33,7 @@ status_t RpcCertificateVerifierSimple::verify(const X509* peerCert, uint8_t* out
     return PERMISSION_DENIED;
 }
 
-status_t RpcCertificateVerifierSimple::addTrustedPeerCertificate(CertificateFormat format,
+status_t RpcCertificateVerifierSimple::addTrustedPeerCertificate(RpcCertificateFormat format,
                                                                  const std::vector<uint8_t>& cert) {
     bssl::UniquePtr<X509> x509 = deserializeCertificate(cert, format);
     if (x509 == nullptr) {

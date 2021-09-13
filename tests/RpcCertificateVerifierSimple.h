@@ -22,7 +22,7 @@
 
 #include <openssl/ssl.h>
 
-#include <binder/CertificateFormat.h>
+#include <binder/RpcCertificateFormat.h>
 #include <binder/RpcCertificateVerifier.h>
 
 namespace android {
@@ -42,7 +42,7 @@ public:
     // Caller must ensure that RpcTransportCtx::newTransport() are called after all trusted peer
     // certificates are added. Otherwise, RpcTransport-s created before may not trust peer
     // certificates added later.
-    [[nodiscard]] status_t addTrustedPeerCertificate(CertificateFormat format,
+    [[nodiscard]] status_t addTrustedPeerCertificate(RpcCertificateFormat format,
                                                      const std::vector<uint8_t>& cert);
 
 private:

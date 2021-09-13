@@ -556,15 +556,16 @@ public:
 
                     BinderRpcTestServerInfo serverInfo;
                     serverInfo.port = static_cast<int64_t>(outPort);
-                    serverInfo.cert.data = server->getCertificate(CertificateFormat::PEM);
+                    serverInfo.cert.data = server->getCertificate(RpcCertificateFormat::PEM);
                     writeToFd(writeEnd, serverInfo);
                     auto clientInfo = readFromFd<BinderRpcTestClientInfo>(readEnd);
 
                     if (rpcSecurity == RpcSecurity::TLS) {
                         for (const auto& clientCert : clientInfo.certs) {
                             CHECK_EQ(OK,
-                                     certVerifier->addTrustedPeerCertificate(CertificateFormat::PEM,
-                                                                             clientCert.data));
+                                     certVerifier
+                                             ->addTrustedPeerCertificate(RpcCertificateFormat::PEM,
+                                                                         clientCert.data));
                         }
                     }
 
@@ -587,7 +588,7 @@ public:
         BinderRpcTestClientInfo clientInfo;
         for (const auto& session : sessions) {
             auto& parcelableCert = clientInfo.certs.emplace_back();
-            parcelableCert.data = session->getCertificate(CertificateFormat::PEM);
+            parcelableCert.data = session->getCertificate(RpcCertificateFormat::PEM);
         }
         writeToFd(ret.host.writeEnd(), clientInfo);
 
@@ -599,7 +600,8 @@ public:
         if (rpcSecurity == RpcSecurity::TLS) {
             const auto& serverCert = serverInfo.cert.data;
             CHECK_EQ(OK,
-                     certVerifier->addTrustedPeerCertificate(CertificateFormat::PEM, serverCert));
+                     certVerifier->addTrustedPeerCertificate(RpcCertificateFormat::PEM,
+                                                             serverCert));
         }
 
         status_t status;
@@ -1433,7 +1435,7 @@ INSTANTIATE_TEST_CASE_P(BinderRpc, BinderRpcSimple, ::testing::ValuesIn(RpcSecur
                         BinderRpcSimple::PrintTestParam);
 
 class RpcTransportTest
-      : public ::testing::TestWithParam<std::tuple<SocketType, RpcSecurity, CertificateFormat>> {
+      : public ::testing::TestWithParam<std::tuple<SocketType, RpcSecurity, RpcCertificateFormat>> {
 public:
     using ConnectToServer = std::function<base::unique_fd()>;
     static inline std::string PrintParamInfo(const testing::TestParamInfo<ParamType>& info) {
@@ -1727,17 +1729,17 @@ TEST_P(RpcTransportTest, MaliciousClient) {
     maliciousClient.run(true, readOk);
 }
 
-std::vector<CertificateFormat> testCertificateFormats() {
+std::vector<RpcCertificateFormat> testRpcCertificateFormats() {
     return {
-            CertificateFormat::PEM,
-            CertificateFormat::DER,
+            RpcCertificateFormat::PEM,
+            RpcCertificateFormat::DER,
     };
 }
 
 INSTANTIATE_TEST_CASE_P(BinderRpc, RpcTransportTest,
                         ::testing::Combine(::testing::ValuesIn(testSocketTypes(false)),
                                            ::testing::ValuesIn(RpcSecurityValues()),
-                                           ::testing::ValuesIn(testCertificateFormats())),
+                                           ::testing::ValuesIn(testRpcCertificateFormats())),
                         RpcTransportTest::PrintParamInfo);
 
 } // namespace android

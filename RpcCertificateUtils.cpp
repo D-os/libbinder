@@ -46,23 +46,23 @@ bssl::UniquePtr<X509> fromDer(const std::vector<uint8_t>& cert) {
 } // namespace
 
 bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& cert,
-                                             CertificateFormat format) {
+                                             RpcCertificateFormat format) {
     switch (format) {
-        case CertificateFormat::PEM:
+        case RpcCertificateFormat::PEM:
             return fromPem(cert);
-        case CertificateFormat::DER:
+        case RpcCertificateFormat::DER:
             return fromDer(cert);
     }
     LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
 }
 
-std::vector<uint8_t> serializeCertificate(X509* x509, CertificateFormat format) {
+std::vector<uint8_t> serializeCertificate(X509* x509, RpcCertificateFormat format) {
     bssl::UniquePtr<BIO> certBio(BIO_new(BIO_s_mem()));
     switch (format) {
-        case CertificateFormat::PEM: {
+        case RpcCertificateFormat::PEM: {
             TEST_AND_RETURN({}, PEM_write_bio_X509(certBio.get(), x509));
         } break;
-        case CertificateFormat::DER: {
+        case RpcCertificateFormat::DER: {
             TEST_AND_RETURN({}, i2d_X509_bio(certBio.get(), x509));
         } break;
         default: {

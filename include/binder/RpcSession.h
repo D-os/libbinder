@@ -53,7 +53,7 @@ public:
     // Create an RpcSession with default configuration (raw sockets).
     static sp<RpcSession> make();
 
-    // Create an RpcSession with the given configuration. |serverCertificateFormat| and
+    // Create an RpcSession with the given configuration. |serverRpcCertificateFormat| and
     // |serverCertificate| must have values or be nullopt simultaneously. If they have values, set
     // server certificate.
     static sp<RpcSession> make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory);
@@ -131,7 +131,7 @@ public:
     /**
      * See RpcTransportCtx::getCertificate
      */
-    std::vector<uint8_t> getCertificate(CertificateFormat);
+    std::vector<uint8_t> getCertificate(RpcCertificateFormat);
 
     /**
      * Shuts down the service.

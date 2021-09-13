@@ -22,16 +22,16 @@
 
 namespace android {
 
-enum class CertificateFormat {
+enum class RpcCertificateFormat {
     PEM,
     DER,
 };
 
-static inline std::string PrintToString(CertificateFormat format) {
+static inline std::string PrintToString(RpcCertificateFormat format) {
     switch (format) {
-        case CertificateFormat::PEM:
+        case RpcCertificateFormat::PEM:
             return "PEM";
-        case CertificateFormat::DER:
+        case RpcCertificateFormat::DER:
             return "DER";
         default:
             return "<unknown>";

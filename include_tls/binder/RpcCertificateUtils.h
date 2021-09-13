@@ -22,13 +22,13 @@
 
 #include <openssl/ssl.h>
 
-#include <binder/CertificateFormat.h>
+#include <binder/RpcCertificateFormat.h>
 
 namespace android {
 
 bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& cert,
-                                             CertificateFormat format);
+                                             RpcCertificateFormat format);
 
-std::vector<uint8_t> serializeCertificate(X509* x509, CertificateFormat format);
+std::vector<uint8_t> serializeCertificate(X509* x509, RpcCertificateFormat format);
 
 } // namespace android

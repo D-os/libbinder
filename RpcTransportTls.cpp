@@ -451,7 +451,7 @@ public:
             std::shared_ptr<RpcCertificateVerifier> verifier);
     std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd fd,
                                                FdTrigger* fdTrigger) const override;
-    std::vector<uint8_t> getCertificate(CertificateFormat) const override;
+    std::vector<uint8_t> getCertificate(RpcCertificateFormat) const override;
 
 protected:
     static ssl_verify_result_t sslCustomVerify(SSL* ssl, uint8_t* outAlert);
@@ -460,7 +460,7 @@ protected:
     std::shared_ptr<RpcCertificateVerifier> mCertVerifier;
 };
 
-std::vector<uint8_t> RpcTransportCtxTls::getCertificate(CertificateFormat format) const {
+std::vector<uint8_t> RpcTransportCtxTls::getCertificate(RpcCertificateFormat format) const {
     X509* x509 = SSL_CTX_get0_certificate(mCtx.get()); // does not own
     return serializeCertificate(x509, format);
 }
