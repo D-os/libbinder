@@ -1444,7 +1444,7 @@ public:
                 PrintToString(certificateFormat);
     }
     void TearDown() override {
-        for (auto& server : mServers) server->shutdown();
+        for (auto& server : mServers) server->shutdownAndWait();
     }
 
     // A server that handles client socket connections.
@@ -1452,7 +1452,7 @@ public:
     public:
         explicit Server() {}
         Server(Server&&) = default;
-        ~Server() { shutdown(); }
+        ~Server() { shutdownAndWait(); }
         [[nodiscard]] AssertionResult setUp() {
             auto [socketType, rpcSecurity, certificateFormat] = GetParam();
             auto rpcServer = RpcServer::make(newFactory(rpcSecurity));
@@ -1541,7 +1541,7 @@ public:
                       serverTransport->interruptableWriteFully(mFdTrigger.get(), message.data(),
                                                                message.size()));
         }
-        void shutdown() {
+        void shutdownAndWait() {
             mFdTrigger->trigger();
             if (mThread != nullptr) {
                 mThread->join();
