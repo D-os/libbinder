@@ -52,7 +52,7 @@ static const std::vector<std::function<void(FuzzedDataProvider*, const sp<BpBind
                     const sp<IBinder::DeathRecipient>& s_recipient) -> void {
                      // Clean up possible leftover memory.
                      wp<IBinder::DeathRecipient> outRecipient(nullptr);
-                     bpbinder->sendObituary();
+                     if (!bpbinder->isRpcBinder()) bpbinder->sendObituary();
                      bpbinder->unlinkToDeath(nullptr, reinterpret_cast<void*>(&kBpBinderCookie), 0,
                                              &outRecipient);
 
@@ -72,7 +72,9 @@ static const std::vector<std::function<void(FuzzedDataProvider*, const sp<BpBind
                  [](FuzzedDataProvider*, const sp<BpBinder>& bpbinder,
                     const sp<IBinder::DeathRecipient>&) -> void { bpbinder->remoteBinder(); },
                  [](FuzzedDataProvider*, const sp<BpBinder>& bpbinder,
-                    const sp<IBinder::DeathRecipient>&) -> void { bpbinder->sendObituary(); },
+                    const sp<IBinder::DeathRecipient>&) -> void {
+                     if (!bpbinder->isRpcBinder()) bpbinder->sendObituary();
+                 },
                  [](FuzzedDataProvider* fdp, const sp<BpBinder>& bpbinder,
                     const sp<IBinder::DeathRecipient>&) -> void {
                      uint32_t uid = fdp->ConsumeIntegral<uint32_t>();

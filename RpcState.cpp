@@ -56,7 +56,7 @@ status_t RpcState::onBinderLeaving(const sp<RpcSession>& session, const sp<IBind
     bool isRemote = binder->remoteBinder();
     bool isRpc = isRemote && binder->remoteBinder()->isRpcBinder();
 
-    if (isRpc && binder->remoteBinder()->getPrivateAccessorForId().rpcSession() != session) {
+    if (isRpc && binder->remoteBinder()->getPrivateAccessor().rpcSession() != session) {
         // We need to be able to send instructions over the socket for how to
         // connect to a different server, and we also need to let the host
         // process know that this is happening.
@@ -85,8 +85,7 @@ status_t RpcState::onBinderLeaving(const sp<RpcSession>& session, const sp<IBind
         if (binder == node.binder) {
             if (isRpc) {
                 // check integrity of data structure
-                uint64_t actualAddr =
-                        binder->remoteBinder()->getPrivateAccessorForId().rpcAddress();
+                uint64_t actualAddr = binder->remoteBinder()->getPrivateAccessor().rpcAddress();
                 LOG_ALWAYS_FATAL_IF(addr != actualAddr, "Address mismatch %" PRIu64 " vs %" PRIu64,
                                     addr, actualAddr);
             }
@@ -185,7 +184,7 @@ status_t RpcState::onBinderEntering(const sp<RpcSession>& session, uint64_t addr
 
     // Currently, all binders are assumed to be part of the same session (no
     // device global binders in the RPC world).
-    it->second.binder = *out = BpBinder::create(session, it->first);
+    it->second.binder = *out = BpBinder::PrivateAccessor::create(session, it->first);
     it->second.timesRecd = 1;
     return OK;
 }
