@@ -51,7 +51,6 @@ cc_fuzz {
 cc_fuzz {
     name: "binder_bpBinderFuzz",
     defaults: ["binder_fuzz_defaults"],
-    host_supported: false,
     srcs: ["BpBinderFuzz.cpp"],
 }
 

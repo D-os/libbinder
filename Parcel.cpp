@@ -237,7 +237,7 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder) {
                     return INVALID_OPERATION;
                 }
             }
-            const int32_t handle = proxy ? proxy->getPrivateAccessorForId().binderHandle() : 0;
+            const int32_t handle = proxy ? proxy->getPrivateAccessor().binderHandle() : 0;
             obj.hdr.type = BINDER_TYPE_HANDLE;
             obj.binder = 0; /* Don't pass uninitialized stack data to a remote process */
             obj.handle = handle;
@@ -572,7 +572,7 @@ void Parcel::markForBinder(const sp<IBinder>& binder) {
     LOG_ALWAYS_FATAL_IF(mData != nullptr, "format must be set before data is written");
 
     if (binder && binder->remoteBinder() && binder->remoteBinder()->isRpcBinder()) {
-        markForRpc(binder->remoteBinder()->getPrivateAccessorForId().rpcSession());
+        markForRpc(binder->remoteBinder()->getPrivateAccessor().rpcSession());
     }
 }
 
