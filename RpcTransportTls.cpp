@@ -347,7 +347,7 @@ status_t RpcTransportTls::isTriggered(FdTrigger* fdTrigger) {
         ALOGE("%s: %s", __PRETTY_FUNCTION__, ret.error().message().c_str());
         return ret.error().code() == 0 ? UNKNOWN_ERROR : -ret.error().code();
     }
-    return OK;
+    return *ret ? -ECANCELED : OK;
 }
 
 status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, const void* data,
