@@ -211,10 +211,9 @@ int main(int argc, char** argv) {
     for (size_t tries = 0; tries < 5; tries++) {
         usleep(10000);
         status = gSession->setupUnixDomainClient(addr.c_str());
-        if (status == OK) goto success;
+        if (status == OK) break;
     }
-    LOG(FATAL) << "Could not connect: " << statusToString(status).c_str();
-success:
+    CHECK_EQ(status, OK) << "Could not connect: " << statusToString(status).c_str();
 
     ::benchmark::RunSpecifiedBenchmarks();
     return 0;

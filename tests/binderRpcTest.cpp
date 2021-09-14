@@ -614,25 +614,20 @@ public:
                     status = session->setupPreconnectedClient({}, [=]() {
                         return connectTo(UnixSocketAddress(addr.c_str()));
                     });
-                    if (status == OK) goto success;
                     break;
                 case SocketType::UNIX:
                     status = session->setupUnixDomainClient(addr.c_str());
-                    if (status == OK) goto success;
                     break;
                 case SocketType::VSOCK:
                     status = session->setupVsockClient(VMADDR_CID_LOCAL, vsockPort);
-                    if (status == OK) goto success;
                     break;
                 case SocketType::INET:
                     status = session->setupInetClient("127.0.0.1", serverInfo.port);
-                    if (status == OK) goto success;
                     break;
                 default:
                     LOG_ALWAYS_FATAL("Unknown socket type");
             }
-            LOG_ALWAYS_FATAL("Could not connect %s", statusToString(status).c_str());
-        success:
+            CHECK_EQ(status, OK) << "Could not connect: " << statusToString(status);
             ret.sessions.push_back({session, session->getRootObject()});
         }
         return ret;
