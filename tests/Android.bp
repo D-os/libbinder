@@ -120,9 +120,12 @@ aidl_interface {
     host_supported: true,
     unstable: true,
     srcs: [
+        "BinderRpcTestClientInfo.aidl",
+        "BinderRpcTestServerInfo.aidl",
         "IBinderRpcCallback.aidl",
         "IBinderRpcSession.aidl",
         "IBinderRpcTest.aidl",
+        "ParcelableCertificateData.aidl",
     ],
     backend: {
         java: {
