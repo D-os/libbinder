@@ -54,10 +54,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     for (size_t tries = 0; tries < 5; tries++) {
         usleep(10000);
         status = session->setupUnixDomainClient(addr.c_str());
-        if (status == OK) goto success;
+        if (status == OK) break;
     }
-    LOG(FATAL) << "Unable to connect";
-success:
+    CHECK_EQ(status, OK) << "Unable to connect";
 
     sp<BpBinder> bpBinder = session->getRootObject()->remoteBinder();
 
