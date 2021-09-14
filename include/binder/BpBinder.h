@@ -118,6 +118,7 @@ public:
         friend class BpBinder;
         friend class ::android::Parcel;
         friend class ::android::ProcessState;
+        friend class ::android::RpcSession;
         friend class ::android::RpcState;
         explicit PrivateAccessor(const BpBinder* binder) : mBinder(binder) {}
 

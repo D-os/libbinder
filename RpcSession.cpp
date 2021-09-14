@@ -29,6 +29,7 @@
 #include <android-base/hex.h>
 #include <android-base/macros.h>
 #include <android_runtime/vm.h>
+#include <binder/BpBinder.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcTransportRaw.h>
@@ -224,6 +225,10 @@ status_t RpcSession::transact(const sp<IBinder>& binder, uint32_t code, const Pa
     if (status != OK) return status;
     return state()->transact(connection.get(), binder, code, data,
                              sp<RpcSession>::fromExisting(this), reply, flags);
+}
+
+status_t RpcSession::sendDecStrong(const BpBinder* binder) {
+    return sendDecStrong(binder->getPrivateAccessor().rpcAddress());
 }
 
 status_t RpcSession::sendDecStrong(uint64_t address) {
