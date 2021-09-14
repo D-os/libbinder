@@ -212,7 +212,7 @@ ssize_t ProcessState::getStrongRefCountForNode(const sp<BpBinder>& binder) {
     binder_node_info_for_ref info;
     memset(&info, 0, sizeof(binder_node_info_for_ref));
 
-    info.handle = binder->getPrivateAccessorForId().binderHandle();
+    info.handle = binder->getPrivateAccessor().binderHandle();
 
     status_t result = ioctl(mDriverFD, BINDER_GET_NODE_INFO_FOR_REF, &info);
 
@@ -301,7 +301,7 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
                    return nullptr;
             }
 
-            sp<BpBinder> b = BpBinder::create(handle);
+            sp<BpBinder> b = BpBinder::PrivateAccessor::create(handle);
             e->binder = b.get();
             if (b) e->refs = b->getWeakRefs();
             result = b;
