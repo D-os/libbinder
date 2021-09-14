@@ -25,7 +25,7 @@
 #include <android-base/unique_fd.h>
 #include <utils/Errors.h>
 
-#include <binder/CertificateFormat.h>
+#include <binder/RpcCertificateFormat.h>
 
 namespace android {
 
@@ -73,7 +73,8 @@ public:
     // Implementation details:
     // - For raw sockets, this always returns empty string.
     // - For TLS, this returns the certificate. See RpcTransportTls for details.
-    [[nodiscard]] virtual std::string getCertificate(CertificateFormat format) const = 0;
+    [[nodiscard]] virtual std::vector<uint8_t> getCertificate(
+            RpcCertificateFormat format) const = 0;
 
 protected:
     RpcTransportCtx() = default;

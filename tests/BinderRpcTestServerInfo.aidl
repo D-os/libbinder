@@ -14,15 +14,9 @@
  * limitations under the License.
  */
 
-// Formats for serializing TLS certificate.
+import ParcelableCertificateData;
 
-#pragma once
-
-namespace android {
-
-enum class CertificateFormat {
-    PEM,
-    // TODO(b/195166979): support other formats, e.g. DER
-};
-
-} // namespace android
+parcelable BinderRpcTestServerInfo {
+    long port;
+    ParcelableCertificateData cert;
+}

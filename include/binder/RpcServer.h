@@ -135,7 +135,7 @@ public:
     /**
      * See RpcTransportCtx::getCertificate
      */
-    std::string getCertificate(CertificateFormat);
+    std::vector<uint8_t> getCertificate(RpcCertificateFormat);
 
     /**
      * Runs join() in a background thread. Immediately returns.
