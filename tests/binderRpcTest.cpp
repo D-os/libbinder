@@ -1431,13 +1431,32 @@ INSTANTIATE_TEST_CASE_P(BinderRpc, BinderRpcSimple, ::testing::ValuesIn(RpcSecur
                         BinderRpcSimple::PrintTestParam);
 
 class RpcTransportTest
-      : public ::testing::TestWithParam<std::tuple<SocketType, RpcSecurity, RpcCertificateFormat>> {
+      : public ::testing::TestWithParam<
+                std::tuple<SocketType, RpcSecurity, std::optional<RpcCertificateFormat>>> {
 public:
     using ConnectToServer = std::function<base::unique_fd()>;
     static inline std::string PrintParamInfo(const testing::TestParamInfo<ParamType>& info) {
         auto [socketType, rpcSecurity, certificateFormat] = info.param;
-        return PrintToString(socketType) + "_" + newFactory(rpcSecurity)->toCString() + "_" +
-                PrintToString(certificateFormat);
+        auto ret = PrintToString(socketType) + "_" + newFactory(rpcSecurity)->toCString();
+        if (certificateFormat.has_value()) ret += "_" + PrintToString(*certificateFormat);
+        return ret;
+    }
+    static std::vector<ParamType> getRpcTranportTestParams() {
+        std::vector<RpcTransportTest::ParamType> ret;
+        for (auto socketType : testSocketTypes(false /* hasPreconnected */)) {
+            for (auto rpcSecurity : RpcSecurityValues()) {
+                switch (rpcSecurity) {
+                    case RpcSecurity::RAW: {
+                        ret.emplace_back(socketType, rpcSecurity, std::nullopt);
+                    } break;
+                    case RpcSecurity::TLS: {
+                        ret.emplace_back(socketType, rpcSecurity, RpcCertificateFormat::PEM);
+                        ret.emplace_back(socketType, rpcSecurity, RpcCertificateFormat::DER);
+                    } break;
+                }
+            }
+        }
+        return ret;
     }
     void TearDown() override {
         for (auto& server : mServers) server->shutdownAndWait();
@@ -1637,8 +1656,9 @@ public:
     status_t trust(A* a, B* b) {
         auto [socketType, rpcSecurity, certificateFormat] = GetParam();
         if (rpcSecurity != RpcSecurity::TLS) return OK;
-        auto bCert = b->getCtx()->getCertificate(certificateFormat);
-        return a->getCertVerifier()->addTrustedPeerCertificate(certificateFormat, bCert);
+        LOG_ALWAYS_FATAL_IF(!certificateFormat.has_value());
+        auto bCert = b->getCtx()->getCertificate(*certificateFormat);
+        return a->getCertVerifier()->addTrustedPeerCertificate(*certificateFormat, bCert);
     }
 
     static constexpr const char* kMessage = "hello";
@@ -1794,40 +1814,29 @@ TEST_P(RpcTransportTest, Trigger) {
 
     server->setPostConnect(serverPostConnect);
 
-    // Start server
     server->start();
     // connect() to server and do handshake
     ASSERT_TRUE(client.setUpTransport());
-    // read the first message. This confirms that server has finished handshake and start handling
-    // client fd. Server thread should pause at waitForWriteBarrier.
+    // read the first message. This ensures that server has finished handshake and start handling
+    // client fd. Server thread should pause at writeCv.wait_for().
     ASSERT_TRUE(client.readMessage(kMessage));
     // Trigger server shutdown after server starts handling client FD. This ensures that the second
     // write is on an FdTrigger that has been shut down.
     server->shutdown();
     // Continues server thread to write the second message.
     {
-        std::unique_lock<std::mutex> lock(writeMutex);
+        std::lock_guard<std::mutex> lock(writeMutex);
         shouldContinueWriting = true;
-        lock.unlock();
-        writeCv.notify_all();
     }
+    writeCv.notify_all();
     // After this line, server thread unblocks and attempts to write the second message, but
     // shutdown is triggered, so write should failed with -ECANCELLED. See |serverPostConnect|.
     // On the client side, second read fails with DEAD_OBJECT
     ASSERT_FALSE(client.readMessage(msg2));
 }
 
-std::vector<RpcCertificateFormat> testRpcCertificateFormats() {
-    return {
-            RpcCertificateFormat::PEM,
-            RpcCertificateFormat::DER,
-    };
-}
-
 INSTANTIATE_TEST_CASE_P(BinderRpc, RpcTransportTest,
-                        ::testing::Combine(::testing::ValuesIn(testSocketTypes(false)),
-                                           ::testing::ValuesIn(RpcSecurityValues()),
-                                           ::testing::ValuesIn(testRpcCertificateFormats())),
+                        ::testing::ValuesIn(RpcTransportTest::getRpcTranportTestParams()),
                         RpcTransportTest::PrintParamInfo);
 
 } // namespace android
