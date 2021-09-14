@@ -16,12 +16,32 @@
 #define LOG_TAG "RpcCertificateVerifierSimple"
 #include <log/log.h>
 
+#include <binder/RpcCertificateUtils.h>
+
 #include "RpcCertificateVerifierSimple.h"
 
 namespace android {
 
-status_t RpcCertificateVerifierSimple::verify(const X509*, uint8_t*) {
-    // TODO(b/195166979): implement this
+status_t RpcCertificateVerifierSimple::verify(const X509* peerCert, uint8_t* outAlert) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (const auto& trustedCert : mTrustedPeerCertificates) {
+        if (0 == X509_cmp(trustedCert.get(), peerCert)) {
+            return OK;
+        }
+    }
+    *outAlert = SSL_AD_CERTIFICATE_UNKNOWN;
+    return PERMISSION_DENIED;
+}
+
+status_t RpcCertificateVerifierSimple::addTrustedPeerCertificate(RpcCertificateFormat format,
+                                                                 const std::vector<uint8_t>& cert) {
+    bssl::UniquePtr<X509> x509 = deserializeCertificate(cert, format);
+    if (x509 == nullptr) {
+        ALOGE("Certificate is not in the proper format %s", PrintToString(format).c_str());
+        return BAD_VALUE;
+    }
+    std::lock_guard<std::mutex> lock(mMutex);
+    mTrustedPeerCertificates.push_back(std::move(x509));
     return OK;
 }
 
