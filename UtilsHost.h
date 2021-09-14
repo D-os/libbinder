@@ -43,8 +43,8 @@ struct CommandResult {
     std::optional<int32_t> exitCode;
     std::optional<int32_t> signal;
     std::optional<pid_t> pid;
-    std::string stdout;
-    std::string stderr;
+    std::string stdoutStr;
+    std::string stderrStr;
 
     android::base::unique_fd outPipe;
     android::base::unique_fd errPipe;
@@ -55,15 +55,15 @@ struct CommandResult {
         std::swap(exitCode, other.exitCode);
         std::swap(signal, other.signal);
         std::swap(pid, other.pid);
-        std::swap(stdout, other.stdout);
-        std::swap(stderr, other.stderr);
+        std::swap(stdoutStr, other.stdoutStr);
+        std::swap(stderrStr, other.stderrStr);
         return *this;
     }
     ~CommandResult();
     [[nodiscard]] std::string toString() const;
 
     [[nodiscard]] bool stdoutEndsWithNewLine() const {
-        return !stdout.empty() && stdout.back() == '\n';
+        return !stdoutStr.empty() && stdoutStr.back() == '\n';
     }
 
 private:
