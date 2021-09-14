@@ -29,6 +29,7 @@
 #include <android-base/hex.h>
 #include <android-base/macros.h>
 #include <android_runtime/vm.h>
+#include <binder/BpBinder.h>
 #include <binder/Parcel.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcTransportRaw.h>
@@ -191,7 +192,7 @@ bool RpcSession::shutdownAndWait(bool wait) {
 
     if (wait) {
         LOG_ALWAYS_FATAL_IF(mShutdownListener == nullptr, "Shutdown listener not installed");
-        mShutdownListener->waitForShutdown(_l);
+        mShutdownListener->waitForShutdown(_l, sp<RpcSession>::fromExisting(this));
 
         LOG_ALWAYS_FATAL_IF(!mThreads.empty(), "Shutdown failed");
     }
@@ -213,6 +214,10 @@ status_t RpcSession::transact(const sp<IBinder>& binder, uint32_t code, const Pa
     if (status != OK) return status;
     return state()->transact(connection.get(), binder, code, data,
                              sp<RpcSession>::fromExisting(this), reply, flags);
+}
+
+status_t RpcSession::sendDecStrong(const BpBinder* binder) {
+    return sendDecStrong(binder->getPrivateAccessor().rpcAddress());
 }
 
 status_t RpcSession::sendDecStrong(uint64_t address) {
@@ -245,17 +250,19 @@ status_t RpcSession::readId() {
 void RpcSession::WaitForShutdownListener::onSessionAllIncomingThreadsEnded(
         const sp<RpcSession>& session) {
     (void)session;
-    mShutdown = true;
 }
 
 void RpcSession::WaitForShutdownListener::onSessionIncomingThreadEnded() {
     mCv.notify_all();
 }
 
-void RpcSession::WaitForShutdownListener::waitForShutdown(std::unique_lock<std::mutex>& lock) {
-    while (!mShutdown) {
+void RpcSession::WaitForShutdownListener::waitForShutdown(std::unique_lock<std::mutex>& lock,
+                                                          const sp<RpcSession>& session) {
+    while (session->mIncomingConnections.size() > 0) {
         if (std::cv_status::timeout == mCv.wait_for(lock, std::chrono::seconds(1))) {
-            ALOGE("Waiting for RpcSession to shut down (1s w/o progress).");
+            ALOGE("Waiting for RpcSession to shut down (1s w/o progress): %zu incoming connections "
+                  "still.",
+                  session->mIncomingConnections.size());
         }
     }
 }
