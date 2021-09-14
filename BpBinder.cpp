@@ -510,7 +510,7 @@ void BpBinder::onLastStrongRef(const void* /*id*/)
 {
     ALOGV("onLastStrongRef BpBinder %p handle %d\n", this, binderHandle());
     if (CC_UNLIKELY(isRpcBinder())) {
-        (void)rpcSession()->sendDecStrong(rpcAddress());
+        (void)rpcSession()->sendDecStrong(this);
         return;
     }
     IF_ALOGV() {
