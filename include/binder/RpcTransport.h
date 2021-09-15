@@ -38,7 +38,7 @@ public:
     virtual ~RpcTransport() = default;
 
     // replacement of ::recv(MSG_PEEK). Error code may not be set if TLS is enabled.
-    virtual android::base::Result<size_t> peek(void *buf, size_t size) = 0;
+    [[nodiscard]] virtual android::base::Result<size_t> peek(void *buf, size_t size) = 0;
 
     /**
      * Read (or write), but allow to be interrupted by a trigger.
@@ -47,9 +47,10 @@ public:
      *   OK - succeeded in completely processing 'size'
      *   error - interrupted (failure or trigger)
      */
-    virtual status_t interruptableWriteFully(FdTrigger *fdTrigger, const void *buf,
-                                             size_t size) = 0;
-    virtual status_t interruptableReadFully(FdTrigger *fdTrigger, void *buf, size_t size) = 0;
+    [[nodiscard]] virtual status_t interruptableWriteFully(FdTrigger *fdTrigger, const void *buf,
+                                                           size_t size) = 0;
+    [[nodiscard]] virtual status_t interruptableReadFully(FdTrigger *fdTrigger, void *buf,
+                                                          size_t size) = 0;
 
 protected:
     RpcTransport() = default;
