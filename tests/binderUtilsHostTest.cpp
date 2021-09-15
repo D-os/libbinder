@@ -34,7 +34,7 @@ TEST(UtilsHost, ExecuteImmediately) {
     auto result = execute({"echo", "foo"}, nullptr);
     ASSERT_THAT(result, Ok());
     EXPECT_THAT(result->exitCode, Optional(EX_OK));
-    EXPECT_EQ(result->stdout, "foo\n");
+    EXPECT_EQ(result->stdoutStr, "foo\n");
 }
 
 TEST(UtilsHost, ExecuteLongRunning) {
@@ -44,7 +44,7 @@ TEST(UtilsHost, ExecuteLongRunning) {
         std::vector<std::string> args{"sh", "-c",
                                       "sleep 0.5 && echo -n f && sleep 0.5 && echo oo && sleep 1"};
         auto result = execute(std::move(args), [](const CommandResult& commandResult) {
-            return android::base::EndsWith(commandResult.stdout, "\n");
+            return android::base::EndsWith(commandResult.stdoutStr, "\n");
         });
         auto elapsed = std::chrono::system_clock::now() - now;
         auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
@@ -53,7 +53,7 @@ TEST(UtilsHost, ExecuteLongRunning) {
 
         ASSERT_THAT(result, Ok());
         EXPECT_EQ(std::nullopt, result->exitCode);
-        EXPECT_EQ(result->stdout, "foo\n");
+        EXPECT_EQ(result->stdoutStr, "foo\n");
     }
 
     // ~CommandResult() called, child process is killed.
@@ -70,7 +70,7 @@ TEST(UtilsHost, ExecuteLongRunning2) {
         std::vector<std::string> args{"sh", "-c",
                                       "sleep 2 && echo -n f && sleep 2 && echo oo && sleep 2"};
         auto result = execute(std::move(args), [](const CommandResult& commandResult) {
-            return android::base::EndsWith(commandResult.stdout, "\n");
+            return android::base::EndsWith(commandResult.stdoutStr, "\n");
         });
         auto elapsed = std::chrono::system_clock::now() - now;
         auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
@@ -79,7 +79,7 @@ TEST(UtilsHost, ExecuteLongRunning2) {
 
         ASSERT_THAT(result, Ok());
         EXPECT_EQ(std::nullopt, result->exitCode);
-        EXPECT_EQ(result->stdout, "foo\n");
+        EXPECT_EQ(result->stdoutStr, "foo\n");
     }
 
     // ~CommandResult() called, child process is killed.
