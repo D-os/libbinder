@@ -395,9 +395,16 @@ TEST(NdkBinder, ActiveServicesCallbackTest) {
             << "Service failed to shut down.";
 }
 
+struct DeathRecipientCookie {
+    std::function<void(void)>*onDeath, *onUnlink;
+};
 void LambdaOnDeath(void* cookie) {
-    auto onDeath = static_cast<std::function<void(void)>*>(cookie);
-    (*onDeath)();
+    auto funcs = static_cast<DeathRecipientCookie*>(cookie);
+    (*funcs->onDeath)();
+};
+void LambdaOnUnlink(void* cookie) {
+    auto funcs = static_cast<DeathRecipientCookie*>(cookie);
+    (*funcs->onUnlink)();
 };
 TEST(NdkBinder, DeathRecipient) {
     using namespace std::chrono_literals;
@@ -409,26 +416,46 @@ TEST(NdkBinder, DeathRecipient) {
 
     std::mutex deathMutex;
     std::condition_variable deathCv;
-    bool deathRecieved = false;
+    bool deathReceived = false;
 
     std::function<void(void)> onDeath = [&] {
         std::cerr << "Binder died (as requested)." << std::endl;
-        deathRecieved = true;
+        deathReceived = true;
         deathCv.notify_one();
     };
 
-    AIBinder_DeathRecipient* recipient = AIBinder_DeathRecipient_new(LambdaOnDeath);
+    std::mutex unlinkMutex;
+    std::condition_variable unlinkCv;
+    bool unlinkReceived = false;
+    bool wasDeathReceivedFirst = false;
 
-    EXPECT_EQ(STATUS_OK, AIBinder_linkToDeath(binder, recipient, static_cast<void*>(&onDeath)));
+    std::function<void(void)> onUnlink = [&] {
+        std::cerr << "Binder unlinked (as requested)." << std::endl;
+        wasDeathReceivedFirst = deathReceived;
+        unlinkReceived = true;
+        unlinkCv.notify_one();
+    };
+
+    DeathRecipientCookie cookie = {&onDeath, &onUnlink};
+
+    AIBinder_DeathRecipient* recipient = AIBinder_DeathRecipient_new(LambdaOnDeath);
+    AIBinder_DeathRecipient_setOnUnlinked(recipient, LambdaOnUnlink);
+
+    EXPECT_EQ(STATUS_OK, AIBinder_linkToDeath(binder, recipient, static_cast<void*>(&cookie)));
 
     // the binder driver should return this if the service dies during the transaction
     EXPECT_EQ(STATUS_DEAD_OBJECT, foo->die());
 
     foo = nullptr;
 
-    std::unique_lock<std::mutex> lock(deathMutex);
-    EXPECT_TRUE(deathCv.wait_for(lock, 1s, [&] { return deathRecieved; }));
-    EXPECT_TRUE(deathRecieved);
+    std::unique_lock<std::mutex> lockDeath(deathMutex);
+    EXPECT_TRUE(deathCv.wait_for(lockDeath, 1s, [&] { return deathReceived; }));
+    EXPECT_TRUE(deathReceived);
+
+    std::unique_lock<std::mutex> lockUnlink(unlinkMutex);
+    EXPECT_TRUE(deathCv.wait_for(lockUnlink, 1s, [&] { return unlinkReceived; }));
+    EXPECT_TRUE(unlinkReceived);
+    EXPECT_TRUE(wasDeathReceivedFirst);
 
     AIBinder_DeathRecipient_delete(recipient);
     AIBinder_decStrong(binder);

@@ -373,6 +373,12 @@ const char* AIBinder_Class_getDescriptor(const AIBinder_Class* clazz) {
     return clazz->getInterfaceDescriptorUtf8();
 }
 
+AIBinder_DeathRecipient::TransferDeathRecipient::~TransferDeathRecipient() {
+    if (mOnUnlinked != nullptr) {
+        mOnUnlinked(mCookie);
+    }
+}
+
 void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinder>& who) {
     CHECK(who == mWho) << who.unsafe_get() << "(" << who.get_refs() << ") vs " << mWho.unsafe_get()
                        << " (" << mWho.get_refs() << ")";
@@ -394,7 +400,7 @@ void AIBinder_DeathRecipient::TransferDeathRecipient::binderDied(const wp<IBinde
 }
 
 AIBinder_DeathRecipient::AIBinder_DeathRecipient(AIBinder_DeathRecipient_onBinderDied onDied)
-    : mOnDied(onDied) {
+    : mOnDied(onDied), mOnUnlinked(nullptr) {
     CHECK(onDied != nullptr);
 }
 
@@ -412,10 +418,12 @@ binder_status_t AIBinder_DeathRecipient::linkToDeath(const sp<IBinder>& binder, 
     std::lock_guard<std::mutex> l(mDeathRecipientsMutex);
 
     sp<TransferDeathRecipient> recipient =
-            new TransferDeathRecipient(binder, cookie, this, mOnDied);
+            new TransferDeathRecipient(binder, cookie, this, mOnDied, mOnUnlinked);
 
     status_t status = binder->linkToDeath(recipient, cookie, 0 /*flags*/);
     if (status != STATUS_OK) {
+        // When we failed to link, the destructor of TransferDeathRecipient runs here, which
+        // ensures that mOnUnlinked is called before we return with an error from this method.
         return PruneStatusT(status);
     }
 
@@ -446,6 +454,10 @@ binder_status_t AIBinder_DeathRecipient::unlinkToDeath(const sp<IBinder>& binder
     }
 
     return STATUS_NAME_NOT_FOUND;
+}
+
+void AIBinder_DeathRecipient::setOnUnlinked(AIBinder_DeathRecipient_onBinderUnlinked onUnlinked) {
+    mOnUnlinked = onUnlinked;
 }
 
 // start of C-API methods
@@ -687,6 +699,15 @@ AIBinder_DeathRecipient* AIBinder_DeathRecipient_new(
     auto ret = new AIBinder_DeathRecipient(onBinderDied);
     ret->incStrong(nullptr);
     return ret;
+}
+
+void AIBinder_DeathRecipient_setOnUnlinked(AIBinder_DeathRecipient* recipient,
+                                           AIBinder_DeathRecipient_onBinderUnlinked onUnlinked) {
+    if (recipient == nullptr) {
+        return;
+    }
+
+    recipient->setOnUnlinked(onUnlinked);
 }
 
 void AIBinder_DeathRecipient_delete(AIBinder_DeathRecipient* recipient) {
