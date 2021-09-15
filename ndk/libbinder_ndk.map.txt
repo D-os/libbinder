@@ -144,6 +144,7 @@ LIBBINDER_NDK31 { # introduced=31
 LIBBINDER_NDK33 { # introduced=33
   global:
     AIBinder_Class_disableInterfaceTokenHeader;
+    AIBinder_DeathRecipient_setOnUnlinked;
     AParcel_marshal;
     AParcel_unmarshal;
 };
