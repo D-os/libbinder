@@ -319,8 +319,6 @@ public:
 private:
     android::base::unique_fd mSocket;
     Ssl mSsl;
-
-    static status_t isTriggered(FdTrigger* fdTrigger);
 };
 
 // Error code is errno.
@@ -341,15 +339,6 @@ Result<size_t> RpcTransportTls::peek(void* buf, size_t size) {
     return ret;
 }
 
-status_t RpcTransportTls::isTriggered(FdTrigger* fdTrigger) {
-    auto ret = fdTrigger->isTriggeredPolled();
-    if (!ret.ok()) {
-        ALOGE("%s: %s", __PRETTY_FUNCTION__, ret.error().message().c_str());
-        return ret.error().code() == 0 ? UNKNOWN_ERROR : -ret.error().code();
-    }
-    return *ret ? -ECANCELED : OK;
-}
-
 status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, const void* data,
                                                   size_t size) {
     auto buffer = reinterpret_cast<const uint8_t*>(data);
@@ -359,7 +348,7 @@ status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, const vo
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
-    if (status_t status = isTriggered(fdTrigger); status != OK) return status;
+    if (fdTrigger->isTriggered()) return -ECANCELED;
 
     while (buffer < end) {
         size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
@@ -390,7 +379,7 @@ status_t RpcTransportTls::interruptableReadFully(FdTrigger* fdTrigger, void* dat
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
-    if (status_t status = isTriggered(fdTrigger); status != OK) return status;
+    if (fdTrigger->isTriggered()) return -ECANCELED;
 
     while (buffer < end) {
         size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
