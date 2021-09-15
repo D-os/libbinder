@@ -1167,6 +1167,8 @@ AParcel* AParcel_create() __INTRODUCED_IN(31);
 /**
  * Marshals the raw bytes of the Parcel to a buffer.
  *
+ * Available since API level 33.
+ *
  * The parcel must not contain any binders or file descriptors.
  *
  * The data you retrieve here must not be placed in any kind of persistent storage. (on local disk,
@@ -1188,6 +1190,8 @@ binder_status_t AParcel_marshal(const AParcel* parcel, uint8_t* buffer, size_t s
 
 /**
  * Set the data in the parcel to the raw bytes from the buffer.
+ *
+ * Available since API level 33.
  *
  * \param parcel The parcel to set data.
  * \param buffer The data buffer to set.
