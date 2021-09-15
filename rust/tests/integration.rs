@@ -697,4 +697,27 @@ mod tests {
         assert!(!(service1 > service1));
         assert_eq!(service1 < service2, !(service2 < service1));
     }
+
+    #[test]
+    fn binder_parcel_mixup() {
+        let service1 = BnTest::new_binder(
+            TestService::new("testing_service1"),
+            BinderFeatures::default(),
+        );
+        let service2 = BnTest::new_binder(
+            TestService::new("testing_service2"),
+            BinderFeatures::default(),
+        );
+
+        let service1 = service1.as_binder();
+        let service2 = service2.as_binder();
+
+        let parcel = service1.prepare_transact().unwrap();
+        let res = service2.submit_transact(super::TestTransactionCode::Test as binder::TransactionCode, parcel, 0);
+
+        match res {
+            Ok(_) => panic!("submit_transact should fail"),
+            Err(err) => assert_eq!(err, binder::StatusCode::BAD_VALUE),
+        }
+    }
 }
