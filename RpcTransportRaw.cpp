@@ -35,20 +35,6 @@ namespace {
 class RpcTransportRaw : public RpcTransport {
 public:
     explicit RpcTransportRaw(android::base::unique_fd socket) : mSocket(std::move(socket)) {}
-    Result<size_t> send(const void* buf, size_t size) {
-        ssize_t ret = TEMP_FAILURE_RETRY(::send(mSocket.get(), buf, size, MSG_NOSIGNAL));
-        if (ret < 0) {
-            return ErrnoError() << "send()";
-        }
-        return ret;
-    }
-    Result<size_t> recv(void* buf, size_t size) {
-        ssize_t ret = TEMP_FAILURE_RETRY(::recv(mSocket.get(), buf, size, MSG_NOSIGNAL));
-        if (ret < 0) {
-            return ErrnoError() << "recv()";
-        }
-        return ret;
-    }
     Result<size_t> peek(void *buf, size_t size) override {
         ssize_t ret = TEMP_FAILURE_RETRY(::recv(mSocket.get(), buf, size, MSG_PEEK));
         if (ret < 0) {
@@ -65,15 +51,17 @@ public:
 
         status_t status;
         while ((status = fdTrigger->triggerablePoll(mSocket.get(), POLLOUT)) == OK) {
-            auto writeSize = this->send(buffer, end - buffer);
-            if (!writeSize.ok()) {
-                LOG_RPC_DETAIL("RpcTransport::send(): %s", writeSize.error().message().c_str());
-                return writeSize.error().code() == 0 ? UNKNOWN_ERROR : -writeSize.error().code();
+            ssize_t writeSize =
+                    TEMP_FAILURE_RETRY(::send(mSocket.get(), buffer, end - buffer, MSG_NOSIGNAL));
+            if (writeSize < 0) {
+                int savedErrno = errno;
+                LOG_RPC_DETAIL("RpcTransport send(): %s", strerror(savedErrno));
+                return -savedErrno;
             }
 
-            if (*writeSize == 0) return DEAD_OBJECT;
+            if (writeSize == 0) return DEAD_OBJECT;
 
-            buffer += *writeSize;
+            buffer += writeSize;
             if (buffer == end) return OK;
         }
         return status;
@@ -87,15 +75,17 @@ public:
 
         status_t status;
         while ((status = fdTrigger->triggerablePoll(mSocket.get(), POLLIN)) == OK) {
-            auto readSize = this->recv(buffer, end - buffer);
-            if (!readSize.ok()) {
-                LOG_RPC_DETAIL("RpcTransport::recv(): %s", readSize.error().message().c_str());
-                return readSize.error().code() == 0 ? UNKNOWN_ERROR : -readSize.error().code();
+            ssize_t readSize =
+                    TEMP_FAILURE_RETRY(::recv(mSocket.get(), buffer, end - buffer, MSG_NOSIGNAL));
+            if (readSize < 0) {
+                int savedErrno = errno;
+                LOG_RPC_DETAIL("RpcTransport recv(): %s", strerror(savedErrno));
+                return -savedErrno;
             }
 
-            if (*readSize == 0) return DEAD_OBJECT; // EOF
+            if (readSize == 0) return DEAD_OBJECT; // EOF
 
-            buffer += *readSize;
+            buffer += readSize;
             if (buffer == end) return OK;
         }
         return status;
