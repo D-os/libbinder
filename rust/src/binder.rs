@@ -152,20 +152,46 @@ pub trait IBinderInternal: IBinder {
     /// available.
     fn get_extension(&mut self) -> Result<Option<SpIBinder>>;
 
+    /// Create a Parcel that can be used with `submit_transact`.
+    fn prepare_transact(&self) -> Result<Parcel>;
+
     /// Perform a generic operation with the object.
+    ///
+    /// The provided [`Parcel`] must have been created by a call to
+    /// `prepare_transact` on the same binder.
+    ///
+    /// # Arguments
+    ///
+    /// * `code` - Transaction code for the operation.
+    /// * `data` - [`Parcel`] with input data.
+    /// * `flags` - Transaction flags, e.g. marking the transaction as
+    ///   asynchronous ([`FLAG_ONEWAY`](FLAG_ONEWAY)).
+    fn submit_transact(
+        &self,
+        code: TransactionCode,
+        data: Parcel,
+        flags: TransactionFlags,
+    ) -> Result<Parcel>;
+
+    /// Perform a generic operation with the object. This is a convenience
+    /// method that internally calls `prepare_transact` followed by
+    /// `submit_transact.
     ///
     /// # Arguments
     /// * `code` - Transaction code for the operation
-    /// * `data` - [`Parcel`] with input data
-    /// * `reply` - Optional [`Parcel`] for reply data
     /// * `flags` - Transaction flags, e.g. marking the transaction as
     ///   asynchronous ([`FLAG_ONEWAY`](FLAG_ONEWAY))
+    /// * `input_callback` A callback for building the `Parcel`.
     fn transact<F: FnOnce(&mut Parcel) -> Result<()>>(
         &self,
         code: TransactionCode,
         flags: TransactionFlags,
         input_callback: F,
-    ) -> Result<Parcel>;
+    ) -> Result<Parcel> {
+        let mut parcel = self.prepare_transact()?;
+        input_callback(&mut parcel)?;
+        self.submit_transact(code, parcel, flags)
+    }
 }
 
 /// Interface of binder local or remote objects.
