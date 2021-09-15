@@ -31,8 +31,10 @@ use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::ffi::{c_void, CString};
 use std::fmt;
+use std::mem;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
+use std::sync::Arc;
 
 /// A strong reference to a Binder remote object.
 ///
@@ -378,13 +380,17 @@ impl<T: AsNative<sys::AIBinder>> IBinder for T {
             // Safety: `SpIBinder` guarantees that `self` always contains a
             // valid pointer to an `AIBinder`. `recipient` can always be
             // converted into a valid pointer to an
-            // `AIBinder_DeathRecipient`. Any value is safe to pass as the
-            // cookie, although we depend on this value being set by
-            // `get_cookie` when the death recipient callback is called.
+            // `AIBinder_DeathRecipient`.
+            //
+            // The cookie is also the correct pointer, and by calling new_cookie,
+            // we have created a new ref-count to the cookie, which linkToDeath
+            // takes ownership of. Once the DeathRecipient is unlinked for any
+            // reason (including if this call fails), the onUnlinked callback
+            // will consume that ref-count.
             sys::AIBinder_linkToDeath(
                 self.as_native_mut(),
                 recipient.as_native_mut(),
-                recipient.get_cookie(),
+                recipient.new_cookie(),
             )
         })
     }
@@ -552,10 +558,20 @@ impl Drop for WpIBinder {
 }
 
 /// Rust wrapper around DeathRecipient objects.
+///
+/// The cookie in this struct represents an Arc<F> for the owned callback.
+/// This struct owns a ref-count of it, and so does every binder that we
+/// have been linked with.
 #[repr(C)]
 pub struct DeathRecipient {
     recipient: *mut sys::AIBinder_DeathRecipient,
-    callback: Box<dyn Fn() + Send + 'static>,
+    cookie: *mut c_void,
+    vtable: &'static DeathRecipientVtable,
+}
+
+struct DeathRecipientVtable {
+    cookie_incr_refcount: unsafe extern "C" fn(*mut c_void),
+    cookie_decr_refcount: unsafe extern "C" fn(*mut c_void),
 }
 
 impl DeathRecipient {
@@ -563,9 +579,9 @@ impl DeathRecipient {
     /// associated object dies.
     pub fn new<F>(callback: F) -> DeathRecipient
     where
-        F: Fn() + Send + 'static,
+        F: Fn() + Send + Sync + 'static,
     {
-        let callback = Box::new(callback);
+        let callback: *const F = Arc::into_raw(Arc::new(callback));
         let recipient = unsafe {
             // Safety: The function pointer is a valid death recipient callback.
             //
@@ -574,10 +590,33 @@ impl DeathRecipient {
             // no longer needed.
             sys::AIBinder_DeathRecipient_new(Some(Self::binder_died::<F>))
         };
+        unsafe {
+            // Safety: The function pointer is a valid onUnlinked callback.
+            //
+            // All uses of linkToDeath in this file correctly increment the
+            // ref-count that this onUnlinked callback will decrement.
+            sys::AIBinder_DeathRecipient_setOnUnlinked(recipient, Some(Self::cookie_decr_refcount::<F>));
+        }
         DeathRecipient {
             recipient,
-            callback,
+            cookie: callback as *mut c_void,
+            vtable: &DeathRecipientVtable {
+                cookie_incr_refcount: Self::cookie_incr_refcount::<F>,
+                cookie_decr_refcount: Self::cookie_decr_refcount::<F>,
+            },
         }
+    }
+
+    /// Increment the ref-count for the cookie and return it.
+    ///
+    /// # Safety
+    ///
+    /// The caller must handle the returned ref-count correctly.
+    unsafe fn new_cookie(&self) -> *mut c_void {
+        (self.vtable.cookie_incr_refcount)(self.cookie);
+
+        // Return a raw pointer with ownership of a ref-count
+        self.cookie
     }
 
     /// Get the opaque cookie that identifies this death recipient.
@@ -586,21 +625,49 @@ impl DeathRecipient {
     /// binder object and will be passed to the `binder_died` callback as an
     /// opaque userdata pointer.
     fn get_cookie(&self) -> *mut c_void {
-        &*self.callback as *const _ as *mut c_void
+        self.cookie
     }
 
     /// Callback invoked from C++ when the binder object dies.
     ///
     /// # Safety
     ///
-    /// The `cookie` parameter must have been created with the `get_cookie`
-    /// method of this object.
+    /// The `cookie` parameter must be the cookie for an Arc<F> and
+    /// the caller must hold a ref-count to it.
     unsafe extern "C" fn binder_died<F>(cookie: *mut c_void)
     where
-        F: Fn() + Send + 'static,
+        F: Fn() + Send + Sync + 'static,
     {
-        let callback = (cookie as *mut F).as_ref().unwrap();
+        let callback = (cookie as *const F).as_ref().unwrap();
         callback();
+    }
+
+    /// Callback that decrements the ref-count.
+    /// This is invoked from C++ when a binder is unlinked.
+    ///
+    /// # Safety
+    ///
+    /// The `cookie` parameter must be the cookie for an Arc<F> and
+    /// the owner must give up a ref-count to it.
+    unsafe extern "C" fn cookie_decr_refcount<F>(cookie: *mut c_void)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        drop(Arc::from_raw(cookie as *const F));
+    }
+
+    /// Callback that increments the ref-count.
+    ///
+    /// # Safety
+    ///
+    /// The `cookie` parameter must be the cookie for an Arc<F> and
+    /// the owner must handle the created ref-count properly.
+    unsafe extern "C" fn cookie_incr_refcount<F>(cookie: *mut c_void)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        let arc = mem::ManuallyDrop::new(Arc::from_raw(cookie as *const F));
+        mem::forget(Arc::clone(&arc));
     }
 }
 
@@ -627,6 +694,12 @@ impl Drop for DeathRecipient {
             // `AIBinder_DeathRecipient_new` when `self` was created. This
             // delete method can only be called once when `self` is dropped.
             sys::AIBinder_DeathRecipient_delete(self.recipient);
+
+            // Safety: We own a ref-count to the cookie, and so does every
+            // linked binder. This call gives up our ref-count. The linked
+            // binders should already have given up their ref-count, or should
+            // do so shortly.
+            (self.vtable.cookie_decr_refcount)(self.cookie)
         }
     }
 }
