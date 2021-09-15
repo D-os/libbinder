@@ -22,7 +22,7 @@ use crate::binder::{
 };
 use crate::error::{status_result, Result, StatusCode};
 use crate::parcel::{
-    Deserialize, DeserializeArray, DeserializeOption, Parcel, Serialize, SerializeArray,
+    Deserialize, DeserializeArray, DeserializeOption, OwnedParcel, Parcel, Serialize, SerializeArray,
     SerializeOption,
 };
 use crate::sys;
@@ -235,7 +235,7 @@ impl Drop for SpIBinder {
 }
 
 impl<T: AsNative<sys::AIBinder>> IBinderInternal for T {
-    fn prepare_transact(&self) -> Result<Parcel> {
+    fn prepare_transact(&self) -> Result<OwnedParcel> {
         let mut input = ptr::null_mut();
         let status = unsafe {
             // Safety: `SpIBinder` guarantees that `self` always contains a
@@ -253,20 +253,19 @@ impl<T: AsNative<sys::AIBinder>> IBinderInternal for T {
 
         unsafe {
             // Safety: At this point, `input` is either a valid, owned `AParcel`
-            // pointer, or null. `Parcel::owned` safely handles both cases,
+            // pointer, or null. `OwnedParcel::from_raw` safely handles both cases,
             // taking ownership of the parcel.
-            Parcel::owned(input).ok_or(StatusCode::UNEXPECTED_NULL)
+            OwnedParcel::from_raw(input).ok_or(StatusCode::UNEXPECTED_NULL)
         }
     }
 
     fn submit_transact(
         &self,
         code: TransactionCode,
-        data: Parcel,
+        data: OwnedParcel,
         flags: TransactionFlags,
-    ) -> Result<Parcel> {
+    ) -> Result<OwnedParcel> {
         let mut reply = ptr::null_mut();
-        assert!(data.is_owned());
         let status = unsafe {
             // Safety: `SpIBinder` guarantees that `self` always contains a
             // valid pointer to an `AIBinder`. Although `IBinder::transact` is
@@ -299,9 +298,8 @@ impl<T: AsNative<sys::AIBinder>> IBinderInternal for T {
             // after the call to `AIBinder_transact` above, so we can
             // construct a `Parcel` out of it. `AIBinder_transact` passes
             // ownership of the `reply` parcel to Rust, so we need to
-            // construct an owned variant. `Parcel::owned` takes ownership
-            // of the parcel pointer.
-            Parcel::owned(reply).ok_or(StatusCode::UNEXPECTED_NULL)
+            // construct an owned variant.
+            OwnedParcel::from_raw(reply).ok_or(StatusCode::UNEXPECTED_NULL)
         }
     }
 
