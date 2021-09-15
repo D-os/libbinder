@@ -83,6 +83,19 @@ impl OwnedParcel {
         Self { ptr }
     }
 
+    /// Convert the provided parcel to an owned parcel, or return `None` if it
+    /// is borrowed.
+    pub fn try_from(parcel: Parcel) -> Option<OwnedParcel> {
+        match &parcel {
+            Parcel::Owned(ptr) => {
+                let ptr = *ptr;
+                std::mem::forget(parcel);
+                Some(OwnedParcel { ptr })
+            }
+            Parcel::Borrowed(_) => None,
+        }
+    }
+
     /// Create an owned reference to a parcel object from a raw pointer.
     ///
     /// # Safety
