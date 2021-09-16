@@ -53,7 +53,7 @@ status_t FdTrigger::triggerablePoll(base::borrowed_fd fd, int16_t event) {
             continue;
         }
         if (pfd[1].revents & POLLHUP) {
-            return -ECANCELED;
+            return DEAD_OBJECT;
         }
         return pfd[0].revents & event ? OK : DEAD_OBJECT;
     }

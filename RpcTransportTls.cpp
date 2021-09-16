@@ -241,7 +241,7 @@ private:
     status_t handlePoll(int event, android::base::borrowed_fd fd, FdTrigger* fdTrigger,
                         const char* fnString) {
         status_t ret = fdTrigger->triggerablePoll(fd, event);
-        if (ret != OK && ret != DEAD_OBJECT && ret != -ECANCELED) {
+        if (ret != OK && ret != DEAD_OBJECT) {
             ALOGE("triggerablePoll error while poll()-ing after %s(): %s", fnString,
                   statusToString(ret).c_str());
         }
@@ -348,7 +348,7 @@ status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, const vo
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
-    if (fdTrigger->isTriggered()) return -ECANCELED;
+    if (fdTrigger->isTriggered()) return DEAD_OBJECT;
 
     while (buffer < end) {
         size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
@@ -379,7 +379,7 @@ status_t RpcTransportTls::interruptableReadFully(FdTrigger* fdTrigger, void* dat
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
-    if (fdTrigger->isTriggered()) return -ECANCELED;
+    if (fdTrigger->isTriggered()) return DEAD_OBJECT;
 
     while (buffer < end) {
         size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
