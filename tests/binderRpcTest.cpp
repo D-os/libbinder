@@ -1794,9 +1794,9 @@ TEST_P(RpcTransportTest, Trigger) {
         }
 
         status = serverTransport->interruptableWriteFully(fdTrigger, msg2.data(), msg2.size());
-        if (status != -ECANCELED)
+        if (status != DEAD_OBJECT)
             return AssertionFailure() << "When FdTrigger is shut down, interruptableWriteFully "
-                                         "should return -ECANCELLED, but it is "
+                                         "should return DEAD_OBJECT, but it is "
                                       << statusToString(status);
         return AssertionSuccess();
     };
@@ -1830,7 +1830,7 @@ TEST_P(RpcTransportTest, Trigger) {
     }
     writeCv.notify_all();
     // After this line, server thread unblocks and attempts to write the second message, but
-    // shutdown is triggered, so write should failed with -ECANCELLED. See |serverPostConnect|.
+    // shutdown is triggered, so write should failed with DEAD_OBJECT. See |serverPostConnect|.
     // On the client side, second read fails with DEAD_OBJECT
     ASSERT_FALSE(client.readMessage(msg2));
 }
