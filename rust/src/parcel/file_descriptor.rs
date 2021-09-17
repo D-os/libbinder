@@ -23,7 +23,7 @@ use crate::error::{status_result, Result, StatusCode};
 use crate::sys;
 
 use std::fs::File;
-use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
+use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 
 /// Rust version of the Java class android.os.ParcelFileDescriptor
 #[derive(Debug)]
@@ -51,6 +51,12 @@ impl From<ParcelFileDescriptor> for File {
 impl AsRawFd for ParcelFileDescriptor {
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for ParcelFileDescriptor {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_raw_fd()
     }
 }
 
