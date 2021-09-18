@@ -460,17 +460,13 @@ ssl_verify_result_t RpcTransportCtxTls::sslCustomVerify(SSL* ssl, uint8_t* outAl
     LOG_ALWAYS_FATAL_IF(outAlert == nullptr);
     const char* logPrefix = SSL_is_server(ssl) ? "Server" : "Client";
 
-    bssl::UniquePtr<X509> peerCert(SSL_get_peer_certificate(ssl)); // Does not set error queue
-    LOG_ALWAYS_FATAL_IF(peerCert == nullptr,
-                        "%s: libssl should not ask to verify non-existing cert", logPrefix);
-
     auto ctx = SSL_get_SSL_CTX(ssl); // Does not set error queue
     LOG_ALWAYS_FATAL_IF(ctx == nullptr);
     // void* -> RpcTransportCtxTls*
     auto rpcTransportCtxTls = reinterpret_cast<RpcTransportCtxTls*>(SSL_CTX_get_app_data(ctx));
     LOG_ALWAYS_FATAL_IF(rpcTransportCtxTls == nullptr);
 
-    status_t verifyStatus = rpcTransportCtxTls->mCertVerifier->verify(peerCert.get(), outAlert);
+    status_t verifyStatus = rpcTransportCtxTls->mCertVerifier->verify(ssl, outAlert);
     if (verifyStatus == OK) {
         return ssl_verify_ok;
     }

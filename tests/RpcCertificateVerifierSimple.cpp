@@ -22,10 +22,15 @@
 
 namespace android {
 
-status_t RpcCertificateVerifierSimple::verify(const X509* peerCert, uint8_t* outAlert) {
+status_t RpcCertificateVerifierSimple::verify(const SSL* ssl, uint8_t* outAlert) {
+    const char* logPrefix = SSL_is_server(ssl) ? "Server" : "Client";
+    bssl::UniquePtr<X509> peerCert(SSL_get_peer_certificate(ssl)); // Does not set error queue
+    LOG_ALWAYS_FATAL_IF(peerCert == nullptr,
+                        "%s: libssl should not ask to verify non-existing cert", logPrefix);
+
     std::lock_guard<std::mutex> lock(mMutex);
     for (const auto& trustedCert : mTrustedPeerCertificates) {
-        if (0 == X509_cmp(trustedCert.get(), peerCert)) {
+        if (0 == X509_cmp(trustedCert.get(), peerCert.get())) {
             return OK;
         }
     }
