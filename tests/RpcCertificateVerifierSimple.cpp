@@ -16,7 +16,7 @@
 #define LOG_TAG "RpcCertificateVerifierSimple"
 #include <log/log.h>
 
-#include <binder/RpcCertificateUtils.h>
+#include <binder/RpcTlsUtils.h>
 
 #include "RpcCertificateVerifierSimple.h"
 

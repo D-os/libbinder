@@ -22,7 +22,7 @@
 #include <openssl/bn.h>
 #include <openssl/ssl.h>
 
-#include <binder/RpcCertificateUtils.h>
+#include <binder/RpcTlsUtils.h>
 #include <binder/RpcTransportTls.h>
 
 #include "FdTrigger.h"
