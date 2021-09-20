@@ -1082,15 +1082,18 @@ TEST_P(BinderRpc, OnewayCallQueueing) {
 
     EXPECT_OK(proc.rootIface->lock());
 
-    for (size_t i = 0; i < kNumSleeps; i++) {
-        // these should be processed serially
+    size_t epochMsBefore = epochMillis();
+
+    // all these *Async commands should be queued on the server sequentially,
+    // even though there are multiple threads.
+    for (size_t i = 0; i + 1 < kNumSleeps; i++) {
         proc.rootIface->sleepMsAsync(kSleepMs);
     }
-    // should also be processesed serially
     EXPECT_OK(proc.rootIface->unlockInMsAsync(kSleepMs));
 
-    size_t epochMsBefore = epochMillis();
+    // this can only return once the final async call has unlocked
     EXPECT_OK(proc.rootIface->lockUnlock());
+
     size_t epochMsAfter = epochMillis();
 
     EXPECT_GT(epochMsAfter, epochMsBefore + kSleepMs * kNumSleeps);
