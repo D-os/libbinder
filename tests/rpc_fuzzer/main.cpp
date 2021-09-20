@@ -101,7 +101,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     if (hangupBeforeShutdown) {
         connections.clear();
-        while (!server->listSessions().empty() && server->numUninitializedSessions()) {
+        while (!server->listSessions().empty() || server->numUninitializedSessions()) {
             // wait for all threads to finish processing existing information
             usleep(1);
         }
