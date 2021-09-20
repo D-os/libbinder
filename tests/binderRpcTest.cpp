@@ -1036,6 +1036,14 @@ TEST_P(BinderRpc, ThreadingStressTest) {
     for (auto& t : threads) t.join();
 }
 
+static void saturateThreadPool(size_t threadCount, const sp<IBinderRpcTest>& iface) {
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < threadCount; i++) {
+        threads.push_back(std::thread([&] { EXPECT_OK(iface->sleepMs(500)); }));
+    }
+    for (auto& t : threads) t.join();
+}
+
 TEST_P(BinderRpc, OnewayStressTest) {
     constexpr size_t kNumClientThreads = 10;
     constexpr size_t kNumServerThreads = 10;
@@ -1049,13 +1057,12 @@ TEST_P(BinderRpc, OnewayStressTest) {
             for (size_t j = 0; j < kNumCalls; j++) {
                 EXPECT_OK(proc.rootIface->sendString("a"));
             }
-
-            // check threads are not stuck
-            EXPECT_OK(proc.rootIface->sleepMs(250));
         }));
     }
 
     for (auto& t : threads) t.join();
+
+    saturateThreadPool(kNumServerThreads, proc.rootIface);
 }
 
 TEST_P(BinderRpc, OnewayCallDoesNotWait) {
@@ -1098,13 +1105,7 @@ TEST_P(BinderRpc, OnewayCallQueueing) {
 
     EXPECT_GT(epochMsAfter, epochMsBefore + kSleepMs * kNumSleeps);
 
-    // pending oneway transactions hold ref, make sure we read data on all
-    // sockets
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < 1 + kNumExtraServerThreads; i++) {
-        threads.push_back(std::thread([&] { EXPECT_OK(proc.rootIface->sleepMs(250)); }));
-    }
-    for (auto& t : threads) t.join();
+    saturateThreadPool(1 + kNumExtraServerThreads, proc.rootIface);
 }
 
 TEST_P(BinderRpc, OnewayCallExhaustion) {
