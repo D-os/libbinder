@@ -173,6 +173,37 @@ cc_test {
     require_root: true,
 }
 
+cc_test {
+    name: "RpcTlsUtilsTest",
+    host_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        },
+        android: {
+            test_suites: ["vts"],
+        },
+    },
+    defaults: [
+        "binder_test_defaults",
+        "libbinder_tls_shared_deps",
+    ],
+    srcs: [
+        "RpcAuthTesting.cpp",
+        "RpcTlsUtilsTest.cpp",
+    ],
+    shared_libs: [
+        "libbinder",
+        "libbase",
+        "libutils",
+        "liblog",
+    ],
+    static_libs: [
+        "libbinder_tls_static",
+    ],
+    test_suites: ["general-tests", "device-tests"],
+}
+
 cc_benchmark {
     name: "binderRpcBenchmark",
     defaults: ["binder_test_defaults"],
