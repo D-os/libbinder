@@ -23,12 +23,20 @@
 #include <openssl/ssl.h>
 
 #include <binder/RpcCertificateFormat.h>
+#include <binder/RpcKeyFormat.h>
 
 namespace android {
 
-bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& cert,
+bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& data,
                                              RpcCertificateFormat format);
 
 std::vector<uint8_t> serializeCertificate(X509* x509, RpcCertificateFormat format);
+
+// Deserialize an un-encrypted private key.
+bssl::UniquePtr<EVP_PKEY> deserializeUnencryptedPrivatekey(const std::vector<uint8_t>& data,
+                                                           RpcKeyFormat format);
+
+// Serialize a private key in un-encrypted form.
+std::vector<uint8_t> serializeUnencryptedPrivatekey(EVP_PKEY* pkey, RpcKeyFormat format);
 
 } // namespace android
