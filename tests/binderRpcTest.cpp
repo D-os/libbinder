@@ -48,8 +48,9 @@
 
 #include "../FdTrigger.h"
 #include "../RpcSocketAddress.h" // for testing preconnected clients
-#include "../RpcState.h"   // for debugging
-#include "../vm_sockets.h" // for VMADDR_*
+#include "../RpcState.h"         // for debugging
+#include "../vm_sockets.h"       // for VMADDR_*
+#include "RpcAuthTesting.h"
 #include "RpcCertificateVerifierSimple.h"
 
 using namespace std::chrono_literals;
@@ -71,7 +72,8 @@ static inline std::vector<RpcSecurity> RpcSecurityValues() {
 }
 
 static inline std::unique_ptr<RpcTransportCtxFactory> newFactory(
-        RpcSecurity rpcSecurity, std::shared_ptr<RpcCertificateVerifier> verifier = nullptr) {
+        RpcSecurity rpcSecurity, std::shared_ptr<RpcCertificateVerifier> verifier = nullptr,
+        std::unique_ptr<RpcAuth> auth = nullptr) {
     switch (rpcSecurity) {
         case RpcSecurity::RAW:
             return RpcTransportCtxFactoryRaw::make();
@@ -79,7 +81,10 @@ static inline std::unique_ptr<RpcTransportCtxFactory> newFactory(
             if (verifier == nullptr) {
                 verifier = std::make_shared<RpcCertificateVerifierSimple>();
             }
-            return RpcTransportCtxFactoryTls::make(std::move(verifier));
+            if (auth == nullptr) {
+                auth = std::make_unique<RpcAuthSelfSigned>();
+            }
+            return RpcTransportCtxFactoryTls::make(std::move(verifier), std::move(auth));
         }
         default:
             LOG_ALWAYS_FATAL("Unknown RpcSecurity %d", rpcSecurity);

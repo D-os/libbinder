@@ -35,7 +35,7 @@ namespace android {
 // certificate being added.
 class RpcCertificateVerifierSimple : public RpcCertificateVerifier {
 public:
-    status_t verify(const X509*, uint8_t*) override;
+    status_t verify(const SSL*, uint8_t*) override;
 
     // Add a trusted peer certificate. Peers presenting this certificate are accepted.
     //
