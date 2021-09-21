@@ -26,7 +26,18 @@ namespace android {
 class RpcCertificateVerifier {
 public:
     virtual ~RpcCertificateVerifier() = default;
-    virtual status_t verify(const X509* peerCert, uint8_t* outAlert) = 0;
+
+    // The implementation may use the following function to get
+    // the peer certificate and chain:
+    // - SSL_get_peer_certificate
+    // - SSL_get_peer_cert_chain
+    // - SSL_get_peer_full_cert_chain
+    //
+    // The implementation should return OK on success or error codes on error. For example:
+    // - PERMISSION_DENIED for rejected certificates
+    // - NO_INIT for not presenting a certificate when requested
+    // - UNKNOWN_ERROR for other errors
+    virtual status_t verify(const SSL* ssl, uint8_t* outAlert) = 0;
 };
 
 } // namespace android
