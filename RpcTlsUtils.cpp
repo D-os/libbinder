@@ -25,54 +25,87 @@ namespace android {
 
 namespace {
 
-bssl::UniquePtr<X509> fromPem(const std::vector<uint8_t>& cert) {
-    if (cert.size() > std::numeric_limits<int>::max()) return nullptr;
-    bssl::UniquePtr<BIO> certBio(BIO_new_mem_buf(cert.data(), static_cast<int>(cert.size())));
-    return bssl::UniquePtr<X509>(PEM_read_bio_X509(certBio.get(), nullptr, nullptr, nullptr));
+static_assert(sizeof(unsigned char) == sizeof(uint8_t));
+
+template <typename PemReadBioFn,
+          typename T = std::remove_pointer_t<std::invoke_result_t<
+                  PemReadBioFn, BIO*, std::nullptr_t, std::nullptr_t, std::nullptr_t>>>
+bssl::UniquePtr<T> fromPem(const std::vector<uint8_t>& data, PemReadBioFn fn) {
+    if (data.size() > std::numeric_limits<int>::max()) return nullptr;
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data.data(), static_cast<int>(data.size())));
+    return bssl::UniquePtr<T>(fn(bio.get(), nullptr, nullptr, nullptr));
 }
 
-bssl::UniquePtr<X509> fromDer(const std::vector<uint8_t>& cert) {
-    if (cert.size() > std::numeric_limits<long>::max()) return nullptr;
-    const unsigned char* data = cert.data();
-    auto expectedEnd = data + cert.size();
-    bssl::UniquePtr<X509> ret(d2i_X509(nullptr, &data, static_cast<long>(cert.size())));
-    if (data != expectedEnd) {
-        ALOGE("%s: %td bytes remaining!", __PRETTY_FUNCTION__, expectedEnd - data);
+template <typename D2iFn,
+          typename T = std::remove_pointer_t<
+                  std::invoke_result_t<D2iFn, std::nullptr_t, const unsigned char**, long>>>
+bssl::UniquePtr<T> fromDer(const std::vector<uint8_t>& data, D2iFn fn) {
+    if (data.size() > std::numeric_limits<long>::max()) return nullptr;
+    const unsigned char* dataPtr = data.data();
+    auto expectedEnd = dataPtr + data.size();
+    bssl::UniquePtr<T> ret(fn(nullptr, &dataPtr, static_cast<long>(data.size())));
+    if (dataPtr != expectedEnd) {
+        ALOGE("%s: %td bytes remaining!", __PRETTY_FUNCTION__, expectedEnd - dataPtr);
         return nullptr;
     }
     return ret;
 }
 
+template <typename T, typename WriteBioFn = int (*)(BIO*, T*)>
+std::vector<uint8_t> serialize(T* object, WriteBioFn writeBio) {
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    TEST_AND_RETURN({}, writeBio(bio.get(), object));
+    const uint8_t* data;
+    size_t len;
+    TEST_AND_RETURN({}, BIO_mem_contents(bio.get(), &data, &len));
+    return std::vector<uint8_t>(data, data + len);
+}
+
 } // namespace
 
-bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& cert,
+bssl::UniquePtr<X509> deserializeCertificate(const std::vector<uint8_t>& data,
                                              RpcCertificateFormat format) {
     switch (format) {
         case RpcCertificateFormat::PEM:
-            return fromPem(cert);
+            return fromPem(data, PEM_read_bio_X509);
         case RpcCertificateFormat::DER:
-            return fromDer(cert);
+            return fromDer(data, d2i_X509);
     }
     LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
 }
 
 std::vector<uint8_t> serializeCertificate(X509* x509, RpcCertificateFormat format) {
-    bssl::UniquePtr<BIO> certBio(BIO_new(BIO_s_mem()));
     switch (format) {
-        case RpcCertificateFormat::PEM: {
-            TEST_AND_RETURN({}, PEM_write_bio_X509(certBio.get(), x509));
-        } break;
-        case RpcCertificateFormat::DER: {
-            TEST_AND_RETURN({}, i2d_X509_bio(certBio.get(), x509));
-        } break;
-        default: {
-            LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
-        }
+        case RpcCertificateFormat::PEM:
+            return serialize(x509, PEM_write_bio_X509);
+        case RpcCertificateFormat::DER:
+            return serialize(x509, i2d_X509_bio);
     }
-    const uint8_t* data;
-    size_t len;
-    TEST_AND_RETURN({}, BIO_mem_contents(certBio.get(), &data, &len));
-    return std::vector<uint8_t>(data, data + len);
+    LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
+}
+
+bssl::UniquePtr<EVP_PKEY> deserializeUnencryptedPrivatekey(const std::vector<uint8_t>& data,
+                                                           RpcKeyFormat format) {
+    switch (format) {
+        case RpcKeyFormat::PEM:
+            return fromPem(data, PEM_read_bio_PrivateKey);
+        case RpcKeyFormat::DER:
+            return fromDer(data, d2i_AutoPrivateKey);
+    }
+    LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
+}
+
+std::vector<uint8_t> serializeUnencryptedPrivatekey(EVP_PKEY* pkey, RpcKeyFormat format) {
+    switch (format) {
+        case RpcKeyFormat::PEM:
+            return serialize(pkey, [](BIO* bio, EVP_PKEY* pkey) {
+                return PEM_write_bio_PrivateKey(bio, pkey, nullptr /* enc */, nullptr /* kstr */,
+                                                0 /* klen */, nullptr, nullptr);
+            });
+        case RpcKeyFormat::DER:
+            return serialize(pkey, i2d_PrivateKey_bio);
+    }
+    LOG_ALWAYS_FATAL("Unsupported format %d", static_cast<int>(format));
 }
 
 } // namespace android
