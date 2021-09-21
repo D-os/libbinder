@@ -35,4 +35,15 @@ private:
     const uint32_t mValidSeconds;
 };
 
+class RpcAuthPreSigned : public RpcAuth {
+public:
+    RpcAuthPreSigned(bssl::UniquePtr<EVP_PKEY> pkey, bssl::UniquePtr<X509> cert)
+          : mPkey(std::move(pkey)), mCert(std::move(cert)) {}
+    status_t configure(SSL_CTX* ctx) override;
+
+private:
+    bssl::UniquePtr<EVP_PKEY> mPkey;
+    bssl::UniquePtr<X509> mCert;
+};
+
 } // namespace android
