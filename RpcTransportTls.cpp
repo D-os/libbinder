@@ -22,7 +22,7 @@
 #include <openssl/bn.h>
 #include <openssl/ssl.h>
 
-#include <binder/RpcCertificateUtils.h>
+#include <binder/RpcTlsUtils.h>
 #include <binder/RpcTransportTls.h>
 
 #include "FdTrigger.h"
@@ -43,8 +43,6 @@ using android::base::Result;
 
 namespace android {
 namespace {
-
-constexpr const int kCertValidDays = 30;
 
 // Implement BIO for socket that ignores SIGPIPE.
 int socketNew(BIO* bio) {
@@ -98,49 +96,6 @@ bssl::UniquePtr<BIO> newSocketBio(android::base::borrowed_fd fd) {
     BIO_set_data(ret.get(), reinterpret_cast<void*>(fd.get()));
     BIO_set_init(ret.get(), 1);
     return ret;
-}
-
-bssl::UniquePtr<EVP_PKEY> makeKeyPairForSelfSignedCert() {
-    bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
-    if (ec_key == nullptr || !EC_KEY_generate_key(ec_key.get())) {
-        ALOGE("Failed to generate key pair.");
-        return nullptr;
-    }
-    bssl::UniquePtr<EVP_PKEY> evp_pkey(EVP_PKEY_new());
-    // Use set1 instead of assign to avoid leaking ec_key when assign fails. set1 increments
-    // the refcount of the ec_key, so it is okay to release it at the end of this function.
-    if (evp_pkey == nullptr || !EVP_PKEY_set1_EC_KEY(evp_pkey.get(), ec_key.get())) {
-        ALOGE("Failed to assign key pair.");
-        return nullptr;
-    }
-    return evp_pkey;
-}
-
-bssl::UniquePtr<X509> makeSelfSignedCert(EVP_PKEY* evp_pkey, const int valid_days) {
-    bssl::UniquePtr<X509> x509(X509_new());
-    bssl::UniquePtr<BIGNUM> serial(BN_new());
-    bssl::UniquePtr<BIGNUM> serialLimit(BN_new());
-    TEST_AND_RETURN(nullptr, BN_lshift(serialLimit.get(), BN_value_one(), 128));
-    TEST_AND_RETURN(nullptr, BN_rand_range(serial.get(), serialLimit.get()));
-    TEST_AND_RETURN(nullptr, BN_to_ASN1_INTEGER(serial.get(), X509_get_serialNumber(x509.get())));
-    TEST_AND_RETURN(nullptr, X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0));
-    TEST_AND_RETURN(nullptr,
-                    X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * valid_days));
-
-    X509_NAME* subject = X509_get_subject_name(x509.get());
-    TEST_AND_RETURN(nullptr,
-                    X509_NAME_add_entry_by_txt(subject, "O", MBSTRING_ASC,
-                                               reinterpret_cast<const uint8_t*>("Android"), -1, -1,
-                                               0));
-    TEST_AND_RETURN(nullptr,
-                    X509_NAME_add_entry_by_txt(subject, "CN", MBSTRING_ASC,
-                                               reinterpret_cast<const uint8_t*>("BinderRPC"), -1,
-                                               -1, 0));
-    TEST_AND_RETURN(nullptr, X509_set_issuer_name(x509.get(), subject));
-
-    TEST_AND_RETURN(nullptr, X509_set_pubkey(x509.get(), evp_pkey));
-    TEST_AND_RETURN(nullptr, X509_sign(x509.get(), evp_pkey, EVP_sha256()));
-    return x509;
 }
 
 [[maybe_unused]] void sslDebugLog(const SSL* ssl, int type, int value) {
@@ -437,7 +392,7 @@ public:
     template <typename Impl,
               typename = std::enable_if_t<std::is_base_of_v<RpcTransportCtxTls, Impl>>>
     static std::unique_ptr<RpcTransportCtxTls> create(
-            std::shared_ptr<RpcCertificateVerifier> verifier);
+            std::shared_ptr<RpcCertificateVerifier> verifier, RpcAuth* auth);
     std::unique_ptr<RpcTransport> newTransport(android::base::unique_fd fd,
                                                FdTrigger* fdTrigger) const override;
     std::vector<uint8_t> getCertificate(RpcCertificateFormat) const override;
@@ -460,17 +415,13 @@ ssl_verify_result_t RpcTransportCtxTls::sslCustomVerify(SSL* ssl, uint8_t* outAl
     LOG_ALWAYS_FATAL_IF(outAlert == nullptr);
     const char* logPrefix = SSL_is_server(ssl) ? "Server" : "Client";
 
-    bssl::UniquePtr<X509> peerCert(SSL_get_peer_certificate(ssl)); // Does not set error queue
-    LOG_ALWAYS_FATAL_IF(peerCert == nullptr,
-                        "%s: libssl should not ask to verify non-existing cert", logPrefix);
-
     auto ctx = SSL_get_SSL_CTX(ssl); // Does not set error queue
     LOG_ALWAYS_FATAL_IF(ctx == nullptr);
     // void* -> RpcTransportCtxTls*
     auto rpcTransportCtxTls = reinterpret_cast<RpcTransportCtxTls*>(SSL_CTX_get_app_data(ctx));
     LOG_ALWAYS_FATAL_IF(rpcTransportCtxTls == nullptr);
 
-    status_t verifyStatus = rpcTransportCtxTls->mCertVerifier->verify(peerCert.get(), outAlert);
+    status_t verifyStatus = rpcTransportCtxTls->mCertVerifier->verify(ssl, outAlert);
     if (verifyStatus == OK) {
         return ssl_verify_ok;
     }
@@ -483,16 +434,15 @@ ssl_verify_result_t RpcTransportCtxTls::sslCustomVerify(SSL* ssl, uint8_t* outAl
 // provided as a template argument so that this function can initialize an |Impl| object.
 template <typename Impl, typename>
 std::unique_ptr<RpcTransportCtxTls> RpcTransportCtxTls::create(
-        std::shared_ptr<RpcCertificateVerifier> verifier) {
+        std::shared_ptr<RpcCertificateVerifier> verifier, RpcAuth* auth) {
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     TEST_AND_RETURN(nullptr, ctx != nullptr);
 
-    auto evp_pkey = makeKeyPairForSelfSignedCert();
-    TEST_AND_RETURN(nullptr, evp_pkey != nullptr);
-    auto cert = makeSelfSignedCert(evp_pkey.get(), kCertValidDays);
-    TEST_AND_RETURN(nullptr, cert != nullptr);
-    TEST_AND_RETURN(nullptr, SSL_CTX_use_PrivateKey(ctx.get(), evp_pkey.get()));
-    TEST_AND_RETURN(nullptr, SSL_CTX_use_certificate(ctx.get(), cert.get()));
+    if (status_t authStatus = auth->configure(ctx.get()); authStatus != OK) {
+        ALOGE("%s: Failed to configure auth info: %s", __PRETTY_FUNCTION__,
+              statusToString(authStatus).c_str());
+        return nullptr;
+    };
 
     // Enable two-way authentication by setting SSL_VERIFY_FAIL_IF_NO_PEER_CERT on server.
     // Client ignores SSL_VERIFY_FAIL_IF_NO_PEER_CERT flag.
@@ -542,11 +492,13 @@ protected:
 } // namespace
 
 std::unique_ptr<RpcTransportCtx> RpcTransportCtxFactoryTls::newServerCtx() const {
-    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsServer>(mCertVerifier);
+    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsServer>(mCertVerifier,
+                                                                         mAuth.get());
 }
 
 std::unique_ptr<RpcTransportCtx> RpcTransportCtxFactoryTls::newClientCtx() const {
-    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsClient>(mCertVerifier);
+    return android::RpcTransportCtxTls::create<RpcTransportCtxTlsClient>(mCertVerifier,
+                                                                         mAuth.get());
 }
 
 const char* RpcTransportCtxFactoryTls::toCString() const {
@@ -554,13 +506,17 @@ const char* RpcTransportCtxFactoryTls::toCString() const {
 }
 
 std::unique_ptr<RpcTransportCtxFactory> RpcTransportCtxFactoryTls::make(
-        std::shared_ptr<RpcCertificateVerifier> verifier) {
+        std::shared_ptr<RpcCertificateVerifier> verifier, std::unique_ptr<RpcAuth> auth) {
     if (verifier == nullptr) {
         ALOGE("%s: Must provide a certificate verifier", __PRETTY_FUNCTION__);
         return nullptr;
     }
+    if (auth == nullptr) {
+        ALOGE("%s: Must provide an auth provider", __PRETTY_FUNCTION__);
+        return nullptr;
+    }
     return std::unique_ptr<RpcTransportCtxFactoryTls>(
-            new RpcTransportCtxFactoryTls(std::move(verifier)));
+            new RpcTransportCtxFactoryTls(std::move(verifier), std::move(auth)));
 }
 
 } // namespace android
