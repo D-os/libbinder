@@ -129,6 +129,13 @@ public:
      */
     [[nodiscard]] status_t onBinderEntering(const sp<RpcSession>& session, uint64_t address,
                                             sp<IBinder>* out);
+    /**
+     * Called on incoming binders to update refcounting information. This should
+     * only be called when it is done as part of making progress on a
+     * transaction.
+     */
+    [[nodiscard]] status_t flushExcessBinderRefs(const sp<RpcSession>& session, uint64_t address,
+                                                 const sp<IBinder>& binder);
 
     size_t countBinders();
     void dump();

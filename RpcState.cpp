@@ -152,7 +152,7 @@ status_t RpcState::onBinderEntering(const sp<RpcSession>& session, uint64_t addr
         return BAD_VALUE;
     }
 
-    std::unique_lock<std::mutex> _l(mNodeMutex);
+    std::lock_guard<std::mutex> _l(mNodeMutex);
     if (mTerminated) return DEAD_OBJECT;
 
     if (auto it = mNodeForAddress.find(address); it != mNodeForAddress.end()) {
@@ -160,20 +160,7 @@ status_t RpcState::onBinderEntering(const sp<RpcSession>& session, uint64_t addr
 
         // implicitly have strong RPC refcount, since we received this binder
         it->second.timesRecd++;
-
-        _l.unlock();
-
-        // if this is a local binder, then we want to get rid of all refcounts
-        // (tell the other process it can drop the binder when it wants to - we
-        // have a local sp<>, so we will drop it when we want to as well). if
-        // this is a remote binder, then we need to hold onto one refcount until
-        // it is dropped in BpBinder::onLastStrongRef
-        size_t targetRecd = (*out)->localBinder() ? 0 : 1;
-
-        // We have timesRecd RPC refcounts, but we only need to hold on to one
-        // when we keep the object. All additional dec strongs are sent
-        // immediately, we wait to send the last one in BpBinder::onLastDecStrong.
-        return session->sendDecStrongToTarget(address, targetRecd);
+        return OK;
     }
 
     // we don't know about this binder, so the other side of the connection
@@ -191,6 +178,36 @@ status_t RpcState::onBinderEntering(const sp<RpcSession>& session, uint64_t addr
     // device global binders in the RPC world).
     it->second.binder = *out = BpBinder::PrivateAccessor::create(session, it->first);
     it->second.timesRecd = 1;
+    return OK;
+}
+
+status_t RpcState::flushExcessBinderRefs(const sp<RpcSession>& session, uint64_t address,
+                                         const sp<IBinder>& binder) {
+    std::unique_lock<std::mutex> _l(mNodeMutex);
+    if (mTerminated) return DEAD_OBJECT;
+
+    auto it = mNodeForAddress.find(address);
+
+    LOG_ALWAYS_FATAL_IF(it == mNodeForAddress.end(), "Can't be deleted while we hold sp<>");
+    LOG_ALWAYS_FATAL_IF(it->second.binder != binder,
+                        "Caller of flushExcessBinderRefs using inconsistent arguments");
+
+    // if this is a local binder, then we want to get rid of all refcounts
+    // (tell the other process it can drop the binder when it wants to - we
+    // have a local sp<>, so we will drop it when we want to as well). if
+    // this is a remote binder, then we need to hold onto one refcount until
+    // it is dropped in BpBinder::onLastStrongRef
+    size_t targetRecd = binder->localBinder() ? 0 : 1;
+
+    // We have timesRecd RPC refcounts, but we only need to hold on to one
+    // when we keep the object. All additional dec strongs are sent
+    // immediately, we wait to send the last one in BpBinder::onLastDecStrong.
+    if (it->second.timesRecd != targetRecd) {
+        _l.unlock();
+
+        return session->sendDecStrongToTarget(address, targetRecd);
+    }
+
     return OK;
 }
 
@@ -841,6 +858,12 @@ processTransactInternalTailCall:
         }
     }
 
+    // Binder refs are flushed for oneway calls only after all calls which are
+    // built up are executed. Otherwise, they fill up the binder buffer.
+    if (addr != 0 && replyStatus == OK && !oneway) {
+        replyStatus = flushExcessBinderRefs(session, addr, target);
+    }
+
     if (oneway) {
         if (replyStatus != OK) {
             ALOGW("Oneway call failed with error: %d", replyStatus);
@@ -889,6 +912,13 @@ processTransactInternalTailCall:
                 goto processTransactInternalTailCall;
             }
         }
+
+        // done processing all the async commands on this binder that we can, so
+        // write decstrongs on the binder
+        if (addr != 0 && replyStatus == OK) {
+            return flushExcessBinderRefs(session, addr, target);
+        }
+
         return OK;
     }
 
