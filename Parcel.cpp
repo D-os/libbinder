@@ -233,7 +233,7 @@ status_t Parcel::flattenBinder(const sp<IBinder>& binder) {
                 ALOGE("null proxy");
             } else {
                 if (proxy->isRpcBinder()) {
-                    ALOGE("Sending a socket binder over RPC is prohibited");
+                    ALOGE("Sending a socket binder over kernel binder is prohibited");
                     return INVALID_OPERATION;
                 }
             }
