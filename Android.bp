@@ -287,6 +287,7 @@ cc_library_static {
 filegroup {
     name: "libbinder_aidl",
     srcs: [
+        "aidl/android/os/ConnectionInfo.aidl",
         "aidl/android/os/IClientCallback.aidl",
         "aidl/android/os/IServiceCallback.aidl",
         "aidl/android/os/IServiceManager.aidl",

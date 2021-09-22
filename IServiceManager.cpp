@@ -78,6 +78,7 @@ public:
     bool isDeclared(const String16& name) override;
     Vector<String16> getDeclaredInstances(const String16& interface) override;
     std::optional<String16> updatableViaApex(const String16& name) override;
+    std::optional<IServiceManager::ConnectionInfo> getConnectionInfo(const String16& name) override;
 
     // for legacy ABI
     const String16& getInterfaceDescriptor() const override {
@@ -424,6 +425,21 @@ std::optional<String16> ServiceManagerShim::updatableViaApex(const String16& nam
         return std::nullopt;
     }
     return declared ? std::optional<String16>(String16(declared.value().c_str())) : std::nullopt;
+}
+
+std::optional<IServiceManager::ConnectionInfo> ServiceManagerShim::getConnectionInfo(
+        const String16& name) {
+    std::optional<os::ConnectionInfo> connectionInfo;
+    if (Status status =
+                mTheRealServiceManager->getConnectionInfo(String8(name).c_str(), &connectionInfo);
+        !status.isOk()) {
+        ALOGW("Failed to get ConnectionInfo for %s: %s", String8(name).c_str(),
+              status.toString8().c_str());
+    }
+    return connectionInfo.has_value()
+            ? std::make_optional<IServiceManager::ConnectionInfo>(
+                      {connectionInfo->ipAddress, static_cast<unsigned int>(connectionInfo->port)})
+            : std::nullopt;
 }
 
 #ifndef __ANDROID__
