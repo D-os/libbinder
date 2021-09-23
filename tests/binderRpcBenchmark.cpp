@@ -21,8 +21,14 @@
 #include <binder/IPCThreadState.h>
 #include <binder/IServiceManager.h>
 #include <binder/ProcessState.h>
+#include <binder/RpcCertificateFormat.h>
+#include <binder/RpcCertificateVerifier.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcSession.h>
+#include <binder/RpcTlsUtils.h>
+#include <binder/RpcTransportRaw.h>
+#include <binder/RpcTransportTls.h>
+#include <openssl/ssl.h>
 
 #include <thread>
 
@@ -30,6 +36,8 @@
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "RpcAuthTesting.h"
 
 using android::BBinder;
 using android::defaultServiceManager;
@@ -39,8 +47,14 @@ using android::IPCThreadState;
 using android::IServiceManager;
 using android::OK;
 using android::ProcessState;
+using android::RpcAuthPreSigned;
+using android::RpcCertificateFormat;
+using android::RpcCertificateVerifier;
 using android::RpcServer;
 using android::RpcSession;
+using android::RpcTransportCtxFactory;
+using android::RpcTransportCtxFactoryRaw;
+using android::RpcTransportCtxFactoryTls;
 using android::sp;
 using android::status_t;
 using android::statusToString;
@@ -65,15 +79,37 @@ class MyBinderRpcBenchmark : public BnBinderRpcBenchmark {
 enum Transport {
     KERNEL,
     RPC,
+    RPC_TLS,
 };
 
 static const std::initializer_list<int64_t> kTransportList = {
 #ifdef __BIONIC__
         Transport::KERNEL,
 #endif
-        Transport::RPC};
+        Transport::RPC,
+        Transport::RPC_TLS,
+};
+
+// Certificate validation happens during handshake and does not affect the result of benchmarks.
+// Skip certificate validation to simplify the setup process.
+class RpcCertificateVerifierNoOp : public RpcCertificateVerifier {
+public:
+    status_t verify(const SSL*, uint8_t*) override { return OK; }
+};
+
+std::unique_ptr<RpcTransportCtxFactory> makeFactoryTls() {
+    auto pkey = android::makeKeyPairForSelfSignedCert();
+    CHECK_NE(pkey.get(), nullptr);
+    auto cert = android::makeSelfSignedCert(pkey.get(), android::kCertValidSeconds);
+    CHECK_NE(cert.get(), nullptr);
+
+    auto verifier = std::make_shared<RpcCertificateVerifierNoOp>();
+    auto auth = std::make_unique<RpcAuthPreSigned>(std::move(pkey), std::move(cert));
+    return RpcTransportCtxFactoryTls::make(verifier, std::move(auth));
+}
 
 static sp<RpcSession> gSession = RpcSession::make();
+static sp<RpcSession> gSessionTls = RpcSession::make(makeFactoryTls());
 #ifdef __BIONIC__
 static const String16 kKernelBinderInstance = String16(u"binderRpcBenchmark-control");
 static sp<IBinder> gKernelBinder;
@@ -88,6 +124,8 @@ static sp<IBinder> getBinderForOptions(benchmark::State& state) {
 #endif
         case RPC:
             return gSession->getRootObject();
+        case RPC_TLS:
+            return gSessionTls->getRootObject();
         default:
             LOG(FATAL) << "Unknown transport value: " << transport;
             return nullptr;
@@ -169,26 +207,35 @@ void BM_repeatBinder(benchmark::State& state) {
 }
 BENCHMARK(BM_repeatBinder)->ArgsProduct({kTransportList});
 
+void forkRpcServer(const char* addr, const sp<RpcServer>& server) {
+    if (0 == fork()) {
+        prctl(PR_SET_PDEATHSIG, SIGHUP); // racey, okay
+        server->setRootObject(sp<MyBinderRpcBenchmark>::make());
+        server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
+        CHECK_EQ(OK, server->setupUnixDomainServer(addr));
+        server->join();
+        exit(1);
+    }
+}
+
+void setupClient(const sp<RpcSession>& session, const char* addr) {
+    status_t status;
+    for (size_t tries = 0; tries < 5; tries++) {
+        usleep(10000);
+        status = session->setupUnixDomainClient(addr);
+        if (status == OK) break;
+    }
+    CHECK_EQ(status, OK) << "Could not connect: " << addr << ": " << statusToString(status).c_str();
+}
+
 int main(int argc, char** argv) {
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
 
-    std::string addr = std::string(getenv("TMPDIR") ?: "/tmp") + "/binderRpcBenchmark";
-    (void)unlink(addr.c_str());
-
     std::cerr << "Tests suffixes:" << std::endl;
     std::cerr << "\t.../" << Transport::KERNEL << " is KERNEL" << std::endl;
     std::cerr << "\t.../" << Transport::RPC << " is RPC" << std::endl;
-
-    if (0 == fork()) {
-        prctl(PR_SET_PDEATHSIG, SIGHUP); // racey, okay
-        sp<RpcServer> server = RpcServer::make();
-        server->setRootObject(sp<MyBinderRpcBenchmark>::make());
-        server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
-        CHECK_EQ(OK, server->setupUnixDomainServer(addr.c_str()));
-        server->join();
-        exit(1);
-    }
+    std::cerr << "\t.../" << Transport::RPC_TLS << " is RPC with TLS" << std::endl;
 
 #ifdef __BIONIC__
     if (0 == fork()) {
@@ -207,13 +254,17 @@ int main(int argc, char** argv) {
     CHECK_NE(nullptr, gKernelBinder.get());
 #endif
 
-    status_t status;
-    for (size_t tries = 0; tries < 5; tries++) {
-        usleep(10000);
-        status = gSession->setupUnixDomainClient(addr.c_str());
-        if (status == OK) break;
-    }
-    CHECK_EQ(status, OK) << "Could not connect: " << statusToString(status).c_str();
+    std::string tmp = getenv("TMPDIR") ?: "/tmp";
+
+    std::string addr = tmp + "/binderRpcBenchmark";
+    (void)unlink(addr.c_str());
+    forkRpcServer(addr.c_str(), RpcServer::make(RpcTransportCtxFactoryRaw::make()));
+    setupClient(gSession, addr.c_str());
+
+    std::string tlsAddr = tmp + "/binderRpcTlsBenchmark";
+    (void)unlink(tlsAddr.c_str());
+    forkRpcServer(tlsAddr.c_str(), RpcServer::make(makeFactoryTls()));
+    setupClient(gSessionTls, tlsAddr.c_str());
 
     ::benchmark::RunSpecifiedBenchmarks();
     return 0;

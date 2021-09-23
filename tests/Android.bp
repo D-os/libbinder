@@ -206,7 +206,10 @@ cc_test {
 
 cc_benchmark {
     name: "binderRpcBenchmark",
-    defaults: ["binder_test_defaults"],
+    defaults: [
+        "binder_test_defaults",
+        "libbinder_tls_shared_deps",
+    ],
     host_supported: true,
     target: {
         darwin: {
@@ -216,12 +219,16 @@ cc_benchmark {
     srcs: [
         "binderRpcBenchmark.cpp",
         "IBinderRpcBenchmark.aidl",
+        "RpcAuthTesting.cpp",
     ],
     shared_libs: [
         "libbase",
         "libbinder",
         "liblog",
         "libutils",
+    ],
+    static_libs: [
+        "libbinder_tls_static",
     ],
 }
 
