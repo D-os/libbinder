@@ -197,6 +197,14 @@ TEST(BinderStability, VintfStabilityServerMustBeDeclaredInManifest) {
     }
 }
 
+TEST(BinderStability, ConnectionInfoRequiresManifestEntries) {
+    sp<IServiceManager> sm = android::defaultServiceManager();
+    sp<IBinder> systemBinder = BadStableBinder::system();
+    EXPECT_EQ(OK, sm->addService(String16("no.connection.foo"), systemBinder));
+    std::optional<android::IServiceManager::ConnectionInfo> connectionInfo;
+    connectionInfo = sm->getConnectionInfo(String16("no.connection.foo"));
+    EXPECT_EQ(connectionInfo, std::nullopt);
+}
 TEST(BinderStability, CantCallVendorBinderInSystemContext) {
     sp<IBinder> serverBinder = android::defaultServiceManager()->getService(kSystemStabilityServer);
     auto server = interface_cast<IBinderStabilityTest>(serverBinder);
