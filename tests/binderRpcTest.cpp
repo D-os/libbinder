@@ -1053,7 +1053,7 @@ static void saturateThreadPool(size_t threadCount, const sp<IBinderRpcTest>& ifa
 TEST_P(BinderRpc, OnewayStressTest) {
     constexpr size_t kNumClientThreads = 10;
     constexpr size_t kNumServerThreads = 10;
-    constexpr size_t kNumCalls = 500;
+    constexpr size_t kNumCalls = 1000;
 
     auto proc = createRpcTestSocketServerProcess({.numThreads = kNumServerThreads});
 
