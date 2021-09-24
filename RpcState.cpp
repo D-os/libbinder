@@ -166,9 +166,7 @@ status_t RpcState::onBinderEntering(const sp<RpcSession>& session, uint64_t addr
         // We have timesRecd RPC refcounts, but we only need to hold on to one
         // when we keep the object. All additional dec strongs are sent
         // immediately, we wait to send the last one in BpBinder::onLastDecStrong.
-        (void)session->sendDecStrong(address);
-
-        return OK;
+        return session->sendDecStrong(address);
     }
 
     // we don't know about this binder, so the other side of the connection
