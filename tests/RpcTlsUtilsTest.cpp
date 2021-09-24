@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
+#include <binder/RpcTlsTestUtils.h>
 #include <binder/RpcTlsUtils.h>
 #include <gtest/gtest.h>
-
-#include "RpcAuthTesting.h"
 
 namespace android {
 

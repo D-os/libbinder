@@ -25,6 +25,7 @@
 #include <binder/RpcCertificateVerifier.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcSession.h>
+#include <binder/RpcTlsTestUtils.h>
 #include <binder/RpcTlsUtils.h>
 #include <binder/RpcTransportRaw.h>
 #include <binder/RpcTransportTls.h>
@@ -36,8 +37,6 @@
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "RpcAuthTesting.h"
 
 using android::BBinder;
 using android::defaultServiceManager;

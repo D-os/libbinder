@@ -31,6 +31,7 @@
 #include <binder/ProcessState.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcSession.h>
+#include <binder/RpcTlsTestUtils.h>
 #include <binder/RpcTlsUtils.h>
 #include <binder/RpcTransport.h>
 #include <binder/RpcTransportRaw.h>
@@ -51,8 +52,6 @@
 #include "../RpcSocketAddress.h" // for testing preconnected clients
 #include "../RpcState.h"         // for debugging
 #include "../vm_sockets.h"       // for VMADDR_*
-#include "RpcAuthTesting.h"
-#include "RpcCertificateVerifierSimple.h"
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
