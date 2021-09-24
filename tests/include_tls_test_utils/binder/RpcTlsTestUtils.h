@@ -16,11 +16,13 @@
 
 #pragma once
 
+#include <memory>
 #include <mutex>
 
 #include <binder/RpcAuth.h>
 #include <binder/RpcCertificateFormat.h>
 #include <binder/RpcCertificateVerifier.h>
+#include <binder/RpcTransport.h>
 #include <openssl/ssl.h>
 #include <utils/Errors.h>
 
@@ -73,6 +75,12 @@ public:
 private:
     std::mutex mMutex; // for below
     std::vector<bssl::UniquePtr<X509>> mTrustedPeerCertificates;
+};
+
+// A RpcCertificateVerifier that does not verify anything.
+class RpcCertificateVerifierNoOp : public RpcCertificateVerifier {
+public:
+    status_t verify(const SSL*, uint8_t*) override { return OK; }
 };
 
 } // namespace android
