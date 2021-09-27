@@ -134,6 +134,37 @@ aidl_interface {
     },
 }
 
+cc_library_static {
+    name: "libbinder_tls_test_utils",
+    host_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
+    defaults: [
+        "binder_test_defaults",
+        "libbinder_tls_shared_deps",
+    ],
+    shared_libs: [
+        "libbinder",
+        "libbase",
+        "liblog",
+    ],
+    static_libs: [
+        "libbinder_tls_static",
+    ],
+    srcs: [
+        "RpcTlsTestUtils.cpp",
+    ],
+    export_include_dirs: [
+        "include_tls_test_utils",
+    ],
+    visibility: [
+        ":__subpackages__",
+    ],
+}
+
 cc_test {
     name: "binderRpcTest",
     host_supported: true,
@@ -153,8 +184,6 @@ cc_test {
 
     srcs: [
         "binderRpcTest.cpp",
-        "RpcAuthTesting.cpp",
-        "RpcCertificateVerifierSimple.cpp",
     ],
     shared_libs: [
         "libbinder",
@@ -166,6 +195,7 @@ cc_test {
     ],
     static_libs: [
         "libbinder_tls_static",
+        "libbinder_tls_test_utils",
         "binderRpcTestIface-cpp",
         "binderRpcTestIface-ndk",
     ],
@@ -189,7 +219,6 @@ cc_test {
         "libbinder_tls_shared_deps",
     ],
     srcs: [
-        "RpcAuthTesting.cpp",
         "RpcTlsUtilsTest.cpp",
     ],
     shared_libs: [
@@ -199,6 +228,7 @@ cc_test {
         "liblog",
     ],
     static_libs: [
+        "libbinder_tls_test_utils",
         "libbinder_tls_static",
     ],
     test_suites: ["general-tests", "device-tests"],
@@ -219,7 +249,6 @@ cc_benchmark {
     srcs: [
         "binderRpcBenchmark.cpp",
         "IBinderRpcBenchmark.aidl",
-        "RpcAuthTesting.cpp",
     ],
     shared_libs: [
         "libbase",
@@ -228,6 +257,7 @@ cc_benchmark {
         "libutils",
     ],
     static_libs: [
+        "libbinder_tls_test_utils",
         "libbinder_tls_static",
     ],
 }

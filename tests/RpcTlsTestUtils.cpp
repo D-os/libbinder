@@ -13,7 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "RpcAuthTesting.h"
+
+#define LOG_TAG "RpcTlsTestUtils"
+#include <log/log.h>
+
+#include <binder/RpcTlsTestUtils.h>
+
+#include <binder/RpcTlsUtils.h>
+
 #include "../Utils.h" // for TEST_AND_RETURN
 
 namespace android {
@@ -77,6 +84,34 @@ status_t RpcAuthPreSigned::configure(SSL_CTX* ctx) {
     if (!SSL_CTX_use_certificate(ctx, mCert.get())) {
         return INVALID_OPERATION;
     }
+    return OK;
+}
+
+status_t RpcCertificateVerifierSimple::verify(const SSL* ssl, uint8_t* outAlert) {
+    const char* logPrefix = SSL_is_server(ssl) ? "Server" : "Client";
+    bssl::UniquePtr<X509> peerCert(SSL_get_peer_certificate(ssl)); // Does not set error queue
+    LOG_ALWAYS_FATAL_IF(peerCert == nullptr,
+                        "%s: libssl should not ask to verify non-existing cert", logPrefix);
+
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (const auto& trustedCert : mTrustedPeerCertificates) {
+        if (0 == X509_cmp(trustedCert.get(), peerCert.get())) {
+            return OK;
+        }
+    }
+    *outAlert = SSL_AD_CERTIFICATE_UNKNOWN;
+    return PERMISSION_DENIED;
+}
+
+status_t RpcCertificateVerifierSimple::addTrustedPeerCertificate(RpcCertificateFormat format,
+                                                                 const std::vector<uint8_t>& cert) {
+    bssl::UniquePtr<X509> x509 = deserializeCertificate(cert, format);
+    if (x509 == nullptr) {
+        ALOGE("Certificate is not in the proper format %s", PrintToString(format).c_str());
+        return BAD_VALUE;
+    }
+    std::lock_guard<std::mutex> lock(mMutex);
+    mTrustedPeerCertificates.push_back(std::move(x509));
     return OK;
 }
 
