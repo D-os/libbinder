@@ -25,6 +25,7 @@
 #include <binder/RpcCertificateVerifier.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcSession.h>
+#include <binder/RpcTlsTestUtils.h>
 #include <binder/RpcTlsUtils.h>
 #include <binder/RpcTransportRaw.h>
 #include <binder/RpcTransportTls.h>
@@ -37,8 +38,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "RpcAuthTesting.h"
-
 using android::BBinder;
 using android::defaultServiceManager;
 using android::IBinder;
@@ -50,6 +49,7 @@ using android::ProcessState;
 using android::RpcAuthPreSigned;
 using android::RpcCertificateFormat;
 using android::RpcCertificateVerifier;
+using android::RpcCertificateVerifierNoOp;
 using android::RpcServer;
 using android::RpcSession;
 using android::RpcTransportCtxFactory;
@@ -90,13 +90,6 @@ static const std::initializer_list<int64_t> kTransportList = {
         Transport::RPC_TLS,
 };
 
-// Certificate validation happens during handshake and does not affect the result of benchmarks.
-// Skip certificate validation to simplify the setup process.
-class RpcCertificateVerifierNoOp : public RpcCertificateVerifier {
-public:
-    status_t verify(const SSL*, uint8_t*) override { return OK; }
-};
-
 std::unique_ptr<RpcTransportCtxFactory> makeFactoryTls() {
     auto pkey = android::makeKeyPairForSelfSignedCert();
     CHECK_NE(pkey.get(), nullptr);
@@ -109,6 +102,8 @@ std::unique_ptr<RpcTransportCtxFactory> makeFactoryTls() {
 }
 
 static sp<RpcSession> gSession = RpcSession::make();
+// Certificate validation happens during handshake and does not affect the result of benchmarks.
+// Skip certificate validation to simplify the setup process.
 static sp<RpcSession> gSessionTls = RpcSession::make(makeFactoryTls());
 #ifdef __BIONIC__
 static const String16 kKernelBinderInstance = String16(u"binderRpcBenchmark-control");
