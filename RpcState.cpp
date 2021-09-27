@@ -719,7 +719,7 @@ status_t RpcState::processTransactInternal(const sp<RpcSession::RpcConnection>& 
     // for 'recursive' calls to this, we have already read and processed the
     // binder from the transaction data and taken reference counts into account,
     // so it is cached here.
-    sp<IBinder> targetRef;
+    sp<IBinder> target;
 processTransactInternalTailCall:
 
     if (transactionData.size() < sizeof(RpcWireTransaction)) {
@@ -734,12 +734,9 @@ processTransactInternalTailCall:
     bool oneway = transaction->flags & IBinder::FLAG_ONEWAY;
 
     status_t replyStatus = OK;
-    sp<IBinder> target;
     if (addr != 0) {
-        if (!targetRef) {
+        if (!target) {
             replyStatus = onBinderEntering(session, addr, &target);
-        } else {
-            target = targetRef;
         }
 
         if (replyStatus != OK) {
@@ -906,7 +903,8 @@ processTransactInternalTailCall:
 
                 // reset up arguments
                 transactionData = std::move(todo.data);
-                targetRef = std::move(todo.ref);
+                LOG_ALWAYS_FATAL_IF(target != todo.ref,
+                                    "async list should be associated with a binder");
 
                 it->second.asyncTodo.pop();
                 goto processTransactInternalTailCall;
