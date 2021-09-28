@@ -427,12 +427,16 @@ status_t RpcState::transact(const sp<RpcSession::RpcConnection>& connection,
                             const sp<IBinder>& binder, uint32_t code, const Parcel& data,
                             const sp<RpcSession>& session, Parcel* reply, uint32_t flags) {
     if (!data.isForRpc()) {
-        ALOGE("Refusing to send RPC with parcel not crafted for RPC");
+        ALOGE("Refusing to send RPC with parcel not crafted for RPC call on binder %p code "
+              "%" PRIu32,
+              binder.get(), code);
         return BAD_TYPE;
     }
 
     if (data.objectsCount() != 0) {
-        ALOGE("Parcel at %p has attached objects but is being used in an RPC call", &data);
+        ALOGE("Parcel at %p has attached objects but is being used in an RPC call on binder %p "
+              "code %" PRIu32,
+              &data, binder.get(), code);
         return BAD_TYPE;
     }
 
