@@ -205,8 +205,11 @@ bool RpcServer::shutdown() {
     }
 
     mShutdownTrigger->trigger();
+
     for (auto& [id, session] : mSessions) {
         (void)id;
+        // server lock is a more general lock
+        std::lock_guard<std::mutex> _lSession(session->mMutex);
         session->mShutdownTrigger->trigger();
     }
 
