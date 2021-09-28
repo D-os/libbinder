@@ -82,8 +82,29 @@ public:
                                            uint64_t address, uint32_t code, const Parcel& data,
                                            const sp<RpcSession>& session, Parcel* reply,
                                            uint32_t flags);
-    [[nodiscard]] status_t sendDecStrong(const sp<RpcSession::RpcConnection>& connection,
-                                         const sp<RpcSession>& session, uint64_t address);
+
+    /**
+     * The ownership model here carries an implicit strong refcount whenever a
+     * binder is sent across processes. Since we have a local strong count in
+     * sp<> over these objects, we only ever need to keep one of these. So,
+     * typically we tell the remote process that we drop all the implicit dec
+     * strongs, and we hold onto the last one. 'target' here is the target
+     * timesRecd (the number of remaining reference counts) we wish to keep.
+     * Typically this should be '0' or '1'. The target is used instead of an
+     * explicit decrement count in order to allow multiple threads to lower the
+     * number of counts simultaneously. Since we only lower the count to 0 when
+     * a binder is deleted, targets of '1' should only be sent when the caller
+     * owns a local strong reference to the binder. Larger targets may be used
+     * for testing, and to make the function generic, but generally this should
+     * be avoided because it would be hard to guarantee another thread doesn't
+     * lower the number of held refcounts to '1'. Note also, these refcounts
+     * must be sent actively. If they are sent when binders are deleted, this
+     * can cause leaks, since even remote binders carry an implicit strong ref
+     * when they are sent to another process.
+     */
+    [[nodiscard]] status_t sendDecStrongToTarget(const sp<RpcSession::RpcConnection>& connection,
+                                                 const sp<RpcSession>& session, uint64_t address,
+                                                 size_t target);
 
     enum class CommandType {
         ANY,
@@ -108,6 +129,13 @@ public:
      */
     [[nodiscard]] status_t onBinderEntering(const sp<RpcSession>& session, uint64_t address,
                                             sp<IBinder>* out);
+    /**
+     * Called on incoming binders to update refcounting information. This should
+     * only be called when it is done as part of making progress on a
+     * transaction.
+     */
+    [[nodiscard]] status_t flushExcessBinderRefs(const sp<RpcSession>& session, uint64_t address,
+                                                 const sp<IBinder>& binder);
 
     size_t countBinders();
     void dump();
