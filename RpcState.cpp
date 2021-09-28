@@ -307,7 +307,7 @@ RpcState::CommandData::CommandData(size_t size) : mSize(size) {
 
 status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
                            const sp<RpcSession>& session, const char* what, const void* data,
-                           size_t size) {
+                           size_t size, const std::function<status_t()>& altPoll) {
     LOG_RPC_DETAIL("Sending %s on RpcTransport %p: %s", what, connection->rpcTransport.get(),
                    android::base::HexString(data, size).c_str());
 
@@ -319,7 +319,7 @@ status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
 
     if (status_t status =
                 connection->rpcTransport->interruptableWriteFully(session->mShutdownTrigger.get(),
-                                                                  data, size);
+                                                                  data, size, altPoll);
         status != OK) {
         LOG_RPC_DETAIL("Failed to write %s (%zu bytes) on RpcTransport %p, error: %s", what, size,
                        connection->rpcTransport.get(), statusToString(status).c_str());
@@ -341,7 +341,7 @@ status_t RpcState::rpcRec(const sp<RpcSession::RpcConnection>& connection,
 
     if (status_t status =
                 connection->rpcTransport->interruptableReadFully(session->mShutdownTrigger.get(),
-                                                                 data, size);
+                                                                 data, size, {});
         status != OK) {
         LOG_RPC_DETAIL("Failed to read %s (%zu bytes) on RpcTransport %p, error: %s", what, size,
                        connection->rpcTransport.get(), statusToString(status).c_str());
@@ -519,21 +519,44 @@ status_t RpcState::transactAddress(const sp<RpcSession::RpcConnection>& connecti
     memcpy(transactionData.data() + sizeof(RpcWireHeader) + sizeof(RpcWireTransaction), data.data(),
            data.dataSize());
 
+    constexpr size_t kWaitMaxUs = 1000000;
+    constexpr size_t kWaitLogUs = 10000;
+    size_t waitUs = 0;
+
+    // Oneway calls have no sync point, so if many are sent before, whether this
+    // is a twoway or oneway transaction, they may have filled up the socket.
+    // So, make sure we drain them before polling.
+    std::function<status_t()> drainRefs = [&] {
+        if (waitUs > kWaitLogUs) {
+            ALOGE("Cannot send command, trying to process pending refcounts. Waiting %zuus. Too "
+                  "many oneway calls?",
+                  waitUs);
+        }
+
+        if (waitUs > 0) {
+            usleep(waitUs);
+            waitUs = std::min(kWaitMaxUs, waitUs * 2);
+        } else {
+            waitUs = 1;
+        }
+
+        return drainCommands(connection, session, CommandType::CONTROL_ONLY);
+    };
+
     if (status_t status = rpcSend(connection, session, "transaction", transactionData.data(),
-                                  transactionData.size());
-        status != OK)
+                                  transactionData.size(), drainRefs);
+        status != OK) {
         // TODO(b/167966510): need to undo onBinderLeaving - we know the
         // refcount isn't successfully transferred.
         return status;
+    }
 
     if (flags & IBinder::FLAG_ONEWAY) {
         LOG_RPC_DETAIL("Oneway command, so no longer waiting on RpcTransport %p",
                        connection->rpcTransport.get());
 
         // Do not wait on result.
-        // However, too many oneway calls may cause refcounts to build up and fill up the socket,
-        // so process those.
-        return drainCommands(connection, session, CommandType::CONTROL_ONLY);
+        return OK;
     }
 
     LOG_ALWAYS_FATAL_IF(reply == nullptr, "Reply parcel must be used for synchronous transaction.");
