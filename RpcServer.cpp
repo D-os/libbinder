@@ -278,7 +278,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
     RpcConnectionHeader header;
     if (status == OK) {
         status = client->interruptableReadFully(server->mShutdownTrigger.get(), &header,
-                                                sizeof(header));
+                                                sizeof(header), {});
         if (status != OK) {
             ALOGE("Failed to read ID for client connecting to RPC server: %s",
                   statusToString(status).c_str());
@@ -291,7 +291,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
         if (header.sessionIdSize > 0) {
             sessionId.resize(header.sessionIdSize);
             status = client->interruptableReadFully(server->mShutdownTrigger.get(),
-                                                    sessionId.data(), sessionId.size());
+                                                    sessionId.data(), sessionId.size(), {});
             if (status != OK) {
                 ALOGE("Failed to read session ID for client connecting to RPC server: %s",
                       statusToString(status).c_str());
@@ -316,7 +316,7 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
             };
 
             status = client->interruptableWriteFully(server->mShutdownTrigger.get(), &response,
-                                                     sizeof(response));
+                                                     sizeof(response), {});
             if (status != OK) {
                 ALOGE("Failed to send new session response: %s", statusToString(status).c_str());
                 // still need to cleanup before we can return
