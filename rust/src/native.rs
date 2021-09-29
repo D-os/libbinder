@@ -441,6 +441,8 @@ unsafe impl<B: Remotable> AsNative<sys::AIBinder> for Binder<B> {
 ///
 /// Registers the given binder object with the given identifier. If successful,
 /// this service can then be retrieved using that identifier.
+///
+/// This function will panic if the identifier contains a 0 byte (NUL).
 pub fn add_service(identifier: &str, mut binder: SpIBinder) -> Result<()> {
     let instance = CString::new(identifier).unwrap();
     let status = unsafe {
@@ -462,6 +464,8 @@ pub fn add_service(identifier: &str, mut binder: SpIBinder) -> Result<()> {
 ///
 /// If any service in the process is registered as lazy, all should be, otherwise
 /// the process may be shut down while a service is in use.
+///
+/// This function will panic if the identifier contains a 0 byte (NUL).
 pub fn register_lazy_service(identifier: &str, mut binder: SpIBinder) -> Result<()> {
     let instance = CString::new(identifier).unwrap();
     let status = unsafe {
