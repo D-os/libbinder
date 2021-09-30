@@ -289,7 +289,7 @@ bool AIBinder_isAlive(const AIBinder* binder) __INTRODUCED_IN(29);
 /**
  * Built-in transaction for all binder objects. This sends a transaction that will immediately
  * return. Usually this is used to make sure that a binder is alive, as a placeholder call, or as a
- * sanity check.
+ * consistency check.
  *
  * Available since API level 29.
  *
