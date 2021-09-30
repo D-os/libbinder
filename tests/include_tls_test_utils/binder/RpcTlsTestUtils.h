@@ -80,7 +80,11 @@ private:
 // A RpcCertificateVerifier that does not verify anything.
 class RpcCertificateVerifierNoOp : public RpcCertificateVerifier {
 public:
-    status_t verify(const SSL*, uint8_t*) override { return OK; }
+    RpcCertificateVerifierNoOp(status_t status) : mStatus(status) {}
+    status_t verify(const SSL*, uint8_t*) override { return mStatus; }
+
+private:
+    status_t mStatus;
 };
 
 } // namespace android
