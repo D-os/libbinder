@@ -96,7 +96,7 @@ std::unique_ptr<RpcTransportCtxFactory> makeFactoryTls() {
     auto cert = android::makeSelfSignedCert(pkey.get(), android::kCertValidSeconds);
     CHECK_NE(cert.get(), nullptr);
 
-    auto verifier = std::make_shared<RpcCertificateVerifierNoOp>();
+    auto verifier = std::make_shared<RpcCertificateVerifierNoOp>(OK);
     auto auth = std::make_unique<RpcAuthPreSigned>(std::move(pkey), std::move(cert));
     return RpcTransportCtxFactoryTls::make(verifier, std::move(auth));
 }

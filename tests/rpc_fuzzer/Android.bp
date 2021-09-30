@@ -19,12 +19,19 @@ cc_fuzz {
     srcs: [
         "main.cpp",
     ],
+    // Not using libbinder_tls_shared_deps to use deterministic boringssl libraries.
     static_libs: [
         "libbase",
         "libcutils",
         "liblog",
+        "libbinder_tls_static",
+        "libbinder_tls_test_utils",
+        "libssl_fuzz_unsafe",
+        "libcrypto_fuzz_unsafe",
     ],
-
+    cflags: [
+        "-DBORINGSSL_UNSAFE_DETERMINISTIC_MODE" // for RAND_reset_for_fuzzing
+    ],
     target: {
         android: {
             shared_libs: [
@@ -39,4 +46,8 @@ cc_fuzz {
             ],
         },
     },
+    data: [
+        "server.crt",
+        "server.key",
+    ],
 }
