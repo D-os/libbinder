@@ -885,12 +885,6 @@ processTransactInternalTailCall:
         }
     }
 
-    // Binder refs are flushed for oneway calls only after all calls which are
-    // built up are executed. Otherwise, they fill up the binder buffer.
-    if (addr != 0 && replyStatus == OK && !oneway) {
-        replyStatus = flushExcessBinderRefs(session, addr, target);
-    }
-
     if (oneway) {
         if (replyStatus != OK) {
             ALOGW("Oneway call failed with error: %d", replyStatus);
@@ -948,6 +942,12 @@ processTransactInternalTailCall:
         }
 
         return OK;
+    }
+
+    // Binder refs are flushed for oneway calls only after all calls which are
+    // built up are executed. Otherwise, they fill up the binder buffer.
+    if (addr != 0 && replyStatus == OK) {
+        replyStatus = flushExcessBinderRefs(session, addr, target);
     }
 
     LOG_ALWAYS_FATAL_IF(std::numeric_limits<int32_t>::max() - sizeof(RpcWireHeader) -
