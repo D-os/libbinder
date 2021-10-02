@@ -36,7 +36,6 @@ public:
             uint32_t flags = 0 /* or bits such as MemoryHeapBase::READ_ONLY */ );
 
     virtual sp<IMemory> allocate(size_t size);
-    virtual void        deallocate(size_t offset);
     virtual void        dump(const char* what) const;
 
     // allocations are aligned to some value. return that value so clients can account for it.
@@ -48,6 +47,8 @@ protected:
     virtual ~MemoryDealer();
 
 private:
+    friend class Allocation;
+    virtual void                deallocate(size_t offset);
     const sp<IMemoryHeap>&      heap() const;
     SimpleBestFitAllocator*     allocator() const;
 
