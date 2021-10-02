@@ -46,15 +46,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                 [&]() -> void { dealer->getAllocationAlignment(); },
                 [&]() -> void { dealer->getMemoryHeap(); },
                 [&]() -> void {
-                    size_t offset = fdp.ConsumeIntegral<size_t>();
-
-                    // Offset has already been freed, so return instead.
-                    if (free_list.find(offset) != free_list.end()) return;
-
-                    dealer->deallocate(offset);
-                    free_list.insert(offset);
-                },
-                [&]() -> void {
                     std::string randString = fdp.ConsumeRandomLengthString(fdp.remaining_bytes());
                     dealer->dump(randString.c_str());
                 },
