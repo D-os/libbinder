@@ -168,7 +168,7 @@ public:
     sp<RpcServer> server();
 
     // internal only
-    const std::unique_ptr<RpcState>& state() { return mState; }
+    const std::unique_ptr<RpcState>& state() { return mRpcBinderState; }
 
 private:
     friend sp<RpcSession>;
@@ -303,7 +303,7 @@ private:
 
     std::unique_ptr<FdTrigger> mShutdownTrigger;
 
-    std::unique_ptr<RpcState> mState;
+    std::unique_ptr<RpcState> mRpcBinderState;
 
     std::mutex mMutex; // for all below
 
@@ -311,13 +311,16 @@ private:
     std::optional<uint32_t> mProtocolVersion;
 
     std::condition_variable mAvailableConnectionCv; // for mWaitingThreads
-    size_t mWaitingThreads = 0;
-    // hint index into clients, ++ when sending an async transaction
-    size_t mOutgoingConnectionsOffset = 0;
-    std::vector<sp<RpcConnection>> mOutgoingConnections;
-    size_t mMaxIncomingConnections = 0;
-    std::vector<sp<RpcConnection>> mIncomingConnections;
-    std::map<std::thread::id, std::thread> mThreads;
+
+    struct ThreadState {
+        size_t mWaitingThreads = 0;
+        // hint index into clients, ++ when sending an async transaction
+        size_t mOutgoingConnectionsOffset = 0;
+        std::vector<sp<RpcConnection>> mOutgoingConnections;
+        size_t mMaxIncomingConnections = 0;
+        std::vector<sp<RpcConnection>> mIncomingConnections;
+        std::map<std::thread::id, std::thread> mThreads;
+    } mThreadState;
 };
 
 } // namespace android
