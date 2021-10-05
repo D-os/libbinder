@@ -306,6 +306,14 @@ aidl_interface {
         "aidl/android/content/pm/ApexStagedEvent.aidl",
         "aidl/android/content/pm/StagedApexInfo.aidl",
     ],
+    backend: {
+        rust: {
+            apex_available: [
+                "com.android.virt",
+            ],
+            enabled: true,
+        },
+    },
 }
 
 aidl_interface {
