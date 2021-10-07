@@ -294,6 +294,14 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         FUZZ_LOG() << "ParcelableHolder status: " << status;
     },
     PARCEL_READ_WITH_STATUS(android::os::PersistableBundle, readParcelable),
+    [] (const ::android::Parcel& p, uint8_t /* data */) {
+        FUZZ_LOG() << "about to call hasFileDescriptorsInRange() with status";
+        size_t offset = p.readUint32();
+        size_t length = p.readUint32();
+        bool result;
+        status_t status = p.hasFileDescriptorsInRange(offset, length, result);
+        FUZZ_LOG() << " status: " << status  << " result: " << result;
+    },
 };
 // clang-format on
 #pragma clang diagnostic pop
