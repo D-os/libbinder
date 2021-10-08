@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include <binder/Parcel.h>
 #include <binder/IPCThreadState.h>
+#include <binder/Parcel.h>
+#include <cutils/ashmem.h>
 #include <gtest/gtest.h>
 
 using android::IPCThreadState;
@@ -146,3 +147,18 @@ TEST_READ_WRITE_INVERSE(char16_t, Char, {u'a', u'\0'});
 TEST_READ_WRITE_INVERSE(int8_t, Byte, {-1, 0, 1});
 TEST_READ_WRITE_INVERSE(String8, String8, {String8(), String8("a"), String8("asdf")});
 TEST_READ_WRITE_INVERSE(String16, String16, {String16(), String16("a"), String16("asdf")});
+
+TEST(Parcel, GetOpenAshmemSize) {
+    constexpr size_t kSize = 1024;
+    constexpr size_t kCount = 3;
+
+    Parcel p;
+
+    for (size_t i = 0; i < kCount; i++) {
+        int fd = ashmem_create_region("test-getOpenAshmemSize", kSize);
+        ASSERT_GE(fd, 0);
+        ASSERT_EQ(OK, p.writeFileDescriptor(fd, true /* take ownership */));
+
+        ASSERT_EQ((kSize * (i + 1)), p.getOpenAshmemSize());
+    }
+}
