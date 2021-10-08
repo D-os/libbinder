@@ -144,5 +144,5 @@ interface IPackageManagerNative {
      * Get information of APEX which is staged ready for installation.
      * Returns null if no such APEX is found.
      */
-    StagedApexInfo getStagedApexInfo(in @utf8InCpp String moduleName);
+    @nullable StagedApexInfo getStagedApexInfo(in @utf8InCpp String moduleName);
 }
