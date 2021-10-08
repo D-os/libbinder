@@ -281,13 +281,13 @@ private:
 
     const std::unique_ptr<RpcTransportCtx> mCtx;
 
-    // On the other side of a session, for each of mOutgoingConnections here, there should
-    // be one of mIncomingConnections on the other side (and vice versa).
+    // On the other side of a session, for each of mOutgoing here, there should
+    // be one of mIncoming on the other side (and vice versa).
     //
     // For the simplest session, a single server with one client, you would
     // have:
-    //  - the server has a single 'mIncomingConnections' and a thread listening on this
-    //  - the client has a single 'mOutgoingConnections' and makes calls to this
+    //  - the server has a single 'mIncoming' and a thread listening on this
+    //  - the client has a single 'mOutgoing' and makes calls to this
     //  - here, when the client makes a call, the server can call back into it
     //    (nested calls), but outside of this, the client will only ever read
     //    calls from the server when it makes a call itself.
@@ -315,12 +315,12 @@ private:
     struct ThreadState {
         size_t mWaitingThreads = 0;
         // hint index into clients, ++ when sending an async transaction
-        size_t mOutgoingConnectionsOffset = 0;
-        std::vector<sp<RpcConnection>> mOutgoingConnections;
-        size_t mMaxIncomingConnections = 0;
-        std::vector<sp<RpcConnection>> mIncomingConnections;
+        size_t mOutgoingOffset = 0;
+        std::vector<sp<RpcConnection>> mOutgoing;
+        size_t mMaxIncoming = 0;
+        std::vector<sp<RpcConnection>> mIncoming;
         std::map<std::thread::id, std::thread> mThreads;
-    } mThreadState;
+    } mConnections;
 };
 
 } // namespace android
