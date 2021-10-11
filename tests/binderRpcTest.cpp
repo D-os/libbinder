@@ -613,7 +613,7 @@ public:
         status_t status;
 
         for (const auto& session : sessions) {
-            session->setMaxThreads(options.numIncomingConnections);
+            session->setMaxIncomingThreads(options.numIncomingConnections);
 
             switch (socketType) {
                 case SocketType::PRECONNECTED:
