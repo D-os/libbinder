@@ -59,7 +59,7 @@ public:
     static sp<RpcSession> make(std::unique_ptr<RpcTransportCtxFactory> rpcTransportCtxFactory);
 
     /**
-     * Set the maximum number of threads allowed to be made (for things like callbacks).
+     * Set the maximum number of incoming threads allowed to be made (for things like callbacks).
      * By default, this is 0. This must be called before setting up this connection as a client.
      * Server sessions will inherits this value from RpcServer.
      *
@@ -68,8 +68,8 @@ public:
      *
      * TODO(b/189955605): start these dynamically
      */
-    void setMaxThreads(size_t threads);
-    size_t getMaxThreads();
+    void setMaxIncomingThreads(size_t threads);
+    size_t getMaxIncomingThreads();
 
     /**
      * By default, the minimum of the supported versions of the client and the
@@ -307,7 +307,7 @@ private:
 
     std::mutex mMutex; // for all below
 
-    size_t mMaxThreads = 0;
+    size_t mMaxIncomingThreads = 0;
     std::optional<uint32_t> mProtocolVersion;
 
     std::condition_variable mAvailableConnectionCv; // for mWaitingThreads
