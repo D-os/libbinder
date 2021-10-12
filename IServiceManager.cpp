@@ -448,21 +448,27 @@ std::optional<IServiceManager::ConnectionInfo> ServiceManagerShim::getConnection
 // on-device service manager.
 class ServiceManagerHostShim : public ServiceManagerShim {
 public:
-    using ServiceManagerShim::ServiceManagerShim;
+    ServiceManagerHostShim(const sp<AidlServiceManager>& impl,
+                           const RpcDelegateServiceManagerOptions& options)
+          : ServiceManagerShim(impl), mOptions(options) {}
     // ServiceManagerShim::getService is based on checkService, so no need to override it.
     sp<IBinder> checkService(const String16& name) const override {
-        return getDeviceService({String8(name).c_str()});
+        return getDeviceService({String8(name).c_str()}, mOptions);
     }
 
 protected:
     // Override realGetService for ServiceManagerShim::waitForService.
     Status realGetService(const std::string& name, sp<IBinder>* _aidl_return) {
-        *_aidl_return = getDeviceService({"-g", name});
+        *_aidl_return = getDeviceService({"-g", name}, mOptions);
         return Status::ok();
     }
+
+private:
+    RpcDelegateServiceManagerOptions mOptions;
 };
-sp<IServiceManager> createRpcDelegateServiceManager() {
-    auto binder = getDeviceService({"manager"});
+sp<IServiceManager> createRpcDelegateServiceManager(
+        const RpcDelegateServiceManagerOptions& options) {
+    auto binder = getDeviceService({"manager"}, options);
     if (binder == nullptr) {
         ALOGE("getDeviceService(\"manager\") returns null");
         return nullptr;
@@ -472,7 +478,7 @@ sp<IServiceManager> createRpcDelegateServiceManager() {
         ALOGE("getDeviceService(\"manager\") returns non service manager");
         return nullptr;
     }
-    return sp<ServiceManagerHostShim>::make(interface);
+    return sp<ServiceManagerHostShim>::make(interface, options);
 }
 #endif
 

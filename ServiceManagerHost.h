@@ -21,11 +21,14 @@
 
 namespace android {
 
+struct RpcDelegateServiceManagerOptions;
+
 // Get a service on device by running servicedispatcher with the given args, e.g.
 //     getDeviceService({"foo"});
 // Return nullptr on any error.
 // When the returned binder object is destroyed, remove adb forwarding and kills
 // the long-running servicedispatcher process.
-sp<IBinder> getDeviceService(std::vector<std::string>&& serviceDispatcherArgs);
+sp<IBinder> getDeviceService(std::vector<std::string>&& serviceDispatcherArgs,
+                             const RpcDelegateServiceManagerOptions& options);
 
 } // namespace android
