@@ -17,6 +17,7 @@ rust_library {
     rustlibs: [
         "liblibc",
         "libbinder_ndk_sys",
+        "libdowncast_rs",
     ],
     host_supported: true,
     target: {
@@ -133,6 +134,7 @@ rust_test {
     rustlibs: [
         "liblibc",
         "libbinder_ndk_sys",
+        "libdowncast_rs",
     ],
 }
 

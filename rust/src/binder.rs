@@ -23,6 +23,7 @@ use crate::sys;
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
+use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
 use std::fmt;
 use std::fs::File;
@@ -70,6 +71,7 @@ pub trait Interface: Send + Sync {
 /// An interface can promise to be a stable vendor interface ([`Vintf`]), or
 /// makes no stability guarantees ([`Local`]). [`Local`] is
 /// currently the default stability.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Stability {
     /// Default stability, visible to other modules in the same compilation
     /// context (e.g. modules on system.img)
@@ -82,6 +84,28 @@ pub enum Stability {
 impl Default for Stability {
     fn default() -> Self {
         Stability::Local
+    }
+}
+
+impl From<Stability> for i32 {
+    fn from(stability: Stability) -> i32 {
+        use Stability::*;
+        match stability {
+            Local => 0,
+            Vintf => 1,
+        }
+    }
+}
+
+impl TryFrom<i32> for Stability {
+    type Error = StatusCode;
+    fn try_from(stability: i32) -> Result<Stability> {
+        use Stability::*;
+        match stability {
+            0 => Ok(Local),
+            1 => Ok(Vintf),
+            _ => Err(StatusCode::BAD_VALUE)
+        }
     }
 }
 
