@@ -89,13 +89,23 @@ sp<ProcessState> ProcessState::selfOrNull()
     return init(nullptr, false /*requireDefault*/);
 }
 
+[[clang::no_destroy]] static sp<ProcessState> gProcess;
+[[clang::no_destroy]] static std::mutex gProcessMutex;
+
+static void verifyNotForked(bool forked) {
+    if (forked) {
+        ALOGE("libbinder does not support being forked");
+    }
+}
+
 sp<ProcessState> ProcessState::init(const char *driver, bool requireDefault)
 {
-    [[clang::no_destroy]] static sp<ProcessState> gProcess;
-    [[clang::no_destroy]] static std::mutex gProcessMutex;
 
     if (driver == nullptr) {
         std::lock_guard<std::mutex> l(gProcessMutex);
+        if (gProcess) {
+            verifyNotForked(gProcess->mForked);
+        }
         return gProcess;
     }
 
@@ -105,6 +115,14 @@ sp<ProcessState> ProcessState::init(const char *driver, bool requireDefault)
             ALOGE("Binder driver %s is unavailable. Using /dev/binder instead.", driver);
             driver = "/dev/binder";
         }
+
+        // we must install these before instantiating the gProcess object,
+        // otherwise this would race with creating it, and there could be the
+        // possibility of an invalid gProcess object forked by another thread
+        // before these are installed
+        int ret = pthread_atfork(ProcessState::onFork, ProcessState::parentPostFork,
+                                 ProcessState::childPostFork);
+        LOG_ALWAYS_FATAL_IF(ret != 0, "pthread_atfork error %s", strerror(ret));
 
         std::lock_guard<std::mutex> l(gProcessMutex);
         gProcess = sp<ProcessState>::make(driver);
@@ -119,6 +137,7 @@ sp<ProcessState> ProcessState::init(const char *driver, bool requireDefault)
                             gProcess->getDriverName().c_str(), driver);
     }
 
+    verifyNotForked(gProcess->mForked);
     return gProcess;
 }
 
@@ -135,6 +154,24 @@ sp<IBinder> ProcessState::getContextObject(const sp<IBinder>& /*caller*/)
     }
 
     return context;
+}
+
+void ProcessState::onFork() {
+    // make sure another thread isn't currently retrieving ProcessState
+    gProcessMutex.lock();
+}
+
+void ProcessState::parentPostFork() {
+    gProcessMutex.unlock();
+}
+
+void ProcessState::childPostFork() {
+    // another thread might call fork before gProcess is instantiated, but after
+    // the thread handler is installed
+    if (gProcess) {
+        gProcess->mForked = true;
+    }
+    gProcessMutex.unlock();
 }
 
 void ProcessState::startThreadPool()
@@ -426,6 +463,7 @@ ProcessState::ProcessState(const char* driver)
         mWaitingForThreads(0),
         mMaxThreads(DEFAULT_MAX_BINDER_THREADS),
         mStarvationStartTimeMs(0),
+        mForked(false),
         mThreadPoolStarted(false),
         mThreadPoolSeq(1),
         mCallRestriction(CallRestriction::NONE) {
