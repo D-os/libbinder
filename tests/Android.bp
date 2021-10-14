@@ -154,7 +154,6 @@ cc_test {
         "binderRpcTestIface-cpp",
         "binderRpcTestIface-ndk_platform",
     ],
-    test_suites: ["general-tests"],
     require_root: true,
     // Prevent the unit test target from running on sc-dev as it's not ready.
     test_options: {
