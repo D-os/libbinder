@@ -690,13 +690,21 @@ TEST_P(BinderRpc, TransactionsMustBeMarkedRpc) {
 }
 
 TEST_P(BinderRpc, AppendSeparateFormats) {
-    auto proc = createRpcTestSocketServerProcess({});
+    auto proc1 = createRpcTestSocketServerProcess({});
+    auto proc2 = createRpcTestSocketServerProcess({});
+
+    Parcel pRaw;
 
     Parcel p1;
-    p1.markForBinder(proc.rootBinder);
+    p1.markForBinder(proc1.rootBinder);
     p1.writeInt32(3);
 
+    EXPECT_EQ(BAD_TYPE, p1.appendFrom(&pRaw, 0, p1.dataSize()));
+    EXPECT_EQ(BAD_TYPE, pRaw.appendFrom(&p1, 0, p1.dataSize()));
+
     Parcel p2;
+    p2.markForBinder(proc2.rootBinder);
+    p2.writeInt32(7);
 
     EXPECT_EQ(BAD_TYPE, p1.appendFrom(&p2, 0, p2.dataSize()));
     EXPECT_EQ(BAD_TYPE, p2.appendFrom(&p1, 0, p1.dataSize()));
