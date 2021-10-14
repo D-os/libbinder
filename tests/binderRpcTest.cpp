@@ -174,6 +174,7 @@ public:
 class MyBinderRpcTest : public BnBinderRpcTest {
 public:
     wp<RpcServer> server;
+    int port = 0;
 
     Status sendString(const std::string& str) override {
         (void)str;
@@ -181,6 +182,10 @@ public:
     }
     Status doubleString(const std::string& str, std::string* strstr) override {
         *strstr = str + str;
+        return Status::ok();
+    }
+    Status getClientPort(int* out) override {
+        *out = port;
         return Status::ok();
     }
     Status countBinders(std::vector<int32_t>* out) override {
@@ -643,13 +648,39 @@ public:
 
     BinderRpcTestProcessSession createRpcTestSocketServerProcess(const Options& options) {
         BinderRpcTestProcessSession ret{
-                .proc = createRpcTestSocketServerProcess(options,
-                                                         [&](const sp<RpcServer>& server) {
-                                                             sp<MyBinderRpcTest> service =
-                                                                     new MyBinderRpcTest;
-                                                             server->setRootObject(service);
-                                                             service->server = server;
-                                                         }),
+                .proc = createRpcTestSocketServerProcess(
+                        options,
+                        [&](const sp<RpcServer>& server) {
+                            server->setPerSessionRootObject([&](const sockaddr* addr,
+                                                                socklen_t len) {
+                                sp<MyBinderRpcTest> service = sp<MyBinderRpcTest>::make();
+                                switch (addr->sa_family) {
+                                    case AF_UNIX:
+                                        // nothing to save
+                                        break;
+                                    case AF_VSOCK:
+                                        CHECK_EQ(len, sizeof(sockaddr_vm));
+                                        service->port = reinterpret_cast<const sockaddr_vm*>(addr)
+                                                                ->svm_port;
+                                        break;
+                                    case AF_INET:
+                                        CHECK_EQ(len, sizeof(sockaddr_in));
+                                        service->port = reinterpret_cast<const sockaddr_in*>(addr)
+                                                                ->sin_port;
+                                        break;
+                                    case AF_INET6:
+                                        CHECK_EQ(len, sizeof(sockaddr_in));
+                                        service->port = reinterpret_cast<const sockaddr_in6*>(addr)
+                                                                ->sin6_port;
+                                        break;
+                                    default:
+                                        LOG_ALWAYS_FATAL("Unrecognized address family %d",
+                                                         addr->sa_family);
+                                }
+                                service->server = server;
+                                return service;
+                            });
+                        }),
         };
 
         ret.rootBinder = ret.proc.sessions.at(0).root;
@@ -680,6 +711,27 @@ TEST_P(BinderRpc, MultipleSessions) {
         ASSERT_NE(nullptr, session.root);
         EXPECT_EQ(OK, session.root->pingBinder());
     }
+}
+
+TEST_P(BinderRpc, SeparateRootObject) {
+    SocketType type = std::get<0>(GetParam());
+    if (type == SocketType::PRECONNECTED || type == SocketType::UNIX) {
+        // we can't get port numbers for unix sockets
+        return;
+    }
+
+    auto proc = createRpcTestSocketServerProcess({.numSessions = 2});
+
+    int port1 = 0;
+    EXPECT_OK(proc.rootIface->getClientPort(&port1));
+
+    sp<IBinderRpcTest> rootIface2 = interface_cast<IBinderRpcTest>(proc.proc.sessions.at(1).root);
+    int port2;
+    EXPECT_OK(rootIface2->getClientPort(&port2));
+
+    // we should have a different IBinderRpcTest object created for each
+    // session, because we use setPerSessionRootObject
+    EXPECT_NE(port1, port2);
 }
 
 TEST_P(BinderRpc, TransactionsMustBeMarkedRpc) {

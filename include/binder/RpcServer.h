@@ -130,6 +130,10 @@ public:
      * Holds a weak reference to the root object.
      */
     void setRootObjectWeak(const wp<IBinder>& binder);
+    /**
+     * Allows a root object to be created for each session
+     */
+    void setPerSessionRootObject(std::function<sp<IBinder>(const sockaddr*, socklen_t)>&& object);
     sp<IBinder> getRootObject();
 
     /**
@@ -179,7 +183,8 @@ private:
     void onSessionAllIncomingThreadsEnded(const sp<RpcSession>& session) override;
     void onSessionIncomingThreadEnded() override;
 
-    static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd);
+    static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd,
+                                    const sockaddr_storage addr, socklen_t addrLen);
     status_t setupSocketServer(const RpcSocketAddress& address);
 
     const std::unique_ptr<RpcTransportCtx> mCtx;
@@ -194,6 +199,7 @@ private:
     std::map<std::thread::id, std::thread> mConnectingThreads;
     sp<IBinder> mRootObject;
     wp<IBinder> mRootObjectWeak;
+    std::function<sp<IBinder>(const sockaddr*, socklen_t)> mRootObjectFactory;
     std::map<std::vector<uint8_t>, sp<RpcSession>> mSessions;
     std::unique_ptr<FdTrigger> mShutdownTrigger;
     std::condition_variable mShutdownCv;

@@ -870,7 +870,9 @@ processTransactInternalTailCall:
                     if (server) {
                         switch (transaction->code) {
                             case RPC_SPECIAL_TRANSACT_GET_ROOT: {
-                                replyStatus = reply.writeStrongBinder(server->getRootObject());
+                                sp<IBinder> root = session->mSessionSpecificRootObject
+                                        ?: server->getRootObject();
+                                replyStatus = reply.writeStrongBinder(root);
                                 break;
                             }
                             default: {
