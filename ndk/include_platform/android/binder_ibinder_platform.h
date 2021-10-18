@@ -55,4 +55,17 @@ __attribute__((weak)) void AIBinder_setRequestingSid(AIBinder* binder, bool requ
  */
 __attribute__((weak, warn_unused_result)) const char* AIBinder_getCallingSid() __INTRODUCED_IN(31);
 
+/**
+ * Sets a minimum scheduler policy for all transactions coming into this
+ * AIBinder.
+ *
+ * This must be called before the object is sent to another process.
+ * Aborts on invalid values. Not thread safe.
+ *
+ * \param binder local server binder to set the policy for
+ * \param policy scheduler policy as defined in linux UAPI
+ * \param priority priority. [-20..19] for SCHED_NORMAL, [1..99] for RT
+ */
+void AIBinder_setMinSchedulerPolicy(AIBinder* binder, int policy, int priority) __INTRODUCED_IN(33);
+
 __END_DECLS
