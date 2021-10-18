@@ -94,6 +94,10 @@ public:
 private:
     static sp<ProcessState> init(const char* defaultDriver, bool requireDefault);
 
+    static void onFork();
+    static void parentPostFork();
+    static void childPostFork();
+
     friend class IPCThreadState;
     friend class sp<ProcessState>;
 
@@ -132,6 +136,7 @@ private:
 
     Vector<handle_entry> mHandleToObject;
 
+    bool mForked;
     bool mThreadPoolStarted;
     volatile int32_t mThreadPoolSeq;
 
