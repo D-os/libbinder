@@ -1237,7 +1237,9 @@ public:
      */
     size_t getOpenAshmemSize() const;
 
-    // TODO(b/202029388): Remove 'getBlobAshmemSize' once ABI can be changed.
+private:
+    // TODO(b/202029388): Remove 'getBlobAshmemSize' once no prebuilts reference
+    // this
     size_t getBlobAshmemSize() const;
 };
 
