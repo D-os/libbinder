@@ -109,7 +109,6 @@ TEST_P(BinderRpcSimple, SetExternalServerTest) {
     base::unique_fd sink(TEMP_FAILURE_RETRY(open("/dev/null", O_RDWR)));
     int sinkFd = sink.get();
     auto server = RpcServer::make(newFactory(GetParam()));
-    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     ASSERT_FALSE(server->hasServer());
     ASSERT_EQ(OK, server->setupExternalServer(std::move(sink)));
     ASSERT_TRUE(server->hasServer());
@@ -543,7 +542,6 @@ public:
                     auto certVerifier = std::make_shared<RpcCertificateVerifierSimple>();
                     sp<RpcServer> server = RpcServer::make(newFactory(rpcSecurity, certVerifier));
 
-                    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
                     server->setMaxThreads(options.numThreads);
 
                     unsigned int outPort = 0;
@@ -1373,7 +1371,6 @@ static bool testSupportVsockLoopback() {
     // We don't need to enable TLS to know if vsock is supported.
     unsigned int vsockPort = allocateVsockPort();
     sp<RpcServer> server = RpcServer::make(RpcTransportCtxFactoryRaw::make());
-    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     if (status_t status = server->setupVsockServer(vsockPort); status != OK) {
         if (status == -EAFNOSUPPORT) {
             return false;
@@ -1462,7 +1459,6 @@ private:
 TEST_P(BinderRpcSimple, Shutdown) {
     auto addr = allocateSocketAddress();
     auto server = RpcServer::make(newFactory(GetParam()));
-    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     ASSERT_EQ(OK, server->setupUnixDomainServer(addr.c_str()));
     auto joinEnds = std::make_shared<OneOffSignal>();
 
@@ -1502,7 +1498,6 @@ TEST(BinderRpc, Java) {
     ASSERT_EQ(OK, binder->pingBinder());
 
     auto rpcServer = RpcServer::make();
-    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     unsigned int port;
     ASSERT_EQ(OK, rpcServer->setupInetServer(kLocalInetAddress, 0, &port));
     auto socket = rpcServer->releaseServer();
@@ -1541,7 +1536,6 @@ public:
                 std::unique_ptr<RpcAuth> auth = std::make_unique<RpcAuthSelfSigned>()) {
             auto [socketType, rpcSecurity, certificateFormat] = param;
             auto rpcServer = RpcServer::make(newFactory(rpcSecurity));
-            rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
             switch (socketType) {
                 case SocketType::PRECONNECTED: {
                     return AssertionFailure() << "Not supported by this test";
