@@ -780,3 +780,7 @@ AIBinder* AIBinder_fromPlatformBinder(const android::sp<android::IBinder>& binde
     AIBinder_incStrong(ndkBinder.get());
     return ndkBinder.get();
 }
+
+void AIBinder_setMinSchedulerPolicy(AIBinder* binder, int policy, int priority) {
+    binder->asABBinder()->setMinSchedulerPolicy(policy, priority);
+}
