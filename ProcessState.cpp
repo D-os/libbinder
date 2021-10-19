@@ -93,9 +93,7 @@ sp<ProcessState> ProcessState::selfOrNull()
 [[clang::no_destroy]] static std::mutex gProcessMutex;
 
 static void verifyNotForked(bool forked) {
-    if (forked) {
-        ALOGE("libbinder does not support being forked");
-    }
+    LOG_ALWAYS_FATAL_IF(forked, "libbinder ProcessState can not be used after fork");
 }
 
 sp<ProcessState> ProcessState::init(const char *driver, bool requireDefault)
