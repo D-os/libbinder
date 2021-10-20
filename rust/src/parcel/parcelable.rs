@@ -383,6 +383,9 @@ macro_rules! impl_parcelable {
     };
 }
 
+impl<T: DeserializeOption> DeserializeArray for Option<T> {}
+impl<T: SerializeOption> SerializeArray for Option<T> {}
+
 parcelable_primitives! {
     impl Serialize for bool = sys::AParcel_writeBool;
     impl Deserialize for bool = sys::AParcel_readBool;
@@ -537,8 +540,6 @@ impl SerializeOption for str {
     }
 }
 
-impl SerializeArray for Option<&str> {}
-
 impl Serialize for str {
     fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
         Some(self).serialize(parcel)
@@ -560,8 +561,6 @@ impl SerializeOption for String {
         SerializeOption::serialize_option(this.map(String::as_str), parcel)
     }
 }
-
-impl SerializeArray for Option<String> {}
 
 impl Deserialize for Option<String> {
     fn deserialize(parcel: &Parcel) -> Result<Self> {
