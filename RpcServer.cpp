@@ -127,13 +127,22 @@ void RpcServer::setProtocolVersion(uint32_t version) {
 
 void RpcServer::setRootObject(const sp<IBinder>& binder) {
     std::lock_guard<std::mutex> _l(mLock);
+    mRootObjectFactory = nullptr;
     mRootObjectWeak = mRootObject = binder;
 }
 
 void RpcServer::setRootObjectWeak(const wp<IBinder>& binder) {
     std::lock_guard<std::mutex> _l(mLock);
     mRootObject.clear();
+    mRootObjectFactory = nullptr;
     mRootObjectWeak = binder;
+}
+void RpcServer::setPerSessionRootObject(
+        std::function<sp<IBinder>(const sockaddr*, socklen_t)>&& makeObject) {
+    std::lock_guard<std::mutex> _l(mLock);
+    mRootObject.clear();
+    mRootObjectWeak.clear();
+    mRootObjectFactory = std::move(makeObject);
 }
 
 sp<IBinder> RpcServer::getRootObject() {
@@ -174,8 +183,14 @@ void RpcServer::join() {
 
     status_t status;
     while ((status = mShutdownTrigger->triggerablePoll(mServer, POLLIN)) == OK) {
-        unique_fd clientFd(TEMP_FAILURE_RETRY(
-                accept4(mServer.get(), nullptr, nullptr /*length*/, SOCK_CLOEXEC | SOCK_NONBLOCK)));
+        sockaddr_storage addr;
+        socklen_t addrLen = sizeof(addr);
+
+        unique_fd clientFd(
+                TEMP_FAILURE_RETRY(accept4(mServer.get(), reinterpret_cast<sockaddr*>(&addr),
+                                           &addrLen, SOCK_CLOEXEC | SOCK_NONBLOCK)));
+
+        LOG_ALWAYS_FATAL_IF(addrLen > static_cast<socklen_t>(sizeof(addr)), "Truncated address");
 
         if (clientFd < 0) {
             ALOGE("Could not accept4 socket: %s", strerror(errno));
@@ -187,7 +202,7 @@ void RpcServer::join() {
             std::lock_guard<std::mutex> _l(mLock);
             std::thread thread =
                     std::thread(&RpcServer::establishConnection, sp<RpcServer>::fromExisting(this),
-                                std::move(clientFd));
+                                std::move(clientFd), addr, addrLen);
             mConnectingThreads[thread.get_id()] = std::move(thread);
         }
     }
@@ -257,7 +272,8 @@ size_t RpcServer::numUninitializedSessions() {
     return mConnectingThreads.size();
 }
 
-void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd) {
+void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd,
+                                    const sockaddr_storage addr, socklen_t addrLen) {
     // TODO(b/183988761): cannot trust this simple ID
     LOG_ALWAYS_FATAL_IF(!server->mAgreedExperimental, "no!");
 
@@ -383,11 +399,23 @@ void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clie
             session = RpcSession::make();
             session->setMaxIncomingThreads(server->mMaxThreads);
             if (!session->setProtocolVersion(protocolVersion)) return;
+
+            // if null, falls back to server root
+            sp<IBinder> sessionSpecificRoot;
+            if (server->mRootObjectFactory != nullptr) {
+                sessionSpecificRoot =
+                        server->mRootObjectFactory(reinterpret_cast<const sockaddr*>(&addr),
+                                                   addrLen);
+                if (sessionSpecificRoot == nullptr) {
+                    ALOGE("Warning: server returned null from root object factory");
+                }
+            }
+
             if (!session->setForServer(server,
                                        sp<RpcServer::EventListener>::fromExisting(
                                                static_cast<RpcServer::EventListener*>(
                                                        server.get())),
-                                       sessionId)) {
+                                       sessionId, sessionSpecificRoot)) {
                 ALOGE("Failed to attach server to session");
                 return;
             }
