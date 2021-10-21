@@ -87,7 +87,7 @@ public:
     void                restoreAllowFds(bool lastValue);
 
     bool                hasFileDescriptors() const;
-    status_t hasFileDescriptorsInRange(size_t offset, size_t length, bool& result) const;
+    status_t hasFileDescriptorsInRange(size_t offset, size_t length, bool* result) const;
 
     // Zeros data when reallocating. Other mitigations may be added
     // in the future.
@@ -576,7 +576,6 @@ private:
 
     status_t            writeRawNullableParcelable(const Parcelable*
                                                    parcelable);
-    bool hasFileDescriptorsInRangeUnchecked(size_t offset, size_t length) const;
 
     //-----------------------------------------------------------------------------
     // Generic type read and write methods for Parcel:
