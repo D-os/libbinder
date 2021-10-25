@@ -44,7 +44,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     auto thread = std::thread([&]() {
         prctl(PR_SET_PDEATHSIG, SIGHUP); // racey, okay
         server->setRootObject(sp<BBinder>::make());
-        server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
         CHECK_EQ(OK, server->setupUnixDomainServer(addr.c_str()));
         server->join();
     });

@@ -1194,7 +1194,6 @@ public:
         auto rpcServer = RpcServer::make();
         EXPECT_NE(nullptr, rpcServer);
         if (rpcServer == nullptr) return {};
-        rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
         unsigned int port;
         if (status_t status = rpcServer->setupInetServer("127.0.0.1", 0, &port); status != OK) {
             ADD_FAILURE() << "setupInetServer failed" << statusToString(status);

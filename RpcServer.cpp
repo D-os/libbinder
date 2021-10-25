@@ -58,10 +58,6 @@ sp<RpcServer> RpcServer::make(std::unique_ptr<RpcTransportCtxFactory> rpcTranspo
     return sp<RpcServer>::make(std::move(ctx));
 }
 
-void RpcServer::iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction() {
-    mAgreedExperimental = true;
-}
-
 status_t RpcServer::setupUnixDomainServer(const char* path) {
     return setupSocketServer(UnixSocketAddress(path));
 }
@@ -163,14 +159,12 @@ static void joinRpcServer(sp<RpcServer>&& thiz) {
 }
 
 void RpcServer::start() {
-    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
     std::lock_guard<std::mutex> _l(mLock);
     LOG_ALWAYS_FATAL_IF(mJoinThread.get(), "Already started!");
     mJoinThread = std::make_unique<std::thread>(&joinRpcServer, sp<RpcServer>::fromExisting(this));
 }
 
 void RpcServer::join() {
-    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
 
     {
         std::lock_guard<std::mutex> _l(mLock);
@@ -274,9 +268,6 @@ size_t RpcServer::numUninitializedSessions() {
 
 void RpcServer::establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd,
                                     const sockaddr_storage addr, socklen_t addrLen) {
-    // TODO(b/183988761): cannot trust this simple ID
-    LOG_ALWAYS_FATAL_IF(!server->mAgreedExperimental, "no!");
-
     // mShutdownTrigger can only be cleared once connection threads have joined.
     // It must be set before this thread is started
     LOG_ALWAYS_FATAL_IF(server->mShutdownTrigger == nullptr);
@@ -506,19 +497,16 @@ void RpcServer::onSessionIncomingThreadEnded() {
 }
 
 bool RpcServer::hasServer() {
-    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
     std::lock_guard<std::mutex> _l(mLock);
     return mServer.ok();
 }
 
 unique_fd RpcServer::releaseServer() {
-    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
     std::lock_guard<std::mutex> _l(mLock);
     return std::move(mServer);
 }
 
 status_t RpcServer::setupExternalServer(base::unique_fd serverFd) {
-    LOG_ALWAYS_FATAL_IF(!mAgreedExperimental, "no!");
     std::lock_guard<std::mutex> _l(mLock);
     if (mServer.ok()) {
         ALOGE("Each RpcServer can only have one server.");

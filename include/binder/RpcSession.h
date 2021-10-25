@@ -26,10 +26,6 @@
 #include <thread>
 #include <vector>
 
-// WARNING: This is a feature which is still in development, and it is subject
-// to radical change. Any production use of this may subject your code to any
-// number of problems.
-
 namespace android {
 
 class Parcel;
