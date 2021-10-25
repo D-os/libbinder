@@ -547,7 +547,6 @@ status_t BBinder::setRpcClientDebug(android::base::unique_fd socketFd,
     AutoMutex _l(e->mLock);
     auto rpcServer = RpcServer::make();
     LOG_ALWAYS_FATAL_IF(rpcServer == nullptr, "RpcServer::make returns null");
-    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     auto link = sp<RpcServerLink>::make(rpcServer, keepAliveBinder, weakThis);
     if (auto status = keepAliveBinder->linkToDeath(link, nullptr, 0); status != OK) {
         ALOGE("%s: keepAliveBinder->linkToDeath returns %s", __PRETTY_FUNCTION__,
