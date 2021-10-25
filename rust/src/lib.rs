@@ -113,7 +113,7 @@ pub use crate::binder::{
 };
 pub use error::{status_t, ExceptionCode, Result, Status, StatusCode};
 pub use native::{add_service, force_lazy_services_persist, register_lazy_service, Binder};
-pub use parcel::Parcel;
+pub use parcel::{OwnedParcel, Parcel};
 pub use proxy::{get_interface, get_service, wait_for_interface, wait_for_service};
 pub use proxy::{AssociateClass, DeathRecipient, Proxy, SpIBinder, WpIBinder};
 pub use state::{ProcessState, ThreadState};
