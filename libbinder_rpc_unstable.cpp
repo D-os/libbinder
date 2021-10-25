@@ -32,7 +32,6 @@ extern "C" {
 bool RunRpcServerCallback(AIBinder* service, unsigned int port, void (*readyCallback)(void* param),
                           void* param) {
     auto server = RpcServer::make();
-    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     if (status_t status = server->setupVsockServer(port); status != OK) {
         LOG(ERROR) << "Failed to set up vsock server with port " << port
                    << " error: " << statusToString(status).c_str();
