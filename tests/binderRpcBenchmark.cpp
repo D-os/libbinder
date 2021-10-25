@@ -206,7 +206,6 @@ void forkRpcServer(const char* addr, const sp<RpcServer>& server) {
     if (0 == fork()) {
         prctl(PR_SET_PDEATHSIG, SIGHUP); // racey, okay
         server->setRootObject(sp<MyBinderRpcBenchmark>::make());
-        server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
         CHECK_EQ(OK, server->setupUnixDomainServer(addr));
         server->join();
         exit(1);

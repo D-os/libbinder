@@ -90,7 +90,6 @@ int Dispatch(const char* name, const ServiceRetriever& serviceRetriever) {
         LOG(ERROR) << "Cannot create RpcServer";
         return EX_SOFTWARE;
     }
-    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     unsigned int port;
     if (status_t status = rpcServer->setupInetServer(kLocalInetAddress, 0, &port); status != OK) {
         LOG(ERROR) << "setupInetServer failed: " << statusToString(status);
@@ -207,7 +206,6 @@ int wrapServiceManager(const ServiceRetriever& serviceRetriever) {
     service = ServiceManagerProxyToNative::asBinder(interface);
 
     auto rpcServer = RpcServer::make();
-    rpcServer->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     rpcServer->setRootObject(service);
     unsigned int port;
     if (status_t status = rpcServer->setupInetServer(kLocalInetAddress, 0, &port); status != OK) {
