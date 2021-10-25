@@ -119,7 +119,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     sp<RpcServer> server = RpcServer::make(makeTransportCtxFactory(&provider));
     server->setRootObject(sp<SomeBinder>::make());
-    server->iUnderstandThisCodeIsExperimentalAndIWillNotUseItInProduction();
     CHECK_EQ(OK, server->setupUnixDomainServer(kSock.c_str()));
 
     std::thread serverThread([=] { (void)server->join(); });
