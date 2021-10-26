@@ -663,13 +663,15 @@ public:
                                         break;
                                     case AF_INET:
                                         CHECK_EQ(len, sizeof(sockaddr_in));
-                                        service->port = reinterpret_cast<const sockaddr_in*>(addr)
-                                                                ->sin_port;
+                                        service->port =
+                                                ntohs(reinterpret_cast<const sockaddr_in*>(addr)
+                                                              ->sin_port);
                                         break;
                                     case AF_INET6:
                                         CHECK_EQ(len, sizeof(sockaddr_in));
-                                        service->port = reinterpret_cast<const sockaddr_in6*>(addr)
-                                                                ->sin6_port;
+                                        service->port =
+                                                ntohs(reinterpret_cast<const sockaddr_in6*>(addr)
+                                                              ->sin6_port);
                                         break;
                                     default:
                                         LOG_ALWAYS_FATAL("Unrecognized address family %d",
