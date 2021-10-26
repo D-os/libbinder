@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <sys/socket.h>
+
 extern "C" {
 
 struct AIBinder;
@@ -29,6 +31,12 @@ bool RunRpcServer(AIBinder* service, unsigned int port);
 // then joins before returning.
 bool RunRpcServerCallback(AIBinder* service, unsigned int port, void (*readyCallback)(void* param),
                           void* param);
+
+// Starts an RPC server on a given port and a given root IBinder object.
+// This function sets up the server, calls readyCallback with a given param, and
+// then joins before returning.
+bool RunRpcServerWithFactory(AIBinder* (*factory)(unsigned int cid, void* context),
+                          void* factoryContext, unsigned int port);
 
 AIBinder* RpcClient(unsigned int cid, unsigned int port);
 

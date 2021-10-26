@@ -331,6 +331,7 @@ cc_library {
         "libbase",
         "libbinder",
         "libbinder_ndk",
+        "liblog",
         "libutils",
     ],
     export_include_dirs: ["include_rpc_unstable"],
