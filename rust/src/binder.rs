@@ -1024,16 +1024,20 @@ macro_rules! declare_binder_interface {
 #[macro_export]
 macro_rules! declare_binder_enum {
     {
+        $( #[$attr:meta] )*
         $enum:ident : [$backing:ty; $size:expr] {
             $( $name:ident = $value:expr, )*
         }
     } => {
+        $( #[$attr] )*
         #[derive(Debug, Default, Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+        #[allow(missing_docs)]
         pub struct $enum(pub $backing);
         impl $enum {
-            $( pub const $name: Self = Self($value); )*
+            $( #[allow(missing_docs)] pub const $name: Self = Self($value); )*
 
             #[inline(always)]
+            #[allow(missing_docs)]
             pub const fn enum_values() -> [Self; $size] {
                 [$(Self::$name),*]
             }
