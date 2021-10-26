@@ -60,20 +60,21 @@ public:
     RpcState();
     ~RpcState();
 
-    status_t readNewSessionResponse(const sp<RpcSession::RpcConnection>& connection,
-                                    const sp<RpcSession>& session, uint32_t* version);
-    status_t sendConnectionInit(const sp<RpcSession::RpcConnection>& connection,
-                                const sp<RpcSession>& session);
-    status_t readConnectionInit(const sp<RpcSession::RpcConnection>& connection,
-                                const sp<RpcSession>& session);
+    [[nodiscard]] status_t readNewSessionResponse(const sp<RpcSession::RpcConnection>& connection,
+                                                  const sp<RpcSession>& session, uint32_t* version);
+    [[nodiscard]] status_t sendConnectionInit(const sp<RpcSession::RpcConnection>& connection,
+                                              const sp<RpcSession>& session);
+    [[nodiscard]] status_t readConnectionInit(const sp<RpcSession::RpcConnection>& connection,
+                                              const sp<RpcSession>& session);
 
     // TODO(b/182940634): combine some special transactions into one "getServerInfo" call?
     sp<IBinder> getRootObject(const sp<RpcSession::RpcConnection>& connection,
                               const sp<RpcSession>& session);
-    status_t getMaxThreads(const sp<RpcSession::RpcConnection>& connection,
-                           const sp<RpcSession>& session, size_t* maxThreadsOut);
-    status_t getSessionId(const sp<RpcSession::RpcConnection>& connection,
-                          const sp<RpcSession>& session, std::vector<uint8_t>* sessionIdOut);
+    [[nodiscard]] status_t getMaxThreads(const sp<RpcSession::RpcConnection>& connection,
+                                         const sp<RpcSession>& session, size_t* maxThreadsOut);
+    [[nodiscard]] status_t getSessionId(const sp<RpcSession::RpcConnection>& connection,
+                                        const sp<RpcSession>& session,
+                                        std::vector<uint8_t>* sessionIdOut);
 
     [[nodiscard]] status_t transact(const sp<RpcSession::RpcConnection>& connection,
                                     const sp<IBinder>& address, uint32_t code, const Parcel& data,
