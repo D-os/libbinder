@@ -40,7 +40,7 @@ public:
     // - SSL_CTX_use_certificate
     // - SSL_CTX_set*_chain
     // - SSL_CTX_add0_chain_cert
-    virtual status_t configure(SSL_CTX* ctx) = 0;
+    [[nodiscard]] virtual status_t configure(SSL_CTX* ctx) = 0;
 };
 
 } // namespace android
