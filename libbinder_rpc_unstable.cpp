@@ -19,6 +19,7 @@
 #include <android/binder_libbinder.h>
 #include <binder/RpcServer.h>
 #include <binder/RpcSession.h>
+#include <linux/vm_sockets.h>
 
 using android::OK;
 using android::RpcServer;
@@ -28,6 +29,28 @@ using android::statusToString;
 using android::base::unique_fd;
 
 extern "C" {
+
+bool RunRpcServerWithFactory(AIBinder* (*factory)(unsigned int cid, void* context),
+                             void* factoryContext, unsigned int port) {
+    auto server = RpcServer::make();
+    if (status_t status = server->setupVsockServer(port); status != OK) {
+        LOG(ERROR) << "Failed to set up vsock server with port " << port
+                   << " error: " << statusToString(status).c_str();
+        return false;
+    }
+    server->setPerSessionRootObject([=](const sockaddr* addr, socklen_t addrlen) {
+        LOG_ALWAYS_FATAL_IF(addr->sa_family != AF_VSOCK, "address is not a vsock");
+        LOG_ALWAYS_FATAL_IF(addrlen < sizeof(sockaddr_vm), "sockaddr is truncated");
+        const sockaddr_vm* vaddr = reinterpret_cast<const sockaddr_vm*>(addr);
+        return AIBinder_toPlatformBinder(factory(vaddr->svm_cid, factoryContext));
+    });
+
+    server->join();
+
+    // Shutdown any open sessions since server failed.
+    (void)server->shutdown();
+    return true;
+}
 
 bool RunRpcServerCallback(AIBinder* service, unsigned int port, void (*readyCallback)(void* param),
                           void* param) {
