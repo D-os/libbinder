@@ -179,7 +179,7 @@ private:
 
     static void establishConnection(sp<RpcServer>&& server, base::unique_fd clientFd,
                                     const sockaddr_storage addr, socklen_t addrLen);
-    status_t setupSocketServer(const RpcSocketAddress& address);
+    [[nodiscard]] status_t setupSocketServer(const RpcSocketAddress& address);
 
     const std::unique_ptr<RpcTransportCtx> mCtx;
     size_t mMaxThreads = 1;
