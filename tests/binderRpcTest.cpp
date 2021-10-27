@@ -1303,11 +1303,20 @@ TEST_P(BinderRpc, Die) {
 }
 
 TEST_P(BinderRpc, UseKernelBinderCallingId) {
+    bool okToFork = ProcessState::selfOrNull() == nullptr;
+
     auto proc = createRpcTestSocketServerProcess({});
 
-    // we can't allocate IPCThreadState so actually the first time should
-    // succeed :(
-    EXPECT_OK(proc.rootIface->useKernelBinderCallingId());
+    // If this process has used ProcessState already, then the forked process
+    // cannot use it at all. If this process hasn't used it (depending on the
+    // order tests are run), then the forked process can use it, and we'll only
+    // catch the invalid usage the second time. Such is the burden of global
+    // state!
+    if (okToFork) {
+        // we can't allocate IPCThreadState so actually the first time should
+        // succeed :(
+        EXPECT_OK(proc.rootIface->useKernelBinderCallingId());
+    }
 
     // second time! we catch the error :)
     EXPECT_EQ(DEAD_OBJECT, proc.rootIface->useKernelBinderCallingId().transactionError());
@@ -1999,5 +2008,6 @@ INSTANTIATE_TEST_CASE_P(
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     android::base::InitLogging(argv, android::base::StderrLogger, android::base::DefaultAborter);
+
     return RUN_ALL_TESTS();
 }
