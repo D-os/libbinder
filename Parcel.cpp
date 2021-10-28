@@ -611,6 +611,8 @@ void Parcel::updateWorkSourceRequestHeaderPosition() const {
 
 #if defined(__ANDROID_VNDK__)
 constexpr int32_t kHeader = B_PACK_CHARS('V', 'N', 'D', 'R');
+#elif defined(__ANDROID_RECOVERY__)
+constexpr int32_t kHeader = B_PACK_CHARS('R', 'E', 'C', 'O');
 #else
 constexpr int32_t kHeader = B_PACK_CHARS('S', 'Y', 'S', 'T');
 #endif
