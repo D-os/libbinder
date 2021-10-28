@@ -54,6 +54,7 @@ cc_library {
 
     defaults: ["libbinder_ndk_host_user"],
     host_supported: true,
+    recovery_available: true,
 
     llndk: {
         symbol_file: "libbinder_ndk.map.txt",
@@ -155,6 +156,7 @@ cc_library_headers {
     name: "libbinder_headers_platform_shared",
     export_include_dirs: ["include_cpp"],
     vendor_available: true,
+    recovery_available: true,
     host_supported: true,
     // TODO(b/153609531): remove when no longer needed.
     native_bridge_supported: true,
