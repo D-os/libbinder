@@ -81,6 +81,8 @@ public:
                                    size_t start, size_t len);
 
     int                 compareData(const Parcel& other);
+    status_t compareDataInRange(size_t thisOffset, const Parcel& other, size_t otherOffset,
+                                size_t length, int* result) const;
 
     bool                allowFds() const;
     bool                pushAllowFds(bool allowFds);
