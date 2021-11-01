@@ -207,6 +207,23 @@ public:
     status_t            writeStrongBinderVector(const std::unique_ptr<std::vector<sp<IBinder>>>& val) __attribute__((deprecated("use std::optional version instead")));
     status_t            writeStrongBinderVector(const std::vector<sp<IBinder>>& val);
 
+    // Write an IInterface or a vector of IInterface's
+    template <typename T,
+              std::enable_if_t<std::is_base_of_v<::android::IInterface, T>, bool> = true>
+    status_t writeStrongBinder(const sp<T>& val) {
+        return writeStrongBinder(T::asBinder(val));
+    }
+    template <typename T,
+              std::enable_if_t<std::is_base_of_v<::android::IInterface, T>, bool> = true>
+    status_t writeStrongBinderVector(const std::vector<sp<T>>& val) {
+        return writeData(val);
+    }
+    template <typename T,
+              std::enable_if_t<std::is_base_of_v<::android::IInterface, T>, bool> = true>
+    status_t writeStrongBinderVector(const std::optional<std::vector<sp<T>>>& val) {
+        return writeData(val);
+    }
+
     // Write an Enum vector with underlying type int8_t.
     // Does not use padding; each byte is contiguous.
     template<typename T, std::enable_if_t<std::is_enum_v<T> && std::is_same_v<typename std::underlying_type_t<T>,int8_t>, bool> = 0>
@@ -421,6 +438,16 @@ public:
     status_t            readStrongBinderVector(std::optional<std::vector<sp<IBinder>>>* val) const;
     status_t            readStrongBinderVector(std::unique_ptr<std::vector<sp<IBinder>>>* val) const __attribute__((deprecated("use std::optional version instead")));
     status_t            readStrongBinderVector(std::vector<sp<IBinder>>* val) const;
+    template <typename T,
+              std::enable_if_t<std::is_base_of_v<::android::IInterface, T>, bool> = true>
+    status_t readStrongBinderVector(std::vector<sp<T>>* val) const {
+        return readData(val);
+    }
+    template <typename T,
+              std::enable_if_t<std::is_base_of_v<::android::IInterface, T>, bool> = true>
+    status_t readStrongBinderVector(std::optional<std::vector<sp<T>>>* val) const {
+        return readData(val);
+    }
 
     status_t            readByteVector(std::optional<std::vector<int8_t>>* val) const;
     status_t            readByteVector(std::unique_ptr<std::vector<int8_t>>* val) const __attribute__((deprecated("use std::optional version instead")));

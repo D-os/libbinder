@@ -27,14 +27,66 @@
 #pragma once
 
 #include <android/binder_auto_utils.h>
+#include <android/binder_interface_utils.h>
 #include <android/binder_internal_logging.h>
 #include <android/binder_parcel.h>
 
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace ndk {
+
+namespace {
+template <typename Test, template <typename...> class Ref>
+struct is_specialization : std::false_type {};
+
+template <template <typename...> class Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type {};
+
+template <typename Test, template <typename...> class Ref>
+static inline constexpr bool is_specialization_v = is_specialization<Test, Ref>::value;
+
+// Get the first template type from a container, the T from MyClass<T, ...>.
+template <typename T>
+struct first_template_type {
+    using type = void;
+};
+
+template <template <typename...> class V, typename T, typename... Args>
+struct first_template_type<V<T, Args...>> {
+    using type = T;
+};
+
+template <typename T>
+using first_template_type_t = typename first_template_type<T>::type;
+
+// Tells if T represents NDK interface (shared_ptr<ICInterface-derived>)
+template <typename T>
+static inline constexpr bool is_interface_v = is_specialization_v<T, std::shared_ptr>&&
+        std::is_base_of_v<::ndk::ICInterface, first_template_type_t<T>>;
+
+// Tells if T represents NDK parcelable with readFromParcel/writeToParcel methods defined
+template <typename T, typename = void>
+struct is_parcelable : std::false_type {};
+
+template <typename T>
+struct is_parcelable<
+        T, std::void_t<decltype(std::declval<T>().readFromParcel(std::declval<const AParcel*>())),
+                       decltype(std::declval<T>().writeToParcel(std::declval<AParcel*>()))>>
+    : std::true_type {};
+
+template <typename T>
+static inline constexpr bool is_parcelable_v = is_parcelable<T>::value;
+
+// Tells if T represents nullable NDK parcelable (optional<parcelable> or unique_ptr<parcelable>)
+template <typename T>
+static inline constexpr bool is_nullable_parcelable_v = is_parcelable_v<first_template_type_t<T>> &&
+                                                        (is_specialization_v<T, std::optional> ||
+                                                         is_specialization_v<T, std::unique_ptr>);
+
+}  // namespace
 
 /**
  * This retrieves and allocates a vector to size 'length' and returns the underlying buffer.
@@ -429,11 +481,19 @@ static inline binder_status_t AParcel_readVector(
  */
 template <typename P>
 static inline binder_status_t AParcel_writeParcelable(AParcel* parcel, const P& p) {
-    binder_status_t status = AParcel_writeInt32(parcel, 1);  // non-null
-    if (status != STATUS_OK) {
-        return status;
+    if constexpr (is_interface_v<P>) {
+        if (!p) {
+            return STATUS_UNEXPECTED_NULL;
+        }
+        return first_template_type_t<P>::writeToParcel(parcel, p);
+    } else {
+        static_assert(is_parcelable_v<P>);
+        binder_status_t status = AParcel_writeInt32(parcel, 1);  // non-null
+        if (status != STATUS_OK) {
+            return status;
+        }
+        return p.writeToParcel(parcel);
     }
-    return p.writeToParcel(parcel);
 }
 
 /**
@@ -441,85 +501,81 @@ static inline binder_status_t AParcel_writeParcelable(AParcel* parcel, const P& 
  */
 template <typename P>
 static inline binder_status_t AParcel_readParcelable(const AParcel* parcel, P* p) {
-    int32_t null;
-    binder_status_t status = AParcel_readInt32(parcel, &null);
-    if (status != STATUS_OK) {
+    if constexpr (is_interface_v<P>) {
+        binder_status_t status = first_template_type_t<P>::readFromParcel(parcel, p);
+        if (status == STATUS_OK) {
+            if (!*p) {
+                return STATUS_UNEXPECTED_NULL;
+            }
+        }
         return status;
+    } else {
+        static_assert(is_parcelable_v<P>);
+        int32_t null;
+        binder_status_t status = AParcel_readInt32(parcel, &null);
+        if (status != STATUS_OK) {
+            return status;
+        }
+        if (null == 0) {
+            return STATUS_UNEXPECTED_NULL;
+        }
+        return p->readFromParcel(parcel);
     }
-    if (null == 0) {
-        return STATUS_UNEXPECTED_NULL;
-    }
-    return p->readFromParcel(parcel);
 }
 
 /**
  * Convenience API for writing a nullable parcelable.
  */
 template <typename P>
-static inline binder_status_t AParcel_writeNullableParcelable(AParcel* parcel,
-                                                              const std::optional<P>& p) {
-    if (p == std::nullopt) {
-        return AParcel_writeInt32(parcel, 0);  // null
+static inline binder_status_t AParcel_writeNullableParcelable(AParcel* parcel, const P& p) {
+    if constexpr (is_interface_v<P>) {
+        return first_template_type_t<P>::writeToParcel(parcel, p);
+    } else {
+        static_assert(is_nullable_parcelable_v<P>);
+        if (!p) {
+            return AParcel_writeInt32(parcel, 0);  // null
+        }
+        binder_status_t status = AParcel_writeInt32(parcel, 1);  // non-null
+        if (status != STATUS_OK) {
+            return status;
+        }
+        return p->writeToParcel(parcel);
     }
-    binder_status_t status = AParcel_writeInt32(parcel, 1);  // non-null
-    if (status != STATUS_OK) {
-        return status;
-    }
-    return p->writeToParcel(parcel);
-}
-
-/**
- * Convenience API for writing a nullable parcelable.
- */
-template <typename P>
-static inline binder_status_t AParcel_writeNullableParcelable(AParcel* parcel,
-                                                              const std::unique_ptr<P>& p) {
-    if (!p) {
-        return AParcel_writeInt32(parcel, 0);  // null
-    }
-    binder_status_t status = AParcel_writeInt32(parcel, 1);  // non-null
-    if (status != STATUS_OK) {
-        return status;
-    }
-    return p->writeToParcel(parcel);
 }
 
 /**
  * Convenience API for reading a nullable parcelable.
  */
 template <typename P>
-static inline binder_status_t AParcel_readNullableParcelable(const AParcel* parcel,
-                                                             std::optional<P>* p) {
-    int32_t null;
-    binder_status_t status = AParcel_readInt32(parcel, &null);
-    if (status != STATUS_OK) {
-        return status;
+static inline binder_status_t AParcel_readNullableParcelable(const AParcel* parcel, P* p) {
+    if constexpr (is_interface_v<P>) {
+        return first_template_type_t<P>::readFromParcel(parcel, p);
+    } else if constexpr (is_specialization_v<P, std::optional>) {
+        int32_t null;
+        binder_status_t status = AParcel_readInt32(parcel, &null);
+        if (status != STATUS_OK) {
+            return status;
+        }
+        if (null == 0) {
+            *p = std::nullopt;
+            return STATUS_OK;
+        }
+        *p = std::optional<first_template_type_t<P>>(first_template_type_t<P>{});
+        return (*p)->readFromParcel(parcel);
+    } else {
+        static_assert(is_specialization_v<P, std::unique_ptr>);
+        int32_t null;
+        binder_status_t status = AParcel_readInt32(parcel, &null);
+        if (status != STATUS_OK) {
+            return status;
+        }
+        if (null == 0) {
+            p->reset();
+            return STATUS_OK;
+        }
+        *p = std::make_unique<first_template_type_t<P>>();
+        return (*p)->readFromParcel(parcel);
     }
-    if (null == 0) {
-        *p = std::nullopt;
-        return STATUS_OK;
-    }
-    *p = std::optional<P>(P{});
-    return (*p)->readFromParcel(parcel);
-}
-
-/**
- * Convenience API for reading a nullable parcelable.
- */
-template <typename P>
-static inline binder_status_t AParcel_readNullableParcelable(const AParcel* parcel,
-                                                             std::unique_ptr<P>* p) {
-    int32_t null;
-    binder_status_t status = AParcel_readInt32(parcel, &null);
-    if (status != STATUS_OK) {
-        return status;
-    }
-    if (null == 0) {
-        p->reset();
-        return STATUS_OK;
-    }
-    *p = std::make_unique<P>();
-    return (*p)->readFromParcel(parcel);
 }
 
 /**
