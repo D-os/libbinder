@@ -308,6 +308,15 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
         status_t status = p.hasFileDescriptorsInRange(offset, length, &result);
         FUZZ_LOG() << " status: " << status  << " result: " << result;
     },
+    [] (const ::android::Parcel& p, uint8_t /* data */) {
+        FUZZ_LOG() << "about to call compareDataInRange() with status";
+        size_t thisOffset = p.readUint32();
+        size_t otherOffset = p.readUint32();
+        size_t length = p.readUint32();
+        int result;
+        status_t status = p.compareDataInRange(thisOffset, p, otherOffset, length, &result);
+        FUZZ_LOG() << " status: " << status  << " result: " << result;
+    },
 };
 // clang-format on
 #pragma clang diagnostic pop
