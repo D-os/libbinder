@@ -99,6 +99,17 @@ impl ThreadState {
         }
     }
 
+    /// Determine whether the current thread is currently executing an incoming transaction.
+    ///
+    /// \return true if the current thread is currently executing an incoming transaction, and false
+    /// otherwise.
+    pub fn is_handling_transaction() -> bool {
+        unsafe {
+            // Safety: Safe FFI
+            sys::AIBinder_isHandlingTransaction()
+        }
+    }
+
     /// This function makes the client's security context available to the
     /// service calling this function. This can be used for access control.
     /// It does not suffer from the TOCTOU issues of get_calling_pid.
