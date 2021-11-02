@@ -13,6 +13,8 @@ rust_test {
     rustlibs: [
         "libbinder_rs",
         "libselinux_bindgen",
+        "libbinder_tokio_rs",
+        "libtokio",
     ],
     shared_libs: [
         "libselinux",
