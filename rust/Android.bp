@@ -33,6 +33,27 @@ rust_library {
 }
 
 rust_library {
+    name: "libbinder_tokio_rs",
+    crate_name: "binder_tokio",
+    srcs: ["binder_tokio/lib.rs"],
+    rustlibs: [
+        "libbinder_rs",
+        "libtokio",
+    ],
+    host_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        }
+    },
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.compos",
+        "com.android.virt",
+    ],
+}
+
+rust_library {
     name: "libbinder_ndk_sys",
     crate_name: "binder_ndk_sys",
     srcs: [
