@@ -17,7 +17,7 @@
 //! Rust Binder crate integration tests
 
 use binder::declare_binder_interface;
-use binder::parcel::Parcel;
+use binder::parcel::{Parcel, OwnedParcel};
 use binder::{
     Binder, BinderFeatures, IBinderInternal, Interface, StatusCode, ThreadState, TransactionCode,
     FIRST_CALL_TRANSACTION,
@@ -154,12 +154,25 @@ pub trait ITest: Interface {
     fn get_selinux_context(&self) -> binder::Result<String>;
 }
 
+/// Async trivial testing binder interface
+pub trait IATest<P>: Interface {
+    /// Returns a test string
+    fn test(&self) -> binder::BoxFuture<'static, binder::Result<String>>;
+
+    /// Return the arguments sent via dump
+    fn get_dump_args(&self) -> binder::BoxFuture<'static, binder::Result<Vec<String>>>;
+
+    /// Returns the caller's SELinux context
+    fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>>;
+}
+
 declare_binder_interface! {
     ITest["android.os.ITest"] {
         native: BnTest(on_transact),
         proxy: BpTest {
             x: i32 = 100
         },
+        async: IATest,
     }
 }
 
@@ -201,6 +214,32 @@ impl ITest for BpTest {
     }
 }
 
+impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
+    fn test(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+        let binder = self.binder.clone();
+        P::spawn(
+            move || binder.transact(TestTransactionCode::Test as TransactionCode, 0, |_| Ok(())).map(|p| OwnedParcel::try_from(p).unwrap()),
+            |reply| async move { reply?.into_parcel().read() }
+        )
+    }
+
+    fn get_dump_args(&self) -> binder::BoxFuture<'static, binder::Result<Vec<String>>> {
+        let binder = self.binder.clone();
+        P::spawn(
+            move || binder.transact(TestTransactionCode::GetDumpArgs as TransactionCode, 0, |_| Ok(())).map(|p| OwnedParcel::try_from(p).unwrap()),
+            |reply| async move { reply?.into_parcel().read() }
+        )
+    }
+
+    fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+        let binder = self.binder.clone();
+        P::spawn(
+            move || binder.transact(TestTransactionCode::GetSelinuxContext as TransactionCode, 0, |_| Ok(())).map(|p| OwnedParcel::try_from(p).unwrap()),
+            |reply| async move { reply?.into_parcel().read() }
+        )
+    }
+}
+
 impl ITest for Binder<BnTest> {
     fn test(&self) -> binder::Result<String> {
         self.0.test()
@@ -212,6 +251,23 @@ impl ITest for Binder<BnTest> {
 
     fn get_selinux_context(&self) -> binder::Result<String> {
         self.0.get_selinux_context()
+    }
+}
+
+impl<P: binder::BinderAsyncPool> IATest<P> for Binder<BnTest> {
+    fn test(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+        let res = self.0.test();
+        Box::pin(async move { res })
+    }
+
+    fn get_dump_args(&self) -> binder::BoxFuture<'static, binder::Result<Vec<String>>> {
+        let res = self.0.get_dump_args();
+        Box::pin(async move { res })
+    }
+
+    fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+        let res = self.0.get_selinux_context();
+        Box::pin(async move { res })
     }
 }
 
@@ -255,7 +311,9 @@ mod tests {
         SpIBinder, StatusCode, Strong,
     };
 
-    use super::{BnTest, ITest, ITestSameDescriptor, TestService, RUST_SERVICE_BINARY};
+    use binder_tokio::Tokio;
+
+    use super::{BnTest, ITest, IATest, ITestSameDescriptor, TestService, RUST_SERVICE_BINARY};
 
     pub struct ScopedServiceProcess(Child);
 
@@ -303,10 +361,18 @@ mod tests {
             binder::get_interface::<dyn ITest>("this_service_does_not_exist").err(),
             Some(StatusCode::NAME_NOT_FOUND)
         );
+        assert_eq!(
+            binder::get_interface::<dyn IATest<Tokio>>("this_service_does_not_exist").err(),
+            Some(StatusCode::NAME_NOT_FOUND)
+        );
 
         // The service manager service isn't an ITest, so this must fail.
         assert_eq!(
             binder::get_interface::<dyn ITest>("manager").err(),
+            Some(StatusCode::BAD_TYPE)
+        );
+        assert_eq!(
+            binder::get_interface::<dyn IATest<Tokio>>("manager").err(),
             Some(StatusCode::BAD_TYPE)
         );
     }
@@ -323,6 +389,10 @@ mod tests {
             binder::wait_for_interface::<dyn ITest>("manager").err(),
             Some(StatusCode::BAD_TYPE)
         );
+        assert_eq!(
+            binder::wait_for_interface::<dyn IATest<Tokio>>("manager").err(),
+            Some(StatusCode::BAD_TYPE)
+        );
     }
 
     #[test]
@@ -334,6 +404,15 @@ mod tests {
         assert_eq!(test_client.test().unwrap(), "trivial_client_test");
     }
 
+    #[tokio::test]
+    async fn trivial_client_async() {
+        let service_name = "trivial_client_test";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn IATest<Tokio>> =
+            binder::get_interface(service_name).expect("Did not get manager binder service");
+        assert_eq!(test_client.test().await.unwrap(), "trivial_client_test");
+    }
+
     #[test]
     fn wait_for_trivial_client() {
         let service_name = "wait_for_trivial_client_test";
@@ -343,23 +422,47 @@ mod tests {
         assert_eq!(test_client.test().unwrap(), "wait_for_trivial_client_test");
     }
 
+    #[tokio::test]
+    async fn wait_for_trivial_client_async() {
+        let service_name = "wait_for_trivial_client_test";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn IATest<Tokio>> =
+            binder::wait_for_interface(service_name).expect("Did not get manager binder service");
+        assert_eq!(test_client.test().await.unwrap(), "wait_for_trivial_client_test");
+    }
+
+    fn get_expected_selinux_context() -> &'static str {
+        unsafe {
+            let mut out_ptr = ptr::null_mut();
+            assert_eq!(selinux_sys::getcon(&mut out_ptr), 0);
+            assert!(!out_ptr.is_null());
+            CStr::from_ptr(out_ptr)
+                .to_str()
+                .expect("context was invalid UTF-8")
+        }
+    }
+
     #[test]
     fn get_selinux_context() {
         let service_name = "get_selinux_context";
         let _process = ScopedServiceProcess::new(service_name);
         let test_client: Strong<dyn ITest> =
             binder::get_interface(service_name).expect("Did not get manager binder service");
-        let expected_context = unsafe {
-            let mut out_ptr = ptr::null_mut();
-            assert_eq!(selinux_sys::getcon(&mut out_ptr), 0);
-            assert!(!out_ptr.is_null());
-            CStr::from_ptr(out_ptr)
-        };
         assert_eq!(
             test_client.get_selinux_context().unwrap(),
-            expected_context
-                .to_str()
-                .expect("context was invalid UTF-8"),
+            get_expected_selinux_context()
+        );
+    }
+
+    #[tokio::test]
+    async fn get_selinux_context_async() {
+        let service_name = "get_selinux_context";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn IATest<Tokio>> =
+            binder::get_interface(service_name).expect("Did not get manager binder service");
+        assert_eq!(
+            test_client.get_selinux_context().await.unwrap(),
+            get_expected_selinux_context()
         );
     }
 
