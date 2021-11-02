@@ -28,9 +28,47 @@
 //!
 //! [`Tokio`]: crate::Tokio
 
-use binder::public_api::{BinderAsyncPool, BoxFuture};
-use binder::StatusCode;
+use binder::public_api::{BinderAsyncPool, BoxFuture, Strong};
+use binder::{FromIBinder, StatusCode};
 use std::future::Future;
+
+/// Retrieve an existing service for a particular interface, sleeping for a few
+/// seconds if it doesn't yet exist.
+pub async fn get_interface<T: FromIBinder + ?Sized + 'static>(name: &str) -> Result<Strong<T>, StatusCode> {
+    let name = name.to_string();
+    let res = tokio::task::spawn_blocking(move || {
+        binder::public_api::get_interface::<T>(&name)
+    }).await;
+
+    // The `is_panic` branch is not actually reachable in Android as we compile
+    // with `panic = abort`.
+    match res {
+        Ok(Ok(service)) => Ok(service),
+        Ok(Err(err)) => Err(err),
+        Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
+        Err(e) if e.is_cancelled() => Err(StatusCode::FAILED_TRANSACTION),
+        Err(_) => Err(StatusCode::UNKNOWN_ERROR),
+    }
+}
+
+/// Retrieve an existing service for a particular interface, or start it if it
+/// is configured as a dynamic service and isn't yet started.
+pub async fn wait_for_interface<T: FromIBinder + ?Sized + 'static>(name: &str) -> Result<Strong<T>, StatusCode> {
+    let name = name.to_string();
+    let res = tokio::task::spawn_blocking(move || {
+        binder::public_api::wait_for_interface::<T>(&name)
+    }).await;
+
+    // The `is_panic` branch is not actually reachable in Android as we compile
+    // with `panic = abort`.
+    match res {
+        Ok(Ok(service)) => Ok(service),
+        Ok(Err(err)) => Err(err),
+        Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
+        Err(e) if e.is_cancelled() => Err(StatusCode::FAILED_TRANSACTION),
+        Err(_) => Err(StatusCode::UNKNOWN_ERROR),
+    }
+}
 
 /// Use the Tokio `spawn_blocking` pool with AIDL.
 pub enum Tokio {}
