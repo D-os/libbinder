@@ -393,6 +393,14 @@ uid_t AIBinder_getCallingUid() __INTRODUCED_IN(29);
 pid_t AIBinder_getCallingPid() __INTRODUCED_IN(29);
 
 /**
+ * Determine whether the current thread is currently executing an incoming transaction.
+ *
+ * \return true if the current thread is currently executing an incoming transaction, and false
+ * otherwise.
+ */
+bool AIBinder_isHandlingTransaction() __INTRODUCED_IN(33);
+
+/**
  * This can only be called if a strong reference to this object already exists in process.
  *
  * Available since API level 29.
