@@ -104,6 +104,17 @@ std::optional<bool> AIBinder::associateClassInternal(const AIBinder_Class* clazz
     return {};
 }
 
+// b/175635923 libcxx causes "implicit-conversion" with a string with invalid char
+static std::string SanitizeString(const String16& str) {
+    std::string sanitized{String8(str)};
+    for (auto& c : sanitized) {
+        if (!isprint(c)) {
+            c = '?';
+        }
+    }
+    return sanitized;
+}
+
 bool AIBinder::associateClass(const AIBinder_Class* clazz) {
     if (clazz == nullptr) return false;
 
@@ -118,7 +129,7 @@ bool AIBinder::associateClass(const AIBinder_Class* clazz) {
     if (descriptor != newDescriptor) {
         if (getBinder()->isBinderAlive()) {
             LOG(ERROR) << __func__ << ": Expecting binder to have class '" << newDescriptor
-                       << "' but descriptor is actually '" << descriptor << "'.";
+                       << "' but descriptor is actually '" << SanitizeString(descriptor) << "'.";
         } else {
             // b/155793159
             LOG(ERROR) << __func__ << ": Cannot associate class '" << newDescriptor
