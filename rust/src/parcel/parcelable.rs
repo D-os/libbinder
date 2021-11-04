@@ -702,6 +702,8 @@ impl<T: SerializeOption + FromIBinder + ?Sized> SerializeOption for Strong<T> {
     }
 }
 
+impl<T: Serialize + FromIBinder + ?Sized> SerializeArray for Strong<T> {}
+
 impl<T: FromIBinder + ?Sized> Deserialize for Strong<T> {
     fn deserialize(parcel: &Parcel) -> Result<Self> {
         let ibinder: SpIBinder = parcel.read()?;
@@ -715,6 +717,8 @@ impl<T: FromIBinder + ?Sized> DeserializeOption for Strong<T> {
         ibinder.map(FromIBinder::try_from).transpose()
     }
 }
+
+impl<T: FromIBinder + ?Sized> DeserializeArray for Strong<T> {}
 
 // We need these to support Option<&T> for all T
 impl<T: Serialize + ?Sized> Serialize for &T {

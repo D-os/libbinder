@@ -192,6 +192,8 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     // only reading one binder type for now
     PARCEL_READ_WITH_STATUS(android::sp<android::os::IServiceManager>, readStrongBinder),
     PARCEL_READ_WITH_STATUS(android::sp<android::os::IServiceManager>, readNullableStrongBinder),
+    PARCEL_READ_WITH_STATUS(std::vector<android::sp<android::os::IServiceManager>>, readStrongBinderVector),
+    PARCEL_READ_WITH_STATUS(std::optional<std::vector<android::sp<android::os::IServiceManager>>>, readStrongBinderVector),
 
     PARCEL_READ_WITH_STATUS(::std::unique_ptr<std::vector<android::sp<android::IBinder>>>, readStrongBinderVector),
     PARCEL_READ_WITH_STATUS(::std::optional<std::vector<android::sp<android::IBinder>>>, readStrongBinderVector),
