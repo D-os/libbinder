@@ -25,6 +25,7 @@
 // TODO(b/142061461): parent class
 class SomeParcelable {
 public:
+    binder_status_t writeToParcel(AParcel* /*parcel*/) { return STATUS_OK; }
     binder_status_t readFromParcel(const AParcel* parcel) {
         return AParcel_readInt32(parcel, &mValue);
     }
@@ -32,6 +33,41 @@ public:
 private:
     int32_t mValue = 0;
 };
+
+class ISomeInterface : public ::ndk::ICInterface {
+public:
+    ISomeInterface() = default;
+    virtual ~ISomeInterface() = default;
+    static binder_status_t readFromParcel(const AParcel* parcel,
+                                          std::shared_ptr<ISomeInterface>* instance);
+};
+
+static binder_status_t onTransact(AIBinder*, transaction_code_t, const AParcel*, AParcel*) {
+    return STATUS_UNKNOWN_TRANSACTION;
+}
+
+static AIBinder_Class* g_class = ::ndk::ICInterface::defineClass("ISomeInterface", onTransact);
+
+class BpSomeInterface : public ::ndk::BpCInterface<ISomeInterface> {
+public:
+    explicit BpSomeInterface(const ::ndk::SpAIBinder& binder) : BpCInterface(binder) {}
+    virtual ~BpSomeInterface() = default;
+};
+
+binder_status_t ISomeInterface::readFromParcel(const AParcel* parcel,
+                                               std::shared_ptr<ISomeInterface>* instance) {
+    ::ndk::SpAIBinder binder;
+    binder_status_t status = AParcel_readStrongBinder(parcel, binder.getR());
+    if (status == STATUS_OK) {
+        if (AIBinder_associateClass(binder.get(), g_class)) {
+            *instance = std::static_pointer_cast<ISomeInterface>(
+                    ::ndk::ICInterface::asInterface(binder.get()));
+        } else {
+            *instance = ::ndk::SharedRefBase::make<BpSomeInterface>(binder);
+        }
+    }
+    return status;
+}
 
 #define PARCEL_READ(T, FUN)                                              \
     [](const NdkParcelAdapter& p, uint8_t /*data*/) {                    \
@@ -100,6 +136,8 @@ std::vector<ParcelRead<NdkParcelAdapter>> BINDER_NDK_PARCEL_READ_FUNCTIONS{
         PARCEL_READ(std::optional<std::vector<ndk::SpAIBinder>>, ndk::AParcel_readVector),
         PARCEL_READ(std::vector<ndk::ScopedFileDescriptor>, ndk::AParcel_readVector),
         PARCEL_READ(std::optional<std::vector<ndk::ScopedFileDescriptor>>, ndk::AParcel_readVector),
+        PARCEL_READ(std::vector<std::shared_ptr<ISomeInterface>>, ndk::AParcel_readVector),
+        PARCEL_READ(std::optional<std::vector<std::shared_ptr<ISomeInterface>>>, ndk::AParcel_readVector),
         PARCEL_READ(std::vector<int32_t>, ndk::AParcel_readVector),
         PARCEL_READ(std::optional<std::vector<int32_t>>, ndk::AParcel_readVector),
         PARCEL_READ(std::vector<uint32_t>, ndk::AParcel_readVector),
