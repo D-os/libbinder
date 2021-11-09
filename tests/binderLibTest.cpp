@@ -94,7 +94,7 @@ enum BinderLibTestTranscationCode {
     BINDER_LIB_TEST_NOP_TRANSACTION_WAIT,
     BINDER_LIB_TEST_GETPID,
     BINDER_LIB_TEST_ECHO_VECTOR,
-    BINDER_LIB_TEST_REJECT_BUF,
+    BINDER_LIB_TEST_REJECT_OBJECTS,
     BINDER_LIB_TEST_CAN_GET_SID,
 };
 
@@ -1127,11 +1127,51 @@ TEST_F(BinderLibTest, BufRejected) {
     memcpy(parcelData, &obj, sizeof(obj));
     data.setDataSize(sizeof(obj));
 
+    EXPECT_EQ(data.objectsCount(), 1);
+
     // Either the kernel should reject this transaction (if it's correct), but
     // if it's not, the server implementation should return an error if it
     // finds an object in the received Parcel.
-    EXPECT_THAT(server->transact(BINDER_LIB_TEST_REJECT_BUF, data, &reply),
+    EXPECT_THAT(server->transact(BINDER_LIB_TEST_REJECT_OBJECTS, data, &reply),
                 Not(StatusEq(NO_ERROR)));
+}
+
+TEST_F(BinderLibTest, WeakRejected) {
+    Parcel data, reply;
+    sp<IBinder> server = addServer();
+    ASSERT_TRUE(server != nullptr);
+
+    auto binder = sp<BBinder>::make();
+    wp<BBinder> wpBinder(binder);
+    flat_binder_object obj{
+            .hdr = {.type = BINDER_TYPE_WEAK_BINDER},
+            .flags = 0,
+            .binder = reinterpret_cast<uintptr_t>(wpBinder.get_refs()),
+            .cookie = reinterpret_cast<uintptr_t>(wpBinder.unsafe_get()),
+    };
+    data.setDataCapacity(1024);
+    // Write a bogus object at offset 0 to get an entry in the offset table
+    data.writeFileDescriptor(0);
+    EXPECT_EQ(data.objectsCount(), 1);
+    uint8_t *parcelData = const_cast<uint8_t *>(data.data());
+    // And now, overwrite it with the weak binder
+    memcpy(parcelData, &obj, sizeof(obj));
+    data.setDataSize(sizeof(obj));
+
+    // a previous bug caused other objects to be released an extra time, so we
+    // test with an object that libbinder will actually try to release
+    EXPECT_EQ(OK, data.writeStrongBinder(sp<BBinder>::make()));
+
+    EXPECT_EQ(data.objectsCount(), 2);
+
+    // send it many times, since previous error was memory corruption, make it
+    // more likely that the server crashes
+    for (size_t i = 0; i < 100; i++) {
+        EXPECT_THAT(server->transact(BINDER_LIB_TEST_REJECT_OBJECTS, data, &reply),
+                    StatusEq(BAD_VALUE));
+    }
+
+    EXPECT_THAT(server->pingBinder(), StatusEq(NO_ERROR));
 }
 
 TEST_F(BinderLibTest, GotSid) {
@@ -1440,7 +1480,7 @@ class BinderLibTestService : public BBinder
                 reply->writeUint64Vector(vector);
                 return NO_ERROR;
             }
-            case BINDER_LIB_TEST_REJECT_BUF: {
+            case BINDER_LIB_TEST_REJECT_OBJECTS: {
                 return data.objectsCount() == 0 ? BAD_VALUE : NO_ERROR;
             }
             case BINDER_LIB_TEST_CAN_GET_SID: {
