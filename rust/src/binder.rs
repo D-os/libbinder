@@ -167,6 +167,7 @@ pub trait IBinderInternal: IBinder {
     fn ping_binder(&mut self) -> Result<()>;
 
     /// Indicate that the service intends to receive caller security contexts.
+    #[cfg(not(android_vndk))]
     fn set_requesting_sid(&mut self, enable: bool);
 
     /// Dump this object to the given file handle
@@ -635,6 +636,7 @@ unsafe impl<T, V: AsNative<T>> AsNative<T> for Option<V> {
 pub struct BinderFeatures {
     /// Indicates that the service intends to receive caller security contexts. This must be true
     /// for `ThreadState::with_calling_sid` to work.
+    #[cfg(not(android_vndk))]
     pub set_requesting_sid: bool,
     // Ensure that clients include a ..BinderFeatures::default() to preserve backwards compatibility
     // when new fields are added. #[non_exhaustive] doesn't work because it prevents struct
@@ -837,6 +839,7 @@ macro_rules! declare_binder_interface {
             /// Create a new binder service.
             pub fn new_binder<T: $interface + Sync + Send + 'static>(inner: T, features: $crate::BinderFeatures) -> $crate::Strong<dyn $interface> {
                 let mut binder = $crate::Binder::new_with_stability($native(Box::new(inner)), $stability);
+                #[cfg(not(android_vndk))]
                 $crate::IBinderInternal::set_requesting_sid(&mut binder, features.set_requesting_sid);
                 $crate::Strong::new(Box::new(binder))
             }
