@@ -22,6 +22,7 @@
 #include <aidl/IBinderRpcTest.h>
 #include <android-base/file.h>
 #include <android-base/logging.h>
+#include <android-base/properties.h>
 #include <android/binder_auto_utils.h>
 #include <android/binder_libbinder.h>
 #include <binder/Binder.h>
@@ -1514,7 +1515,17 @@ TEST(BinderRpc, Java) {
     auto socket = rpcServer->releaseServer();
 
     auto keepAlive = sp<BBinder>::make();
-    ASSERT_EQ(OK, binder->setRpcClientDebug(std::move(socket), keepAlive));
+    auto setRpcClientDebugStatus = binder->setRpcClientDebug(std::move(socket), keepAlive);
+
+    if (!android::base::GetBoolProperty("ro.debuggable", false)) {
+        ASSERT_EQ(INVALID_OPERATION, setRpcClientDebugStatus)
+                << "setRpcClientDebug should return INVALID_OPERATION on non-debuggable builds, "
+                   "but get "
+                << statusToString(setRpcClientDebugStatus);
+        GTEST_SKIP();
+    }
+
+    ASSERT_EQ(OK, setRpcClientDebugStatus);
 
     auto rpcSession = RpcSession::make();
     ASSERT_EQ(OK, rpcSession->setupInetClient("127.0.0.1", port));
