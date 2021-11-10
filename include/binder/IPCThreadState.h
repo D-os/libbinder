@@ -51,17 +51,11 @@ public:
     static  status_t            freeze(pid_t pid, bool enabled, uint32_t timeout_ms);
 
     // Provide information about the state of a frozen process
-    static  status_t            getProcessFreezeInfo(pid_t pid, bool *sync_received,
-                                                    bool *async_received);
-
-    // TODO: Remove the above legacy duplicated function in next version
-#ifndef __ANDROID_VNDK__
     static  status_t            getProcessFreezeInfo(pid_t pid, uint32_t *sync_received,
                                                     uint32_t *async_received);
-#endif
 
             sp<ProcessState>    process();
-            
+
             status_t            clearLastError();
 
             /**
