@@ -21,11 +21,10 @@ use crate::error::{status_result, Result, StatusCode};
 use crate::proxy::SpIBinder;
 use crate::sys;
 
-use std::cell::RefCell;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
-use std::ptr;
+use std::ptr::{self, NonNull};
 use std::fmt;
 
 mod file_descriptor;
@@ -46,53 +45,41 @@ pub use self::parcelable_holder::{ParcelableHolder, ParcelableMetadata};
 /// other side of the IPC, and references to live Binder objects that will
 /// result in the other side receiving a proxy Binder connected with the
 /// original Binder in the Parcel.
-pub enum Parcel {
-    /// Owned parcel pointer
-    Owned(*mut sys::AParcel),
-    /// Borrowed parcel pointer (will not be destroyed on drop)
-    Borrowed(*mut sys::AParcel),
-}
-
-/// A variant of Parcel that is known to be owned.
-pub struct OwnedParcel {
-    ptr: *mut sys::AParcel,
+///
+/// This type represents a parcel that is owned by Rust code.
+#[repr(transparent)]
+pub struct Parcel {
+    ptr: NonNull<sys::AParcel>,
 }
 
 /// # Safety
 ///
 /// This type guarantees that it owns the AParcel and that all access to
-/// the AParcel happens through the OwnedParcel, so it is ok to send across
+/// the AParcel happens through the Parcel, so it is ok to send across
 /// threads.
-unsafe impl Send for OwnedParcel {}
+unsafe impl Send for Parcel {}
 
-/// A variant of Parcel that is known to be borrowed.
+/// Container for a message (data and object references) that can be sent
+/// through Binder.
+///
+/// This object is a borrowed variant of [`Parcel`]. It is a separate type from
+/// `&mut Parcel` because it is not valid to `mem::swap` two parcels.
+#[repr(transparent)]
 pub struct BorrowedParcel<'a> {
-    inner: Parcel,
+    ptr: NonNull<sys::AParcel>,
     _lifetime: PhantomData<&'a mut Parcel>,
 }
 
-impl OwnedParcel {
-    /// Create a new empty `OwnedParcel`.
-    pub fn new() -> OwnedParcel {
+impl Parcel {
+    /// Create a new empty `Parcel`.
+    pub fn new() -> Parcel {
         let ptr = unsafe {
             // Safety: If `AParcel_create` succeeds, it always returns
             // a valid pointer. If it fails, the process will crash.
             sys::AParcel_create()
         };
-        assert!(!ptr.is_null());
-        Self { ptr }
-    }
-
-    /// Convert the provided parcel to an owned parcel, or return `None` if it
-    /// is borrowed.
-    pub fn try_from(parcel: Parcel) -> Option<OwnedParcel> {
-        match &parcel {
-            Parcel::Owned(ptr) => {
-                let ptr = *ptr;
-                std::mem::forget(parcel);
-                Some(OwnedParcel { ptr })
-            }
-            Parcel::Borrowed(_) => None,
+        Self {
+            ptr: NonNull::new(ptr).expect("AParcel_create returned null pointer")
         }
     }
 
@@ -107,107 +94,42 @@ impl OwnedParcel {
     ///
     /// Additionally, the caller must guarantee that it is valid to take
     /// ownership of the AParcel object. All future access to the AParcel
-    /// must happen through this `OwnedParcel`.
+    /// must happen through this `Parcel`.
     ///
-    /// Because `OwnedParcel` implements `Send`, the pointer must never point
-    /// to any thread-local data, e.g., a variable on the stack, either directly
-    /// or indirectly.
-    pub unsafe fn from_raw(ptr: *mut sys::AParcel) -> Option<OwnedParcel> {
-        ptr.as_mut().map(|ptr| Self { ptr })
+    /// Because `Parcel` implements `Send`, the pointer must never point to any
+    /// thread-local data, e.g., a variable on the stack, either directly or
+    /// indirectly.
+    pub unsafe fn from_raw(ptr: *mut sys::AParcel) -> Option<Parcel> {
+        NonNull::new(ptr).map(|ptr| Self { ptr })
     }
 
     /// Consume the parcel, transferring ownership to the caller.
     pub(crate) fn into_raw(self) -> *mut sys::AParcel {
-        let ptr = self.ptr;
+        let ptr = self.ptr.as_ptr();
         let _ = ManuallyDrop::new(self);
         ptr
     }
 
-    /// Convert this `OwnedParcel` into an owned `Parcel`.
-    pub fn into_parcel(self) -> Parcel {
-        Parcel::Owned(self.into_raw())
-    }
-
     /// Get a borrowed view into the contents of this `Parcel`.
     pub fn borrowed(&mut self) -> BorrowedParcel<'_> {
+        // Safety: The raw pointer is a valid pointer to an AParcel, and the
+        // lifetime of the returned `BorrowedParcel` is tied to `self`, so the
+        // borrow checker will ensure that the `AParcel` can only be accessed
+        // via the `BorrowParcel` until it goes out of scope.
         BorrowedParcel {
-            inner: Parcel::Borrowed(self.ptr),
+            ptr: self.ptr,
             _lifetime: PhantomData,
         }
     }
-}
 
-impl Default for OwnedParcel {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Clone for OwnedParcel {
-    fn clone(&self) -> Self {
-        let mut new_parcel = Self::new();
-        new_parcel
-            .borrowed()
-            .append_all_from(&Parcel::Borrowed(self.ptr))
-            .expect("Failed to append from Parcel");
-        new_parcel
-    }
-}
-
-impl<'a> std::ops::Deref for BorrowedParcel<'a> {
-    type Target = Parcel;
-    fn deref(&self) -> &Parcel {
-        &self.inner
-    }
-}
-impl<'a> std::ops::DerefMut for BorrowedParcel<'a> {
-    fn deref_mut(&mut self) -> &mut Parcel {
-        &mut self.inner
-    }
-}
-
-/// # Safety
-///
-/// The `Parcel` constructors guarantee that a `Parcel` object will always
-/// contain a valid pointer to an `AParcel`.
-unsafe impl AsNative<sys::AParcel> for Parcel {
-    fn as_native(&self) -> *const sys::AParcel {
-        match *self {
-            Self::Owned(x) | Self::Borrowed(x) => x,
+    /// Get an immutable borrowed view into the contents of this `Parcel`.
+    pub fn borrowed_ref(&self) -> &BorrowedParcel<'_> {
+        // Safety: Parcel and BorrowedParcel are both represented in the same
+        // way as a NonNull<sys::AParcel> due to their use of repr(transparent),
+        // so casting references as done here is valid.
+        unsafe {
+            &*(self as *const Parcel as *const BorrowedParcel<'_>)
         }
-    }
-
-    fn as_native_mut(&mut self) -> *mut sys::AParcel {
-        match *self {
-            Self::Owned(x) | Self::Borrowed(x) => x,
-        }
-    }
-}
-
-impl Parcel {
-    /// Create a new empty `Parcel`.
-    ///
-    /// Creates a new owned empty parcel that can be written to
-    /// using the serialization methods and appended to and
-    /// from using `append_from` and `append_from_all`.
-    pub fn new() -> Parcel {
-        let parcel = unsafe {
-            // Safety: If `AParcel_create` succeeds, it always returns
-            // a valid pointer. If it fails, the process will crash.
-            sys::AParcel_create()
-        };
-        assert!(!parcel.is_null());
-        Self::Owned(parcel)
-    }
-
-    /// Create a borrowed reference to a parcel object from a raw pointer.
-    ///
-    /// # Safety
-    ///
-    /// This constructor is safe if the raw pointer parameter is either null
-    /// (resulting in `None`), or a valid pointer to an `AParcel` object.
-    pub(crate) unsafe fn borrowed(ptr: *mut sys::AParcel) -> Option<Parcel> {
-        ptr.as_mut().map(|ptr| Self::Borrowed(ptr))
     }
 }
 
@@ -221,14 +143,77 @@ impl Clone for Parcel {
     fn clone(&self) -> Self {
         let mut new_parcel = Self::new();
         new_parcel
-            .append_all_from(self)
+            .borrowed()
+            .append_all_from(self.borrowed_ref())
             .expect("Failed to append from Parcel");
         new_parcel
     }
 }
 
+impl<'a> BorrowedParcel<'a> {
+    /// Create a borrowed reference to a parcel object from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// This constructor is safe if the raw pointer parameter is either null
+    /// (resulting in `None`), or a valid pointer to an `AParcel` object.
+    ///
+    /// Since the raw pointer is not restricted by any lifetime, the lifetime on
+    /// the returned `BorrowedParcel` object can be chosen arbitrarily by the
+    /// caller. The caller must ensure it is valid to mutably borrow the AParcel
+    /// for the duration of the lifetime that the caller chooses. Note that
+    /// since this is a mutable borrow, it must have exclusive access to the
+    /// AParcel for the duration of the borrow.
+    pub unsafe fn from_raw(ptr: *mut sys::AParcel) -> Option<BorrowedParcel<'a>> {
+        Some(Self {
+            ptr: NonNull::new(ptr)?,
+            _lifetime: PhantomData,
+        })
+    }
+
+    /// Get a sub-reference to this reference to the parcel.
+    pub fn reborrow(&mut self) -> BorrowedParcel<'_> {
+        // Safety: The raw pointer is a valid pointer to an AParcel, and the
+        // lifetime of the returned `BorrowedParcel` is tied to `self`, so the
+        // borrow checker will ensure that the `AParcel` can only be accessed
+        // via the `BorrowParcel` until it goes out of scope.
+        BorrowedParcel {
+            ptr: self.ptr,
+            _lifetime: PhantomData,
+        }
+    }
+}
+
+/// # Safety
+///
+/// The `Parcel` constructors guarantee that a `Parcel` object will always
+/// contain a valid pointer to an `AParcel`.
+unsafe impl AsNative<sys::AParcel> for Parcel {
+    fn as_native(&self) -> *const sys::AParcel {
+        self.ptr.as_ptr()
+    }
+
+    fn as_native_mut(&mut self) -> *mut sys::AParcel {
+        self.ptr.as_ptr()
+    }
+}
+
+/// # Safety
+///
+/// The `BorrowedParcel` constructors guarantee that a `BorrowedParcel` object
+/// will always contain a valid pointer to an `AParcel`.
+unsafe impl<'a> AsNative<sys::AParcel> for BorrowedParcel<'a> {
+    fn as_native(&self) -> *const sys::AParcel {
+        self.ptr.as_ptr()
+    }
+
+    fn as_native_mut(&mut self) -> *mut sys::AParcel {
+        self.ptr.as_ptr()
+    }
+}
+
 // Data serialization methods
-impl Parcel {
+impl<'a> BorrowedParcel<'a> {
     /// Data written to parcelable is zero'd before being deleted or reallocated.
     pub fn mark_sensitive(&mut self) {
         unsafe {
@@ -237,12 +222,12 @@ impl Parcel {
         }
     }
 
-    /// Write a type that implements [`Serialize`] to the `Parcel`.
+    /// Write a type that implements [`Serialize`] to the parcel.
     pub fn write<S: Serialize + ?Sized>(&mut self, parcelable: &S) -> Result<()> {
         parcelable.serialize(self)
     }
 
-    /// Writes the length of a slice to the `Parcel`.
+    /// Writes the length of a slice to the parcel.
     ///
     /// This is used in AIDL-generated client side code to indicate the
     /// allocated space for an output array parameter.
@@ -255,7 +240,7 @@ impl Parcel {
         }
     }
 
-    /// Perform a series of writes to the `Parcel`, prepended with the length
+    /// Perform a series of writes to the parcel, prepended with the length
     /// (in bytes) of the written data.
     ///
     /// The length `0i32` will be written to the parcel first, followed by the
@@ -269,7 +254,7 @@ impl Parcel {
     ///
     /// ```
     /// # use binder::{Binder, Interface, Parcel};
-    /// # let mut parcel = Parcel::Owned(std::ptr::null_mut());
+    /// # let mut parcel = Parcel::new();
     /// parcel.sized_write(|subparcel| {
     ///     subparcel.write(&1u32)?;
     ///     subparcel.write(&2u32)?;
@@ -283,14 +268,14 @@ impl Parcel {
     /// [16i32, 1u32, 2u32, 3u32]
     /// ```
     pub fn sized_write<F>(&mut self, f: F) -> Result<()>
-    where for<'a>
-        F: Fn(&'a WritableSubParcel<'a>) -> Result<()>
+    where
+        for<'b> F: FnOnce(&'b mut WritableSubParcel<'b>) -> Result<()>
     {
         let start = self.get_data_position();
         self.write(&0i32)?;
         {
-            let subparcel = WritableSubParcel(RefCell::new(self));
-            f(&subparcel)?;
+            let mut subparcel = WritableSubParcel(self.reborrow());
+            f(&mut subparcel)?;
         }
         let end = self.get_data_position();
         unsafe {
@@ -307,8 +292,8 @@ impl Parcel {
     /// Returns the current position in the parcel data.
     pub fn get_data_position(&self) -> i32 {
         unsafe {
-            // Safety: `Parcel` always contains a valid pointer to an `AParcel`,
-            // and this call is otherwise safe.
+            // Safety: `BorrowedParcel` always contains a valid pointer to an
+            // `AParcel`, and this call is otherwise safe.
             sys::AParcel_getDataPosition(self.as_native())
         }
     }
@@ -316,8 +301,8 @@ impl Parcel {
     /// Returns the total size of the parcel.
     pub fn get_data_size(&self) -> i32 {
         unsafe {
-            // Safety: `Parcel` always contains a valid pointer to an `AParcel`,
-            // and this call is otherwise safe.
+            // Safety: `BorrowedParcel` always contains a valid pointer to an
+            // `AParcel`, and this call is otherwise safe.
             sys::AParcel_getDataSize(self.as_native())
         }
     }
@@ -335,11 +320,11 @@ impl Parcel {
         status_result(sys::AParcel_setDataPosition(self.as_native(), pos))
     }
 
-    /// Append a subset of another `Parcel`.
+    /// Append a subset of another parcel.
     ///
     /// This appends `size` bytes of data from `other` starting at offset
-    /// `start` to the current `Parcel`, or returns an error if not possible.
-    pub fn append_from(&mut self, other: &Self, start: i32, size: i32) -> Result<()> {
+    /// `start` to the current parcel, or returns an error if not possible.
+    pub fn append_from(&mut self, other: &impl AsNative<sys::AParcel>, start: i32, size: i32) -> Result<()> {
         let status = unsafe {
             // Safety: `Parcel::appendFrom` from C++ checks that `start`
             // and `size` are in bounds, and returns an error otherwise.
@@ -354,33 +339,125 @@ impl Parcel {
         status_result(status)
     }
 
-    /// Append the contents of another `Parcel`.
-    pub fn append_all_from(&mut self, other: &Self) -> Result<()> {
-        self.append_from(other, 0, other.get_data_size())
+    /// Append the contents of another parcel.
+    pub fn append_all_from(&mut self, other: &impl AsNative<sys::AParcel>) -> Result<()> {
+        // Safety: `BorrowedParcel` always contains a valid pointer to an
+        // `AParcel`, and this call is otherwise safe.
+        let size = unsafe { sys::AParcel_getDataSize(other.as_native()) };
+        self.append_from(other, 0, size)
     }
 }
 
-/// A segment of a writable parcel, used for [`Parcel::sized_write`].
-pub struct WritableSubParcel<'a>(RefCell<&'a mut Parcel>);
+/// A segment of a writable parcel, used for [`BorrowedParcel::sized_write`].
+pub struct WritableSubParcel<'a>(BorrowedParcel<'a>);
 
 impl<'a> WritableSubParcel<'a> {
     /// Write a type that implements [`Serialize`] to the sub-parcel.
-    pub fn write<S: Serialize + ?Sized>(&self, parcelable: &S) -> Result<()> {
-        parcelable.serialize(&mut *self.0.borrow_mut())
+    pub fn write<S: Serialize + ?Sized>(&mut self, parcelable: &S) -> Result<()> {
+        parcelable.serialize(&mut self.0)
+    }
+}
+
+impl Parcel {
+    /// Data written to parcelable is zero'd before being deleted or reallocated.
+    pub fn mark_sensitive(&mut self) {
+        self.borrowed().mark_sensitive()
+    }
+
+    /// Write a type that implements [`Serialize`] to the parcel.
+    pub fn write<S: Serialize + ?Sized>(&mut self, parcelable: &S) -> Result<()> {
+        self.borrowed().write(parcelable)
+    }
+
+    /// Writes the length of a slice to the parcel.
+    ///
+    /// This is used in AIDL-generated client side code to indicate the
+    /// allocated space for an output array parameter.
+    pub fn write_slice_size<T>(&mut self, slice: Option<&[T]>) -> Result<()> {
+        self.borrowed().write_slice_size(slice)
+    }
+
+    /// Perform a series of writes to the parcel, prepended with the length
+    /// (in bytes) of the written data.
+    ///
+    /// The length `0i32` will be written to the parcel first, followed by the
+    /// writes performed by the callback. The initial length will then be
+    /// updated to the length of all data written by the callback, plus the
+    /// size of the length elemement itself (4 bytes).
+    ///
+    /// # Examples
+    ///
+    /// After the following call:
+    ///
+    /// ```
+    /// # use binder::{Binder, Interface, Parcel};
+    /// # let mut parcel = Parcel::new();
+    /// parcel.sized_write(|subparcel| {
+    ///     subparcel.write(&1u32)?;
+    ///     subparcel.write(&2u32)?;
+    ///     subparcel.write(&3u32)
+    /// });
+    /// ```
+    ///
+    /// `parcel` will contain the following:
+    ///
+    /// ```ignore
+    /// [16i32, 1u32, 2u32, 3u32]
+    /// ```
+    pub fn sized_write<F>(&mut self, f: F) -> Result<()>
+    where
+        for<'b> F: FnOnce(&'b mut WritableSubParcel<'b>) -> Result<()>
+    {
+        self.borrowed().sized_write(f)
+    }
+
+    /// Returns the current position in the parcel data.
+    pub fn get_data_position(&self) -> i32 {
+        self.borrowed_ref().get_data_position()
+    }
+
+    /// Returns the total size of the parcel.
+    pub fn get_data_size(&self) -> i32 {
+        self.borrowed_ref().get_data_size()
+    }
+
+    /// Move the current read/write position in the parcel.
+    ///
+    /// # Safety
+    ///
+    /// This method is safe if `pos` is less than the current size of the parcel
+    /// data buffer. Otherwise, we are relying on correct bounds checking in the
+    /// Parcel C++ code on every subsequent read or write to this parcel. If all
+    /// accesses are bounds checked, this call is still safe, but we can't rely
+    /// on that.
+    pub unsafe fn set_data_position(&self, pos: i32) -> Result<()> {
+        self.borrowed_ref().set_data_position(pos)
+    }
+
+    /// Append a subset of another parcel.
+    ///
+    /// This appends `size` bytes of data from `other` starting at offset
+    /// `start` to the current parcel, or returns an error if not possible.
+    pub fn append_from(&mut self, other: &impl AsNative<sys::AParcel>, start: i32, size: i32) -> Result<()> {
+        self.borrowed().append_from(other, start, size)
+    }
+
+    /// Append the contents of another parcel.
+    pub fn append_all_from(&mut self, other: &impl AsNative<sys::AParcel>) -> Result<()> {
+        self.borrowed().append_all_from(other)
     }
 }
 
 // Data deserialization methods
-impl Parcel {
-    /// Attempt to read a type that implements [`Deserialize`] from this
-    /// `Parcel`.
+impl<'a> BorrowedParcel<'a> {
+    /// Attempt to read a type that implements [`Deserialize`] from this parcel.
     pub fn read<D: Deserialize>(&self) -> Result<D> {
         D::deserialize(self)
     }
 
-    /// Attempt to read a type that implements [`Deserialize`] from this
-    /// `Parcel` onto an existing value. This operation will overwrite the old
-    /// value partially or completely, depending on how much data is available.
+    /// Attempt to read a type that implements [`Deserialize`] from this parcel
+    /// onto an existing value. This operation will overwrite the old value
+    /// partially or completely, depending on how much data is available.
     pub fn read_onto<D: Deserialize>(&self, x: &mut D) -> Result<()> {
         x.deserialize_from(self)
     }
@@ -413,9 +490,9 @@ impl Parcel {
     /// });
     /// ```
     ///
-    pub fn sized_read<F>(&self, mut f: F) -> Result<()>
+    pub fn sized_read<F>(&self, f: F) -> Result<()>
     where
-        for<'a> F: FnMut(ReadableSubParcel<'a>) -> Result<()>
+        for<'b> F: FnOnce(ReadableSubParcel<'b>) -> Result<()>
     {
         let start = self.get_data_position();
         let parcelable_size: i32 = self.read()?;
@@ -430,7 +507,10 @@ impl Parcel {
         }
 
         let subparcel = ReadableSubParcel {
-            parcel: self,
+            parcel: BorrowedParcel {
+                ptr: self.ptr,
+                _lifetime: PhantomData,
+            },
             end_position: end,
         };
         f(subparcel)?;
@@ -444,8 +524,8 @@ impl Parcel {
         Ok(())
     }
 
-    /// Read a vector size from the `Parcel` and resize the given output vector
-    /// to be correctly sized for that amount of data.
+    /// Read a vector size from the parcel and resize the given output vector to
+    /// be correctly sized for that amount of data.
     ///
     /// This method is used in AIDL-generated server side code for methods that
     /// take a mutable slice reference parameter.
@@ -463,7 +543,7 @@ impl Parcel {
         Ok(())
     }
 
-    /// Read a vector size from the `Parcel` and either create a correctly sized
+    /// Read a vector size from the parcel and either create a correctly sized
     /// vector for that amount of data or set the output parameter to None if
     /// the vector should be null.
     ///
@@ -491,7 +571,7 @@ impl Parcel {
 
 /// A segment of a readable parcel, used for [`Parcel::sized_read`].
 pub struct ReadableSubParcel<'a> {
-    parcel: &'a Parcel,
+    parcel: BorrowedParcel<'a>,
     end_position: i32,
 }
 
@@ -501,7 +581,7 @@ impl<'a> ReadableSubParcel<'a> {
         // The caller should have checked this,
         // but it can't hurt to double-check
         assert!(self.has_more_data());
-        D::deserialize(self.parcel)
+        D::deserialize(&self.parcel)
     }
 
     /// Check if the sub-parcel has more data to read
@@ -510,11 +590,82 @@ impl<'a> ReadableSubParcel<'a> {
     }
 }
 
-// Internal APIs
 impl Parcel {
+    /// Attempt to read a type that implements [`Deserialize`] from this parcel.
+    pub fn read<D: Deserialize>(&self) -> Result<D> {
+        self.borrowed_ref().read()
+    }
+
+    /// Attempt to read a type that implements [`Deserialize`] from this parcel
+    /// onto an existing value. This operation will overwrite the old value
+    /// partially or completely, depending on how much data is available.
+    pub fn read_onto<D: Deserialize>(&self, x: &mut D) -> Result<()> {
+        self.borrowed_ref().read_onto(x)
+    }
+
+    /// Safely read a sized parcelable.
+    ///
+    /// Read the size of a parcelable, compute the end position
+    /// of that parcelable, then build a sized readable sub-parcel
+    /// and call a closure with the sub-parcel as its parameter.
+    /// The closure can keep reading data from the sub-parcel
+    /// until it runs out of input data. The closure is responsible
+    /// for calling [`ReadableSubParcel::has_more_data`] to check for
+    /// more data before every read, at least until Rust generators
+    /// are stabilized.
+    /// After the closure returns, skip to the end of the current
+    /// parcelable regardless of how much the closure has read.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let mut parcelable = Default::default();
+    /// parcel.sized_read(|subparcel| {
+    ///     if subparcel.has_more_data() {
+    ///         parcelable.a = subparcel.read()?;
+    ///     }
+    ///     if subparcel.has_more_data() {
+    ///         parcelable.b = subparcel.read()?;
+    ///     }
+    ///     Ok(())
+    /// });
+    /// ```
+    ///
+    pub fn sized_read<F>(&self, f: F) -> Result<()>
+    where
+        for<'b> F: FnOnce(ReadableSubParcel<'b>) -> Result<()>
+    {
+        self.borrowed_ref().sized_read(f)
+    }
+
+    /// Read a vector size from the parcel and resize the given output vector to
+    /// be correctly sized for that amount of data.
+    ///
+    /// This method is used in AIDL-generated server side code for methods that
+    /// take a mutable slice reference parameter.
+    pub fn resize_out_vec<D: Default + Deserialize>(&self, out_vec: &mut Vec<D>) -> Result<()> {
+        self.borrowed_ref().resize_out_vec(out_vec)
+    }
+
+    /// Read a vector size from the parcel and either create a correctly sized
+    /// vector for that amount of data or set the output parameter to None if
+    /// the vector should be null.
+    ///
+    /// This method is used in AIDL-generated server side code for methods that
+    /// take a mutable slice reference parameter.
+    pub fn resize_nullable_out_vec<D: Default + Deserialize>(
+        &self,
+        out_vec: &mut Option<Vec<D>>,
+    ) -> Result<()> {
+        self.borrowed_ref().resize_nullable_out_vec(out_vec)
+    }
+}
+
+// Internal APIs
+impl<'a> BorrowedParcel<'a> {
     pub(crate) fn write_binder(&mut self, binder: Option<&SpIBinder>) -> Result<()> {
         unsafe {
-            // Safety: `Parcel` always contains a valid pointer to an
+            // Safety: `BorrowedParcel` always contains a valid pointer to an
             // `AParcel`. `AsNative` for `Option<SpIBinder`> will either return
             // null or a valid pointer to an `AIBinder`, both of which are
             // valid, safe inputs to `AParcel_writeStrongBinder`.
@@ -534,7 +685,7 @@ impl Parcel {
     pub(crate) fn read_binder(&self) -> Result<Option<SpIBinder>> {
         let mut binder = ptr::null_mut();
         let status = unsafe {
-            // Safety: `Parcel` always contains a valid pointer to an
+            // Safety: `BorrowedParcel` always contains a valid pointer to an
             // `AParcel`. We pass a valid, mutable out pointer to the `binder`
             // parameter. After this call, `binder` will be either null or a
             // valid pointer to an `AIBinder` owned by the caller.
@@ -554,25 +705,11 @@ impl Parcel {
 impl Drop for Parcel {
     fn drop(&mut self) {
         // Run the C++ Parcel complete object destructor
-        if let Self::Owned(ptr) = *self {
-            unsafe {
-                // Safety: `Parcel` always contains a valid pointer to an
-                // `AParcel`. If we own the parcel, we can safely delete it
-                // here.
-                sys::AParcel_delete(ptr)
-            }
-        }
-    }
-}
-
-impl Drop for OwnedParcel {
-    fn drop(&mut self) {
-        // Run the C++ Parcel complete object destructor
         unsafe {
-            // Safety: `OwnedParcel` always contains a valid pointer to an
+            // Safety: `Parcel` always contains a valid pointer to an
             // `AParcel`. Since we own the parcel, we can safely delete it
             // here.
-            sys::AParcel_delete(self.ptr)
+            sys::AParcel_delete(self.ptr.as_ptr())
         }
     }
 }
@@ -584,9 +721,9 @@ impl fmt::Debug for Parcel {
     }
 }
 
-impl fmt::Debug for OwnedParcel {
+impl<'a> fmt::Debug for BorrowedParcel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OwnedParcel")
+        f.debug_struct("BorrowedParcel")
             .finish()
     }
 }
@@ -608,7 +745,7 @@ fn test_read_write() {
     assert_eq!(parcel.read::<Option<String>>(), Ok(None));
     assert_eq!(parcel.read::<String>(), Err(StatusCode::UNEXPECTED_NULL));
 
-    assert_eq!(parcel.read_binder().err(), Some(StatusCode::BAD_TYPE));
+    assert_eq!(parcel.borrowed_ref().read_binder().err(), Some(StatusCode::BAD_TYPE));
 
     parcel.write(&1i32).unwrap();
 
