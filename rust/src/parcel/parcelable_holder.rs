@@ -16,7 +16,7 @@
 
 use crate::binder::Stability;
 use crate::error::{Result, StatusCode};
-use crate::parcel::{OwnedParcel, Parcel, Parcelable};
+use crate::parcel::{Parcel, BorrowedParcel, Parcelable};
 use crate::{impl_deserialize_for_parcelable, impl_serialize_for_parcelable};
 
 use downcast_rs::{impl_downcast, DowncastSync};
@@ -50,7 +50,7 @@ enum ParcelableHolderData {
         parcelable: Arc<dyn AnyParcelable>,
         name: String,
     },
-    Parcel(OwnedParcel),
+    Parcel(Parcel),
 }
 
 impl Default for ParcelableHolderData {
@@ -148,7 +148,6 @@ impl ParcelableHolder {
                 }
             }
             ParcelableHolderData::Parcel(ref mut parcel) => {
-                let parcel = parcel.borrowed();
                 unsafe {
                     // Safety: 0 should always be a valid position.
                     parcel.set_data_position(0)?;
@@ -160,7 +159,7 @@ impl ParcelableHolder {
                 }
 
                 let mut parcelable = T::default();
-                parcelable.read_from_parcel(&parcel)?;
+                parcelable.read_from_parcel(parcel.borrowed_ref())?;
 
                 let parcelable = Arc::new(parcelable);
                 let result = Arc::clone(&parcelable);
@@ -181,7 +180,7 @@ impl_serialize_for_parcelable!(ParcelableHolder);
 impl_deserialize_for_parcelable!(ParcelableHolder);
 
 impl Parcelable for ParcelableHolder {
-    fn write_to_parcel(&self, parcel: &mut Parcel) -> Result<()> {
+    fn write_to_parcel(&self, parcel: &mut BorrowedParcel<'_>) -> Result<()> {
         parcel.write(&self.stability)?;
 
         let mut data = self.data.lock().unwrap();
@@ -214,14 +213,13 @@ impl Parcelable for ParcelableHolder {
                 Ok(())
             }
             ParcelableHolderData::Parcel(ref mut p) => {
-                let p = p.borrowed();
                 parcel.write(&p.get_data_size())?;
-                parcel.append_all_from(&p)
+                parcel.append_all_from(&*p)
             }
         }
     }
 
-    fn read_from_parcel(&mut self, parcel: &Parcel) -> Result<()> {
+    fn read_from_parcel(&mut self, parcel: &BorrowedParcel<'_>) -> Result<()> {
         self.stability = parcel.read()?;
 
         let data_size: i32 = parcel.read()?;
@@ -242,10 +240,8 @@ impl Parcelable for ParcelableHolder {
             .checked_add(data_size)
             .ok_or(StatusCode::BAD_VALUE)?;
 
-        let mut new_parcel = OwnedParcel::new();
-        new_parcel
-            .borrowed()
-            .append_from(parcel, data_start, data_size)?;
+        let mut new_parcel = Parcel::new();
+        new_parcel.append_from(parcel, data_start, data_size)?;
         *self.data.get_mut().unwrap() = ParcelableHolderData::Parcel(new_parcel);
 
         unsafe {

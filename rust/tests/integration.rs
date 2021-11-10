@@ -17,7 +17,7 @@
 //! Rust Binder crate integration tests
 
 use binder::declare_binder_interface;
-use binder::parcel::{Parcel, OwnedParcel};
+use binder::parcel::BorrowedParcel;
 use binder::{
     Binder, BinderFeatures, IBinderInternal, Interface, StatusCode, ThreadState, TransactionCode,
     FIRST_CALL_TRANSACTION,
@@ -179,8 +179,8 @@ declare_binder_interface! {
 fn on_transact(
     service: &dyn ITest,
     code: TransactionCode,
-    _data: &Parcel,
-    reply: &mut Parcel,
+    _data: &BorrowedParcel<'_>,
+    reply: &mut BorrowedParcel<'_>,
 ) -> binder::Result<()> {
     match code.try_into()? {
         TestTransactionCode::Test => reply.write(&service.test()?),
@@ -218,24 +218,24 @@ impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
     fn test(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
         let binder = self.binder.clone();
         P::spawn(
-            move || binder.transact(TestTransactionCode::Test as TransactionCode, 0, |_| Ok(())).map(|p| OwnedParcel::try_from(p).unwrap()),
-            |reply| async move { reply?.into_parcel().read() }
+            move || binder.transact(TestTransactionCode::Test as TransactionCode, 0, |_| Ok(())),
+            |reply| async move { reply?.read() }
         )
     }
 
     fn get_dump_args(&self) -> binder::BoxFuture<'static, binder::Result<Vec<String>>> {
         let binder = self.binder.clone();
         P::spawn(
-            move || binder.transact(TestTransactionCode::GetDumpArgs as TransactionCode, 0, |_| Ok(())).map(|p| OwnedParcel::try_from(p).unwrap()),
-            |reply| async move { reply?.into_parcel().read() }
+            move || binder.transact(TestTransactionCode::GetDumpArgs as TransactionCode, 0, |_| Ok(())),
+            |reply| async move { reply?.read() }
         )
     }
 
     fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
         let binder = self.binder.clone();
         P::spawn(
-            move || binder.transact(TestTransactionCode::GetSelinuxContext as TransactionCode, 0, |_| Ok(())).map(|p| OwnedParcel::try_from(p).unwrap()),
-            |reply| async move { reply?.into_parcel().read() }
+            move || binder.transact(TestTransactionCode::GetSelinuxContext as TransactionCode, 0, |_| Ok(())),
+            |reply| async move { reply?.read() }
         )
     }
 }
@@ -284,8 +284,8 @@ declare_binder_interface! {
 fn on_transact_same_descriptor(
     _service: &dyn ITestSameDescriptor,
     _code: TransactionCode,
-    _data: &Parcel,
-    _reply: &mut Parcel,
+    _data: &BorrowedParcel<'_>,
+    _reply: &mut BorrowedParcel<'_>,
 ) -> binder::Result<()> {
     Ok(())
 }

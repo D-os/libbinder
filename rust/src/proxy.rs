@@ -22,8 +22,7 @@ use crate::binder::{
 };
 use crate::error::{status_result, Result, StatusCode};
 use crate::parcel::{
-    Deserialize, DeserializeArray, DeserializeOption, OwnedParcel, Parcel, Serialize, SerializeArray,
-    SerializeOption,
+    Parcel, BorrowedParcel, Deserialize, DeserializeArray, DeserializeOption, Serialize, SerializeArray, SerializeOption,
 };
 use crate::sys;
 
@@ -235,7 +234,7 @@ impl Drop for SpIBinder {
 }
 
 impl<T: AsNative<sys::AIBinder>> IBinderInternal for T {
-    fn prepare_transact(&self) -> Result<OwnedParcel> {
+    fn prepare_transact(&self) -> Result<Parcel> {
         let mut input = ptr::null_mut();
         let status = unsafe {
             // Safety: `SpIBinder` guarantees that `self` always contains a
@@ -255,16 +254,16 @@ impl<T: AsNative<sys::AIBinder>> IBinderInternal for T {
             // Safety: At this point, `input` is either a valid, owned `AParcel`
             // pointer, or null. `OwnedParcel::from_raw` safely handles both cases,
             // taking ownership of the parcel.
-            OwnedParcel::from_raw(input).ok_or(StatusCode::UNEXPECTED_NULL)
+            Parcel::from_raw(input).ok_or(StatusCode::UNEXPECTED_NULL)
         }
     }
 
     fn submit_transact(
         &self,
         code: TransactionCode,
-        data: OwnedParcel,
+        data: Parcel,
         flags: TransactionFlags,
-    ) -> Result<OwnedParcel> {
+    ) -> Result<Parcel> {
         let mut reply = ptr::null_mut();
         let status = unsafe {
             // Safety: `SpIBinder` guarantees that `self` always contains a
@@ -299,7 +298,7 @@ impl<T: AsNative<sys::AIBinder>> IBinderInternal for T {
             // construct a `Parcel` out of it. `AIBinder_transact` passes
             // ownership of the `reply` parcel to Rust, so we need to
             // construct an owned variant.
-            OwnedParcel::from_raw(reply).ok_or(StatusCode::UNEXPECTED_NULL)
+            Parcel::from_raw(reply).ok_or(StatusCode::UNEXPECTED_NULL)
         }
     }
 
@@ -415,13 +414,13 @@ impl<T: AsNative<sys::AIBinder>> IBinder for T {
 }
 
 impl Serialize for SpIBinder {
-    fn serialize(&self, parcel: &mut Parcel) -> Result<()> {
+    fn serialize(&self, parcel: &mut BorrowedParcel<'_>) -> Result<()> {
         parcel.write_binder(Some(self))
     }
 }
 
 impl SerializeOption for SpIBinder {
-    fn serialize_option(this: Option<&Self>, parcel: &mut Parcel) -> Result<()> {
+    fn serialize_option(this: Option<&Self>, parcel: &mut BorrowedParcel<'_>) -> Result<()> {
         parcel.write_binder(this)
     }
 }
@@ -429,7 +428,7 @@ impl SerializeOption for SpIBinder {
 impl SerializeArray for SpIBinder {}
 
 impl Deserialize for SpIBinder {
-    fn deserialize(parcel: &Parcel) -> Result<SpIBinder> {
+    fn deserialize(parcel: &BorrowedParcel<'_>) -> Result<SpIBinder> {
         parcel
             .read_binder()
             .transpose()
@@ -438,7 +437,7 @@ impl Deserialize for SpIBinder {
 }
 
 impl DeserializeOption for SpIBinder {
-    fn deserialize_option(parcel: &Parcel) -> Result<Option<SpIBinder>> {
+    fn deserialize_option(parcel: &BorrowedParcel<'_>) -> Result<Option<SpIBinder>> {
         parcel.read_binder()
     }
 }
