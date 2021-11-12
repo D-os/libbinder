@@ -20,6 +20,7 @@ rust_library {
         "libdowncast_rs",
     ],
     host_supported: true,
+    vendor_available: true,
     target: {
         darwin: {
             enabled: false,
@@ -64,6 +65,7 @@ rust_library {
         "libbinder_ndk",
     ],
     host_supported: true,
+    vendor_available: true,
     target: {
         darwin: {
             enabled: false,
@@ -105,6 +107,7 @@ rust_bindgen {
         "libbinder_ndk",
     ],
     host_supported: true,
+    vendor_available: true,
 
     // Currently necessary for host builds
     // TODO(b/31559095): bionic on host should define this
