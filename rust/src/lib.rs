@@ -114,7 +114,7 @@ pub use crate::binder::{
 };
 pub use crate::binder_async::{BoxFuture, BinderAsyncPool};
 pub use error::{status_t, ExceptionCode, Result, Status, StatusCode};
-pub use native::{add_service, force_lazy_services_persist, register_lazy_service, Binder};
+pub use native::{add_service, force_lazy_services_persist, is_handling_transaction, register_lazy_service, Binder};
 pub use parcel::{BorrowedParcel, Parcel};
 pub use proxy::{get_interface, get_service, wait_for_interface, wait_for_service};
 pub use proxy::{AssociateClass, DeathRecipient, Proxy, SpIBinder, WpIBinder};
