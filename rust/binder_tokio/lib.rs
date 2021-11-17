@@ -35,6 +35,11 @@ use std::future::Future;
 /// Retrieve an existing service for a particular interface, sleeping for a few
 /// seconds if it doesn't yet exist.
 pub async fn get_interface<T: FromIBinder + ?Sized + 'static>(name: &str) -> Result<Strong<T>, StatusCode> {
+    if binder::is_handling_transaction() {
+        // See comment in the BinderAsyncPool impl.
+        return binder::public_api::get_interface::<T>(name);
+    }
+
     let name = name.to_string();
     let res = tokio::task::spawn_blocking(move || {
         binder::public_api::get_interface::<T>(&name)
@@ -54,6 +59,11 @@ pub async fn get_interface<T: FromIBinder + ?Sized + 'static>(name: &str) -> Res
 /// Retrieve an existing service for a particular interface, or start it if it
 /// is configured as a dynamic service and isn't yet started.
 pub async fn wait_for_interface<T: FromIBinder + ?Sized + 'static>(name: &str) -> Result<Strong<T>, StatusCode> {
+    if binder::is_handling_transaction() {
+        // See comment in the BinderAsyncPool impl.
+        return binder::public_api::wait_for_interface::<T>(name);
+    }
+
     let name = name.to_string();
     let res = tokio::task::spawn_blocking(move || {
         binder::public_api::wait_for_interface::<T>(&name)
@@ -86,18 +96,27 @@ impl BinderAsyncPool for Tokio {
         B: Send + 'a,
         E: From<crate::StatusCode>,
     {
-        let handle = tokio::task::spawn_blocking(spawn_me);
-        Box::pin(async move {
-            // The `is_panic` branch is not actually reachable in Android as we compile
-            // with `panic = abort`.
-            match handle.await {
-                Ok(res) => after_spawn(res).await,
-                Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
-                Err(e) if e.is_cancelled() => Err(StatusCode::FAILED_TRANSACTION.into()),
-                Err(_) => Err(StatusCode::UNKNOWN_ERROR.into()),
-            }
-        })
+        if binder::is_handling_transaction() {
+            // We are currently on the thread pool for a binder server, so we should execute the
+            // transaction on the current thread so that the binder kernel driver is able to apply
+            // its deadlock prevention strategy to the sub-call.
+            //
+            // This shouldn't cause issues with blocking the thread as only one task will run in a
+            // call to `block_on`, so there aren't other tasks to block.
+            let result = spawn_me();
+            Box::pin(after_spawn(result))
+        } else {
+            let handle = tokio::task::spawn_blocking(spawn_me);
+            Box::pin(async move {
+                // The `is_panic` branch is not actually reachable in Android as we compile
+                // with `panic = abort`.
+                match handle.await {
+                    Ok(res) => after_spawn(res).await,
+                    Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
+                    Err(e) if e.is_cancelled() => Err(StatusCode::FAILED_TRANSACTION.into()),
+                    Err(_) => Err(StatusCode::UNKNOWN_ERROR.into()),
+                }
+            })
+        }
     }
 }
-
-
