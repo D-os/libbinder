@@ -517,3 +517,12 @@ impl Remotable for () {
 }
 
 impl Interface for () {}
+
+/// Determine whether the current thread is currently executing an incoming
+/// transaction.
+pub fn is_handling_transaction() -> bool {
+    unsafe {
+        // Safety: This method is always safe to call.
+        sys::AIBinder_isHandlingTransaction()
+    }
+}
