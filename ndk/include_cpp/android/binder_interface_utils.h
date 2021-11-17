@@ -190,9 +190,9 @@ class BnCInterface : public INTERFACE {
     BnCInterface() {}
     virtual ~BnCInterface() {}
 
-    SpAIBinder asBinder() override;
+    SpAIBinder asBinder() override final;
 
-    bool isRemote() override { return false; }
+    bool isRemote() override final { return false; }
 
    protected:
     /**
@@ -215,9 +215,9 @@ class BpCInterface : public INTERFACE {
     explicit BpCInterface(const SpAIBinder& binder) : mBinder(binder) {}
     virtual ~BpCInterface() {}
 
-    SpAIBinder asBinder() override;
+    SpAIBinder asBinder() override final;
 
-    bool isRemote() override { return AIBinder_isRemote(mBinder.get()); }
+    bool isRemote() override final { return AIBinder_isRemote(mBinder.get()); }
 
     binder_status_t dump(int fd, const char** args, uint32_t numArgs) override {
         return AIBinder_dump(asBinder().get(), fd, args, numArgs);
