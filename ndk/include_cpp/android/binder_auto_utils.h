@@ -365,6 +365,8 @@ class ScopedFileDescriptor : public impl::ScopedAResource<int, internal::closeWi
     ScopedFileDescriptor(ScopedFileDescriptor&&) = default;
     ScopedFileDescriptor& operator=(ScopedFileDescriptor&&) = default;
 
+    ScopedFileDescriptor dup() const { return ScopedFileDescriptor(::dup(get())); }
+
     bool operator!=(const ScopedFileDescriptor& rhs) const { return get() != rhs.get(); }
     bool operator<(const ScopedFileDescriptor& rhs) const { return get() < rhs.get(); }
     bool operator<=(const ScopedFileDescriptor& rhs) const { return get() <= rhs.get(); }
