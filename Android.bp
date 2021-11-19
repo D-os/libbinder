@@ -202,7 +202,7 @@ cc_library {
     sanitize: {
         misc_undefined: ["integer"],
     },
-    min_sdk_version: "29",
+    min_sdk_version: "30",
 
     tidy: true,
     tidy_flags: [
