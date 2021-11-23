@@ -86,6 +86,8 @@ static inline constexpr bool is_nullable_parcelable_v = is_parcelable_v<first_te
                                                         (is_specialization_v<T, std::optional> ||
                                                          is_specialization_v<T, std::unique_ptr>);
 
+template <typename T>
+static inline constexpr bool dependent_false_v = false;
 }  // namespace
 
 /**
@@ -714,9 +716,25 @@ inline binder_status_t AParcel_readNullableStdVectorParcelableElement<SpAIBinder
  */
 template <typename P>
 static inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::vector<P>& vec) {
-    const void* vectorData = static_cast<const void*>(&vec);
-    return AParcel_writeParcelableArray(parcel, vectorData, static_cast<int32_t>(vec.size()),
-                                        AParcel_writeStdVectorParcelableElement<P>);
+    if constexpr (std::is_enum_v<P>) {
+        if constexpr (std::is_same_v<std::underlying_type_t<P>, int8_t>) {
+            return AParcel_writeByteArray(parcel, reinterpret_cast<const int8_t*>(vec.data()),
+                                          static_cast<int32_t>(vec.size()));
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int32_t>) {
+            return AParcel_writeInt32Array(parcel, reinterpret_cast<const int32_t*>(vec.data()),
+                                           static_cast<int32_t>(vec.size()));
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int64_t>) {
+            return AParcel_writeInt64Array(parcel, reinterpret_cast<const int64_t*>(vec.data()),
+                                           static_cast<int32_t>(vec.size()));
+        } else {
+            static_assert(dependent_false_v<P>, "unrecognized type");
+        }
+    } else {
+        static_assert(!std::is_same_v<P, std::string>, "specialization should be used");
+        const void* vectorData = static_cast<const void*>(&vec);
+        return AParcel_writeParcelableArray(parcel, vectorData, static_cast<int32_t>(vec.size()),
+                                            AParcel_writeStdVectorParcelableElement<P>);
+    }
 }
 
 /**
@@ -724,9 +742,24 @@ static inline binder_status_t AParcel_writeVector(AParcel* parcel, const std::ve
  */
 template <typename P>
 static inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vector<P>* vec) {
-    void* vectorData = static_cast<void*>(vec);
-    return AParcel_readParcelableArray(parcel, vectorData, AParcel_stdVectorExternalAllocator<P>,
-                                       AParcel_readStdVectorParcelableElement<P>);
+    if constexpr (std::is_enum_v<P>) {
+        void* vectorData = static_cast<void*>(vec);
+        if constexpr (std::is_same_v<std::underlying_type_t<P>, int8_t>) {
+            return AParcel_readByteArray(parcel, vectorData, AParcel_stdVectorAllocator<int8_t>);
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int32_t>) {
+            return AParcel_readInt32Array(parcel, vectorData, AParcel_stdVectorAllocator<int32_t>);
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int64_t>) {
+            return AParcel_readInt64Array(parcel, vectorData, AParcel_stdVectorAllocator<int64_t>);
+        } else {
+            static_assert(dependent_false_v<P>, "unrecognized type");
+        }
+    } else {
+        static_assert(!std::is_same_v<P, std::string>, "specialization should be used");
+        void* vectorData = static_cast<void*>(vec);
+        return AParcel_readParcelableArray(parcel, vectorData,
+                                           AParcel_stdVectorExternalAllocator<P>,
+                                           AParcel_readStdVectorParcelableElement<P>);
+    }
 }
 
 /**
@@ -735,10 +768,30 @@ static inline binder_status_t AParcel_readVector(const AParcel* parcel, std::vec
 template <typename P>
 static inline binder_status_t AParcel_writeVector(AParcel* parcel,
                                                   const std::optional<std::vector<P>>& vec) {
-    if (!vec) return AParcel_writeInt32(parcel, -1);
-    const void* vectorData = static_cast<const void*>(&vec);
-    return AParcel_writeParcelableArray(parcel, vectorData, static_cast<int32_t>(vec->size()),
-                                        AParcel_writeNullableStdVectorParcelableElement<P>);
+    if constexpr (std::is_enum_v<P>) {
+        if constexpr (std::is_same_v<std::underlying_type_t<P>, int8_t>) {
+            return AParcel_writeByteArray(
+                    parcel, vec ? reinterpret_cast<const int8_t*>(vec->data()) : nullptr,
+                    vec ? static_cast<int32_t>(vec->size()) : -1);
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int32_t>) {
+            return AParcel_writeInt32Array(
+                    parcel, vec ? reinterpret_cast<const int32_t*>(vec->data()) : nullptr,
+                    vec ? static_cast<int32_t>(vec->size()) : -1);
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int64_t>) {
+            return AParcel_writeInt64Array(
+                    parcel, vec ? reinterpret_cast<const int64_t*>(vec->data()) : nullptr,
+                    vec ? static_cast<int32_t>(vec->size()) : -1);
+        } else {
+            static_assert(dependent_false_v<P>, "unrecognized type");
+        }
+    } else {
+        static_assert(!std::is_same_v<P, std::optional<std::string>>,
+                      "specialization should be used");
+        if (!vec) return AParcel_writeInt32(parcel, -1);
+        const void* vectorData = static_cast<const void*>(&vec);
+        return AParcel_writeParcelableArray(parcel, vectorData, static_cast<int32_t>(vec->size()),
+                                            AParcel_writeNullableStdVectorParcelableElement<P>);
+    }
 }
 
 /**
@@ -747,10 +800,28 @@ static inline binder_status_t AParcel_writeVector(AParcel* parcel,
 template <typename P>
 static inline binder_status_t AParcel_readVector(const AParcel* parcel,
                                                  std::optional<std::vector<P>>* vec) {
-    void* vectorData = static_cast<void*>(vec);
-    return AParcel_readParcelableArray(parcel, vectorData,
-                                       AParcel_nullableStdVectorExternalAllocator<P>,
-                                       AParcel_readNullableStdVectorParcelableElement<P>);
+    if constexpr (std::is_enum_v<P>) {
+        void* vectorData = static_cast<void*>(vec);
+        if constexpr (std::is_same_v<std::underlying_type_t<P>, int8_t>) {
+            return AParcel_readByteArray(parcel, vectorData,
+                                         AParcel_nullableStdVectorAllocator<int8_t>);
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int32_t>) {
+            return AParcel_readInt32Array(parcel, vectorData,
+                                          AParcel_nullableStdVectorAllocator<int32_t>);
+        } else if constexpr (std::is_same_v<std::underlying_type_t<P>, int64_t>) {
+            return AParcel_readInt64Array(parcel, vectorData,
+                                          AParcel_nullableStdVectorAllocator<int64_t>);
+        } else {
+            static_assert(dependent_false_v<P>, "unrecognized type");
+        }
+    } else {
+        static_assert(!std::is_same_v<P, std::optional<std::string>>,
+                      "specialization should be used");
+        void* vectorData = static_cast<void*>(vec);
+        return AParcel_readParcelableArray(parcel, vectorData,
+                                           AParcel_nullableStdVectorExternalAllocator<P>,
+                                           AParcel_readNullableStdVectorParcelableElement<P>);
+    }
 }
 
 // @START
@@ -1130,6 +1201,128 @@ static inline binder_status_t AParcel_resizeVector(const AParcel* parcel,
     *vec = std::optional<std::vector<T>>(std::vector<T>{});
     (*vec)->resize(static_cast<size_t>(size));
     return STATUS_OK;
+}
+
+/**
+ * Convenience API for writing a value of any type.
+ */
+template <typename T>
+static inline binder_status_t AParcel_writeData(AParcel* parcel, const T& value) {
+    if constexpr (is_specialization_v<T, std::vector>) {
+        return AParcel_writeVector(parcel, value);
+    } else if constexpr (std::is_same_v<std::string, T>) {
+        return AParcel_writeString(parcel, value);
+    } else if constexpr (std::is_same_v<bool, T>) {
+        return AParcel_writeBool(parcel, value);
+    } else if constexpr (std::is_same_v<int8_t, T> || std::is_same_v<uint8_t, T>) {
+        return AParcel_writeByte(parcel, value);
+    } else if constexpr (std::is_same_v<char16_t, T>) {
+        return AParcel_writeChar(parcel, value);
+    } else if constexpr (std::is_same_v<int32_t, T>) {
+        return AParcel_writeInt32(parcel, value);
+    } else if constexpr (std::is_same_v<int64_t, T>) {
+        return AParcel_writeInt64(parcel, value);
+    } else if constexpr (std::is_same_v<float, T>) {
+        return AParcel_writeFloat(parcel, value);
+    } else if constexpr (std::is_same_v<double, T>) {
+        return AParcel_writeDouble(parcel, value);
+    } else if constexpr (std::is_same_v<ScopedFileDescriptor, T>) {
+        return AParcel_writeRequiredParcelFileDescriptor(parcel, value);
+    } else if constexpr (std::is_same_v<SpAIBinder, T>) {
+        return AParcel_writeRequiredStrongBinder(parcel, value);
+    } else if constexpr (std::is_enum_v<T>) {
+        return AParcel_writeData(parcel, static_cast<std::underlying_type_t<T>>(value));
+    } else if constexpr (is_interface_v<T>) {
+        return AParcel_writeParcelable(parcel, value);
+    } else if constexpr (is_parcelable_v<T>) {
+        return AParcel_writeParcelable(parcel, value);
+    } else {
+        static_assert(dependent_false_v<T>, "unrecognized type");
+        return STATUS_OK;
+    }
+}
+
+/**
+ * Convenience API for writing a nullable value of any type.
+ */
+template <typename T>
+static inline binder_status_t AParcel_writeNullableData(AParcel* parcel, const T& value) {
+    if constexpr (is_specialization_v<T, std::optional> &&
+                  is_specialization_v<first_template_type_t<T>, std::vector>) {
+        return AParcel_writeVector(parcel, value);
+    } else if constexpr (is_specialization_v<T, std::optional> &&
+                         std::is_same_v<first_template_type_t<T>, std::string>) {
+        return AParcel_writeString(parcel, value);
+    } else if constexpr (is_nullable_parcelable_v<T> || is_interface_v<T>) {
+        return AParcel_writeNullableParcelable(parcel, value);
+    } else if constexpr (std::is_same_v<ScopedFileDescriptor, T>) {
+        return AParcel_writeNullableParcelFileDescriptor(parcel, value);
+    } else if constexpr (std::is_same_v<SpAIBinder, T>) {
+        return AParcel_writeNullableStrongBinder(parcel, value);
+    } else {
+        return AParcel_writeData(parcel, value);
+    }
+}
+
+/**
+ * Convenience API for reading a value of any type.
+ */
+template <typename T>
+static inline binder_status_t AParcel_readData(const AParcel* parcel, T* value) {
+    if constexpr (is_specialization_v<T, std::vector>) {
+        return AParcel_readVector(parcel, value);
+    } else if constexpr (std::is_same_v<std::string, T>) {
+        return AParcel_readString(parcel, value);
+    } else if constexpr (std::is_same_v<bool, T>) {
+        return AParcel_readBool(parcel, value);
+    } else if constexpr (std::is_same_v<int8_t, T> || std::is_same_v<uint8_t, T>) {
+        return AParcel_readByte(parcel, value);
+    } else if constexpr (std::is_same_v<char16_t, T>) {
+        return AParcel_readChar(parcel, value);
+    } else if constexpr (std::is_same_v<int32_t, T>) {
+        return AParcel_readInt32(parcel, value);
+    } else if constexpr (std::is_same_v<int64_t, T>) {
+        return AParcel_readInt64(parcel, value);
+    } else if constexpr (std::is_same_v<float, T>) {
+        return AParcel_readFloat(parcel, value);
+    } else if constexpr (std::is_same_v<double, T>) {
+        return AParcel_readDouble(parcel, value);
+    } else if constexpr (std::is_same_v<ScopedFileDescriptor, T>) {
+        return AParcel_readRequiredParcelFileDescriptor(parcel, value);
+    } else if constexpr (std::is_same_v<SpAIBinder, T>) {
+        return AParcel_readRequiredStrongBinder(parcel, value);
+    } else if constexpr (std::is_enum_v<T>) {
+        return AParcel_readData(parcel, reinterpret_cast<std::underlying_type_t<T>*>(value));
+    } else if constexpr (is_interface_v<T>) {
+        return AParcel_readParcelable(parcel, value);
+    } else if constexpr (is_parcelable_v<T>) {
+        return AParcel_readParcelable(parcel, value);
+    } else {
+        static_assert(dependent_false_v<T>, "unrecognized type");
+        return STATUS_OK;
+    }
+}
+
+/**
+ * Convenience API for reading a nullable value of any type.
+ */
+template <typename T>
+static inline binder_status_t AParcel_readNullableData(const AParcel* parcel, T* value) {
+    if constexpr (is_specialization_v<T, std::optional> &&
+                  is_specialization_v<first_template_type_t<T>, std::vector>) {
+        return AParcel_readVector(parcel, value);
+    } else if constexpr (is_specialization_v<T, std::optional> &&
+                         std::is_same_v<first_template_type_t<T>, std::string>) {
+        return AParcel_readString(parcel, value);
+    } else if constexpr (is_nullable_parcelable_v<T> || is_interface_v<T>) {
+        return AParcel_readNullableParcelable(parcel, value);
+    } else if constexpr (std::is_same_v<ScopedFileDescriptor, T>) {
+        return AParcel_readNullableParcelFileDescriptor(parcel, value);
+    } else if constexpr (std::is_same_v<SpAIBinder, T>) {
+        return AParcel_readNullableStrongBinder(parcel, value);
+    } else {
+        return AParcel_readData(parcel, value);
+    }
 }
 
 }  // namespace ndk
