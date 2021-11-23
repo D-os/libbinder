@@ -228,7 +228,6 @@ constexpr const char* const kManualInterfaces[] = {
   "android.gfx.tests.IIPCTest",
   "android.gfx.tests.ISafeInterfaceTest",
   "android.graphicsenv.IGpuService",
-  "android.gui.DisplayEventConnection",
   "android.gui.IConsumerListener",
   "android.gui.IGraphicBufferConsumer",
   "android.gui.ITransactionComposerListener",
