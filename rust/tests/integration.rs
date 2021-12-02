@@ -16,7 +16,7 @@
 
 //! Rust Binder crate integration tests
 
-use binder::declare_binder_interface;
+use binder::{declare_binder_enum, declare_binder_interface};
 use binder::parcel::BorrowedParcel;
 use binder::{
     Binder, BinderFeatures, IBinderInternal, Interface, StatusCode, ThreadState, TransactionCode,
@@ -293,6 +293,23 @@ fn on_transact_same_descriptor(
 impl ITestSameDescriptor for BpTestSameDescriptor {}
 
 impl ITestSameDescriptor for Binder<BnTestSameDescriptor> {}
+
+declare_binder_enum! {
+    TestEnum : [i32; 3] {
+        FOO = 1,
+        BAR = 2,
+        BAZ = 3,
+    }
+}
+
+declare_binder_enum! {
+    #[deprecated(since = "1.0.0")]
+    TestDeprecatedEnum : [i32; 3] {
+        FOO = 1,
+        BAR = 2,
+        BAZ = 3,
+    }
+}
 
 #[cfg(test)]
 mod tests {
