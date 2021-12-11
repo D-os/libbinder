@@ -100,6 +100,7 @@ enum TestTransactionCode {
     Test = FIRST_CALL_TRANSACTION,
     GetDumpArgs,
     GetSelinuxContext,
+    GetIsHandlingTransaction,
 }
 
 impl TryFrom<u32> for TestTransactionCode {
@@ -112,6 +113,7 @@ impl TryFrom<u32> for TestTransactionCode {
             _ if c == TestTransactionCode::GetSelinuxContext as u32 => {
                 Ok(TestTransactionCode::GetSelinuxContext)
             }
+            _ if c == TestTransactionCode::GetIsHandlingTransaction as u32 => Ok(TestTransactionCode::GetIsHandlingTransaction),
             _ => Err(StatusCode::UNKNOWN_TRANSACTION),
         }
     }
@@ -140,6 +142,10 @@ impl ITest for TestService {
             ThreadState::with_calling_sid(|sid| sid.map(|s| s.to_string_lossy().into_owned()));
         sid.ok_or(StatusCode::UNEXPECTED_NULL)
     }
+
+    fn get_is_handling_transaction(&self) -> binder::Result<bool> {
+        Ok(binder::is_handling_transaction())
+    }
 }
 
 /// Trivial testing binder interface
@@ -152,6 +158,9 @@ pub trait ITest: Interface {
 
     /// Returns the caller's SELinux context
     fn get_selinux_context(&self) -> binder::Result<String>;
+
+    /// Returns the value of calling `is_handling_transaction`.
+    fn get_is_handling_transaction(&self) -> binder::Result<bool>;
 }
 
 /// Async trivial testing binder interface
@@ -164,6 +173,9 @@ pub trait IATest<P>: Interface {
 
     /// Returns the caller's SELinux context
     fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>>;
+
+    /// Returns the value of calling `is_handling_transaction`.
+    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, binder::Result<bool>>;
 }
 
 declare_binder_interface! {
@@ -186,6 +198,7 @@ fn on_transact(
         TestTransactionCode::Test => reply.write(&service.test()?),
         TestTransactionCode::GetDumpArgs => reply.write(&service.get_dump_args()?),
         TestTransactionCode::GetSelinuxContext => reply.write(&service.get_selinux_context()?),
+        TestTransactionCode::GetIsHandlingTransaction => reply.write(&service.get_is_handling_transaction()?),
     }
 }
 
@@ -207,6 +220,15 @@ impl ITest for BpTest {
     fn get_selinux_context(&self) -> binder::Result<String> {
         let reply = self.binder.transact(
             TestTransactionCode::GetSelinuxContext as TransactionCode,
+            0,
+            |_| Ok(()),
+        )?;
+        reply.read()
+    }
+
+    fn get_is_handling_transaction(&self) -> binder::Result<bool> {
+        let reply = self.binder.transact(
+            TestTransactionCode::GetIsHandlingTransaction as TransactionCode,
             0,
             |_| Ok(()),
         )?;
@@ -238,6 +260,14 @@ impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
             |reply| async move { reply?.read() }
         )
     }
+
+    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, binder::Result<bool>> {
+        let binder = self.binder.clone();
+        P::spawn(
+            move || binder.transact(TestTransactionCode::GetIsHandlingTransaction as TransactionCode, 0, |_| Ok(())),
+            |reply| async move { reply?.read() }
+        )
+    }
 }
 
 impl ITest for Binder<BnTest> {
@@ -251,6 +281,10 @@ impl ITest for Binder<BnTest> {
 
     fn get_selinux_context(&self) -> binder::Result<String> {
         self.0.get_selinux_context()
+    }
+
+    fn get_is_handling_transaction(&self) -> binder::Result<bool> {
+        self.0.get_is_handling_transaction()
     }
 }
 
@@ -267,6 +301,11 @@ impl<P: binder::BinderAsyncPool> IATest<P> for Binder<BnTest> {
 
     fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
         let res = self.0.get_selinux_context();
+        Box::pin(async move { res })
+    }
+
+    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, binder::Result<bool>> {
+        let res = self.0.get_is_handling_transaction();
         Box::pin(async move { res })
     }
 }
@@ -500,7 +539,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_selinux_context_async() {
-        let service_name = "get_selinux_context";
+        let service_name = "get_selinux_context_async";
         let _process = ScopedServiceProcess::new(service_name);
         let test_client: Strong<dyn IATest<Tokio>> =
             binder_tokio::get_interface(service_name).await.expect("Did not get manager binder service");
@@ -866,5 +905,46 @@ mod tests {
             Ok(_) => panic!("submit_transact should fail"),
             Err(err) => assert_eq!(err, binder::StatusCode::BAD_VALUE),
         }
+    }
+
+    #[test]
+    fn get_is_handling_transaction() {
+        let service_name = "get_is_handling_transaction";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn ITest> =
+            binder::get_interface(service_name).expect("Did not get manager binder service");
+        // Should be true externally.
+        assert!(test_client.get_is_handling_transaction().unwrap());
+
+        // Should be false locally.
+        assert!(!binder::is_handling_transaction());
+
+        // Should also be false in spawned thread.
+        std::thread::spawn(|| {
+            assert!(!binder::is_handling_transaction());
+        }).join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn get_is_handling_transaction_async() {
+        let service_name = "get_is_handling_transaction_async";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn IATest<Tokio>> =
+            binder_tokio::get_interface(service_name).await.expect("Did not get manager binder service");
+        // Should be true externally.
+        assert!(test_client.get_is_handling_transaction().await.unwrap());
+
+        // Should be false locally.
+        assert!(!binder::is_handling_transaction());
+
+        // Should also be false in spawned task.
+        tokio::spawn(async {
+            assert!(!binder::is_handling_transaction());
+        }).await.unwrap();
+
+        // And in spawn_blocking task.
+        tokio::task::spawn_blocking(|| {
+            assert!(!binder::is_handling_transaction());
+        }).await.unwrap();
     }
 }
