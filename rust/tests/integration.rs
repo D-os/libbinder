@@ -549,6 +549,32 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn get_selinux_context_sync_to_async() {
+        let service_name = "get_selinux_context";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn ITest> =
+            binder::get_interface(service_name).expect("Did not get manager binder service");
+        let test_client = test_client.into_async::<Tokio>();
+        assert_eq!(
+            test_client.get_selinux_context().await.unwrap(),
+            get_expected_selinux_context()
+        );
+    }
+
+    #[tokio::test]
+    async fn get_selinux_context_async_to_sync() {
+        let service_name = "get_selinux_context";
+        let _process = ScopedServiceProcess::new(service_name);
+        let test_client: Strong<dyn IATest<Tokio>> =
+            binder_tokio::get_interface(service_name).await.expect("Did not get manager binder service");
+        let test_client = test_client.into_sync();
+        assert_eq!(
+            test_client.get_selinux_context().unwrap(),
+            get_expected_selinux_context()
+        );
+    }
+
     struct Bools {
         binder_died: Arc<AtomicBool>,
         binder_dealloc: Arc<AtomicBool>,
