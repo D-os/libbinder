@@ -109,8 +109,8 @@ pub mod parcel;
 
 pub use crate::binder::{
     BinderFeatures, FromIBinder, IBinder, IBinderInternal, Interface, InterfaceClass, Remotable,
-    Stability, Strong, TransactionCode, TransactionFlags, Weak, FIRST_CALL_TRANSACTION,
-    FLAG_CLEAR_BUF, FLAG_ONEWAY, FLAG_PRIVATE_LOCAL, LAST_CALL_TRANSACTION,
+    Stability, Strong, ToAsyncInterface, ToSyncInterface, TransactionCode, TransactionFlags, Weak,
+    FIRST_CALL_TRANSACTION, FLAG_CLEAR_BUF, FLAG_ONEWAY, FLAG_PRIVATE_LOCAL, LAST_CALL_TRANSACTION,
 };
 pub use crate::binder_async::{BoxFuture, BinderAsyncPool};
 pub use error::{status_t, ExceptionCode, Result, Status, StatusCode};
