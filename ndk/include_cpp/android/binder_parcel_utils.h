@@ -560,7 +560,7 @@ static inline binder_status_t AParcel_readNullableParcelable(const AParcel* parc
             *p = std::nullopt;
             return STATUS_OK;
         }
-        *p = std::optional<first_template_type_t<P>>(first_template_type_t<P>{});
+        p->emplace(first_template_type_t<P>());
         return (*p)->readFromParcel(parcel);
     } else {
         static_assert(is_specialization_v<P, std::unique_ptr>);
