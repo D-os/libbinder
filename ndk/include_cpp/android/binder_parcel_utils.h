@@ -482,9 +482,7 @@ static inline binder_status_t AParcel_readVector(
 template <typename P>
 static inline binder_status_t AParcel_writeParcelable(AParcel* parcel, const P& p) {
     if constexpr (is_interface_v<P>) {
-        if (!p) {
-            return STATUS_UNEXPECTED_NULL;
-        }
+        // Legacy behavior: allow null
         return first_template_type_t<P>::writeToParcel(parcel, p);
     } else {
         static_assert(is_parcelable_v<P>);
@@ -502,13 +500,8 @@ static inline binder_status_t AParcel_writeParcelable(AParcel* parcel, const P& 
 template <typename P>
 static inline binder_status_t AParcel_readParcelable(const AParcel* parcel, P* p) {
     if constexpr (is_interface_v<P>) {
-        binder_status_t status = first_template_type_t<P>::readFromParcel(parcel, p);
-        if (status == STATUS_OK) {
-            if (!*p) {
-                return STATUS_UNEXPECTED_NULL;
-            }
-        }
-        return status;
+        // Legacy behavior: allow null
+        return first_template_type_t<P>::readFromParcel(parcel, p);
     } else {
         static_assert(is_parcelable_v<P>);
         int32_t null;
