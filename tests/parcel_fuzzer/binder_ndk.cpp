@@ -156,5 +156,21 @@ std::vector<ParcelRead<NdkParcelAdapter>> BINDER_NDK_PARCEL_READ_FUNCTIONS{
         PARCEL_READ(std::optional<std::vector<char16_t>>, ndk::AParcel_readVector),
         PARCEL_READ(std::vector<int32_t>, ndk::AParcel_resizeVector),
         PARCEL_READ(std::optional<std::vector<int32_t>>, ndk::AParcel_resizeVector),
+
+        // methods for std::array<T,N>
+#define COMMA ,
+        PARCEL_READ(std::array<bool COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<uint8_t COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<char16_t COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<int32_t COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<int64_t COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<float COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<double COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<std::string COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<SomeParcelable COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<ndk::SpAIBinder COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<ndk::ScopedFileDescriptor COMMA 3>, ndk::AParcel_readData),
+        PARCEL_READ(std::array<std::shared_ptr<ISomeInterface> COMMA 3>, ndk::AParcel_readData),
+#undef COMMA
 };
 // clang-format on
