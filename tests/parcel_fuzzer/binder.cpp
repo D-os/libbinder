@@ -233,6 +233,32 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_WITH_STATUS(std::optional<std::vector<std::optional<std::string>>>, readUtf8VectorFromUtf16Vector),
     PARCEL_READ_WITH_STATUS(std::vector<std::string>, readUtf8VectorFromUtf16Vector),
 
+#define COMMA ,
+    PARCEL_READ_WITH_STATUS(std::array<uint8_t COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<uint8_t COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<char16_t COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<char16_t COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<std::string COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<std::optional<std::string> COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<android::String16 COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<std::optional<android::String16> COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<android::sp<android::IBinder> COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<android::sp<android::IBinder> COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<ExampleParcelable COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<std::optional<ExampleParcelable> COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<ByteEnum COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<ByteEnum COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<IntEnum COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<IntEnum COMMA 3>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<LongEnum COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<LongEnum COMMA 3>>, readFixedArray),
+    // nested arrays
+    PARCEL_READ_WITH_STATUS(std::array<std::array<uint8_t COMMA 3> COMMA 4>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<std::array<uint8_t COMMA 3> COMMA 4>>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::array<ExampleParcelable COMMA 3>, readFixedArray),
+    PARCEL_READ_WITH_STATUS(std::optional<std::array<std::array<std::optional<ExampleParcelable> COMMA 3> COMMA 4>>, readFixedArray),
+#undef COMMA
+
     [] (const android::Parcel& p, uint8_t /*len*/) {
         FUZZ_LOG() << "about to read flattenable";
         ExampleFlattenable f;
