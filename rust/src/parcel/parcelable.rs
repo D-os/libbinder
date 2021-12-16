@@ -652,6 +652,39 @@ impl<T: DeserializeArray> DeserializeOption for Vec<T> {
     }
 }
 
+impl<T: SerializeArray, const N: usize> Serialize for [T; N] {
+    fn serialize(&self, parcel: &mut BorrowedParcel<'_>) -> Result<()> {
+        // forwards to T::serialize_array.
+        SerializeArray::serialize_array(self, parcel)
+    }
+}
+
+impl<T: SerializeArray, const N: usize> SerializeOption for [T; N] {
+    fn serialize_option(this: Option<&Self>, parcel: &mut BorrowedParcel<'_>) -> Result<()> {
+        SerializeOption::serialize_option(this.map(|arr| &arr[..]), parcel)
+    }
+}
+
+impl<T: SerializeArray, const N: usize> SerializeArray for [T; N] {}
+
+impl<T: DeserializeArray, const N: usize> Deserialize for [T; N] {
+    fn deserialize(parcel: &BorrowedParcel<'_>) -> Result<Self> {
+        let vec = DeserializeArray::deserialize_array(parcel)
+            .transpose()
+            .unwrap_or(Err(StatusCode::UNEXPECTED_NULL))?;
+        vec.try_into().or(Err(StatusCode::BAD_VALUE))
+    }
+}
+
+impl<T: DeserializeArray, const N: usize> DeserializeOption for [T; N] {
+    fn deserialize_option(parcel: &BorrowedParcel<'_>) -> Result<Option<Self>> {
+        let vec = DeserializeArray::deserialize_array(parcel)?;
+        vec.map(|v| v.try_into().or(Err(StatusCode::BAD_VALUE))).transpose()
+    }
+}
+
+impl<T: DeserializeArray, const N: usize> DeserializeArray for [T; N] {}
+
 impl Serialize for Stability {
     fn serialize(&self, parcel: &mut BorrowedParcel<'_>) -> Result<()> {
         i32::from(*self).serialize(parcel)
