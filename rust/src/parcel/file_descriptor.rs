@@ -60,6 +60,16 @@ impl IntoRawFd for ParcelFileDescriptor {
     }
 }
 
+impl PartialEq for ParcelFileDescriptor {
+    // Since ParcelFileDescriptors own the FD, if this function ever returns true (and it is used to
+    // compare two different objects), then it would imply that an FD is double-owned.
+    fn eq(&self, other: &Self) -> bool {
+        self.as_raw_fd() == other.as_raw_fd()
+    }
+}
+
+impl Eq for ParcelFileDescriptor {}
+
 impl Serialize for ParcelFileDescriptor {
     fn serialize(&self, parcel: &mut BorrowedParcel<'_>) -> Result<()> {
         let fd = self.0.as_raw_fd();
