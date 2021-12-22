@@ -146,6 +146,7 @@ LIBBINDER_NDK33 { # introduced=33
     AIBinder_Class_disableInterfaceTokenHeader;
     AIBinder_DeathRecipient_setOnUnlinked;
     AIBinder_isHandlingTransaction;
+    AIBinder_setInheritRt; # llndk
     AIBinder_setMinSchedulerPolicy; # llndk
     AParcel_marshal;
     AParcel_unmarshal;
