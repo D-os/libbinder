@@ -505,6 +505,31 @@ class MyTestFoo : public IFoo {
     }
 };
 
+TEST(NdkBinder, SetInheritRt) {
+    // functional test in binderLibTest
+    sp<IFoo> foo = sp<MyTestFoo>::make();
+    AIBinder* binder = foo->getBinder();
+
+    // does not abort
+    AIBinder_setInheritRt(binder, true);
+    AIBinder_setInheritRt(binder, false);
+    AIBinder_setInheritRt(binder, true);
+
+    AIBinder_decStrong(binder);
+}
+
+TEST(NdkBinder, SetInheritRtNonLocal) {
+    AIBinder* binder = AServiceManager_getService(kExistingNonNdkService);
+    ASSERT_NE(binder, nullptr);
+
+    ASSERT_TRUE(AIBinder_isRemote(binder));
+
+    EXPECT_DEATH(AIBinder_setInheritRt(binder, true), "");
+    EXPECT_DEATH(AIBinder_setInheritRt(binder, false), "");
+
+    AIBinder_decStrong(binder);
+}
+
 TEST(NdkBinder, AddNullService) {
     EXPECT_EQ(EX_ILLEGAL_ARGUMENT, AServiceManager_addService(nullptr, "any-service-name"));
 }
