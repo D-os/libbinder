@@ -799,3 +799,12 @@ AIBinder* AIBinder_fromPlatformBinder(const android::sp<android::IBinder>& binde
 void AIBinder_setMinSchedulerPolicy(AIBinder* binder, int policy, int priority) {
     binder->asABBinder()->setMinSchedulerPolicy(policy, priority);
 }
+
+void AIBinder_setInheritRt(AIBinder* binder, bool inheritRt) {
+    ABBinder* localBinder = binder->asABBinder();
+    if (localBinder == nullptr) {
+        LOG(FATAL) << "AIBinder_setInheritRt must be called on a local binder";
+    }
+
+    localBinder->setInheritRt(inheritRt);
+}
