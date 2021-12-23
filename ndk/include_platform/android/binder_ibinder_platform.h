@@ -74,6 +74,7 @@ void AIBinder_setMinSchedulerPolicy(AIBinder* binder, int policy, int priority) 
  * This must be called before the object is sent to another process. Not thread
  * safe.
  *
+ * \param binder local server binder to set the policy for
  * \param inheritRt whether to inherit realtime scheduling policies (default is
  *     false).
  */
