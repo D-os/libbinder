@@ -333,7 +333,6 @@ aidl_interface {
 cc_library {
     name: "libbinder_rpc_unstable",
     srcs: ["libbinder_rpc_unstable.cpp"],
-    defaults: ["libbinder_ndk_host_user"],
     shared_libs: [
         "libbase",
         "libbinder",
