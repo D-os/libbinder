@@ -16,15 +16,17 @@
 
 #include <binder/IPCThreadState.h>
 #include <binder/Parcel.h>
+#include <binder/Status.h>
 #include <cutils/ashmem.h>
 #include <gtest/gtest.h>
 
 using android::IPCThreadState;
 using android::OK;
 using android::Parcel;
+using android::status_t;
 using android::String16;
 using android::String8;
-using android::status_t;
+using android::binder::Status;
 
 TEST(Parcel, NonNullTerminatedString8) {
     String8 kTestString = String8("test-is-good");
@@ -58,6 +60,19 @@ TEST(Parcel, NonNullTerminatedString16) {
     String16 output;
     EXPECT_NE(OK, p.readString16(&output));
     EXPECT_EQ(output.size(), 0);
+}
+
+TEST(Parcel, EnforceNoDataAvail) {
+    const int32_t kTestInt = 42;
+    const String8 kTestString = String8("test-is-good");
+    Parcel p;
+    p.writeInt32(kTestInt);
+    p.writeString8(kTestString);
+    p.setDataPosition(0);
+    EXPECT_EQ(kTestInt, p.readInt32());
+    EXPECT_EQ(p.enforceNoDataAvail().exceptionCode(), Status::Exception::EX_BAD_PARCELABLE);
+    EXPECT_EQ(kTestString, p.readString8());
+    EXPECT_EQ(p.enforceNoDataAvail().exceptionCode(), Status::Exception::EX_NONE);
 }
 
 // Tests a second operation results in a parcel at the same location as it
