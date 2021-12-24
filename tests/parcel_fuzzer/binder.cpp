@@ -22,6 +22,7 @@
 #include <android/os/IServiceManager.h>
 #include <binder/ParcelableHolder.h>
 #include <binder/PersistableBundle.h>
+#include <binder/Status.h>
 
 using ::android::status_t;
 using ::android::base::HexString;
@@ -100,6 +101,7 @@ std::vector<ParcelRead<::android::Parcel>> BINDER_PARCEL_READ_FUNCTIONS {
     PARCEL_READ_NO_STATUS(size_t, dataAvail),
     PARCEL_READ_NO_STATUS(size_t, dataPosition),
     PARCEL_READ_NO_STATUS(size_t, dataCapacity),
+    PARCEL_READ_NO_STATUS(::android::binder::Status, enforceNoDataAvail),
     [] (const ::android::Parcel& p, uint8_t pos) {
         FUZZ_LOG() << "about to setDataPosition: " << pos;
         p.setDataPosition(pos);

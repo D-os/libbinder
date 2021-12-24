@@ -54,6 +54,9 @@ class ProcessState;
 class RpcSession;
 class String8;
 class TextOutput;
+namespace binder {
+class Status;
+}
 
 class Parcel {
     friend class IPCThreadState;
@@ -130,6 +133,10 @@ public:
                                          size_t len,
                                          IPCThreadState* threadState = nullptr) const;
     bool                checkInterface(IBinder*) const;
+
+    // Verify there are no bytes left to be read on the Parcel.
+    // Returns Status(EX_BAD_PARCELABLE) when the Parcel is not consumed.
+    binder::Status enforceNoDataAvail() const;
 
     void                freeData();
 
