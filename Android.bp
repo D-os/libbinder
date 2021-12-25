@@ -225,10 +225,7 @@ cc_library {
         "portability*",
     ],
 
-    pgo: {
-        sampling: true,
-        profile_file: "libbinder/libbinder.profdata",
-    },
+    afdo: true,
 }
 
 cc_defaults {
