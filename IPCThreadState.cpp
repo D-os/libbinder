@@ -352,11 +352,6 @@ bool IPCThreadState::backgroundSchedulingDisabled()
     return gDisableBackgroundScheduling.load(std::memory_order_relaxed);
 }
 
-sp<ProcessState> IPCThreadState::process()
-{
-    return mProcess;
-}
-
 status_t IPCThreadState::clearLastError()
 {
     const status_t err = mLastError;
