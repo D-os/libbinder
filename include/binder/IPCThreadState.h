@@ -54,8 +54,6 @@ public:
     static  status_t            getProcessFreezeInfo(pid_t pid, uint32_t *sync_received,
                                                     uint32_t *async_received);
 
-            sp<ProcessState>    process();
-
             status_t            clearLastError();
 
             /**
