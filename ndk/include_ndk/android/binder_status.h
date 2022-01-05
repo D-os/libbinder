@@ -32,10 +32,25 @@
 
 __BEGIN_DECLS
 
-#ifndef __ANDROID_API__
-#error Android builds must be compiled against a specific API. If this is an \
- android platform host build, you must use libbinder_ndk_host_user.
+#ifndef __BIONIC__
+
+#ifndef __INTRODUCED_IN
+#define __INTRODUCED_IN(n)
 #endif
+
+#ifndef __assert
+#define __assert(a, b, c)          \
+    do {                           \
+        syslog(LOG_ERR, a ": " c); \
+        abort();                   \
+    } while (false)
+#endif
+
+#ifndef __ANDROID_API__
+#define __ANDROID_API__ 10000
+#endif
+
+#endif  // __BIONIC__
 
 /**
  * Low-level status types for use in binder. This is the least preferable way to
