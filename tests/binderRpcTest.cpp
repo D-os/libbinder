@@ -1674,8 +1674,8 @@ public:
         static AssertionResult defaultPostConnect(RpcTransport* serverTransport,
                                                   FdTrigger* fdTrigger) {
             std::string message(kMessage);
-            auto status = serverTransport->interruptableWriteFully(fdTrigger, message.data(),
-                                                                   message.size(), {});
+            iovec messageIov{message.data(), message.size()};
+            auto status = serverTransport->interruptableWriteFully(fdTrigger, &messageIov, 1, {});
             if (status != OK) return AssertionFailure() << statusToString(status);
             return AssertionSuccess();
         }
@@ -1706,9 +1706,9 @@ public:
         AssertionResult readMessage(const std::string& expectedMessage = kMessage) {
             LOG_ALWAYS_FATAL_IF(mClientTransport == nullptr, "setUpTransport not called or failed");
             std::string readMessage(expectedMessage.size(), '\0');
-            status_t readStatus =
-                    mClientTransport->interruptableReadFully(mFdTrigger.get(), readMessage.data(),
-                                                             readMessage.size(), {});
+            iovec readMessageIov{readMessage.data(), readMessage.size()};
+            status_t readStatus = mClientTransport->interruptableReadFully(mFdTrigger.get(),
+                                                                           &readMessageIov, 1, {});
             if (readStatus != OK) {
                 return AssertionFailure() << statusToString(readStatus);
             }
@@ -1902,8 +1902,8 @@ TEST_P(RpcTransportTest, Trigger) {
     bool shouldContinueWriting = false;
     auto serverPostConnect = [&](RpcTransport* serverTransport, FdTrigger* fdTrigger) {
         std::string message(RpcTransportTestUtils::kMessage);
-        auto status = serverTransport->interruptableWriteFully(fdTrigger, message.data(),
-                                                               message.size(), {});
+        iovec messageIov{message.data(), message.size()};
+        auto status = serverTransport->interruptableWriteFully(fdTrigger, &messageIov, 1, {});
         if (status != OK) return AssertionFailure() << statusToString(status);
 
         {
@@ -1913,7 +1913,8 @@ TEST_P(RpcTransportTest, Trigger) {
             }
         }
 
-        status = serverTransport->interruptableWriteFully(fdTrigger, msg2.data(), msg2.size(), {});
+        iovec msg2Iov{msg2.data(), msg2.size()};
+        status = serverTransport->interruptableWriteFully(fdTrigger, &msg2Iov, 1, {});
         if (status != DEAD_OBJECT)
             return AssertionFailure() << "When FdTrigger is shut down, interruptableWriteFully "
                                          "should return DEAD_OBJECT, but it is "
