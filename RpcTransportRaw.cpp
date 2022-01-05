@@ -43,12 +43,10 @@ public:
         return ret;
     }
 
-    template <typename Buffer, typename SendOrReceive>
-    status_t interruptableReadOrWrite(FdTrigger* fdTrigger, Buffer buffer, size_t size,
+    template <typename SendOrReceive>
+    status_t interruptableReadOrWrite(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
                                       SendOrReceive sendOrReceiveFun, const char* funName,
                                       int16_t event, const std::function<status_t()>& altPoll) {
-        const Buffer end = buffer + size;
-
         MAYBE_WAIT_IN_FLAKE_MODE;
 
         // Since we didn't poll, we need to manually check to see if it was triggered. Otherwise, we
@@ -57,26 +55,61 @@ public:
             return DEAD_OBJECT;
         }
 
+        // If iovs has one or more empty vectors at the end and
+        // we somehow advance past all the preceding vectors and
+        // pass some or all of the empty ones to sendmsg/recvmsg,
+        // the call will return processSize == 0. In that case
+        // we should be returning OK but instead return DEAD_OBJECT.
+        // To avoid this problem, we make sure here that the last
+        // vector at iovs[niovs - 1] has a non-zero length.
+        while (niovs > 0 && iovs[niovs - 1].iov_len == 0) {
+            niovs--;
+        }
+        if (niovs == 0) {
+            // The vectors are all empty, so we have nothing to send.
+            return OK;
+        }
+
         bool havePolled = false;
         while (true) {
-            ssize_t processSize = TEMP_FAILURE_RETRY(
-                    sendOrReceiveFun(mSocket.get(), buffer, end - buffer, MSG_NOSIGNAL));
+            msghdr msg{
+                    .msg_iov = iovs,
+                    .msg_iovlen = niovs,
+            };
+            ssize_t processSize =
+                    TEMP_FAILURE_RETRY(sendOrReceiveFun(mSocket.get(), &msg, MSG_NOSIGNAL));
 
             if (processSize < 0) {
                 int savedErrno = errno;
 
                 // Still return the error on later passes, since it would expose
                 // a problem with polling
-                if (havePolled ||
-                    (!havePolled && savedErrno != EAGAIN && savedErrno != EWOULDBLOCK)) {
+                if (havePolled || (savedErrno != EAGAIN && savedErrno != EWOULDBLOCK)) {
                     LOG_RPC_DETAIL("RpcTransport %s(): %s", funName, strerror(savedErrno));
                     return -savedErrno;
                 }
             } else if (processSize == 0) {
                 return DEAD_OBJECT;
             } else {
-                buffer += processSize;
-                if (buffer == end) {
+                while (processSize > 0 && niovs > 0) {
+                    auto& iov = iovs[0];
+                    if (static_cast<size_t>(processSize) < iov.iov_len) {
+                        // Advance the base of the current iovec
+                        iov.iov_base = reinterpret_cast<char*>(iov.iov_base) + processSize;
+                        iov.iov_len -= processSize;
+                        break;
+                    }
+
+                    // The current iovec was fully written
+                    processSize -= iov.iov_len;
+                    iovs++;
+                    niovs--;
+                }
+                if (niovs == 0) {
+                    LOG_ALWAYS_FATAL_IF(processSize > 0,
+                                        "Reached the end of iovecs "
+                                        "with %zd bytes remaining",
+                                        processSize);
                     return OK;
                 }
             }
@@ -95,16 +128,16 @@ public:
         }
     }
 
-    status_t interruptableWriteFully(FdTrigger* fdTrigger, const void* data, size_t size,
+    status_t interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
                                      const std::function<status_t()>& altPoll) override {
-        return interruptableReadOrWrite(fdTrigger, reinterpret_cast<const uint8_t*>(data), size,
-                                        send, "send", POLLOUT, altPoll);
+        return interruptableReadOrWrite(fdTrigger, iovs, niovs, sendmsg, "sendmsg", POLLOUT,
+                                        altPoll);
     }
 
-    status_t interruptableReadFully(FdTrigger* fdTrigger, void* data, size_t size,
+    status_t interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
                                     const std::function<status_t()>& altPoll) override {
-        return interruptableReadOrWrite(fdTrigger, reinterpret_cast<uint8_t*>(data), size, recv,
-                                        "recv", POLLIN, altPoll);
+        return interruptableReadOrWrite(fdTrigger, iovs, niovs, recvmsg, "recvmsg", POLLIN,
+                                        altPoll);
     }
 
 private:

@@ -275,9 +275,9 @@ public:
     RpcTransportTls(android::base::unique_fd socket, Ssl ssl)
           : mSocket(std::move(socket)), mSsl(std::move(ssl)) {}
     Result<size_t> peek(void* buf, size_t size) override;
-    status_t interruptableWriteFully(FdTrigger* fdTrigger, const void* data, size_t size,
+    status_t interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
                                      const std::function<status_t()>& altPoll) override;
-    status_t interruptableReadFully(FdTrigger* fdTrigger, void* data, size_t size,
+    status_t interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
                                     const std::function<status_t()>& altPoll) override;
 
 private:
@@ -303,68 +303,83 @@ Result<size_t> RpcTransportTls::peek(void* buf, size_t size) {
     return ret;
 }
 
-status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, const void* data,
-                                                  size_t size,
+status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
                                                   const std::function<status_t()>& altPoll) {
-    auto buffer = reinterpret_cast<const uint8_t*>(data);
-    const uint8_t* end = buffer + size;
-
     MAYBE_WAIT_IN_FLAKE_MODE;
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
     if (fdTrigger->isTriggered()) return DEAD_OBJECT;
 
-    while (buffer < end) {
-        size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
-        auto [writeSize, errorQueue] = mSsl.call(SSL_write, buffer, todo);
-        if (writeSize > 0) {
-            buffer += writeSize;
-            errorQueue.clear();
+    size_t size = 0;
+    for (size_t i = 0; i < niovs; i++) {
+        const iovec& iov = iovs[i];
+        if (iov.iov_len == 0) {
             continue;
         }
-        // SSL_write() should never return 0 unless BIO_write were to return 0.
-        int sslError = mSsl.getError(writeSize);
-        // TODO(b/195788248): BIO should contain the FdTrigger, and send(2) / recv(2) should be
-        //   triggerablePoll()-ed. Then additionalEvent is no longer necessary.
-        status_t pollStatus = errorQueue.pollForSslError(mSocket.get(), sslError, fdTrigger,
-                                                         "SSL_write", POLLIN, altPoll);
-        if (pollStatus != OK) return pollStatus;
-        // Do not advance buffer. Try SSL_write() again.
+        size += iov.iov_len;
+
+        auto buffer = reinterpret_cast<const uint8_t*>(iov.iov_base);
+        const uint8_t* end = buffer + iov.iov_len;
+        while (buffer < end) {
+            size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
+            auto [writeSize, errorQueue] = mSsl.call(SSL_write, buffer, todo);
+            if (writeSize > 0) {
+                buffer += writeSize;
+                errorQueue.clear();
+                continue;
+            }
+            // SSL_write() should never return 0 unless BIO_write were to return 0.
+            int sslError = mSsl.getError(writeSize);
+            // TODO(b/195788248): BIO should contain the FdTrigger, and send(2) / recv(2) should be
+            //   triggerablePoll()-ed. Then additionalEvent is no longer necessary.
+            status_t pollStatus = errorQueue.pollForSslError(mSocket.get(), sslError, fdTrigger,
+                                                             "SSL_write", POLLIN, altPoll);
+            if (pollStatus != OK) return pollStatus;
+            // Do not advance buffer. Try SSL_write() again.
+        }
     }
     LOG_TLS_DETAIL("TLS: Sent %zu bytes!", size);
     return OK;
 }
 
-status_t RpcTransportTls::interruptableReadFully(FdTrigger* fdTrigger, void* data, size_t size,
+status_t RpcTransportTls::interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
                                                  const std::function<status_t()>& altPoll) {
-    auto buffer = reinterpret_cast<uint8_t*>(data);
-    uint8_t* end = buffer + size;
-
     MAYBE_WAIT_IN_FLAKE_MODE;
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
     if (fdTrigger->isTriggered()) return DEAD_OBJECT;
 
-    while (buffer < end) {
-        size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
-        auto [readSize, errorQueue] = mSsl.call(SSL_read, buffer, todo);
-        if (readSize > 0) {
-            buffer += readSize;
-            errorQueue.clear();
+    size_t size = 0;
+    for (size_t i = 0; i < niovs; i++) {
+        const iovec& iov = iovs[i];
+        if (iov.iov_len == 0) {
             continue;
         }
-        if (readSize == 0) {
-            // SSL_read() only returns 0 on EOF.
-            errorQueue.clear();
-            return DEAD_OBJECT;
+        size += iov.iov_len;
+
+        auto buffer = reinterpret_cast<uint8_t*>(iov.iov_base);
+        const uint8_t* end = buffer + iov.iov_len;
+        while (buffer < end) {
+            size_t todo = std::min<size_t>(end - buffer, std::numeric_limits<int>::max());
+            auto [readSize, errorQueue] = mSsl.call(SSL_read, buffer, todo);
+            if (readSize > 0) {
+                buffer += readSize;
+                errorQueue.clear();
+                continue;
+            }
+            if (readSize == 0) {
+                // SSL_read() only returns 0 on EOF.
+                errorQueue.clear();
+                return DEAD_OBJECT;
+            }
+            int sslError = mSsl.getError(readSize);
+            status_t pollStatus = errorQueue.pollForSslError(mSocket.get(), sslError, fdTrigger,
+                                                             "SSL_read", 0, altPoll);
+            if (pollStatus != OK) return pollStatus;
+            // Do not advance buffer. Try SSL_read() again.
         }
-        int sslError = mSsl.getError(readSize);
-        status_t pollStatus = errorQueue.pollForSslError(mSocket.get(), sslError, fdTrigger,
-                                                         "SSL_read", 0, altPoll);
-        if (pollStatus != OK) return pollStatus;
-        // Do not advance buffer. Try SSL_read() again.
     }
     LOG_TLS_DETAIL("TLS: Received %zu bytes!", size);
     return OK;
