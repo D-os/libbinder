@@ -32,17 +32,10 @@ license {
     ],
 }
 
+// TODO(b/211908498): remove this
 cc_defaults {
     name: "libbinder_ndk_host_user",
     target: {
-        host: {
-            cflags: [
-                "-D__INTRODUCED_IN(n)=",
-                "-D__assert(a,b,c)=do { syslog(LOG_ERR, a \": \" c); abort(); } while(false)",
-                // We want all the APIs to be available on the host.
-                "-D__ANDROID_API__=10000",
-            ],
-        },
         darwin: {
             enabled: false,
         },
@@ -52,7 +45,6 @@ cc_defaults {
 cc_library {
     name: "libbinder_ndk",
 
-    defaults: ["libbinder_ndk_host_user"],
     host_supported: true,
     recovery_available: true,
 
