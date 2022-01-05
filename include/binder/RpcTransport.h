@@ -28,6 +28,8 @@
 
 #include <binder/RpcCertificateFormat.h>
 
+#include <sys/uio.h>
+
 namespace android {
 
 class FdTrigger;
@@ -44,6 +46,9 @@ public:
     /**
      * Read (or write), but allow to be interrupted by a trigger.
      *
+     * iovs - array of iovecs to perform the operation on. The elements
+     * of the array may be modified by this method.
+     *
      * altPoll - function to be called instead of polling, when needing to wait
      * to read/write data. If this returns an error, that error is returned from
      * this function.
@@ -53,10 +58,10 @@ public:
      *   error - interrupted (failure or trigger)
      */
     [[nodiscard]] virtual status_t interruptableWriteFully(
-            FdTrigger *fdTrigger, const void *buf, size_t size,
+            FdTrigger *fdTrigger, iovec *iovs, size_t niovs,
             const std::function<status_t()> &altPoll) = 0;
     [[nodiscard]] virtual status_t interruptableReadFully(
-            FdTrigger *fdTrigger, void *buf, size_t size,
+            FdTrigger *fdTrigger, iovec *iovs, size_t niovs,
             const std::function<status_t()> &altPoll) = 0;
 
 protected:
