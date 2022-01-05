@@ -9,7 +9,6 @@ package {
 
 cc_fuzz {
     name: "binder_parcel_fuzzer",
-    defaults: ["libbinder_ndk_host_user"],
     host_supported: true,
 
     fuzz_config: {
@@ -50,6 +49,9 @@ cc_fuzz {
                 "libbinder",
             ],
         },
+        darwin: {
+            enabled: false,
+        },
     },
     // This flag enables verbose output in the fuzz target, and is very useful
     // for debugging a failure. If you are trying to diagnose how a crash was
@@ -63,7 +65,7 @@ cc_library_static {
     target: {
         darwin: {
             enabled: false,
-        }
+        },
     },
     srcs: [
         "random_fd.cpp",
