@@ -179,7 +179,6 @@ cc_test {
     },
     defaults: [
         "binder_test_defaults",
-        "libbinder_ndk_host_user",
         "libbinder_tls_shared_deps",
     ],
 
