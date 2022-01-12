@@ -320,11 +320,6 @@ sp<IBinder> ProcessState::getStrongProxyForHandle(int32_t handle)
                 //
                 // Note that this is not race-free if the context manager
                 // dies while this code runs.
-                //
-                // TODO: add a driver API to wait for context manager, or
-                // stop special casing handle 0 for context manager and add
-                // a driver API to get a handle to the context manager with
-                // proper reference counting.
 
                 IPCThreadState* ipc = IPCThreadState::self();
 
