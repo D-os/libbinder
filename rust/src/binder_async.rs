@@ -53,3 +53,9 @@ pub trait BinderAsyncPool {
         B: Send + 'a,
         E: From<crate::StatusCode>;
 }
+
+/// A runtime for executing an async binder server.
+pub trait BinderAsyncRuntime {
+    /// Block on the provided future, running it to completion and returning its output.
+    fn block_on<F: Future>(&self, future: F) -> F::Output;
+}

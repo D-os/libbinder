@@ -29,7 +29,7 @@
 //! [`Tokio`]: crate::Tokio
 
 use binder::public_api::{BinderAsyncPool, BoxFuture, Strong};
-use binder::{FromIBinder, StatusCode};
+use binder::{FromIBinder, StatusCode, BinderAsyncRuntime};
 use std::future::Future;
 
 /// Retrieve an existing service for a particular interface, sleeping for a few
@@ -118,5 +118,26 @@ impl BinderAsyncPool for Tokio {
                 }
             })
         }
+    }
+}
+
+/// Wrapper around Tokio runtime types for providing a runtime to a binder server.
+pub struct TokioRuntime<R>(pub R);
+
+impl BinderAsyncRuntime for TokioRuntime<tokio::runtime::Runtime> {
+    fn block_on<F: Future>(&self, future: F) -> F::Output {
+        self.0.block_on(future)
+    }
+}
+
+impl BinderAsyncRuntime for TokioRuntime<std::sync::Arc<tokio::runtime::Runtime>> {
+    fn block_on<F: Future>(&self, future: F) -> F::Output {
+        self.0.block_on(future)
+    }
+}
+
+impl BinderAsyncRuntime for TokioRuntime<tokio::runtime::Handle> {
+    fn block_on<F: Future>(&self, future: F) -> F::Output {
+        self.0.block_on(future)
     }
 }
