@@ -112,7 +112,7 @@ pub use crate::binder::{
     Stability, Strong, ToAsyncInterface, ToSyncInterface, TransactionCode, TransactionFlags, Weak,
     FIRST_CALL_TRANSACTION, FLAG_CLEAR_BUF, FLAG_ONEWAY, FLAG_PRIVATE_LOCAL, LAST_CALL_TRANSACTION,
 };
-pub use crate::binder_async::{BoxFuture, BinderAsyncPool};
+pub use crate::binder_async::{BoxFuture, BinderAsyncPool, BinderAsyncRuntime};
 pub use error::{status_t, ExceptionCode, Result, Status, StatusCode};
 pub use native::{add_service, force_lazy_services_persist, is_handling_transaction, register_lazy_service, Binder};
 pub use parcel::{BorrowedParcel, Parcel};
