@@ -752,6 +752,29 @@ TEST(NdkBinder, GetClassInterfaceDescriptor) {
     ASSERT_STREQ(IFoo::kIFooDescriptor, AIBinder_Class_getDescriptor(IFoo::kClass));
 }
 
+static void addOne(int* to) {
+    if (!to) return;
+    ++(*to);
+}
+struct FakeResource : public ndk::impl::ScopedAResource<int*, addOne, nullptr> {
+    explicit FakeResource(int* a) : ScopedAResource(a) {}
+};
+
+TEST(NdkBinder_ScopedAResource, GetDelete) {
+    int deleteCount = 0;
+    { FakeResource resource(&deleteCount); }
+    EXPECT_EQ(deleteCount, 1);
+}
+
+TEST(NdkBinder_ScopedAResource, Release) {
+    int deleteCount = 0;
+    {
+        FakeResource resource(&deleteCount);
+        (void)resource.release();
+    }
+    EXPECT_EQ(deleteCount, 0);
+}
+
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
 
