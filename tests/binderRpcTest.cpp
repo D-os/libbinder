@@ -1517,10 +1517,11 @@ TEST(BinderRpc, Java) {
     auto keepAlive = sp<BBinder>::make();
     auto setRpcClientDebugStatus = binder->setRpcClientDebug(std::move(socket), keepAlive);
 
-    if (!android::base::GetBoolProperty("ro.debuggable", false)) {
+    if (!android::base::GetBoolProperty("ro.debuggable", false) ||
+        android::base::GetProperty("ro.build.type", "") == "user") {
         ASSERT_EQ(INVALID_OPERATION, setRpcClientDebugStatus)
-                << "setRpcClientDebug should return INVALID_OPERATION on non-debuggable builds, "
-                   "but get "
+                << "setRpcClientDebug should return INVALID_OPERATION on non-debuggable or user "
+                   "builds, but get "
                 << statusToString(setRpcClientDebugStatus);
         GTEST_SKIP();
     }
