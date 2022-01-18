@@ -17,11 +17,13 @@
 //! Rust Binder crate integration tests
 
 use binder::{declare_binder_enum, declare_binder_interface};
-use binder::parcel::BorrowedParcel;
-use binder::{
-    Binder, BinderFeatures, IBinderInternal, Interface, StatusCode, ThreadState, TransactionCode,
-    FIRST_CALL_TRANSACTION,
+use binder::{BinderFeatures, Interface, StatusCode, ThreadState};
+// Import from internal API for testing only, do not use this module in
+// production.
+use binder::binder_impl::{
+    Binder, BorrowedParcel, IBinderInternal, TransactionCode, FIRST_CALL_TRANSACTION,
 };
+
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::fs::File;
@@ -120,7 +122,7 @@ impl TryFrom<u32> for TestTransactionCode {
 }
 
 impl Interface for TestService {
-    fn dump(&self, _file: &File, args: &[&CStr]) -> binder::Result<()> {
+    fn dump(&self, _file: &File, args: &[&CStr]) -> Result<(), StatusCode> {
         let mut dump_args = self.dump_args.lock().unwrap();
         dump_args.extend(args.iter().map(|s| s.to_str().unwrap().to_owned()));
         Ok(())
@@ -128,22 +130,22 @@ impl Interface for TestService {
 }
 
 impl ITest for TestService {
-    fn test(&self) -> binder::Result<String> {
+    fn test(&self) -> Result<String, StatusCode> {
         Ok(self.s.clone())
     }
 
-    fn get_dump_args(&self) -> binder::Result<Vec<String>> {
+    fn get_dump_args(&self) -> Result<Vec<String>, StatusCode> {
         let args = self.dump_args.lock().unwrap().clone();
         Ok(args)
     }
 
-    fn get_selinux_context(&self) -> binder::Result<String> {
+    fn get_selinux_context(&self) -> Result<String, StatusCode> {
         let sid =
             ThreadState::with_calling_sid(|sid| sid.map(|s| s.to_string_lossy().into_owned()));
         sid.ok_or(StatusCode::UNEXPECTED_NULL)
     }
 
-    fn get_is_handling_transaction(&self) -> binder::Result<bool> {
+    fn get_is_handling_transaction(&self) -> Result<bool, StatusCode> {
         Ok(binder::is_handling_transaction())
     }
 }
@@ -151,31 +153,31 @@ impl ITest for TestService {
 /// Trivial testing binder interface
 pub trait ITest: Interface {
     /// Returns a test string
-    fn test(&self) -> binder::Result<String>;
+    fn test(&self) -> Result<String, StatusCode>;
 
     /// Return the arguments sent via dump
-    fn get_dump_args(&self) -> binder::Result<Vec<String>>;
+    fn get_dump_args(&self) -> Result<Vec<String>, StatusCode>;
 
     /// Returns the caller's SELinux context
-    fn get_selinux_context(&self) -> binder::Result<String>;
+    fn get_selinux_context(&self) -> Result<String, StatusCode>;
 
     /// Returns the value of calling `is_handling_transaction`.
-    fn get_is_handling_transaction(&self) -> binder::Result<bool>;
+    fn get_is_handling_transaction(&self) -> Result<bool, StatusCode>;
 }
 
 /// Async trivial testing binder interface
 pub trait IATest<P>: Interface {
     /// Returns a test string
-    fn test(&self) -> binder::BoxFuture<'static, binder::Result<String>>;
+    fn test(&self) -> binder::BoxFuture<'static, Result<String, StatusCode>>;
 
     /// Return the arguments sent via dump
-    fn get_dump_args(&self) -> binder::BoxFuture<'static, binder::Result<Vec<String>>>;
+    fn get_dump_args(&self) -> binder::BoxFuture<'static, Result<Vec<String>, StatusCode>>;
 
     /// Returns the caller's SELinux context
-    fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>>;
+    fn get_selinux_context(&self) -> binder::BoxFuture<'static, Result<String, StatusCode>>;
 
     /// Returns the value of calling `is_handling_transaction`.
-    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, binder::Result<bool>>;
+    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, Result<bool, StatusCode>>;
 }
 
 declare_binder_interface! {
@@ -193,7 +195,7 @@ fn on_transact(
     code: TransactionCode,
     _data: &BorrowedParcel<'_>,
     reply: &mut BorrowedParcel<'_>,
-) -> binder::Result<()> {
+) -> Result<(), StatusCode> {
     match code.try_into()? {
         TestTransactionCode::Test => reply.write(&service.test()?),
         TestTransactionCode::GetDumpArgs => reply.write(&service.get_dump_args()?),
@@ -203,21 +205,21 @@ fn on_transact(
 }
 
 impl ITest for BpTest {
-    fn test(&self) -> binder::Result<String> {
+    fn test(&self) -> Result<String, StatusCode> {
         let reply =
             self.binder
                 .transact(TestTransactionCode::Test as TransactionCode, 0, |_| Ok(()))?;
         reply.read()
     }
 
-    fn get_dump_args(&self) -> binder::Result<Vec<String>> {
+    fn get_dump_args(&self) -> Result<Vec<String>, StatusCode> {
         let reply =
             self.binder
                 .transact(TestTransactionCode::GetDumpArgs as TransactionCode, 0, |_| Ok(()))?;
         reply.read()
     }
 
-    fn get_selinux_context(&self) -> binder::Result<String> {
+    fn get_selinux_context(&self) -> Result<String, StatusCode> {
         let reply = self.binder.transact(
             TestTransactionCode::GetSelinuxContext as TransactionCode,
             0,
@@ -226,7 +228,7 @@ impl ITest for BpTest {
         reply.read()
     }
 
-    fn get_is_handling_transaction(&self) -> binder::Result<bool> {
+    fn get_is_handling_transaction(&self) -> Result<bool, StatusCode> {
         let reply = self.binder.transact(
             TestTransactionCode::GetIsHandlingTransaction as TransactionCode,
             0,
@@ -237,7 +239,7 @@ impl ITest for BpTest {
 }
 
 impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
-    fn test(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+    fn test(&self) -> binder::BoxFuture<'static, Result<String, StatusCode>> {
         let binder = self.binder.clone();
         P::spawn(
             move || binder.transact(TestTransactionCode::Test as TransactionCode, 0, |_| Ok(())),
@@ -245,7 +247,7 @@ impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
         )
     }
 
-    fn get_dump_args(&self) -> binder::BoxFuture<'static, binder::Result<Vec<String>>> {
+    fn get_dump_args(&self) -> binder::BoxFuture<'static, Result<Vec<String>, StatusCode>> {
         let binder = self.binder.clone();
         P::spawn(
             move || binder.transact(TestTransactionCode::GetDumpArgs as TransactionCode, 0, |_| Ok(())),
@@ -253,7 +255,7 @@ impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
         )
     }
 
-    fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+    fn get_selinux_context(&self) -> binder::BoxFuture<'static, Result<String, StatusCode>> {
         let binder = self.binder.clone();
         P::spawn(
             move || binder.transact(TestTransactionCode::GetSelinuxContext as TransactionCode, 0, |_| Ok(())),
@@ -261,7 +263,7 @@ impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
         )
     }
 
-    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, binder::Result<bool>> {
+    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, Result<bool, StatusCode>> {
         let binder = self.binder.clone();
         P::spawn(
             move || binder.transact(TestTransactionCode::GetIsHandlingTransaction as TransactionCode, 0, |_| Ok(())),
@@ -271,40 +273,40 @@ impl<P: binder::BinderAsyncPool> IATest<P> for BpTest {
 }
 
 impl ITest for Binder<BnTest> {
-    fn test(&self) -> binder::Result<String> {
+    fn test(&self) -> Result<String, StatusCode> {
         self.0.test()
     }
 
-    fn get_dump_args(&self) -> binder::Result<Vec<String>> {
+    fn get_dump_args(&self) -> Result<Vec<String>, StatusCode> {
         self.0.get_dump_args()
     }
 
-    fn get_selinux_context(&self) -> binder::Result<String> {
+    fn get_selinux_context(&self) -> Result<String, StatusCode> {
         self.0.get_selinux_context()
     }
 
-    fn get_is_handling_transaction(&self) -> binder::Result<bool> {
+    fn get_is_handling_transaction(&self) -> Result<bool, StatusCode> {
         self.0.get_is_handling_transaction()
     }
 }
 
 impl<P: binder::BinderAsyncPool> IATest<P> for Binder<BnTest> {
-    fn test(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+    fn test(&self) -> binder::BoxFuture<'static, Result<String, StatusCode>> {
         let res = self.0.test();
         Box::pin(async move { res })
     }
 
-    fn get_dump_args(&self) -> binder::BoxFuture<'static, binder::Result<Vec<String>>> {
+    fn get_dump_args(&self) -> binder::BoxFuture<'static, Result<Vec<String>, StatusCode>> {
         let res = self.0.get_dump_args();
         Box::pin(async move { res })
     }
 
-    fn get_selinux_context(&self) -> binder::BoxFuture<'static, binder::Result<String>> {
+    fn get_selinux_context(&self) -> binder::BoxFuture<'static, Result<String, StatusCode>> {
         let res = self.0.get_selinux_context();
         Box::pin(async move { res })
     }
 
-    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, binder::Result<bool>> {
+    fn get_is_handling_transaction(&self) -> binder::BoxFuture<'static, Result<bool, StatusCode>> {
         let res = self.0.get_is_handling_transaction();
         Box::pin(async move { res })
     }
@@ -325,7 +327,7 @@ fn on_transact_same_descriptor(
     _code: TransactionCode,
     _data: &BorrowedParcel<'_>,
     _reply: &mut BorrowedParcel<'_>,
-) -> binder::Result<()> {
+) -> Result<(), StatusCode> {
     Ok(())
 }
 
@@ -363,9 +365,12 @@ mod tests {
     use std::time::Duration;
 
     use binder::{
-        Binder, BinderFeatures, DeathRecipient, FromIBinder, IBinder, IBinderInternal, Interface,
-        SpIBinder, StatusCode, Strong,
+        BinderFeatures, DeathRecipient, FromIBinder, IBinder, Interface, SpIBinder, StatusCode,
+        Strong,
     };
+    // Import from impl API for testing only, should not be necessary as long as
+    // you are using AIDL.
+    use binder::binder_impl::{Binder, IBinderInternal, TransactionCode};
 
     use binder_tokio::Tokio;
 
@@ -743,8 +748,7 @@ mod tests {
             let _process = ScopedServiceProcess::new(service_name);
 
             let test_client: Strong<dyn ITest> =
-                binder::get_interface(service_name)
-                .expect("Did not get test binder service");
+                binder::get_interface(service_name).expect("Did not get test binder service");
             let mut remote = test_client.as_binder();
             assert!(remote.is_binder_alive());
             remote.ping_binder().expect("Could not ping remote service");
@@ -925,7 +929,7 @@ mod tests {
         let service2 = service2.as_binder();
 
         let parcel = service1.prepare_transact().unwrap();
-        let res = service2.submit_transact(super::TestTransactionCode::Test as binder::TransactionCode, parcel, 0);
+        let res = service2.submit_transact(super::TestTransactionCode::Test as TransactionCode, parcel, 0);
 
         match res {
             Ok(_) => panic!("submit_transact should fail"),
