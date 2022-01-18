@@ -496,7 +496,7 @@ impl<'a> BorrowedParcel<'a> {
     {
         let start = self.get_data_position();
         let parcelable_size: i32 = self.read()?;
-        if parcelable_size < 0 {
+        if parcelable_size < 4 {
             return Err(StatusCode::BAD_VALUE);
         }
 
