@@ -802,32 +802,35 @@ impl<T: DeserializeOption> Deserialize for Option<T> {
 #[macro_export]
 macro_rules! impl_serialize_for_parcelable {
     ($parcelable:ident) => {
-        impl $crate::binder_impl::Serialize for $parcelable {
+        impl $crate::parcel::Serialize for $parcelable {
             fn serialize(
                 &self,
-                parcel: &mut $crate::binder_impl::BorrowedParcel<'_>,
-            ) -> std::result::Result<(), $crate::StatusCode> {
-                <Self as $crate::binder_impl::SerializeOption>::serialize_option(Some(self), parcel)
+                parcel: &mut $crate::parcel::BorrowedParcel<'_>,
+            ) -> $crate::Result<()> {
+                <Self as $crate::parcel::SerializeOption>::serialize_option(
+                    Some(self),
+                    parcel,
+                )
             }
         }
 
-        impl $crate::binder_impl::SerializeArray for $parcelable {}
+        impl $crate::parcel::SerializeArray for $parcelable {}
 
-        impl $crate::binder_impl::SerializeOption for $parcelable {
+        impl $crate::parcel::SerializeOption for $parcelable {
             fn serialize_option(
                 this: Option<&Self>,
-                parcel: &mut $crate::binder_impl::BorrowedParcel<'_>,
-            ) -> std::result::Result<(), $crate::StatusCode> {
+                parcel: &mut $crate::parcel::BorrowedParcel<'_>,
+            ) -> $crate::Result<()> {
                 if let Some(this) = this {
-                    use $crate::Parcelable;
-                    parcel.write(&$crate::binder_impl::NON_NULL_PARCELABLE_FLAG)?;
+                    use $crate::parcel::Parcelable;
+                    parcel.write(&$crate::parcel::NON_NULL_PARCELABLE_FLAG)?;
                     this.write_to_parcel(parcel)
                 } else {
-                    parcel.write(&$crate::binder_impl::NULL_PARCELABLE_FLAG)
+                    parcel.write(&$crate::parcel::NULL_PARCELABLE_FLAG)
                 }
             }
         }
-    };
+    }
 }
 
 /// Implement `Deserialize` trait and friends for a parcelable
@@ -839,54 +842,54 @@ macro_rules! impl_serialize_for_parcelable {
 #[macro_export]
 macro_rules! impl_deserialize_for_parcelable {
     ($parcelable:ident) => {
-        impl $crate::binder_impl::Deserialize for $parcelable {
+        impl $crate::parcel::Deserialize for $parcelable {
             fn deserialize(
-                parcel: &$crate::binder_impl::BorrowedParcel<'_>,
-            ) -> std::result::Result<Self, $crate::StatusCode> {
-                $crate::binder_impl::DeserializeOption::deserialize_option(parcel)
+                parcel: &$crate::parcel::BorrowedParcel<'_>,
+            ) -> $crate::Result<Self> {
+                $crate::parcel::DeserializeOption::deserialize_option(parcel)
                     .transpose()
                     .unwrap_or(Err($crate::StatusCode::UNEXPECTED_NULL))
             }
             fn deserialize_from(
                 &mut self,
-                parcel: &$crate::binder_impl::BorrowedParcel<'_>,
-            ) -> std::result::Result<(), $crate::StatusCode> {
+                parcel: &$crate::parcel::BorrowedParcel<'_>,
+            ) -> $crate::Result<()> {
                 let status: i32 = parcel.read()?;
-                if status == $crate::binder_impl::NULL_PARCELABLE_FLAG {
+                if status == $crate::parcel::NULL_PARCELABLE_FLAG {
                     Err($crate::StatusCode::UNEXPECTED_NULL)
                 } else {
-                    use $crate::Parcelable;
+                    use $crate::parcel::Parcelable;
                     self.read_from_parcel(parcel)
                 }
             }
         }
 
-        impl $crate::binder_impl::DeserializeArray for $parcelable {}
+        impl $crate::parcel::DeserializeArray for $parcelable {}
 
-        impl $crate::binder_impl::DeserializeOption for $parcelable {
+        impl $crate::parcel::DeserializeOption for $parcelable {
             fn deserialize_option(
-                parcel: &$crate::binder_impl::BorrowedParcel<'_>,
-            ) -> std::result::Result<Option<Self>, $crate::StatusCode> {
+                parcel: &$crate::parcel::BorrowedParcel<'_>,
+            ) -> $crate::Result<Option<Self>> {
                 let mut result = None;
                 Self::deserialize_option_from(&mut result, parcel)?;
                 Ok(result)
             }
             fn deserialize_option_from(
                 this: &mut Option<Self>,
-                parcel: &$crate::binder_impl::BorrowedParcel<'_>,
-            ) -> std::result::Result<(), $crate::StatusCode> {
+                parcel: &$crate::parcel::BorrowedParcel<'_>,
+            ) -> $crate::Result<()> {
                 let status: i32 = parcel.read()?;
-                if status == $crate::binder_impl::NULL_PARCELABLE_FLAG {
+                if status == $crate::parcel::NULL_PARCELABLE_FLAG {
                     *this = None;
                     Ok(())
                 } else {
-                    use $crate::Parcelable;
+                    use $crate::parcel::Parcelable;
                     this.get_or_insert_with(Self::default)
                         .read_from_parcel(parcel)
                 }
             }
         }
-    };
+    }
 }
 
 impl<T: Serialize> Serialize for Box<T> {
@@ -915,7 +918,7 @@ impl<T: DeserializeOption> DeserializeOption for Box<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parcel::Parcel;
+    use crate::Parcel;
     use super::*;
 
     #[test]
