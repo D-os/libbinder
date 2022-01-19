@@ -93,20 +93,20 @@ protected:
 
 // ----------------------------------------------------------------------
 
-#define DECLARE_META_INTERFACE(INTERFACE)                               \
-public:                                                                 \
-    static const ::android::String16 descriptor;                        \
-    static ::android::sp<I##INTERFACE> asInterface(                     \
-            const ::android::sp<::android::IBinder>& obj);              \
-    virtual const ::android::String16& getInterfaceDescriptor() const;  \
-    I##INTERFACE();                                                     \
-    virtual ~I##INTERFACE();                                            \
-    static bool setDefaultImpl(std::unique_ptr<I##INTERFACE> impl);     \
-    static const std::unique_ptr<I##INTERFACE>& getDefaultImpl();       \
-private:                                                                \
-    static std::unique_ptr<I##INTERFACE> default_impl;                  \
-public:                                                                 \
-
+#define DECLARE_META_INTERFACE(INTERFACE)                                                         \
+public:                                                                                           \
+    static const ::android::String16 descriptor;                                                  \
+    static ::android::sp<I##INTERFACE> asInterface(const ::android::sp<::android::IBinder>& obj); \
+    virtual const ::android::String16& getInterfaceDescriptor() const;                            \
+    I##INTERFACE();                                                                               \
+    virtual ~I##INTERFACE();                                                                      \
+    static bool setDefaultImpl(::android::sp<I##INTERFACE> impl);                                 \
+    static const ::android::sp<I##INTERFACE>& getDefaultImpl();                                   \
+                                                                                                  \
+private:                                                                                          \
+    static ::android::sp<I##INTERFACE> default_impl;                                              \
+                                                                                                  \
+public:
 
 #define __IINTF_CONCAT(x, y) (x ## y)
 
@@ -142,8 +142,8 @@ public:                                                                 \
         }                                                                                          \
         return intr;                                                                               \
     }                                                                                              \
-    std::unique_ptr<ITYPE> ITYPE::default_impl;                                                    \
-    bool ITYPE::setDefaultImpl(std::unique_ptr<ITYPE> impl) {                                      \
+    ::android::sp<ITYPE> ITYPE::default_impl;                                                      \
+    bool ITYPE::setDefaultImpl(::android::sp<ITYPE> impl) {                                        \
         /* Only one user of this interface can use this function     */                            \
         /* at a time. This is a heuristic to detect if two different */                            \
         /* users in the same process use this function.              */                            \
@@ -154,7 +154,7 @@ public:                                                                 \
         }                                                                                          \
         return false;                                                                              \
     }                                                                                              \
-    const std::unique_ptr<ITYPE>& ITYPE::getDefaultImpl() { return ITYPE::default_impl; }          \
+    const ::android::sp<ITYPE>& ITYPE::getDefaultImpl() { return ITYPE::default_impl; }            \
     ITYPE::INAME() {}                                                                              \
     ITYPE::~INAME() {}
 
