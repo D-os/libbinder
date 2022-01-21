@@ -312,17 +312,6 @@ impl<T: AsNative<sys::AIBinder>> IBinderInternal for T {
         }
     }
 
-    fn ping_binder(&mut self) -> Result<()> {
-        let status = unsafe {
-            // Safety: `SpIBinder` guarantees that `self` always contains a
-            // valid pointer to an `AIBinder`.
-            //
-            // This call does not affect ownership of its pointer parameter.
-            sys::AIBinder_ping(self.as_native_mut())
-        };
-        status_result(status)
-    }
-
     #[cfg(not(android_vndk))]
     fn set_requesting_sid(&mut self, enable: bool) {
         unsafe { sys::AIBinder_setRequestingSid(self.as_native_mut(), enable) };
@@ -411,6 +400,17 @@ impl<T: AsNative<sys::AIBinder>> IBinder for T {
                 recipient.get_cookie(),
             )
         })
+    }
+
+    fn ping_binder(&mut self) -> Result<()> {
+        let status = unsafe {
+            // Safety: `SpIBinder` guarantees that `self` always contains a
+            // valid pointer to an `AIBinder`.
+            //
+            // This call does not affect ownership of its pointer parameter.
+            sys::AIBinder_ping(self.as_native_mut())
+        };
+        status_result(status)
     }
 }
 
