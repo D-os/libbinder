@@ -310,9 +310,9 @@ RpcState::CommandData::CommandData(size_t size) : mSize(size) {
 }
 
 status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
-                           const sp<RpcSession>& session, const char* what, iovec* iovs,
-                           size_t niovs, const std::function<status_t()>& altPoll) {
-    for (size_t i = 0; i < niovs; i++) {
+                           const sp<RpcSession>& session, const char* what, iovec* iovs, int niovs,
+                           const std::function<status_t()>& altPoll) {
+    for (int i = 0; i < niovs; i++) {
         LOG_RPC_DETAIL("Sending %s on RpcTransport %p: %s", what, connection->rpcTransport.get(),
                        android::base::HexString(iovs[i].iov_base, iovs[i].iov_len).c_str());
     }
@@ -321,7 +321,7 @@ status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
                 connection->rpcTransport->interruptableWriteFully(session->mShutdownTrigger.get(),
                                                                   iovs, niovs, altPoll);
         status != OK) {
-        LOG_RPC_DETAIL("Failed to write %s (%zu iovs) on RpcTransport %p, error: %s", what, niovs,
+        LOG_RPC_DETAIL("Failed to write %s (%d iovs) on RpcTransport %p, error: %s", what, niovs,
                        connection->rpcTransport.get(), statusToString(status).c_str());
         (void)session->shutdownAndWait(false);
         return status;
@@ -331,19 +331,18 @@ status_t RpcState::rpcSend(const sp<RpcSession::RpcConnection>& connection,
 }
 
 status_t RpcState::rpcRec(const sp<RpcSession::RpcConnection>& connection,
-                          const sp<RpcSession>& session, const char* what, iovec* iovs,
-                          size_t niovs) {
+                          const sp<RpcSession>& session, const char* what, iovec* iovs, int niovs) {
     if (status_t status =
                 connection->rpcTransport->interruptableReadFully(session->mShutdownTrigger.get(),
                                                                  iovs, niovs, {});
         status != OK) {
-        LOG_RPC_DETAIL("Failed to read %s (%zu iovs) on RpcTransport %p, error: %s", what, niovs,
+        LOG_RPC_DETAIL("Failed to read %s (%d iovs) on RpcTransport %p, error: %s", what, niovs,
                        connection->rpcTransport.get(), statusToString(status).c_str());
         (void)session->shutdownAndWait(false);
         return status;
     }
 
-    for (size_t i = 0; i < niovs; i++) {
+    for (int i = 0; i < niovs; i++) {
         LOG_RPC_DETAIL("Received %s on RpcTransport %p: %s", what, connection->rpcTransport.get(),
                        android::base::HexString(iovs[i].iov_base, iovs[i].iov_len).c_str());
     }
