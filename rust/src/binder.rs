@@ -192,9 +192,6 @@ pub trait IBinderInternal: IBinder {
     /// Is this object still alive?
     fn is_binder_alive(&self) -> bool;
 
-    /// Send a ping transaction to this object
-    fn ping_binder(&mut self) -> Result<()>;
-
     /// Indicate that the service intends to receive caller security contexts.
     #[cfg(not(android_vndk))]
     fn set_requesting_sid(&mut self, enable: bool);
@@ -270,6 +267,9 @@ pub trait IBinder {
     /// The recipient will no longer be called if this object
     /// dies.
     fn unlink_to_death(&mut self, recipient: &mut DeathRecipient) -> Result<()>;
+
+    /// Send a ping transaction to this object
+    fn ping_binder(&mut self) -> Result<()>;
 }
 
 /// Opaque reference to the type of a Binder interface.
