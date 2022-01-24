@@ -16,8 +16,10 @@
 
 use crate::binder::Stability;
 use crate::error::StatusCode;
-use crate::parcel::{BorrowedParcel, Parcel, Parcelable};
-use crate::{impl_deserialize_for_parcelable, impl_serialize_for_parcelable};
+use crate::parcel::{
+    BorrowedParcel, Deserialize, Parcel, Parcelable, Serialize, NON_NULL_PARCELABLE_FLAG,
+    NULL_PARCELABLE_FLAG,
+};
 
 use downcast_rs::{impl_downcast, DowncastSync};
 use std::any::Any;
@@ -53,12 +55,6 @@ enum ParcelableHolderData {
     Parcel(Parcel),
 }
 
-impl Default for ParcelableHolderData {
-    fn default() -> Self {
-        ParcelableHolderData::Empty
-    }
-}
-
 /// A container that can hold any arbitrary `Parcelable`.
 ///
 /// This type is currently used for AIDL parcelable fields.
@@ -66,7 +62,7 @@ impl Default for ParcelableHolderData {
 /// `ParcelableHolder` is currently not thread-safe (neither
 /// `Send` nor `Sync`), mainly because it internally contains
 /// a `Parcel` which in turn is not thread-safe.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ParcelableHolder {
     // This is a `Mutex` because of `get_parcelable`
     // which takes `&self` for consistency with C++.
@@ -176,8 +172,25 @@ impl ParcelableHolder {
     }
 }
 
-impl_serialize_for_parcelable!(ParcelableHolder);
-impl_deserialize_for_parcelable!(ParcelableHolder);
+impl Serialize for ParcelableHolder {
+    fn serialize(&self, parcel: &mut BorrowedParcel<'_>) -> Result<(), StatusCode> {
+        parcel.write(&NON_NULL_PARCELABLE_FLAG)?;
+        self.write_to_parcel(parcel)
+    }
+}
+
+impl Deserialize for ParcelableHolder {
+    fn deserialize(parcel: &BorrowedParcel<'_>) -> Result<Self, StatusCode> {
+        let status: i32 = parcel.read()?;
+        if status == NULL_PARCELABLE_FLAG {
+            Err(StatusCode::UNEXPECTED_NULL)
+        } else {
+            let mut parcelable = ParcelableHolder::new(Default::default());
+            parcelable.read_from_parcel(parcel)?;
+            Ok(parcelable)
+        }
+    }
+}
 
 impl Parcelable for ParcelableHolder {
     fn write_to_parcel(&self, parcel: &mut BorrowedParcel<'_>) -> Result<(), StatusCode> {
