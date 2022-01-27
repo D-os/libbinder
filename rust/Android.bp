@@ -44,6 +44,7 @@ rust_library {
         "libtokio",
     ],
     host_supported: true,
+    vendor_available: true,
     target: {
         darwin: {
             enabled: false,
@@ -52,8 +53,10 @@ rust_library {
     apex_available: [
         "//apex_available:platform",
         "com.android.compos",
+        "com.android.uwb",
         "com.android.virt",
     ],
+    min_sdk_version: "Tiramisu",
 }
 
 rust_library {
