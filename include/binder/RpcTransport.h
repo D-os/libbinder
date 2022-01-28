@@ -58,10 +58,10 @@ public:
      *   error - interrupted (failure or trigger)
      */
     [[nodiscard]] virtual status_t interruptableWriteFully(
-            FdTrigger *fdTrigger, iovec *iovs, size_t niovs,
+            FdTrigger *fdTrigger, iovec *iovs, int niovs,
             const std::function<status_t()> &altPoll) = 0;
     [[nodiscard]] virtual status_t interruptableReadFully(
-            FdTrigger *fdTrigger, iovec *iovs, size_t niovs,
+            FdTrigger *fdTrigger, iovec *iovs, int niovs,
             const std::function<status_t()> &altPoll) = 0;
 
 protected:
