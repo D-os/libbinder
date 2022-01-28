@@ -180,11 +180,10 @@ private:
 
     [[nodiscard]] status_t rpcSend(const sp<RpcSession::RpcConnection>& connection,
                                    const sp<RpcSession>& session, const char* what, iovec* iovs,
-                                   size_t niovs,
-                                   const std::function<status_t()>& altPoll = nullptr);
+                                   int niovs, const std::function<status_t()>& altPoll = nullptr);
     [[nodiscard]] status_t rpcRec(const sp<RpcSession::RpcConnection>& connection,
                                   const sp<RpcSession>& session, const char* what, iovec* iovs,
-                                  size_t niovs);
+                                  int niovs);
 
     [[nodiscard]] status_t waitForReply(const sp<RpcSession::RpcConnection>& connection,
                                         const sp<RpcSession>& session, Parcel* reply);
