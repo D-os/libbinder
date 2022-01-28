@@ -275,9 +275,9 @@ public:
     RpcTransportTls(android::base::unique_fd socket, Ssl ssl)
           : mSocket(std::move(socket)), mSsl(std::move(ssl)) {}
     Result<size_t> peek(void* buf, size_t size) override;
-    status_t interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
+    status_t interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, int niovs,
                                      const std::function<status_t()>& altPoll) override;
-    status_t interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
+    status_t interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, int niovs,
                                     const std::function<status_t()>& altPoll) override;
 
 private:
@@ -303,16 +303,18 @@ Result<size_t> RpcTransportTls::peek(void* buf, size_t size) {
     return ret;
 }
 
-status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
+status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, int niovs,
                                                   const std::function<status_t()>& altPoll) {
     MAYBE_WAIT_IN_FLAKE_MODE;
+
+    if (niovs < 0) return BAD_VALUE;
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
     if (fdTrigger->isTriggered()) return DEAD_OBJECT;
 
     size_t size = 0;
-    for (size_t i = 0; i < niovs; i++) {
+    for (int i = 0; i < niovs; i++) {
         const iovec& iov = iovs[i];
         if (iov.iov_len == 0) {
             continue;
@@ -343,16 +345,18 @@ status_t RpcTransportTls::interruptableWriteFully(FdTrigger* fdTrigger, iovec* i
     return OK;
 }
 
-status_t RpcTransportTls::interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
+status_t RpcTransportTls::interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, int niovs,
                                                  const std::function<status_t()>& altPoll) {
     MAYBE_WAIT_IN_FLAKE_MODE;
+
+    if (niovs < 0) return BAD_VALUE;
 
     // Before doing any I/O, check trigger once. This ensures the trigger is checked at least
     // once. The trigger is also checked via triggerablePoll() after every SSL_write().
     if (fdTrigger->isTriggered()) return DEAD_OBJECT;
 
     size_t size = 0;
-    for (size_t i = 0; i < niovs; i++) {
+    for (int i = 0; i < niovs; i++) {
         const iovec& iov = iovs[i];
         if (iov.iov_len == 0) {
             continue;

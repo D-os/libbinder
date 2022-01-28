@@ -44,10 +44,14 @@ public:
     }
 
     template <typename SendOrReceive>
-    status_t interruptableReadOrWrite(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
+    status_t interruptableReadOrWrite(FdTrigger* fdTrigger, iovec* iovs, int niovs,
                                       SendOrReceive sendOrReceiveFun, const char* funName,
                                       int16_t event, const std::function<status_t()>& altPoll) {
         MAYBE_WAIT_IN_FLAKE_MODE;
+
+        if (niovs < 0) {
+            return BAD_VALUE;
+        }
 
         // Since we didn't poll, we need to manually check to see if it was triggered. Otherwise, we
         // may never know we should be shutting down.
@@ -74,7 +78,9 @@ public:
         while (true) {
             msghdr msg{
                     .msg_iov = iovs,
-                    .msg_iovlen = niovs,
+                    // posix uses int, glibc uses size_t.  niovs is a
+                    // non-negative int and can be cast to either.
+                    .msg_iovlen = static_cast<decltype(msg.msg_iovlen)>(niovs),
             };
             ssize_t processSize =
                     TEMP_FAILURE_RETRY(sendOrReceiveFun(mSocket.get(), &msg, MSG_NOSIGNAL));
@@ -128,13 +134,13 @@ public:
         }
     }
 
-    status_t interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
+    status_t interruptableWriteFully(FdTrigger* fdTrigger, iovec* iovs, int niovs,
                                      const std::function<status_t()>& altPoll) override {
         return interruptableReadOrWrite(fdTrigger, iovs, niovs, sendmsg, "sendmsg", POLLOUT,
                                         altPoll);
     }
 
-    status_t interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, size_t niovs,
+    status_t interruptableReadFully(FdTrigger* fdTrigger, iovec* iovs, int niovs,
                                     const std::function<status_t()>& altPoll) override {
         return interruptableReadOrWrite(fdTrigger, iovs, niovs, recvmsg, "recvmsg", POLLIN,
                                         altPoll);
