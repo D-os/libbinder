@@ -43,6 +43,8 @@
 
 namespace android {
 
+using AidlRegistrationCallback = IServiceManager::LocalRegistrationCallback;
+
 using AidlServiceManager = android::os::IServiceManager;
 using android::binder::Status;
 
@@ -79,7 +81,24 @@ public:
     Vector<String16> getDeclaredInstances(const String16& interface) override;
     std::optional<String16> updatableViaApex(const String16& name) override;
     std::optional<IServiceManager::ConnectionInfo> getConnectionInfo(const String16& name) override;
+    class RegistrationWaiter : public android::os::BnServiceCallback {
+    public:
+        explicit RegistrationWaiter(const sp<AidlRegistrationCallback>& callback)
+              : mImpl(callback) {}
+        Status onRegistration(const std::string& name, const sp<IBinder>& binder) override {
+            mImpl->onServiceRegistration(String16(name.c_str()), binder);
+            return Status::ok();
+        }
 
+    private:
+        sp<AidlRegistrationCallback> mImpl;
+    };
+
+    status_t registerForNotifications(const String16& service,
+                                      const sp<AidlRegistrationCallback>& cb) override;
+
+    status_t unregisterForNotifications(const String16& service,
+                                        const sp<AidlRegistrationCallback>& cb) override;
     // for legacy ABI
     const String16& getInterfaceDescriptor() const override {
         return mTheRealServiceManager->getInterfaceDescriptor();
@@ -90,6 +109,17 @@ public:
 
 protected:
     sp<AidlServiceManager> mTheRealServiceManager;
+    // AidlRegistrationCallback -> services that its been registered for
+    // notifications.
+    using LocalRegistrationAndWaiter =
+            std::pair<sp<LocalRegistrationCallback>, sp<RegistrationWaiter>>;
+    using ServiceCallbackMap = std::map<std::string, std::vector<LocalRegistrationAndWaiter>>;
+    ServiceCallbackMap mNameToRegistrationCallback;
+    std::mutex mNameToRegistrationLock;
+
+    void removeRegistrationCallbackLocked(const sp<AidlRegistrationCallback>& cb,
+                                          ServiceCallbackMap::iterator* it,
+                                          sp<RegistrationWaiter>* waiter);
 
     // Directly get the service in a way that, for lazy services, requests the service to be started
     // if it is not currently started. This way, calls directly to ServiceManagerShim::getService
@@ -440,6 +470,77 @@ std::optional<IServiceManager::ConnectionInfo> ServiceManagerShim::getConnection
             ? std::make_optional<IServiceManager::ConnectionInfo>(
                       {connectionInfo->ipAddress, static_cast<unsigned int>(connectionInfo->port)})
             : std::nullopt;
+}
+
+status_t ServiceManagerShim::registerForNotifications(const String16& name,
+                                                      const sp<AidlRegistrationCallback>& cb) {
+    if (cb == nullptr) {
+        ALOGE("%s: null cb passed", __FUNCTION__);
+        return BAD_VALUE;
+    }
+    std::string nameStr = String8(name).c_str();
+    sp<RegistrationWaiter> registrationWaiter = sp<RegistrationWaiter>::make(cb);
+    std::lock_guard<std::mutex> lock(mNameToRegistrationLock);
+    if (Status status =
+                mTheRealServiceManager->registerForNotifications(nameStr, registrationWaiter);
+        !status.isOk()) {
+        ALOGW("Failed to registerForNotifications for %s: %s", nameStr.c_str(),
+              status.toString8().c_str());
+        return UNKNOWN_ERROR;
+    }
+    mNameToRegistrationCallback[nameStr].push_back(std::make_pair(cb, registrationWaiter));
+    return OK;
+}
+
+void ServiceManagerShim::removeRegistrationCallbackLocked(const sp<AidlRegistrationCallback>& cb,
+                                                          ServiceCallbackMap::iterator* it,
+                                                          sp<RegistrationWaiter>* waiter) {
+    std::vector<LocalRegistrationAndWaiter>& localRegistrationAndWaiters = (*it)->second;
+    for (auto lit = localRegistrationAndWaiters.begin();
+         lit != localRegistrationAndWaiters.end();) {
+        if (lit->first == cb) {
+            if (waiter) {
+                *waiter = lit->second;
+            }
+            lit = localRegistrationAndWaiters.erase(lit);
+        } else {
+            ++lit;
+        }
+    }
+
+    if (localRegistrationAndWaiters.empty()) {
+        mNameToRegistrationCallback.erase(*it);
+    }
+}
+
+status_t ServiceManagerShim::unregisterForNotifications(const String16& name,
+                                                        const sp<AidlRegistrationCallback>& cb) {
+    if (cb == nullptr) {
+        ALOGE("%s: null cb passed", __FUNCTION__);
+        return BAD_VALUE;
+    }
+    std::string nameStr = String8(name).c_str();
+    std::lock_guard<std::mutex> lock(mNameToRegistrationLock);
+    auto it = mNameToRegistrationCallback.find(nameStr);
+    sp<RegistrationWaiter> registrationWaiter;
+    if (it != mNameToRegistrationCallback.end()) {
+        removeRegistrationCallbackLocked(cb, &it, &registrationWaiter);
+    } else {
+        ALOGE("%s no callback registered for notifications on %s", __FUNCTION__, nameStr.c_str());
+        return BAD_VALUE;
+    }
+    if (registrationWaiter == nullptr) {
+        ALOGE("%s Callback passed wasn't used to register for notifications", __FUNCTION__);
+        return BAD_VALUE;
+    }
+    if (Status status = mTheRealServiceManager->unregisterForNotifications(String8(name).c_str(),
+                                                                           registrationWaiter);
+        !status.isOk()) {
+        ALOGW("Failed to get service manager to unregisterForNotifications for %s: %s",
+              String8(name).c_str(), status.toString8().c_str());
+        return UNKNOWN_ERROR;
+    }
+    return OK;
 }
 
 #ifndef __ANDROID__
