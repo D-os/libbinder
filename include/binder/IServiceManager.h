@@ -115,6 +115,17 @@ public:
         unsigned int port;
     };
     virtual std::optional<ConnectionInfo> getConnectionInfo(const String16& name) = 0;
+
+    struct LocalRegistrationCallback : public virtual RefBase {
+        virtual void onServiceRegistration(const String16& instance, const sp<IBinder>& binder) = 0;
+        virtual ~LocalRegistrationCallback() {}
+    };
+
+    virtual status_t registerForNotifications(const String16& name,
+                                              const sp<LocalRegistrationCallback>& callback) = 0;
+
+    virtual status_t unregisterForNotifications(const String16& name,
+                                                const sp<LocalRegistrationCallback>& callback) = 0;
 };
 
 sp<IServiceManager> defaultServiceManager();

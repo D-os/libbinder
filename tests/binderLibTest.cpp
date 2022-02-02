@@ -1220,6 +1220,19 @@ TEST_F(BinderLibTest, GotSid) {
     EXPECT_THAT(server->transact(BINDER_LIB_TEST_CAN_GET_SID, data, nullptr), StatusEq(OK));
 }
 
+TEST(ServiceNotifications, Unregister) {
+    auto sm = defaultServiceManager();
+    using LocalRegistrationCallback = IServiceManager::LocalRegistrationCallback;
+    class LocalRegistrationCallbackImpl : public virtual LocalRegistrationCallback {
+        void onServiceRegistration(const String16 &, const sp<IBinder> &) override {}
+        virtual ~LocalRegistrationCallbackImpl() {}
+    };
+    sp<LocalRegistrationCallback> cb = sp<LocalRegistrationCallbackImpl>::make();
+
+    EXPECT_EQ(sm->registerForNotifications(String16("RogerRafa"), cb), OK);
+    EXPECT_EQ(sm->unregisterForNotifications(String16("RogerRafa"), cb), OK);
+}
+
 class BinderLibRpcTestBase : public BinderLibTest {
 public:
     void SetUp() override {
