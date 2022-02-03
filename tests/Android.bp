@@ -37,7 +37,11 @@ cc_test {
     srcs: ["binderDriverInterfaceTest.cpp"],
     header_libs: ["libbinder_headers"],
     compile_multilib: "32",
-    multilib: { lib32: { suffix: "" } },
+    multilib: {
+        lib32: {
+            suffix: "",
+        },
+    },
     cflags: ["-DBINDER_IPC_32BIT=1"],
     test_suites: ["vts"],
 }
@@ -52,7 +56,10 @@ cc_test {
     },
     header_libs: ["libbinder_headers"],
     srcs: ["binderDriverInterfaceTest.cpp"],
-    test_suites: ["device-tests", "vts"],
+    test_suites: [
+        "device-tests",
+        "vts",
+    ],
 }
 
 cc_test {
@@ -69,7 +76,11 @@ cc_test {
         "libgmock",
     ],
     compile_multilib: "32",
-    multilib: { lib32: { suffix: "" } },
+    multilib: {
+        lib32: {
+            suffix: "",
+        },
+    },
     cflags: ["-DBINDER_IPC_32BIT=1"],
     test_suites: ["vts"],
     require_root: true,
@@ -84,7 +95,10 @@ cc_test {
             enabled: false,
         },
     },
-    srcs: ["binderParcelUnitTest.cpp", "binderBinderUnitTest.cpp"],
+    srcs: [
+        "binderParcelUnitTest.cpp",
+        "binderBinderUnitTest.cpp",
+    ],
     shared_libs: [
         "libbinder",
         "libcutils",
@@ -112,7 +126,10 @@ cc_test {
     static_libs: [
         "libgmock",
     ],
-    test_suites: ["device-tests", "vts"],
+    test_suites: [
+        "device-tests",
+        "vts",
+    ],
     require_root: true,
 }
 
@@ -232,7 +249,10 @@ cc_test {
         "libbinder_tls_test_utils",
         "libbinder_tls_static",
     ],
-    test_suites: ["general-tests", "device-tests"],
+    test_suites: [
+        "general-tests",
+        "device-tests",
+    ],
 }
 
 cc_benchmark {
@@ -348,7 +368,10 @@ cc_test {
         "liblog",
         "libutils",
     ],
-    test_suites: ["device-tests", "vts"],
+    test_suites: [
+        "device-tests",
+        "vts",
+    ],
     require_root: true,
 }
 
@@ -402,7 +425,10 @@ cc_test {
         "binderStabilityTestIface-ndk",
     ],
 
-    test_suites: ["device-tests", "vts"],
+    test_suites: [
+        "device-tests",
+        "vts",
+    ],
     require_root: true,
 }
 
