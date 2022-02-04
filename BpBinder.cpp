@@ -48,6 +48,9 @@ uint32_t BpBinder::sBinderProxyCountHighWatermark = 2500;
 // Another arbitrary value a binder count needs to drop below before another callback will be called
 uint32_t BpBinder::sBinderProxyCountLowWatermark = 2000;
 
+// Log any transactions for which the data exceeds this size
+#define LOG_TRANSACTIONS_OVER_SIZE (300 * 1024)
+
 enum {
     LIMIT_REACHED_MASK = 0x80000000,        // A flag denoting that the limit has been reached
     COUNTING_VALUE_MASK = 0x7FFFFFFF,       // A mask of the remaining bits for the count value
@@ -301,6 +304,14 @@ status_t BpBinder::transact(
                                             flags);
         } else {
             status = IPCThreadState::self()->transact(binderHandle(), code, data, reply, flags);
+        }
+        if (data.dataSize() > LOG_TRANSACTIONS_OVER_SIZE) {
+            Mutex::Autolock _l(mLock);
+            ALOGW("Large outgoing transaction of %zu bytes, interface descriptor %s, code %d",
+                  data.dataSize(),
+                  mDescriptorCache.size() ? String8(mDescriptorCache).c_str()
+                                          : "<uncached descriptor>",
+                  code);
         }
 
         if (status == DEAD_OBJECT) mAlive = 0;

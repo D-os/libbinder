@@ -54,6 +54,8 @@ constexpr const bool kEnableRpcDevServers = true;
 constexpr const bool kEnableRpcDevServers = false;
 #endif
 
+// Log any reply transactions for which the data exceeds this size
+#define LOG_REPLIES_OVER_SIZE (300 * 1024)
 // ---------------------------------------------------------------------------
 
 IBinder::IBinder()
@@ -296,6 +298,10 @@ status_t BBinder::transact(
     // In case this is being transacted on in the same process.
     if (reply != nullptr) {
         reply->setDataPosition(0);
+        if (reply->dataSize() > LOG_REPLIES_OVER_SIZE) {
+            ALOGW("Large reply transaction of %zu bytes, interface descriptor %s, code %d",
+                  reply->dataSize(), String8(getInterfaceDescriptor()).c_str(), code);
+        }
     }
 
     return err;
