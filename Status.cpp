@@ -211,6 +211,12 @@ status_t Status::writeToParcel(Parcel* parcel) const {
     return status;
 }
 
+status_t Status::writeOverParcel(Parcel* parcel) const {
+    parcel->setDataSize(0);
+    parcel->setDataPosition(0);
+    return writeToParcel(parcel);
+}
+
 void Status::setException(int32_t ex, const String8& message) {
     mException = ex;
     mErrorCode = ex == EX_TRANSACTION_FAILED ? FAILED_TRANSACTION : NO_ERROR;
