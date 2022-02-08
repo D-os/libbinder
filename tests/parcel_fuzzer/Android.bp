@@ -26,13 +26,9 @@ cc_fuzz {
     static_libs: [
         "libbase",
         "libbinder_random_parcel",
-        "libcgrouprc",
-        "libcgrouprc_format",
         "libcutils",
         "libhidlbase",
         "liblog",
-        "libprocessgroup",
-        "libjsoncpp",
         "libutils",
     ],
 
