@@ -28,9 +28,10 @@ use crate::sys;
 
 use std::cmp::Ordering;
 use std::convert::TryInto;
-use std::ffi::{c_void, CString};
+use std::ffi::{c_void, CStr, CString};
 use std::fmt;
 use std::mem;
+use std::os::raw::c_char;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 use std::sync::Arc;
@@ -776,6 +777,61 @@ pub fn wait_for_interface<T: FromIBinder + ?Sized>(name: &str) -> Result<Strong<
         Some(service) => FromIBinder::try_from(service),
         None => Err(StatusCode::NAME_NOT_FOUND),
     }
+}
+
+/// Check if a service is declared (e.g. in a VINTF manifest)
+pub fn is_declared(interface: &str) -> Result<bool> {
+    let interface = CString::new(interface).or(Err(StatusCode::UNEXPECTED_NULL))?;
+
+    unsafe {
+        // Safety: `interface` is a valid null-terminated C-style string and is
+        // only borrowed for the lifetime of the call. The `interface` local
+        // outlives this call as it lives for the function scope.
+        Ok(sys::AServiceManager_isDeclared(interface.as_ptr()))
+    }
+}
+
+/// Retrieve all declared instances for a particular interface
+///
+/// For instance, if 'android.foo.IFoo/foo' is declared, and 'android.foo.IFoo'
+/// is passed here, then ["foo"] would be returned.
+pub fn get_declared_instances(interface: &str) -> Result<Vec<String>> {
+    unsafe extern "C" fn callback(instance: *const c_char, opaque: *mut c_void) {
+        // Safety: opaque was a mutable pointer created below from a Vec of
+        // CString, and outlives this callback. The null handling here is just
+        // to avoid the possibility of unwinding across C code if this crate is
+        // ever compiled with panic=unwind.
+        if let Some(instances) = opaque.cast::<Vec<CString>>().as_mut() {
+            // Safety: instance is a valid null-terminated C string with a
+            // lifetime at least as long as this function, and we immediately
+            // copy it into an owned CString.
+            instances.push(CStr::from_ptr(instance).to_owned());
+        } else {
+            eprintln!("Opaque pointer was null in get_declared_instances callback!");
+        }
+    }
+
+    let interface = CString::new(interface).or(Err(StatusCode::UNEXPECTED_NULL))?;
+    let mut instances: Vec<CString> = vec![];
+    unsafe {
+        // Safety: `interface` and `instances` are borrowed for the length of
+        // this call and both outlive the call. `interface` is guaranteed to be
+        // a valid null-terminated C-style string.
+        sys::AServiceManager_forEachDeclaredInstance(
+            interface.as_ptr(),
+            &mut instances as *mut _ as *mut c_void,
+            Some(callback),
+        );
+    }
+
+    instances
+        .into_iter()
+        .map(CString::into_string)
+        .collect::<std::result::Result<Vec<String>, _>>()
+        .map_err(|e| {
+            eprintln!("An interface instance name was not a valid UTF-8 string: {}", e);
+            StatusCode::BAD_VALUE
+        })
 }
 
 /// # Safety

@@ -114,8 +114,8 @@ pub use native::{
 };
 pub use parcel::{ParcelFileDescriptor, Parcelable, ParcelableHolder};
 pub use proxy::{
-    get_interface, get_service, wait_for_interface, wait_for_service, DeathRecipient, SpIBinder,
-    WpIBinder,
+    get_declared_instances, get_interface, get_service, is_declared, wait_for_interface,
+    wait_for_service, DeathRecipient, SpIBinder, WpIBinder,
 };
 pub use state::{ProcessState, ThreadState};
 

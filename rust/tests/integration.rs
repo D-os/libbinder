@@ -484,6 +484,21 @@ mod tests {
     }
 
     #[test]
+    fn get_declared_instances() {
+        // At the time of writing this test, there is no good VINTF interface
+        // guaranteed to be on all devices. Cuttlefish has light, so this will
+        // generally test things.
+        let has_lights = binder::is_declared("android.hardware.light.ILights/default")
+            .expect("Could not check for declared interface");
+
+        let instances = binder::get_declared_instances("android.hardware.light.ILights")
+            .expect("Could not get declared instances");
+
+        let expected_defaults = if has_lights { 1 } else { 0 };
+        assert_eq!(expected_defaults, instances.iter().filter(|i| i.as_str() == "default").count());
+    }
+
+    #[test]
     fn trivial_client() {
         let service_name = "trivial_client_test";
         let _process = ScopedServiceProcess::new(service_name);
