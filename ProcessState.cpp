@@ -19,6 +19,7 @@
 #include <binder/ProcessState.h>
 
 #include <android-base/result.h>
+#include <android-base/strings.h>
 #include <binder/BpBinder.h>
 #include <binder/IPCThreadState.h>
 #include <binder/IServiceManager.h>
@@ -367,8 +368,13 @@ void ProcessState::expungeHandle(int32_t handle, IBinder* binder)
 String8 ProcessState::makeBinderThreadName() {
     int32_t s = android_atomic_add(1, &mThreadPoolSeq);
     pid_t pid = getpid();
+
+    std::string_view driverName = mDriverName.c_str();
+    android::base::ConsumePrefix(&driverName, "/dev/");
+
     String8 name;
-    name.appendFormat("%d_%X:%s", pid, s, mDriverName.c_str());
+    name.appendFormat("%.*s:%d_%X", static_cast<int>(driverName.length()), driverName.data(), pid,
+                      s);
     return name;
 }
 
