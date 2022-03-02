@@ -924,9 +924,9 @@ mod tests {
             BinderFeatures::default(),
         );
 
-        assert!(!(service1 < service1));
-        assert!(!(service1 > service1));
-        assert_eq!(service1 < service2, !(service2 < service1));
+        assert!((service1 >= service1));
+        assert!((service1 <= service1));
+        assert_eq!(service1 < service2, (service2 >= service1));
     }
 
     #[test]
