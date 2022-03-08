@@ -19,7 +19,6 @@
 #include <binder/IBinder.h>
 #include <utils/KeyedVector.h>
 #include <utils/Mutex.h>
-#include <utils/threads.h>
 
 #include <unordered_map>
 #include <variant>

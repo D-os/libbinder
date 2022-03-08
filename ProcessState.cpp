@@ -24,9 +24,10 @@
 #include <binder/IServiceManager.h>
 #include <binder/Stability.h>
 #include <cutils/atomic.h>
+#include <utils/AndroidThreads.h>
 #include <utils/Log.h>
 #include <utils/String8.h>
-#include <utils/threads.h>
+#include <utils/Thread.h>
 
 #include "Static.h"
 #include "binder_module.h"

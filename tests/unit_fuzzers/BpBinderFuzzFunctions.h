@@ -30,7 +30,6 @@
 #include <utils/KeyedVector.h>
 #include <utils/Log.h>
 #include <utils/Mutex.h>
-#include <utils/threads.h>
 
 #include <stdio.h>
 
