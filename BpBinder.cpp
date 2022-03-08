@@ -72,29 +72,29 @@ void* BpBinder::ObjectManager::attach(const void* objectID, void* object, void* 
     e.cleanupCookie = cleanupCookie;
     e.func = func;
 
-    if (ssize_t idx = mObjects.indexOfKey(objectID); idx >= 0) {
+    if (mObjects.find(objectID) != mObjects.end()) {
         ALOGI("Trying to attach object ID %p to binder ObjectManager %p with object %p, but object "
               "ID already in use",
               objectID, this, object);
-        return mObjects[idx].object;
+        return mObjects[objectID].object;
     }
 
-    mObjects.add(objectID, e);
+    mObjects.insert({objectID, e});
     return nullptr;
 }
 
 void* BpBinder::ObjectManager::find(const void* objectID) const
 {
-    const ssize_t i = mObjects.indexOfKey(objectID);
-    if (i < 0) return nullptr;
-    return mObjects.valueAt(i).object;
+    auto i = mObjects.find(objectID);
+    if (i == mObjects.end()) return nullptr;
+    return i->second.object;
 }
 
 void* BpBinder::ObjectManager::detach(const void* objectID) {
-    ssize_t idx = mObjects.indexOfKey(objectID);
-    if (idx < 0) return nullptr;
-    void* value = mObjects[idx].object;
-    mObjects.removeItemsAt(idx, 1);
+    auto i = mObjects.find(objectID);
+    if (i == mObjects.end()) return nullptr;
+    void* value = i->second.object;
+    mObjects.erase(i);
     return value;
 }
 
@@ -102,10 +102,10 @@ void BpBinder::ObjectManager::kill()
 {
     const size_t N = mObjects.size();
     ALOGV("Killing %zu objects in manager %p", N, this);
-    for (size_t i=0; i<N; i++) {
-        const entry_t& e = mObjects.valueAt(i);
+    for (auto i : mObjects) {
+        const entry_t& e = i.second;
         if (e.func != nullptr) {
-            e.func(mObjects.keyAt(i), e.object, e.cleanupCookie);
+            e.func(i.first, e.object, e.cleanupCookie);
         }
     }
 

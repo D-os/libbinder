@@ -31,8 +31,9 @@
 #include <binder/Parcel.h>
 #include <log/log.h>
 
-#include <utils/KeyedVector.h>
 #include <utils/threads.h>
+
+#include <map>
 
 #define VERBOSE   0
 
@@ -63,7 +64,7 @@ private:
     void free_heap(const wp<IBinder>& binder);
 
     Mutex mHeapCacheLock;  // Protects entire vector below.
-    KeyedVector< wp<IBinder>, heap_info_t > mHeapCache;
+    std::map<wp<IBinder>, heap_info_t> mHeapCache;
     // We do not use the copy-on-write capabilities of KeyedVector.
     // TODO: Reimplemement based on standard C++ container?
 };
@@ -434,9 +435,9 @@ void HeapCache::binderDied(const wp<IBinder>& binder)
 sp<IMemoryHeap> HeapCache::find_heap(const sp<IBinder>& binder)
 {
     Mutex::Autolock _l(mHeapCacheLock);
-    ssize_t i = mHeapCache.indexOfKey(binder);
-    if (i>=0) {
-        heap_info_t& info = mHeapCache.editValueAt(i);
+    auto i = mHeapCache.find(binder);
+    if (i != mHeapCache.end()) {
+        heap_info_t& info = i->second;
         ALOGD_IF(VERBOSE,
                 "found binder=%p, heap=%p, size=%zu, fd=%d, count=%d",
                 binder.get(), info.heap.get(),
@@ -452,7 +453,7 @@ sp<IMemoryHeap> HeapCache::find_heap(const sp<IBinder>& binder)
         info.count = 1;
         //ALOGD("adding binder=%p, heap=%p, count=%d",
         //      binder.get(), info.heap.get(), info.count);
-        mHeapCache.add(binder, info);
+        mHeapCache.insert({binder, info});
         return info.heap;
     }
 }
@@ -466,9 +467,9 @@ void HeapCache::free_heap(const wp<IBinder>& binder)
     sp<IMemoryHeap> rel;
     {
         Mutex::Autolock _l(mHeapCacheLock);
-        ssize_t i = mHeapCache.indexOfKey(binder);
-        if (i>=0) {
-            heap_info_t& info(mHeapCache.editValueAt(i));
+        auto i = mHeapCache.find(binder);
+        if (i != mHeapCache.end()) {
+            heap_info_t& info = i->second;
             if (--info.count == 0) {
                 ALOGD_IF(VERBOSE,
                         "removing binder=%p, heap=%p, size=%zu, fd=%d, count=%d",
@@ -477,8 +478,8 @@ void HeapCache::free_heap(const wp<IBinder>& binder)
                         static_cast<BpMemoryHeap*>(info.heap.get())
                             ->mHeapId.load(memory_order_relaxed),
                         info.count);
-                rel = mHeapCache.valueAt(i).heap;
-                mHeapCache.removeItemsAt(i);
+                rel = i->second.heap;
+                mHeapCache.erase(i);
             }
         } else {
             ALOGE("free_heap binder=%p not found!!!", binder.unsafe_get());
@@ -490,23 +491,23 @@ sp<IMemoryHeap> HeapCache::get_heap(const sp<IBinder>& binder)
 {
     sp<IMemoryHeap> realHeap;
     Mutex::Autolock _l(mHeapCacheLock);
-    ssize_t i = mHeapCache.indexOfKey(binder);
-    if (i>=0)   realHeap = mHeapCache.valueAt(i).heap;
-    else        realHeap = interface_cast<IMemoryHeap>(binder);
+    auto i = mHeapCache.find(binder);
+    if (i != mHeapCache.end())
+        realHeap = i->second.heap;
+    else
+        realHeap = interface_cast<IMemoryHeap>(binder);
     return realHeap;
 }
 
 void HeapCache::dump_heaps()
 {
     Mutex::Autolock _l(mHeapCacheLock);
-    int c = mHeapCache.size();
-    for (int i=0 ; i<c ; i++) {
-        const heap_info_t& info = mHeapCache.valueAt(i);
+    for (const auto& i : mHeapCache) {
+        const heap_info_t& info = i.second;
         BpMemoryHeap const* h(static_cast<BpMemoryHeap const *>(info.heap.get()));
-        ALOGD("hey=%p, heap=%p, count=%d, (fd=%d, base=%p, size=%zu)",
-                mHeapCache.keyAt(i).unsafe_get(),
-                info.heap.get(), info.count,
-                h->mHeapId.load(memory_order_relaxed), h->mBase, h->mSize);
+        ALOGD("hey=%p, heap=%p, count=%d, (fd=%d, base=%p, size=%zu)", i.first.unsafe_get(),
+              info.heap.get(), info.count, h->mHeapId.load(memory_order_relaxed), h->mBase,
+              h->mSize);
     }
 }
 
