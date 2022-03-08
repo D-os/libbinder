@@ -409,6 +409,28 @@ size_t ProcessState::getThreadPoolMaxThreadCount() const {
     return 0;
 }
 
+#define DRIVER_FEATURES_PATH "/dev/binderfs/features/"
+bool ProcessState::isDriverFeatureEnabled(const DriverFeature feature) {
+    static const char* const names[] = {
+        [static_cast<int>(DriverFeature::ONEWAY_SPAM_DETECTION)] =
+            DRIVER_FEATURES_PATH "oneway_spam_detection",
+    };
+    int fd = open(names[static_cast<int>(feature)], O_RDONLY | O_CLOEXEC);
+    char on;
+    if (fd == -1) {
+        ALOGE_IF(errno != ENOENT, "%s: cannot open %s: %s", __func__,
+                 names[static_cast<int>(feature)], strerror(errno));
+        return false;
+    }
+    if (read(fd, &on, sizeof(on)) == -1) {
+        ALOGE("%s: error reading to %s: %s", __func__,
+                 names[static_cast<int>(feature)], strerror(errno));
+        return false;
+    }
+    close(fd);
+    return on == '1';
+}
+
 status_t ProcessState::enableOnewaySpamDetection(bool enable) {
     uint32_t enableDetection = enable ? 1 : 0;
     if (ioctl(mDriverFD, BINDER_ENABLE_ONEWAY_SPAM_DETECTION, &enableDetection) == -1) {
@@ -452,7 +474,9 @@ static base::Result<int> open_driver(const char* driver) {
     uint32_t enable = DEFAULT_ENABLE_ONEWAY_SPAM_DETECTION;
     result = ioctl(fd, BINDER_ENABLE_ONEWAY_SPAM_DETECTION, &enable);
     if (result == -1) {
-        ALOGV("Binder ioctl to enable oneway spam detection failed: %s", strerror(errno));
+        ALOGE_IF(ProcessState::isDriverFeatureEnabled(
+                     ProcessState::DriverFeature::ONEWAY_SPAM_DETECTION),
+                 "Binder ioctl to enable oneway spam detection failed: %s", strerror(errno));
     }
     return fd;
 }
