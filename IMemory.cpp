@@ -32,7 +32,7 @@
 #include <log/log.h>
 
 #include <utils/KeyedVector.h>
-#include <utils/Mutex.h>
+#include <utils/threads.h>
 
 #define VERBOSE   0
 
