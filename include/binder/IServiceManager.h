@@ -56,8 +56,16 @@ public:
     static const int DUMP_FLAG_PROTO = 1 << 4;
 
     /**
-     * Retrieve an existing service, blocking for a few seconds
-     * if it doesn't yet exist.
+     * Retrieve an existing service, blocking for a few seconds if it doesn't yet exist. This
+     * does polling. A more efficient way to make sure you unblock as soon as the service is
+     * available is to use waitForService or to use service notifications.
+     *
+     * Warning: when using this API, typically, you should call it in a loop. It's dangerous to
+     * assume that nullptr could mean that the service is not available. The service could just
+     * be starting. Generally, whether a service exists, this information should be declared
+     * externally (for instance, an Android feature might imply the existence of a service,
+     * a system property, or in the case of services in the VINTF manifest, it can be checked
+     * with isDeclared).
      */
     virtual sp<IBinder>         getService( const String16& name) const = 0;
 
