@@ -125,8 +125,8 @@ status_t RpcState::onBinderLeaving(const sp<RpcSession>& session, const sp<IBind
         auto&& [it, inserted] = mNodeForAddress.insert({RpcWireAddress::toRaw(address),
                                                         BinderNode{
                                                                 .binder = binder,
-                                                                .timesSent = 1,
                                                                 .sentRef = binder,
+                                                                .timesSent = 1,
                                                         }});
         if (inserted) {
             *outAddress = it->first;
