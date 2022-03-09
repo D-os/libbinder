@@ -18,9 +18,10 @@
 
 #include <binder/IBinder.h>
 #include <utils/KeyedVector.h>
-#include <utils/Mutex.h>
 #include <utils/String16.h>
 #include <utils/String8.h>
+
+#include <utils/threads.h>
 
 #include <pthread.h>
 

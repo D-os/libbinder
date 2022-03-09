@@ -27,6 +27,7 @@
 #include <utils/CallStack.h>
 #include <utils/Log.h>
 #include <utils/SystemClock.h>
+#include <utils/threads.h>
 
 #include <atomic>
 #include <errno.h>
