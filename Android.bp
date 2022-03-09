@@ -166,6 +166,7 @@ cc_library {
         "-Wextra-semi",
         "-Werror",
         "-Wzero-as-null-pointer-constant",
+        "-Wreorder-init-list",
         "-DANDROID_BASE_UNIQUE_FD_DISABLE_IMPLICIT_CONVERSION",
         "-DANDROID_UTILS_REF_BASE_DISABLE_IMPLICIT_CONSTRUCTION",
     ],
