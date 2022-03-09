@@ -18,10 +18,9 @@
 
 #ifndef __ANDROID_VNDK__
 
-#include <binder/IActivityManager.h>
 #include <android/app/ProcessStateEnum.h>
-
-#include <utils/threads.h>
+#include <binder/IActivityManager.h>
+#include <utils/Mutex.h>
 
 // ---------------------------------------------------------------------------
 namespace android {
