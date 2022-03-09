@@ -19,8 +19,7 @@
 #ifndef __ANDROID_VNDK__
 
 #include <binder/IPermissionController.h>
-
-#include <utils/threads.h>
+#include <utils/Mutex.h>
 
 // ---------------------------------------------------------------------------
 namespace android {

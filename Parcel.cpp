@@ -63,7 +63,7 @@
 // This macro should never be used at runtime, as a too large value
 // of s could cause an integer overflow. Instead, you should always
 // use the wrapper function pad_size()
-#define PAD_SIZE_UNSAFE(s) (((s)+3)&~3)
+#define PAD_SIZE_UNSAFE(s) (((s) + 3) & ~3UL)
 
 static size_t pad_size(size_t s) {
     if (s > (std::numeric_limits<size_t>::max() - 3)) {
