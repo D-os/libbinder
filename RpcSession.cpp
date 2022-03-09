@@ -152,8 +152,13 @@ status_t RpcSession::setupInetClient(const char* addr, unsigned int port) {
 }
 
 status_t RpcSession::setupPreconnectedClient(unique_fd fd, std::function<unique_fd()>&& request) {
-    return setupClient([&](const std::vector<uint8_t>& sessionId, bool incoming) -> status_t {
-        // std::move'd from fd becomes -1 (!ok())
+    // Why passing raw fd? When fd is passed as reference, Clang analyzer sees that the variable
+    // `fd` is a moved-from object. To work-around the issue, unwrap the raw fd from the outer `fd`,
+    // pass the raw fd by value to the lambda, and then finally wrap it in unique_fd inside the
+    // lambda.
+    return setupClient([&, raw = fd.release()](const std::vector<uint8_t>& sessionId,
+                                               bool incoming) -> status_t {
+        unique_fd fd(raw);
         if (!fd.ok()) {
             fd = request();
             if (!fd.ok()) return BAD_VALUE;
