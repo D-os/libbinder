@@ -853,10 +853,16 @@ status_t RpcSession::ExclusiveConnection::find(const sp<RpcSession>& session, Co
         }
 
         if (session->mConnections.mOutgoing.size() == 0) {
-            ALOGE("Session has no client connections. This is required for an RPC server to make "
-                  "any non-nested (e.g. oneway or on another thread) calls. Use: %d. Server "
-                  "connections: %zu",
-                  static_cast<int>(use), session->mConnections.mIncoming.size());
+            ALOGE("Session has no outgoing connections. This is required for an RPC server to make "
+                  "any non-nested (e.g. oneway or on another thread) calls. Use code request "
+                  "reason: %d. Incoming connections: %zu. %s.",
+                  static_cast<int>(use), session->mConnections.mIncoming.size(),
+                  (session->server()
+                           ? "This is a server session, so see RpcSession::setMaxIncomingThreads "
+                             "for the corresponding client"
+                           : "This is a client session, so see RpcSession::setMaxOutgoingThreads "
+                             "for this client or RpcServer::setMaxThreads for the corresponding "
+                             "server"));
             return WOULD_BLOCK;
         }
 
