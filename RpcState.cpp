@@ -660,8 +660,14 @@ status_t RpcState::getAndExecuteCommand(const sp<RpcSession::RpcConnection>& con
 status_t RpcState::drainCommands(const sp<RpcSession::RpcConnection>& connection,
                                  const sp<RpcSession>& session, CommandType type) {
     uint8_t buf;
-    while (connection->rpcTransport->peek(&buf, sizeof(buf)).value_or(0) > 0) {
-        status_t status = getAndExecuteCommand(connection, session, type);
+    while (true) {
+        size_t num_bytes;
+        status_t status = connection->rpcTransport->peek(&buf, sizeof(buf), &num_bytes);
+        if (status == WOULD_BLOCK) break;
+        if (status != OK) return status;
+        if (!num_bytes) break;
+
+        status = getAndExecuteCommand(connection, session, type);
         if (status != OK) return status;
     }
     return OK;

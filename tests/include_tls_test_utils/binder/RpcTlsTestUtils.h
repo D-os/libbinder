@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include <binder/RpcAuth.h>
 #include <binder/RpcCertificateFormat.h>
