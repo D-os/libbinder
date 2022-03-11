@@ -1862,6 +1862,7 @@ status_t Parcel::readStrongBinder(sp<IBinder>* val) const
 {
     status_t status = readNullableStrongBinder(val);
     if (status == OK && !val->get()) {
+        ALOGW("Expecting binder but got null!");
         status = UNEXPECTED_NULL;
     }
     return status;
