@@ -99,6 +99,7 @@ cc_test {
         "binderParcelUnitTest.cpp",
         "binderBinderUnitTest.cpp",
         "binderStatusUnitTest.cpp",
+        "binderMemoryHeapBaseUnitTest.cpp",
     ],
     shared_libs: [
         "libbinder",
