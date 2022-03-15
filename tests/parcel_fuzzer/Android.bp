@@ -66,10 +66,13 @@ cc_library_static {
     srcs: [
         "random_fd.cpp",
         "random_parcel.cpp",
+        "libbinder_driver.cpp",
+        "libbinder_ndk_driver.cpp",
     ],
     shared_libs: [
         "libbase",
         "libbinder",
+        "libbinder_ndk",
         "libcutils",
         "libutils",
     ],
