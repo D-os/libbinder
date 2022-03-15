@@ -101,7 +101,12 @@ class AParcelableHolder {
             return STATUS_INVALID_OPERATION;
         }
 
-        RETURN_ON_FAILURE(AParcel_readInt32(parcel, &this->mStability));
+        parcelable_stability_t wireStability;
+        RETURN_ON_FAILURE(AParcel_readInt32(parcel, &wireStability));
+        if (this->mStability != wireStability) {
+            return STATUS_BAD_VALUE;
+        }
+
         int32_t dataSize;
         binder_status_t status = AParcel_readInt32(parcel, &dataSize);
 

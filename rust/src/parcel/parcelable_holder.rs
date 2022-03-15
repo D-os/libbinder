@@ -233,7 +233,9 @@ impl Parcelable for ParcelableHolder {
     }
 
     fn read_from_parcel(&mut self, parcel: &BorrowedParcel<'_>) -> Result<(), StatusCode> {
-        self.stability = parcel.read()?;
+        if self.stability != parcel.read()? {
+            return Err(StatusCode::BAD_VALUE);
+        }
 
         let data_size: i32 = parcel.read()?;
         if data_size < 0 {
