@@ -27,7 +27,14 @@ void fuzzService(const sp<IBinder>& binder, FuzzedDataProvider&& provider) {
 
         std::vector<uint8_t> subData = provider.ConsumeBytes<uint8_t>(
                 provider.ConsumeIntegralInRange<size_t>(0, provider.remaining_bytes()));
-        fillRandomParcel(&data, FuzzedDataProvider(subData.data(), subData.size()));
+        fillRandomParcel(&data, FuzzedDataProvider(subData.data(), subData.size()),
+                         [&binder](Parcel* p, FuzzedDataProvider& provider) {
+                             // most code will be behind checks that the head of the Parcel
+                             // is exactly this, so make it easier for fuzzers to reach this
+                             if (provider.ConsumeBool()) {
+                                 p->writeInterfaceToken(binder->getInterfaceDescriptor());
+                             }
+                         });
 
         Parcel reply;
         (void)binder->transact(code, data, &reply, flags);
