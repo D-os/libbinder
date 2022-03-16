@@ -24,8 +24,4 @@ namespace android {
  * Fill parcel data, including some random binder objects and FDs
  */
 void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider);
-/**
- * Fill parcel data, but don't fill any objects.
- */
-void fillRandomParcelData(Parcel* p, FuzzedDataProvider&& provider);
 } // namespace android

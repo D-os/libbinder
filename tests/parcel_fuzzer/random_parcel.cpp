@@ -34,6 +34,11 @@ private:
     String16 mDescriptor;
 };
 
+static void fillRandomParcelData(Parcel* p, FuzzedDataProvider&& provider) {
+    std::vector<uint8_t> data = provider.ConsumeBytes<uint8_t>(provider.remaining_bytes());
+    CHECK(OK == p->write(data.data(), data.size()));
+}
+
 void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider) {
     if (provider.ConsumeBool()) {
         auto session = RpcSession::make(RpcTransportCtxFactoryRaw::make());
@@ -83,11 +88,6 @@ void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider) {
 
         fillFunc();
     }
-}
-
-void fillRandomParcelData(Parcel* p, FuzzedDataProvider&& provider) {
-    std::vector<uint8_t> data = provider.ConsumeBytes<uint8_t>(provider.remaining_bytes());
-    CHECK(OK == p->write(data.data(), data.size()));
 }
 
 } // namespace android
