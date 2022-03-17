@@ -31,7 +31,7 @@
 #include <binder/Parcel.h>
 #include <log/log.h>
 
-#include <utils/threads.h>
+#include <utils/Mutex.h>
 
 #include <map>
 

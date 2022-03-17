@@ -18,7 +18,6 @@
 
 #include <binder/IBinder.h>
 #include <utils/Mutex.h>
-#include <utils/threads.h>
 
 #include <map>
 #include <unordered_map>
