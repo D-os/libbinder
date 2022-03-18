@@ -1086,7 +1086,7 @@ macro_rules! declare_binder_enum {
     {
         $( #[$attr:meta] )*
         $enum:ident : [$backing:ty; $size:expr] {
-            $( $name:ident = $value:expr, )*
+            $( $( #[$value_attr:meta] )* $name:ident = $value:expr, )*
         }
     } => {
         $( #[$attr] )*
@@ -1094,7 +1094,7 @@ macro_rules! declare_binder_enum {
         #[allow(missing_docs)]
         pub struct $enum(pub $backing);
         impl $enum {
-            $( #[allow(missing_docs)] pub const $name: Self = Self($value); )*
+            $( $( #[$value_attr] )* #[allow(missing_docs)] pub const $name: Self = Self($value); )*
 
             #[inline(always)]
             #[allow(missing_docs)]
