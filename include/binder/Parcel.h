@@ -95,6 +95,12 @@ public:
     bool                hasFileDescriptors() const;
     status_t hasFileDescriptorsInRange(size_t offset, size_t length, bool* result) const;
 
+    // returns all binder objects in the Parcel
+    std::vector<sp<IBinder>> debugReadAllStrongBinders() const;
+    // returns all file descriptors in the Parcel
+    // does not dup
+    std::vector<int> debugReadAllFileDescriptors() const;
+
     // Zeros data when reallocating. Other mitigations may be added
     // in the future.
     //

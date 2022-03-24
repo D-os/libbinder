@@ -20,8 +20,16 @@
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include <functional>
+#include <vector>
 
 namespace android {
+
+struct RandomParcelOptions {
+    std::function<void(Parcel* p, FuzzedDataProvider& provider)> writeHeader;
+    std::vector<sp<IBinder>> extraBinders;
+    std::vector<base::unique_fd> extraFds;
+};
+
 /**
  * Fill parcel data, including some random binder objects and FDs
  *
@@ -30,7 +38,5 @@ namespace android {
  * writeHeader - optional function to write a specific header once the format of the parcel is
  *     picked (for instance, to write an interface header)
  */
-void fillRandomParcel(
-        Parcel* p, FuzzedDataProvider&& provider,
-        std::function<void(Parcel* p, FuzzedDataProvider& provider)> writeHeader = nullptr);
+void fillRandomParcel(Parcel* p, FuzzedDataProvider&& provider, const RandomParcelOptions& = {});
 } // namespace android

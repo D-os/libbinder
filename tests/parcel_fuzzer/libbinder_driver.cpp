@@ -20,24 +20,45 @@
 namespace android {
 
 void fuzzService(const sp<IBinder>& binder, FuzzedDataProvider&& provider) {
+    sp<IBinder> target;
+
+    RandomParcelOptions options{
+            .extraBinders = {binder},
+            .extraFds = {},
+    };
+
     while (provider.remaining_bytes() > 0) {
         uint32_t code = provider.ConsumeIntegral<uint32_t>();
         uint32_t flags = provider.ConsumeIntegral<uint32_t>();
         Parcel data;
 
+        sp<IBinder> target = options.extraBinders.at(
+                provider.ConsumeIntegralInRange<size_t>(0, options.extraBinders.size() - 1));
+        options.writeHeader = [&target](Parcel* p, FuzzedDataProvider& provider) {
+            // most code will be behind checks that the head of the Parcel
+            // is exactly this, so make it easier for fuzzers to reach this
+            if (provider.ConsumeBool()) {
+                p->writeInterfaceToken(target->getInterfaceDescriptor());
+            }
+        };
+
         std::vector<uint8_t> subData = provider.ConsumeBytes<uint8_t>(
                 provider.ConsumeIntegralInRange<size_t>(0, provider.remaining_bytes()));
-        fillRandomParcel(&data, FuzzedDataProvider(subData.data(), subData.size()),
-                         [&binder](Parcel* p, FuzzedDataProvider& provider) {
-                             // most code will be behind checks that the head of the Parcel
-                             // is exactly this, so make it easier for fuzzers to reach this
-                             if (provider.ConsumeBool()) {
-                                 p->writeInterfaceToken(binder->getInterfaceDescriptor());
-                             }
-                         });
+        fillRandomParcel(&data, FuzzedDataProvider(subData.data(), subData.size()), options);
 
         Parcel reply;
-        (void)binder->transact(code, data, &reply, flags);
+        (void)target->transact(code, data, &reply, flags);
+
+        // feed back in binders and fds that are returned from the service, so that
+        // we can fuzz those binders, and use the fds and binders to feed back into
+        // the binders
+        auto retBinders = reply.debugReadAllStrongBinders();
+        options.extraBinders.insert(options.extraBinders.end(), retBinders.begin(),
+                                    retBinders.end());
+        auto retFds = reply.debugReadAllFileDescriptors();
+        for (size_t i = 0; i < retFds.size(); i++) {
+            options.extraFds.push_back(base::unique_fd(dup(retFds[i])));
+        }
     }
 }
 
