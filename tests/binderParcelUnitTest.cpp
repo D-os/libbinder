@@ -20,9 +20,12 @@
 #include <cutils/ashmem.h>
 #include <gtest/gtest.h>
 
+using android::BBinder;
+using android::IBinder;
 using android::IPCThreadState;
 using android::OK;
 using android::Parcel;
+using android::sp;
 using android::status_t;
 using android::String16;
 using android::String8;
@@ -73,6 +76,40 @@ TEST(Parcel, EnforceNoDataAvail) {
     EXPECT_EQ(p.enforceNoDataAvail().exceptionCode(), Status::Exception::EX_BAD_PARCELABLE);
     EXPECT_EQ(kTestString, p.readString8());
     EXPECT_EQ(p.enforceNoDataAvail().exceptionCode(), Status::Exception::EX_NONE);
+}
+
+TEST(Parcel, DebugReadAllBinders) {
+    sp<IBinder> binder1 = sp<BBinder>::make();
+    sp<IBinder> binder2 = sp<BBinder>::make();
+
+    Parcel p;
+    p.writeInt32(4);
+    p.writeStrongBinder(binder1);
+    p.writeStrongBinder(nullptr);
+    p.writeInt32(4);
+    p.writeStrongBinder(binder2);
+    p.writeInt32(4);
+
+    auto ret = p.debugReadAllStrongBinders();
+
+    ASSERT_EQ(ret.size(), 2);
+    EXPECT_EQ(ret[0], binder1);
+    EXPECT_EQ(ret[1], binder2);
+}
+
+TEST(Parcel, DebugReadAllFds) {
+    Parcel p;
+    p.writeInt32(4);
+    p.writeFileDescriptor(STDOUT_FILENO, false /*takeOwnership*/);
+    p.writeInt32(4);
+    p.writeFileDescriptor(STDIN_FILENO, false /*takeOwnership*/);
+    p.writeInt32(4);
+
+    auto ret = p.debugReadAllFileDescriptors();
+
+    ASSERT_EQ(ret.size(), 2);
+    EXPECT_EQ(ret[0], STDOUT_FILENO);
+    EXPECT_EQ(ret[1], STDIN_FILENO);
 }
 
 // Tests a second operation results in a parcel at the same location as it

@@ -23,13 +23,13 @@
 
 namespace android {
 
-int getRandomFd(FuzzedDataProvider* provider) {
+base::unique_fd getRandomFd(FuzzedDataProvider* provider) {
     int fd = provider->PickValueInArray<std::function<int()>>({
             []() { return ashmem_create_region("binder test region", 1024); },
             []() { return open("/dev/null", O_RDWR); },
     })();
     CHECK(fd >= 0);
-    return fd;
+    return base::unique_fd(fd);
 }
 
 } // namespace android

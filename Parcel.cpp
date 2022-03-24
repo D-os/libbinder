@@ -569,6 +569,47 @@ bool Parcel::hasFileDescriptors() const
     return mHasFds;
 }
 
+std::vector<sp<IBinder>> Parcel::debugReadAllStrongBinders() const {
+    std::vector<sp<IBinder>> ret;
+
+    size_t initPosition = dataPosition();
+    for (size_t i = 0; i < mObjectsSize; i++) {
+        binder_size_t offset = mObjects[i];
+        const flat_binder_object* flat =
+                reinterpret_cast<const flat_binder_object*>(mData + offset);
+        if (flat->hdr.type != BINDER_TYPE_BINDER) continue;
+
+        setDataPosition(offset);
+
+        sp<IBinder> binder = readStrongBinder();
+        if (binder != nullptr) ret.push_back(binder);
+    }
+
+    setDataPosition(initPosition);
+    return ret;
+}
+
+std::vector<int> Parcel::debugReadAllFileDescriptors() const {
+    std::vector<int> ret;
+
+    size_t initPosition = dataPosition();
+    for (size_t i = 0; i < mObjectsSize; i++) {
+        binder_size_t offset = mObjects[i];
+        const flat_binder_object* flat =
+                reinterpret_cast<const flat_binder_object*>(mData + offset);
+        if (flat->hdr.type != BINDER_TYPE_FD) continue;
+
+        setDataPosition(offset);
+
+        int fd = readFileDescriptor();
+        LOG_ALWAYS_FATAL_IF(fd == -1);
+        ret.push_back(fd);
+    }
+
+    setDataPosition(initPosition);
+    return ret;
+}
+
 status_t Parcel::hasFileDescriptorsInRange(size_t offset, size_t len, bool* result) const {
     if (len > INT32_MAX || offset > INT32_MAX) {
         // Don't accept size_t values which may have come from an inadvertent conversion from a
