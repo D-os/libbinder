@@ -33,13 +33,15 @@ public:
     virtual void onUidActive(uid_t uid) = 0;
     virtual void onUidIdle(uid_t uid, bool disabled) = 0;
     virtual void onUidStateChanged(uid_t uid, int32_t procState, int64_t procStateSeq,
-            int32_t capability) = 0;
+                                   int32_t capability) = 0;
+    virtual void onUidProcAdjChanged(uid_t uid) = 0;
 
     enum {
         ON_UID_GONE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
         ON_UID_ACTIVE_TRANSACTION,
         ON_UID_IDLE_TRANSACTION,
-        ON_UID_STATE_CHANGED_TRANSACTION
+        ON_UID_STATE_CHANGED_TRANSACTION,
+        ON_UID_PROC_ADJ_CHANGED_TRANSACTION
     };
 };
 

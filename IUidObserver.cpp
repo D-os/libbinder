@@ -57,8 +57,7 @@ public:
     }
 
     virtual void onUidStateChanged(uid_t uid, int32_t procState, int64_t procStateSeq,
-            int32_t capability)
-    {
+                                   int32_t capability) {
         Parcel data, reply;
         data.writeInterfaceToken(IUidObserver::getInterfaceDescriptor());
         data.writeInt32((int32_t) uid);
@@ -66,6 +65,12 @@ public:
         data.writeInt64(procStateSeq);
         data.writeInt32(capability);
         remote()->transact(ON_UID_STATE_CHANGED_TRANSACTION, data, &reply, IBinder::FLAG_ONEWAY);
+    }
+
+    virtual void onUidProcAdjChanged(uid_t uid) {
+        Parcel data, reply;
+        data.writeInt32((int32_t)uid);
+        remote()->transact(ON_UID_PROC_ADJ_CHANGED_TRANSACTION, data, &reply, IBinder::FLAG_ONEWAY);
     }
 };
 
@@ -102,6 +107,7 @@ status_t BnUidObserver::onTransact(
             onUidIdle(uid, disabled);
             return NO_ERROR;
         } break;
+
         case ON_UID_STATE_CHANGED_TRANSACTION: {
             CHECK_INTERFACE(IUidObserver, data, reply);
             uid_t uid = data.readInt32();
@@ -111,6 +117,14 @@ status_t BnUidObserver::onTransact(
             onUidStateChanged(uid, procState, procStateSeq, capability);
             return NO_ERROR;
         } break;
+
+        case ON_UID_PROC_ADJ_CHANGED_TRANSACTION: {
+            CHECK_INTERFACE(IUidObserver, data, reply);
+            uid_t uid = data.readInt32();
+            onUidProcAdjChanged(uid);
+            return NO_ERROR;
+        } break;
+
         default:
             return BBinder::onTransact(code, data, reply, flags);
     }
