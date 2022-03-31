@@ -1584,6 +1584,7 @@ status_t Parcel::readOutVectorSizeWithCheck(size_t elmSize, int32_t* size) const
 template<class T>
 status_t Parcel::readAligned(T *pArg) const {
     static_assert(PAD_SIZE_UNSAFE(sizeof(T)) == sizeof(T));
+    static_assert(std::is_trivially_copyable_v<T>);
 
     if ((mDataPos+sizeof(T)) <= mDataSize) {
         if (mObjectsSize > 0) {
@@ -1595,9 +1596,8 @@ status_t Parcel::readAligned(T *pArg) const {
             }
         }
 
-        const void* data = mData+mDataPos;
+        memcpy(pArg, mData + mDataPos, sizeof(T));
         mDataPos += sizeof(T);
-        *pArg =  *reinterpret_cast<const T*>(data);
         return NO_ERROR;
     } else {
         return NOT_ENOUGH_DATA;
@@ -1617,10 +1617,11 @@ T Parcel::readAligned() const {
 template<class T>
 status_t Parcel::writeAligned(T val) {
     static_assert(PAD_SIZE_UNSAFE(sizeof(T)) == sizeof(T));
+    static_assert(std::is_trivially_copyable_v<T>);
 
     if ((mDataPos+sizeof(val)) <= mDataCapacity) {
 restart_write:
-        *reinterpret_cast<T*>(mData+mDataPos) = val;
+        memcpy(mData + mDataPos, &val, sizeof(val));
         return finishWrite(sizeof(val));
     }
 

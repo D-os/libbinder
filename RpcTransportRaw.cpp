@@ -24,9 +24,6 @@
 #include "FdTrigger.h"
 #include "RpcState.h"
 
-using android::base::ErrnoError;
-using android::base::Result;
-
 namespace android {
 
 namespace {
@@ -35,12 +32,20 @@ namespace {
 class RpcTransportRaw : public RpcTransport {
 public:
     explicit RpcTransportRaw(android::base::unique_fd socket) : mSocket(std::move(socket)) {}
-    Result<size_t> peek(void *buf, size_t size) override {
+    status_t peek(void* buf, size_t size, size_t* out_size) override {
         ssize_t ret = TEMP_FAILURE_RETRY(::recv(mSocket.get(), buf, size, MSG_PEEK));
         if (ret < 0) {
-            return ErrnoError() << "recv(MSG_PEEK)";
+            int savedErrno = errno;
+            if (savedErrno == EAGAIN || savedErrno == EWOULDBLOCK) {
+                return WOULD_BLOCK;
+            }
+
+            LOG_RPC_DETAIL("RpcTransport peek(): %s", strerror(savedErrno));
+            return -savedErrno;
         }
-        return ret;
+
+        *out_size = static_cast<size_t>(ret);
+        return OK;
     }
 
     template <typename SendOrReceive>
