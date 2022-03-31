@@ -231,7 +231,8 @@ TEST(NdkBinder, DetectDoubleOwn) {
 }
 
 TEST(NdkBinder, DetectNoSharedRefBaseCreated) {
-    EXPECT_DEATH(MyBinderNdkUnitTest(), "SharedRefBase: no ref created during lifetime");
+    EXPECT_DEATH(std::make_shared<MyBinderNdkUnitTest>(),
+                 "SharedRefBase: no ref created during lifetime");
 }
 
 TEST(NdkBinder, GetServiceThatDoesntExist) {
