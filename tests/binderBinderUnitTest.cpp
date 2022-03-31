@@ -41,3 +41,10 @@ TEST(Binder, DetachObject) {
     EXPECT_EQ(kObject1, binder->detachObject(kObjectId1));
     EXPECT_EQ(nullptr, binder->attachObject(kObjectId1, kObject2, nullptr, nullptr));
 }
+
+TEST(Binder, AttachExtension) {
+    auto binder = sp<BBinder>::make();
+    auto ext = sp<BBinder>::make();
+    binder->setExtension(ext);
+    EXPECT_EQ(ext, binder->getExtension());
+}
