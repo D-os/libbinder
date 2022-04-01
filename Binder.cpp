@@ -582,6 +582,10 @@ void BBinder::removeRpcServerLink(const sp<RpcServerLink>& link) {
 
 BBinder::~BBinder()
 {
+    if (!wasParceled() && getExtension()) {
+        ALOGW("Binder %p destroyed with extension attached before being parceled.", this);
+    }
+
     Extras* e = mExtras.load(std::memory_order_relaxed);
     if (e) delete e;
 }
