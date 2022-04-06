@@ -575,6 +575,20 @@ struct DeathRecipientVtable {
     cookie_decr_refcount: unsafe extern "C" fn(*mut c_void),
 }
 
+/// # Safety
+///
+/// A `DeathRecipient` is a wrapper around `AIBinder_DeathRecipient` and a pointer
+/// to a `Fn` which is `Sync` and `Send` (the cookie field). As
+/// `AIBinder_DeathRecipient` is threadsafe, this structure is too.
+unsafe impl Send for DeathRecipient {}
+
+/// # Safety
+///
+/// A `DeathRecipient` is a wrapper around `AIBinder_DeathRecipient` and a pointer
+/// to a `Fn` which is `Sync` and `Send` (the cookie field). As
+/// `AIBinder_DeathRecipient` is threadsafe, this structure is too.
+unsafe impl Sync for DeathRecipient {}
+
 impl DeathRecipient {
     /// Create a new death recipient that will call the given callback when its
     /// associated object dies.
