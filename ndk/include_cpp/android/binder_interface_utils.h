@@ -324,4 +324,42 @@ SpAIBinder BpCInterface<INTERFACE>::asBinder() {
 
 }  // namespace ndk
 
+// Once minSdkVersion is 30, we are guaranteed to be building with the
+// Android 11 AIDL compiler which supports the SharedRefBase::make API.
+#if !defined(__ANDROID_API__) || __ANDROID_API__ >= 30 || defined(__ANDROID_APEX__)
+namespace ndk::internal {
+template <typename T, typename = void>
+struct is_complete_type : std::false_type {};
+
+template <typename T>
+struct is_complete_type<T, decltype(void(sizeof(T)))> : std::true_type {};
+}  // namespace ndk::internal
+
+namespace std {
+
+// Define `SharedRefBase` specific versions of `std::make_shared` and
+// `std::make_unique` to block people from using them. Using them to allocate
+// `ndk::SharedRefBase` objects results in double ownership. Use
+// `ndk::SharedRefBase::make<T>(...)` instead.
+//
+// Note: We exclude incomplete types because `std::is_base_of` is undefined in
+// that case.
+
+template <typename T, typename... Args,
+          std::enable_if_t<ndk::internal::is_complete_type<T>::value, bool> = true,
+          std::enable_if_t<std::is_base_of<ndk::SharedRefBase, T>::value, bool> = true>
+shared_ptr<T> make_shared(Args...) {  // SEE COMMENT ABOVE.
+    static_assert(!std::is_base_of<ndk::SharedRefBase, T>::value);
+}
+
+template <typename T, typename... Args,
+          std::enable_if_t<ndk::internal::is_complete_type<T>::value, bool> = true,
+          std::enable_if_t<std::is_base_of<ndk::SharedRefBase, T>::value, bool> = true>
+unique_ptr<T> make_unique(Args...) {  // SEE COMMENT ABOVE.
+    static_assert(!std::is_base_of<ndk::SharedRefBase, T>::value);
+}
+
+}  // namespace std
+#endif
+
 /** @} */
