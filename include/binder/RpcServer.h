@@ -77,7 +77,7 @@ public:
      * have
      */
     [[nodiscard]] status_t setupInetServer(const char* address, unsigned int port,
-                                           unsigned int* assignedPort);
+                                           unsigned int* assignedPort = nullptr);
 
     /**
      * If setup*Server has been successful, return true. Otherwise return false.
