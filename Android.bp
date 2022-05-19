@@ -226,6 +226,10 @@ cc_library {
     ],
 
     afdo: true,
+
+    header_abi_checker: {
+        diff_flags: ["-allow-adding-removing-weak-symbols"],
+    },
 }
 
 cc_defaults {
