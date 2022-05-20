@@ -99,6 +99,8 @@ public:
 
     status_t unregisterForNotifications(const String16& service,
                                         const sp<AidlRegistrationCallback>& cb) override;
+
+    std::vector<IServiceManager::ServiceDebugInfo> getServiceDebugInfo() override;
     // for legacy ABI
     const String16& getInterfaceDescriptor() const override {
         return mTheRealServiceManager->getInterfaceDescriptor();
@@ -541,6 +543,23 @@ status_t ServiceManagerShim::unregisterForNotifications(const String16& name,
         return UNKNOWN_ERROR;
     }
     return OK;
+}
+
+std::vector<IServiceManager::ServiceDebugInfo> ServiceManagerShim::getServiceDebugInfo() {
+    std::vector<os::ServiceDebugInfo> serviceDebugInfos;
+    std::vector<IServiceManager::ServiceDebugInfo> ret;
+    if (Status status = mTheRealServiceManager->getServiceDebugInfo(&serviceDebugInfos);
+        !status.isOk()) {
+        ALOGW("%s Failed to get ServiceDebugInfo", __FUNCTION__);
+        return ret;
+    }
+    for (const auto& serviceDebugInfo : serviceDebugInfos) {
+        IServiceManager::ServiceDebugInfo retInfo;
+        retInfo.pid = serviceDebugInfo.debugPid;
+        retInfo.name = serviceDebugInfo.name;
+        ret.emplace_back(retInfo);
+    }
+    return ret;
 }
 
 #ifndef __ANDROID__
