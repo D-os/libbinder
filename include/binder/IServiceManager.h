@@ -134,6 +134,12 @@ public:
 
     virtual status_t unregisterForNotifications(const String16& name,
                                                 const sp<LocalRegistrationCallback>& callback) = 0;
+
+    struct ServiceDebugInfo {
+        std::string name;
+        int pid;
+    };
+    virtual std::vector<ServiceDebugInfo> getServiceDebugInfo() = 0;
 };
 
 sp<IServiceManager> defaultServiceManager();
